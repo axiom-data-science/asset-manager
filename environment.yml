@@ -1,0 +1,5 @@
+name: asset-manager
+channels:
+  - conda-forge
+dependencies:
+  - nodejs>=22.22.0,<25.0.0

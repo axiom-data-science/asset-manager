@@ -23,17 +23,23 @@ export const OIDC_CLIENT_ID = twconfig(
 export const OIDC_REDIRECT_URI = twconfig(
     "$TWOWOLVES_OIDC_REDIRECT_URI",
     "VITE_OIDC_REDIRECT_URI",
-    'http://localhost:5173/authed'
+    'http://localhost:4422/authed'
 );
 
 export const OIDC_POST_LOGOUT_REDIRECT_URI = twconfig(
     "$TWOWOLVES_OIDC_POST_LOGOUT_REDIRECT_URI",
     "VITE_OIDC_POST_LOGOUT_REDIRECT_URI",
-    'http://localhost:5173/loggedout'
+    'http://localhost:4422/loggedout'
 );
 
 export const OIDC_SCOPE = twconfig(
     "$TWOWOLVES_OIDC_SCOPE",
     "VITE_OIDC_SCOPE",
     'profile email entitlements'
+);
+
+export const APPS_API_BASE_URL = twconfig(
+    "$TWOWOLVES_APPS_API_BASE_URL",
+    "VITE_APPS_API_BASE_URL",
+    'https://stage-asset-docs-postgrest.srv.axds.co'
 );

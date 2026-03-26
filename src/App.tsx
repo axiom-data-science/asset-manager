@@ -1,7 +1,33 @@
+import { Button } from '@/components/ui/button'
 import SidebarLayout from '@/layouts/sidebar'
-import { type ReactElement } from 'react'
+import { Loader } from 'lucide-react'
+import { useEffect, type ReactElement } from 'react'
 import { ErrorBoundary, type FallbackProps } from 'react-error-boundary'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { useAuth } from '@/auth/useAuth'
+import { BrowserRouter, Route, Routes, useNavigate } from 'react-router-dom'
+import ListDocuments from '@/manage/documents/list'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
+
+const Authed = (): ReactElement => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    navigate('/');
+  }, [navigate]);
+  return (
+    <></>
+  )
+}
+
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false
+    }
+  }
+})
 
 function App(): ReactElement {
 
@@ -16,24 +42,37 @@ function App(): ReactElement {
     )
   }
 
+  const auth = useAuth();
 
 
   return (
     <ErrorBoundary fallbackRender={fallbackRender}>
-
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={
-            <SidebarLayout><p>Main</p></SidebarLayout>
-          } />
-          <Route path="/assets" element={
-            <SidebarLayout><p>Assets</p></SidebarLayout>
-          } />
-          <Route path="/schemas" element={
-            <SidebarLayout><p>Schemas</p></SidebarLayout>
-          } />
-        </Routes>
-      </BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        {
+          auth.isLoading ?
+            <Loader />
+            : !auth.isAuthenticated ?
+              <Button onClick={() => void auth.login()}>Log in</Button>
+              : <BrowserRouter>
+                <Routes>
+                  <Route path="/authed" element={
+                    <Authed />
+                  } />
+                  <Route path="/" element={
+                    <SidebarLayout><p>Main</p></SidebarLayout>
+                  } />
+                  <Route path="/documents" element={
+                    <SidebarLayout>
+                      <ListDocuments />
+                    </SidebarLayout>
+                  } />
+                  <Route path="/schemas" element={
+                    <SidebarLayout><p>Schemas</p></SidebarLayout>
+                  } />
+                </Routes>
+              </BrowserRouter>
+        }
+      </QueryClientProvider>
 
     </ErrorBoundary>
   )

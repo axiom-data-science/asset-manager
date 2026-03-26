@@ -7,6 +7,9 @@ import { defineConfig } from "vite"
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   root: resolve(__dirname),
+  server: {
+    port: 4422
+  },
   resolve: {
     alias: {
       ***REMOVED***@***REMOVED***: resolve(__dirname, ***REMOVED***./src***REMOVED***),

@@ -10,27 +10,56 @@ import {
 } from "@/components/ui/sidebar"
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { Book, ChevronDown, Cog, List, Network, Plus, User } from "lucide-react"
+import { Book, ChevronDown, Cog, List, LogOut, Network, Plus, User } from "lucide-react"
 import { SidebarGroupContent, SidebarGroupLabel } from "@/components/ui/sidebar"
 import { Link } from "react-router-dom"
+import { Button } from "@/components/ui/button"
+import { useAuth } from "@/auth/useAuth"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+
+const colors = [
+  ***REMOVED***bg-red-100 text-red-800***REMOVED***,
+  ***REMOVED***bg-yellow-100 text-yellow-800***REMOVED***,
+  ***REMOVED***bg-green-100 text-green-800***REMOVED***,
+  ***REMOVED***bg-blue-100 text-blue-800***REMOVED***,
+  ***REMOVED***bg-indigo-100 text-indigo-800***REMOVED***,
+  ***REMOVED***bg-purple-100 text-purple-800***REMOVED***,
+  ***REMOVED***bg-pink-100 text-pink-800***REMOVED***,
+  ***REMOVED***bg-teal-100 text-teal-800***REMOVED***,
+]
+
+function getColorFromName(name: string) {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return colors[Math.abs(hash) % colors.length]
+}
 
 export function AppSidebar() {
-
+  const auth = useAuth();
+  console.log(auth)
+  const user = auth.user?.profile;
+  const initials = `${user?.firstName?.[0] ?? ***REMOVED******REMOVED***}${user?.lastName?.[0] ?? ***REMOVED******REMOVED***}`.toUpperCase();
+  const avatarColor = user
+    ? getColorFromName(`${user.firstName} ${user.lastName}`)
+    : ***REMOVED******REMOVED***
 
   const navGroups = [
     {
-      label: ***REMOVED***Assets***REMOVED***,
+      label: ***REMOVED***Documents***REMOVED***,
       icon: Book,
       actions: [
         {
-          name: ***REMOVED***Find assets***REMOVED***,
+          name: ***REMOVED***Find document***REMOVED***,
           icon: List,
-          url: ***REMOVED***/assets***REMOVED***
+          url: ***REMOVED***/documents***REMOVED***
         },
         {
-          name: ***REMOVED***Create asset***REMOVED***,
+          name: ***REMOVED***Create document***REMOVED***,
           icon: Plus,
-          url: ***REMOVED***/assets/create***REMOVED***
+          url: ***REMOVED***/documents/create***REMOVED***
         }
       ]
     },
@@ -119,7 +148,39 @@ export function AppSidebar() {
           ))
         }
       </SidebarContent>
-      <SidebarFooter />
-    </Sidebar>
+      <SidebarFooter>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant=***REMOVED***ghost***REMOVED***
+              className=***REMOVED***h-12 w-full justify-start gap-2 px-2***REMOVED***
+            >
+              <Avatar>
+                <AvatarFallback className={avatarColor}>
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <div className=***REMOVED***flex flex-col items-start text-left cursor-pointer***REMOVED***>
+                <span className=***REMOVED***text-sm font-medium***REMOVED***>
+                  {auth.user?.profile?.firstName ? `${auth.user.profile.firstName} ${auth.user.profile.lastName ?? ***REMOVED******REMOVED***}` : ***REMOVED******REMOVED***}
+                </span>
+                <span className=***REMOVED***text-xs text-muted-foreground***REMOVED***>
+                  {auth.user?.profile?.email}
+                </span>
+              </div>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className=***REMOVED***w-56***REMOVED*** align=***REMOVED***start***REMOVED*** side=***REMOVED***top***REMOVED***>
+            <DropdownMenuItem className=***REMOVED***cursor-pointer***REMOVED*** onClick={() => {
+              auth.logout()
+            }}>
+              <LogOut className=***REMOVED***mr-2 h-4 w-4***REMOVED*** />
+              Log out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarFooter>
+    </Sidebar >
   )
 }

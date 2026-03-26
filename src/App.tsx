@@ -1,7 +1,33 @@
+import { Button } from ***REMOVED***@/components/ui/button***REMOVED***
 import SidebarLayout from ***REMOVED***@/layouts/sidebar***REMOVED***
-import { type ReactElement } from ***REMOVED***react***REMOVED***
+import { Loader } from ***REMOVED***lucide-react***REMOVED***
+import { useEffect, type ReactElement } from ***REMOVED***react***REMOVED***
 import { ErrorBoundary, type FallbackProps } from ***REMOVED***react-error-boundary***REMOVED***
-import { BrowserRouter, Route, Routes } from ***REMOVED***react-router-dom***REMOVED***
+import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
+import { BrowserRouter, Route, Routes, useNavigate } from ***REMOVED***react-router-dom***REMOVED***
+import ListDocuments from ***REMOVED***@/manage/documents/list***REMOVED***
+import { QueryClient, QueryClientProvider } from ***REMOVED***@tanstack/react-query***REMOVED***
+
+
+const Authed = (): ReactElement => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    navigate(***REMOVED***/***REMOVED***);
+  }, [navigate]);
+  return (
+    <></>
+  )
+}
+
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false
+    }
+  }
+})
 
 function App(): ReactElement {
 
@@ -16,24 +42,37 @@ function App(): ReactElement {
     )
   }
 
+  const auth = useAuth();
 
 
   return (
     <ErrorBoundary fallbackRender={fallbackRender}>
-
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={
-            <SidebarLayout><p>Main</p></SidebarLayout>
-          } />
-          <Route path="/assets" element={
-            <SidebarLayout><p>Assets</p></SidebarLayout>
-          } />
-          <Route path="/schemas" element={
-            <SidebarLayout><p>Schemas</p></SidebarLayout>
-          } />
-        </Routes>
-      </BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        {
+          auth.isLoading ?
+            <Loader />
+            : !auth.isAuthenticated ?
+              <Button onClick={() => void auth.login()}>Log in</Button>
+              : <BrowserRouter>
+                <Routes>
+                  <Route path="/authed" element={
+                    <Authed />
+                  } />
+                  <Route path="/" element={
+                    <SidebarLayout><p>Main</p></SidebarLayout>
+                  } />
+                  <Route path="/documents" element={
+                    <SidebarLayout>
+                      <ListDocuments />
+                    </SidebarLayout>
+                  } />
+                  <Route path="/schemas" element={
+                    <SidebarLayout><p>Schemas</p></SidebarLayout>
+                  } />
+                </Routes>
+              </BrowserRouter>
+        }
+      </QueryClientProvider>
 
     </ErrorBoundary>
   )

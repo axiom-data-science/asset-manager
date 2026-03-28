@@ -43,37 +43,51 @@ function App(): ReactElement {
   }
 
   const auth = useAuth();
+  console.log(auth)
 
 
   return (
     <ErrorBoundary fallbackRender={fallbackRender}>
       <QueryClientProvider client={queryClient}>
+
         {
           auth.isLoading ?
-            <Loader />
+            <div className='p-20'>
+              <Loader className='animate-spin' />
+            </div>
             : !auth.isAuthenticated ?
-              <Button onClick={() => void auth.login()}>Log in</Button>
-              : <BrowserRouter>
-                <Routes>
-                  <Route path="/authed" element={
-                    <Authed />
-                  } />
-                  <Route path="/" element={
-                    <SidebarLayout><p>Main</p></SidebarLayout>
-                  } />
-                  <Route path="/documents" element={
-                    <SidebarLayout>
-                      <ListDocuments />
-                    </SidebarLayout>
-                  } />
-                  <Route path="/schemas" element={
-                    <SidebarLayout><p>Schemas</p></SidebarLayout>
-                  } />
-                </Routes>
-              </BrowserRouter>
+              <Routes>
+                <Route path="*" element={
+                  <div className='p-20'>
+                    <Button onClick={() => void auth.login()}>Log in</Button>
+                  </div>
+                } />
+                <Route path="/loggedout" element={
+                  <div className='p-20'>
+                    <h1>You have been logged out</h1>
+                    <Button onClick={() => void auth.login()}>Log in again</Button>
+                  </div>
+                } />
+              </Routes>
+              : <Routes>
+                <Route path="/authed" element={
+                  <Authed />
+                } />
+                <Route path="/" element={
+                  <SidebarLayout><p>Main</p></SidebarLayout>
+                } />
+                <Route path="/documents" element={
+                  <SidebarLayout>
+                    <ListDocuments />
+                  </SidebarLayout>
+                } />
+                <Route path="/schemas" element={
+                  <SidebarLayout><p>Schemas</p></SidebarLayout>
+                } />
+              </Routes>
+
         }
       </QueryClientProvider>
-
     </ErrorBoundary>
   )
 }

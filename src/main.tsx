@@ -5,19 +5,20 @@ import { WebStorageStateStore } from ***REMOVED***oidc-client-ts***REMOVED***;
 import ***REMOVED***./index.css***REMOVED***
 import App from ***REMOVED***./App.tsx***REMOVED***
 import {
-    OIDC_AUTHORITY,
-    OIDC_CLIENT_ID,
-    OIDC_REDIRECT_URI,
-    OIDC_POST_LOGOUT_REDIRECT_URI,
-    OIDC_SCOPE
+  OIDC_AUTHORITY,
+  OIDC_CLIENT_ID,
+  OIDC_REDIRECT_URI,
+  OIDC_POST_LOGOUT_REDIRECT_URI,
+  OIDC_SCOPE
 } from ***REMOVED***./config/config.ts***REMOVED***
+import { BrowserRouter } from ***REMOVED***react-router-dom***REMOVED***;
 
 
-console.log( `OIDC_AUTHORITY: ${OIDC_AUTHORITY}` )
-console.log( `OIDC_CLIENT_ID: ${OIDC_CLIENT_ID}` )
-console.log( `OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI}` )
-console.log( `OIDC_POST_LOGOUT_REDIRECT_URI: ${OIDC_POST_LOGOUT_REDIRECT_URI}` )
-console.log( `OIDC_SCOPE: ${OIDC_SCOPE}` )
+console.log(`OIDC_AUTHORITY: ${OIDC_AUTHORITY}`)
+console.log(`OIDC_CLIENT_ID: ${OIDC_CLIENT_ID}`)
+console.log(`OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI}`)
+console.log(`OIDC_POST_LOGOUT_REDIRECT_URI: ${OIDC_POST_LOGOUT_REDIRECT_URI}`)
+console.log(`OIDC_SCOPE: ${OIDC_SCOPE}`)
 
 
 const oidcConfig: AuthProviderProps = {
@@ -32,12 +33,22 @@ const oidcConfig: AuthProviderProps = {
   automaticSilentRenew: true,
   // Optional: use local storage to store the user data
   userStore: typeof window !== ***REMOVED***undefined***REMOVED*** ? new WebStorageStateStore({ store: window.localStorage }) : undefined,
+  onSigninCallback(user) {
+    console.log(***REMOVED***User signed in:***REMOVED***, user);
+    window.history.replaceState(
+      {},
+      document.title,
+      window.location.pathname
+    )
+  },
 };
 
 createRoot(document.getElementById(***REMOVED***root***REMOVED***)!).render(
   <StrictMode>
-    <AuthProvider {...oidcConfig}>
-      <App />
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider {...oidcConfig}>
+        <App />
+      </AuthProvider>
+    </BrowserRouter>
   </StrictMode>,
 )

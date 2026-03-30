@@ -41,5 +41,5 @@ export const OIDC_SCOPE = twconfig(
 export const APPS_API_BASE_URL = twconfig(
     "$TWOWOLVES_APPS_API_BASE_URL",
     "VITE_APPS_API_BASE_URL",
-    ***REMOVED***https://stage-asset-docs-postgrest.srv.axds.co***REMOVED***
+    "http://localhost:3345" //***REMOVED***https://stage-asset-docs-postgrest.srv.axds.co***REMOVED***
 );

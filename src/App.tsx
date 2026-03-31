@@ -4,9 +4,10 @@ import { Loader } from 'lucide-react'
 import { useEffect, type ReactElement } from 'react'
 import { ErrorBoundary, type FallbackProps } from 'react-error-boundary'
 import { useAuth } from '@/auth/useAuth'
-import { BrowserRouter, Route, Routes, useNavigate } from 'react-router-dom'
+import { Route, Routes, useNavigate } from 'react-router-dom'
 import ListDocuments from '@/manage/documents/list'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import AddDocument from '@/manage/documents/create'
 
 
 const Authed = (): ReactElement => {
@@ -53,7 +54,7 @@ function App(): ReactElement {
         {
           auth.isLoading ?
             <div className='p-20'>
-              <Loader className='animate-spin' />
+              <Button disabled={true}>Log in <Loader className='animate-spin' /></Button>
             </div>
             : !auth.isAuthenticated ?
               <Routes>
@@ -79,6 +80,11 @@ function App(): ReactElement {
                 <Route path="/documents" element={
                   <SidebarLayout>
                     <ListDocuments />
+                  </SidebarLayout>
+                } />
+                <Route path="/documents/create" element={
+                  <SidebarLayout>
+                    <AddDocument />
                   </SidebarLayout>
                 } />
                 <Route path="/schemas" element={

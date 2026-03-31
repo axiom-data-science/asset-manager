@@ -70,12 +70,22 @@ export function AppSidebar() {
         {
           name: 'List schemas',
           icon: List,
-          url: '/schemas'
+          url: '/schema'
         },
         {
           name: 'Create schema',
           icon: Plus,
-          url: '/schemas/create'
+          url: '/schema/create'
+        },
+        {
+          name: 'List types',
+          icon: List,
+          url: '/type'
+        },
+        {
+          name: 'Create type',
+          icon: Plus,
+          url: '/type/create'
         }
       ],
     },

@@ -4,9 +4,10 @@ import { Loader } from ***REMOVED***lucide-react***REMOVED***
 import { useEffect, type ReactElement } from ***REMOVED***react***REMOVED***
 import { ErrorBoundary, type FallbackProps } from ***REMOVED***react-error-boundary***REMOVED***
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
-import { BrowserRouter, Route, Routes, useNavigate } from ***REMOVED***react-router-dom***REMOVED***
+import { Route, Routes, useNavigate } from ***REMOVED***react-router-dom***REMOVED***
 import ListDocuments from ***REMOVED***@/manage/documents/list***REMOVED***
 import { QueryClient, QueryClientProvider } from ***REMOVED***@tanstack/react-query***REMOVED***
+import AddDocument from ***REMOVED***@/manage/documents/create***REMOVED***
 
 
 const Authed = (): ReactElement => {
@@ -53,7 +54,7 @@ function App(): ReactElement {
         {
           auth.isLoading ?
             <div className=***REMOVED***p-20***REMOVED***>
-              <Loader className=***REMOVED***animate-spin***REMOVED*** />
+              <Button disabled={true}>Log in <Loader className=***REMOVED***animate-spin***REMOVED*** /></Button>
             </div>
             : !auth.isAuthenticated ?
               <Routes>
@@ -79,6 +80,11 @@ function App(): ReactElement {
                 <Route path="/documents" element={
                   <SidebarLayout>
                     <ListDocuments />
+                  </SidebarLayout>
+                } />
+                <Route path="/documents/create" element={
+                  <SidebarLayout>
+                    <AddDocument />
                   </SidebarLayout>
                 } />
                 <Route path="/schemas" element={

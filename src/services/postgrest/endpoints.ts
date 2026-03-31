@@ -28,10 +28,28 @@ export const postgrestArgs = <T,>(params: IPostgrestParams<T>): URLSearchParams 
     return args;
 }
 
+export const postgrestRollupArgs = ({rollupColumn, params} : {rollupColumn: string, params?: IPostgrestParams}): URLSearchParams => {
+    const p: IPostgrestParams = {
+        ...(params ?? {}),
+        select: [
+            {
+                column: rollupColumn,
+                fn: ***REMOVED***count***REMOVED***
+            },
+            {
+                column: rollupColumn
+            }
+        ]
+    } 
+    return postgrestArgs(p);
+}
 
-export const postgrestUrl = (table: string, params?: IPostgrestParams): string => {
+
+export const postgrestUrl = ({table, params, args}: {table: string, params?: IPostgrestParams, args?: URLSearchParams}): string => {
     const url = new URL(`${APPS_API_BASE_URL}/${table}`);
-    if (params) {
+    if (args) {
+        url.search = args.toString();
+    } else if (params) {
         const args = postgrestArgs(params);
         url.search = args.toString();
     }

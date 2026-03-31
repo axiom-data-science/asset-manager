@@ -1,5 +1,7 @@
-import { getDocuments } from "@/manage/documents/endpoints"
+import { fetchListFromPostgrest, fetchRollupFromPostgrest, fetchSingleFromPostgrest } from "@/services/postgrest/services";
 import type { IDocument, IPostgrestParams } from "@/types/types";
+
+const DOCUMENTS_TABLE = ***REMOVED***document***REMOVED***;
 
 export const fetchDocuments = async <T>({
     params, 
@@ -10,20 +12,41 @@ export const fetchDocuments = async <T>({
     token: string ,
     signal?: AbortSignal
 }): Promise<IDocument<T>[]> => {
-    const url = getDocuments(params)
-    const response = await fetch(url, {
-        headers: {
-            ***REMOVED***Authorization***REMOVED***: `Bearer ${token}`
-        },
+
+    const documents = await fetchListFromPostgrest<IDocument<T>>({
+        table: DOCUMENTS_TABLE,
+        params,
+        token,
         signal
     });
+    return documents;
 
-    if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+}
 
-    const documents = await response.json();
-    return documents as unknown as IDocument<T>[];
+export const fetchDocument = async <T>({
+    uuid,
+    token,
+    signal
+}:{
+    uuid: string,
+    token: string,
+    signal?: AbortSignal
+}): Promise<IDocument<T>> => {
+    const document = await fetchSingleFromPostgrest<IDocument<T>>({
+        table: DOCUMENTS_TABLE,
+        params: {
+            filters: [
+                {
+                    column: ***REMOVED***uuid***REMOVED***,
+                    operator: ***REMOVED***eq***REMOVED***,
+                    value: uuid
+                }
+            ]
+        },
+        token,
+        signal
+    })   
+    return document;
 
 }
 
@@ -38,36 +61,15 @@ export const fetchDocumentRollup = async ({
     token: string ,
     signal?: AbortSignal
 }): Promise<{label: string, count: number}[]> => {
-    const p: IPostgrestParams = {
-        ...(params ?? {}),
-        select: [
-            {
-                column: rollup,
-                fn: ***REMOVED***count***REMOVED***
-            },
-            {
-                column: rollup
-            }
-        ]
-    } 
-    const url = getDocuments(p)
-    const response = await fetch(url, {
-        headers: {
-            ***REMOVED***Authorization***REMOVED***: `Bearer ${token}`
-        },
+    
+    const list = await fetchRollupFromPostgrest({
+        table: DOCUMENTS_TABLE,
+        rollupColumn: rollup,
+        params,
+        token,
         signal
     });
+    return list
 
-    if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-    const documents = await response.json();
-    return documents.map((r: { count: number, [key: string]: string | number }) => {
-        return {
-            ...r,
-            label: r[rollup]
-        }
-    });
 
 }

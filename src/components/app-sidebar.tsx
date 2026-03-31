@@ -70,12 +70,22 @@ export function AppSidebar() {
         {
           name: ***REMOVED***List schemas***REMOVED***,
           icon: List,
-          url: ***REMOVED***/schemas***REMOVED***
+          url: ***REMOVED***/schema***REMOVED***
         },
         {
           name: ***REMOVED***Create schema***REMOVED***,
           icon: Plus,
-          url: ***REMOVED***/schemas/create***REMOVED***
+          url: ***REMOVED***/schema/create***REMOVED***
+        },
+        {
+          name: ***REMOVED***List types***REMOVED***,
+          icon: List,
+          url: ***REMOVED***/type***REMOVED***
+        },
+        {
+          name: ***REMOVED***Create type***REMOVED***,
+          icon: Plus,
+          url: ***REMOVED***/type/create***REMOVED***
         }
       ],
     },

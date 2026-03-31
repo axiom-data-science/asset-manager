@@ -1,5 +1,6 @@
 import { useAuth } from "@/auth/useAuth"
 import { fetchDocumentRollup, fetchDocuments } from "@/manage/documents/services"
+import {  postgrestRollupArgs } from "@/services/postgrest/endpoints"
 import type {  IPostgrestParams } from "@/types/types"
 import { useQuery } from "@tanstack/react-query"
 
@@ -7,7 +8,7 @@ export const useDocumentList = (params?: IPostgrestParams, rollups?: string[]) =
     const auth = useAuth()
     
     const queryResult = useQuery({
-        queryKey: [***REMOVED***documents-list***REMOVED***, JSON.stringify(params)],
+        queryKey: [***REMOVED***documents-list***REMOVED***].concat((rollups ?? []).map(r => postgrestRollupArgs({rollupColumn: r, params}).toString())),
         queryFn: async ({ signal }) => {
 
             const rollupResults = await Promise.all((rollups ?? []).map(rollup => fetchDocumentRollup({

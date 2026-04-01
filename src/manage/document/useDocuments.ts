@@ -1,5 +1,5 @@
 import { useAuth } from "@/auth/useAuth"
-import { fetchDocuments } from "@/manage/documents/services"
+import { fetchDocuments } from "@/manage/document/services"
 import type { IDocument, IPostgrestParams } from "@/types/types"
 import { useQuery } from "@tanstack/react-query"
 import type { UseQueryResult } from "node_modules/@tanstack/react-query/build/modern/index.d.cts"

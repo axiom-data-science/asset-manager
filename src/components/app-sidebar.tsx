@@ -54,12 +54,12 @@ export function AppSidebar() {
         {
           name: ***REMOVED***Find document***REMOVED***,
           icon: List,
-          url: ***REMOVED***/documents***REMOVED***
+          url: ***REMOVED***/document***REMOVED***
         },
         {
           name: ***REMOVED***Create document***REMOVED***,
           icon: Plus,
-          url: ***REMOVED***/documents/create***REMOVED***
+          url: ***REMOVED***/document/create***REMOVED***
         }
       ]
     },
@@ -80,12 +80,12 @@ export function AppSidebar() {
         {
           name: ***REMOVED***List types***REMOVED***,
           icon: List,
-          url: ***REMOVED***/type***REMOVED***
+          url: ***REMOVED***/object_type***REMOVED***
         },
         {
           name: ***REMOVED***Create type***REMOVED***,
           icon: Plus,
-          url: ***REMOVED***/type/create***REMOVED***
+          url: ***REMOVED***/object_type/create***REMOVED***
         }
       ],
     },

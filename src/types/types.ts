@@ -20,8 +20,10 @@ export type IPostgrestParams<T = Record<string, string>> = {
   filters?: IPostgrestFilter[]
 }
 
+export type IDefaultDocumentType = Record<string, string | number | boolean | null>
 
-export type IDocument<T = Record<string, unknown>, A = Record<string, unknown>, J = Record<string, unknown>> = {
+
+export type IDocument<T = IDefaultDocumentType, A = IDefaultDocumentType, J = IDefaultDocumentType> = {
     uuid: string,
     owner_sub: string
     lock_sub: string | null

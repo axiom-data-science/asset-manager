@@ -5,9 +5,12 @@ import { useEffect, type ReactElement } from ***REMOVED***react***REMOVED***
 import { ErrorBoundary, type FallbackProps } from ***REMOVED***react-error-boundary***REMOVED***
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
 import { Route, Routes, useNavigate } from ***REMOVED***react-router-dom***REMOVED***
-import ListDocuments from ***REMOVED***@/manage/documents/list***REMOVED***
+import ListDocuments from ***REMOVED***@/manage/document/list***REMOVED***
 import { QueryClient, QueryClientProvider } from ***REMOVED***@tanstack/react-query***REMOVED***
-import AddDocument from ***REMOVED***@/manage/documents/create***REMOVED***
+import AddDocument from ***REMOVED***@/manage/document/create***REMOVED***
+import CreateObjectType from ***REMOVED***@/manage/object_type/create***REMOVED***
+import ListObjectTypes from ***REMOVED***@/manage/object_type/list***REMOVED***
+import EditObjectType from ***REMOVED***@/manage/object_type/edit***REMOVED***
 
 
 const Authed = (): ReactElement => {
@@ -77,19 +80,33 @@ function App(): ReactElement {
                 <Route path="/" element={
                   <SidebarLayout><p>Main</p></SidebarLayout>
                 } />
-                <Route path="/documents" element={
+                <Route path="/document" element={
                   <SidebarLayout>
                     <ListDocuments />
                   </SidebarLayout>
                 } />
-                <Route path="/documents/create" element={
+                <Route path="/document/create" element={
                   <SidebarLayout>
                     <AddDocument />
                   </SidebarLayout>
                 } />
-                <Route path="/schemas" element={
+
+
+                <Route path="/schema" element={
                   <SidebarLayout><p>Schemas</p></SidebarLayout>
                 } />
+
+
+                <Route path="/object_type" element={
+                  <SidebarLayout><ListObjectTypes /></SidebarLayout>
+                } />
+                <Route path="/object_type/create" element={
+                  <SidebarLayout><CreateObjectType /></SidebarLayout>
+                } />
+                <Route path="/object_type/edit/:uuid" element={
+                  <SidebarLayout><EditObjectType /></SidebarLayout>
+                } />
+
               </Routes>
 
         }

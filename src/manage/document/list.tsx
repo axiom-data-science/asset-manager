@@ -1,4 +1,4 @@
-import { useDocumentList } from "@/manage/documents/useDocumentList"
+import { useDocumentList } from "@/manage/document/useDocumentList"
 import { SelectInput, Table, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
 import type { ReactElement } from "react"
 
@@ -14,19 +14,23 @@ const ListDocuments = (): ReactElement => {
             <div className=***REMOVED***flex flex-row gap-4 p-2 sticky top-10 bg-white z-10***REMOVED***>
                 {
                     Object.keys(documents?.rollups ?? []).map(r => {
-                        const rollup = documents?.rollups?.[r];
+                        const rollup = documents?.rollups?.[r].filter(item => item.label !== null && item.label !== ***REMOVED******REMOVED***) as { label: string, count: number }[] | undefined;
+                        if (rollup?.length === 0) return null;
                         return (
-                            <SelectInput
-                                id={r}
-                                testId={r}
-                                key={r}
-                                label={r}
-                                size=***REMOVED***xs***REMOVED***
-                                options={rollup?.map(item => ({
-                                    label: `${item.label} (${item.count})`,
-                                    value: item.label
-                                })) ?? []}
-                            />
+                            <div className=***REMOVED***flex flex-row gap-2***REMOVED*** key={r}>
+                                <span className=***REMOVED***font-semibold***REMOVED***>{r.split(***REMOVED***_***REMOVED***).map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(***REMOVED*** ***REMOVED***)}</span>
+                                <SelectInput
+                                    id={r}
+                                    testId={r}
+                                    key={r}
+                                    label={null}
+                                    size=***REMOVED***xs***REMOVED***
+                                    options={rollup?.map(item => ({
+                                        label: `${item.label} (${item.count})`,
+                                        value: item.label
+                                    })) ?? []}
+                                />
+                            </div>
                         )
                     })
                 }
@@ -40,12 +44,12 @@ const ListDocuments = (): ReactElement => {
                         data={documents?.items}
                         columns={[
                             {
-                                label: ***REMOVED***Type***REMOVED***,
-                                id: ***REMOVED***type***REMOVED***
-                            },
-                            {
                                 label: ***REMOVED***Label***REMOVED***,
                                 id: ***REMOVED***label***REMOVED***
+                            },
+                            {
+                                label: ***REMOVED***Type***REMOVED***,
+                                id: ***REMOVED***type***REMOVED***
                             },
                             {
                                 label: ***REMOVED***Owner***REMOVED***,

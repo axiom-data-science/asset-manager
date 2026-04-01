@@ -54,12 +54,12 @@ export function AppSidebar() {
         {
           name: 'Find document',
           icon: List,
-          url: '/documents'
+          url: '/document'
         },
         {
           name: 'Create document',
           icon: Plus,
-          url: '/documents/create'
+          url: '/document/create'
         }
       ]
     },
@@ -80,12 +80,12 @@ export function AppSidebar() {
         {
           name: 'List types',
           icon: List,
-          url: '/type'
+          url: '/object_type'
         },
         {
           name: 'Create type',
           icon: Plus,
-          url: '/type/create'
+          url: '/object_type/create'
         }
       ],
     },

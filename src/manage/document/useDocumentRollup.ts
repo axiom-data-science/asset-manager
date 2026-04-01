@@ -1,5 +1,5 @@
 import { useAuth } from "@/auth/useAuth"
-import { fetchDocumentRollup } from "@/manage/documents/services"
+import { fetchDocumentRollup } from "@/manage/document/services"
 import type {  IPostgrestParams } from "@/types/types"
 import { useQuery } from "@tanstack/react-query"
 

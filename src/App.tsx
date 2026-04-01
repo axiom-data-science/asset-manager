@@ -5,9 +5,12 @@ import { useEffect, type ReactElement } from 'react'
 import { ErrorBoundary, type FallbackProps } from 'react-error-boundary'
 import { useAuth } from '@/auth/useAuth'
 import { Route, Routes, useNavigate } from 'react-router-dom'
-import ListDocuments from '@/manage/documents/list'
+import ListDocuments from '@/manage/document/list'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import AddDocument from '@/manage/documents/create'
+import AddDocument from '@/manage/document/create'
+import CreateObjectType from '@/manage/object_type/create'
+import ListObjectTypes from '@/manage/object_type/list'
+import EditObjectType from '@/manage/object_type/edit'
 
 
 const Authed = (): ReactElement => {
@@ -77,19 +80,33 @@ function App(): ReactElement {
                 <Route path="/" element={
                   <SidebarLayout><p>Main</p></SidebarLayout>
                 } />
-                <Route path="/documents" element={
+                <Route path="/document" element={
                   <SidebarLayout>
                     <ListDocuments />
                   </SidebarLayout>
                 } />
-                <Route path="/documents/create" element={
+                <Route path="/document/create" element={
                   <SidebarLayout>
                     <AddDocument />
                   </SidebarLayout>
                 } />
-                <Route path="/schemas" element={
+
+
+                <Route path="/schema" element={
                   <SidebarLayout><p>Schemas</p></SidebarLayout>
                 } />
+
+
+                <Route path="/object_type" element={
+                  <SidebarLayout><ListObjectTypes /></SidebarLayout>
+                } />
+                <Route path="/object_type/create" element={
+                  <SidebarLayout><CreateObjectType /></SidebarLayout>
+                } />
+                <Route path="/object_type/edit/:uuid" element={
+                  <SidebarLayout><EditObjectType /></SidebarLayout>
+                } />
+
               </Routes>
 
         }

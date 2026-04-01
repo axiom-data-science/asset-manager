@@ -1,4 +1,4 @@
-import { fetchListFromPostgrest, fetchRollupFromPostgrest, fetchSingleFromPostgrest } from "@/services/postgrest/services";
+import { fetchListFromPostgrest, fetchRollupFromPostgrest, fetchSingleFromPostgrest, postToPostgrest } from "@/services/postgrest/services";
 import type { IDocument, IPostgrestParams } from "@/types/types";
 
 const DOCUMENTS_TABLE = 'document';
@@ -25,24 +25,19 @@ export const fetchDocuments = async <T>({
 
 export const fetchDocument = async <T>({
     uuid,
+    params,
     token,
     signal
 }:{
     uuid: string,
+    params?: IPostgrestParams,
     token: string,
     signal?: AbortSignal
 }): Promise<IDocument<T>> => {
     const document = await fetchSingleFromPostgrest<IDocument<T>>({
         table: DOCUMENTS_TABLE,
-        params: {
-            filters: [
-                {
-                    column: 'uuid',
-                    operator: 'eq',
-                    value: uuid
-                }
-            ]
-        },
+        uuid,
+        params,
         token,
         signal
     })   
@@ -72,4 +67,22 @@ export const fetchDocumentRollup = async ({
     return list
 
 
+}
+
+export const postDocument = async <T>({
+    document,
+    token,
+    signal
+}: {
+    document: Omit<IDocument<T>, 'id' | 'created_at' | 'updated_at'>,
+    token: string,
+    signal?: AbortSignal
+}): Promise<IDocument<T>> => {
+    const doc = await postToPostgrest<Omit<IDocument<T>, 'id' | 'created_at' | 'updated_at'>, IDocument<T>>({
+        table: DOCUMENTS_TABLE,
+        body: document,
+        token,
+        signal
+    });
+    return doc;
 }

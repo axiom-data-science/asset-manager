@@ -1,0 +1,8 @@
+services:
+  app:
+    image: asset-manager:latest
+    build:
+      context:      .
+      dockerfile:   Dockerfile
+    ports:
+    - "9797:80"

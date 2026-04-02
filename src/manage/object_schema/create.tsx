@@ -1,12 +1,15 @@
-import { Button, Loader } from "@axdspub/axiom-ui-utilities";
+import { Button, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
 import { useEffect, useState, type ReactElement } from "react";
 import { FormCreator, type IFormValues, type IForm } from '@axdspub/axiom-ui-forms'
-import { postObjectType } from "@/manage/object_type/services";
+import { postObjectSchema } from "@/manage/object_schema/services";
 import { useAuth } from "@/auth/useAuth";
+import type { IObjectSchema, IObjectType } from '@/types/types'
 import { useNavigate } from "react-router-dom";
-import type { IObjectType } from "@/types/types";
+import { useQuery } from "@tanstack/react-query";
+import { fetchListFromPostgrest } from "@/services/postgrest/services";
+import { fetchObjectTypes } from "@/manage/object_type/services";
 
-const CreateObjectType = (): ReactElement => {
+const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
 
     const navigate = useNavigate()
     const [saving, setSaving] = useState(false);
@@ -18,12 +21,14 @@ const CreateObjectType = (): ReactElement => {
     const onSave = () => {
         setSaving(true);
         const { 'auto-slug': _, ...valuesToSave } = formValue;
-        postObjectType({
-            object_type: valuesToSave as Omit<IObjectType, 'uuid' | 'created_at' | 'updated_at'>,
+        postObjectSchema({
+            object_schema: {
+                ...valuesToSave as Omit<IObjectSchema, 'uuid' | 'created_at' | 'updated_at'>,
+            },
             token: auth.user?.access_token ?? ''
         }).then(() => {
             setSaving(false);
-            navigate('/object_type')
+            navigate('/object_schema')
         })
     }
 
@@ -61,15 +66,33 @@ const CreateObjectType = (): ReactElement => {
                 required: true,
                 conditions: {
                     field: 'auto-slug',
-                    value: false,
+                    value: true,
                     operator: 'eq',
-                    result: 'include'
+                    result: 'disable'
                 }
             },
             {
                 id: 'description',
                 label: 'Description',
                 type: 'long_text',
+            },
+            {
+                id: 'object_type_uuid',
+                label: 'Type',
+                type: 'select',
+                options: object_types.map(ot => ({ label: ot.label, value: ot.uuid })),
+                required: true
+            },
+            {
+                id: 'is_type_default',
+                label: 'Is default schema for selected type',
+                type: 'boolean'
+            },
+            {
+                id: 'schema',
+                label: 'Schema (JSON)',
+                type: 'json',
+                required: true
             }
         ]
     }
@@ -85,7 +108,7 @@ const CreateObjectType = (): ReactElement => {
 
     return (
         <div className='flex flex-col gap-4'>
-            <h1 className='text-2xl font-bold'>Create object type</h1>
+            <h1 className='text-2xl font-bold'>Create schema</h1>
             <FormCreator form={form} formValueState={[formValue, setFormValue]} />
             <div>
                 <Button onClick={onSave} type='primary' disabled={saving}>{saving ? <Loader className="animate-spin" /> : 'Save'}</Button>
@@ -94,4 +117,28 @@ const CreateObjectType = (): ReactElement => {
     )
 }
 
-export default CreateObjectType
+const CreateObjectSchema = (): ReactElement => {
+    const auth = useAuth();
+    const { data: object_types, isLoading, error } = useQuery({
+        queryKey: ['object_type_list'],
+        queryFn: async ({ signal }) => {
+            if (!auth.user) return Promise.resolve([]);
+            const data = await fetchObjectTypes({
+                token: auth.user.access_token,
+                signal
+            })
+            return data
+
+        }
+    })
+    return (
+        <ViewWithLoader isLoading={isLoading} error={error} data={object_types}>
+            {
+                object_types && <CreateObjectSchemaForm object_types={object_types} />
+            }
+        </ViewWithLoader>
+    )
+
+}
+
+export default CreateObjectSchema

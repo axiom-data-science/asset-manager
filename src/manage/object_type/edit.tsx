@@ -1,11 +1,12 @@
 import { Button, Input, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
-import { useEffect, useState, type ReactElement } from "react";
+import { useState, type ReactElement } from "react";
 import { FormCreator, type IFormValues, type IForm } from '@axdspub/axiom-ui-forms'
-import { postObjectType } from "@/manage/object_type/services";
+import { patchObjectType } from "@/manage/object_type/services";
 import { useAuth } from "@/auth/useAuth";
-import type { IObjectType } from "@/manage/object_type/types";
-import { useParams } from "react-router-dom";
-import { useObjectType } from "@/manage/object_type/useObjectType";
+import type { IObjectType } from "@/types/types";
+import { useNavigate, useParams } from "react-router-dom";
+import { objectTypeQueryKey, useObjectType } from "@/manage/object_type/useObjectType";
+import { useQueryClient } from "@tanstack/react-query";
 
 const EditObjectTypeForm = ({
     object_type
@@ -13,22 +14,31 @@ const EditObjectTypeForm = ({
     object_type: IObjectType
 }): ReactElement => {
 
+    const queryClient = useQueryClient()
+
     const [saving, setSaving] = useState(false);
-    const [formValue, setFormValue] = useState<IFormValues>(object_type);
+    const [formValue, setFormValue] = useState<IFormValues>(object_type as unknown as IFormValues);
     const auth = useAuth();
+    const navigate = useNavigate()
 
     const onUpdate = () => {
         setSaving(true);
-        postObjectType({
-            object_type: formValue as Pick<IObjectType, 'label' | 'description' | 'slug'>,
+        patchObjectType({
+            uuid: object_type.uuid,
+            object_type: formValue as unknown as IObjectType,
             token: auth.user?.access_token ?? ''
         }).then(() => {
             setSaving(false);
+            queryClient.invalidateQueries(
+                { queryKey: objectTypeQueryKey(object_type.uuid) }
+            );
+            queryClient.invalidateQueries({ queryKey: ['object_type_list'] })
+            navigate('/object_type')
         })
     }
 
     const form: IForm = {
-        id: 'create-object-type',
+        id: 'edit-object-type',
         settings: {
             show_progress: false
         },
@@ -43,6 +53,12 @@ const EditObjectTypeForm = ({
                 id: 'description',
                 label: 'Description',
                 type: 'long_text'
+            },
+            {
+                id: 'slug',
+                label: 'Slug',
+                type: 'constant',
+                defaultValue: object_type.slug
             }
         ]
     }

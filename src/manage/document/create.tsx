@@ -1,12 +1,12 @@
 import { useAuth } from "@/auth/useAuth";
 import { postDocument } from "@/manage/document/services";
-import type { IObjectType } from "@/manage/object_type/types";
+import type { IObjectType } from "@/types/types";
 import { useObjectTypeList } from "@/manage/object_type/useObjectTypeList";
 import type { IDocument } from "@/types/types";
 import { FormCreator, type IForm, type IFormValues } from "@axdspub/axiom-ui-forms";
 import { Button, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
 import { useState, type ReactElement } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 
 const CreateDocumentForm = ({
     type,

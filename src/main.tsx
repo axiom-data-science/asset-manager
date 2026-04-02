@@ -33,8 +33,7 @@ const oidcConfig: AuthProviderProps = {
   automaticSilentRenew: true,
   // Optional: use local storage to store the user data
   userStore: typeof window !== 'undefined' ? new WebStorageStateStore({ store: window.localStorage }) : undefined,
-  onSigninCallback(user) {
-    console.log('User signed in:', user);
+  onSigninCallback() {
     window.history.replaceState(
       {},
       document.title,

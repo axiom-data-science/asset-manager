@@ -70,12 +70,12 @@ export function AppSidebar() {
         {
           name: 'List schemas',
           icon: List,
-          url: '/schema'
+          url: '/object_schema'
         },
         {
           name: 'Create schema',
           icon: Plus,
-          url: '/schema/create'
+          url: '/object_schema/create'
         },
         {
           name: 'List types',

@@ -1,11 +1,12 @@
 import { Button, Input, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
-import { useEffect, useState, type ReactElement } from "react";
+import { useState, type ReactElement } from "react";
 import { FormCreator, type IFormValues, type IForm } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
-import { postObjectType } from "@/manage/object_type/services";
+import { patchObjectType } from "@/manage/object_type/services";
 import { useAuth } from "@/auth/useAuth";
-import type { IObjectType } from "@/manage/object_type/types";
-import { useParams } from "react-router-dom";
-import { useObjectType } from "@/manage/object_type/useObjectType";
+import type { IObjectType } from "@/types/types";
+import { useNavigate, useParams } from "react-router-dom";
+import { objectTypeQueryKey, useObjectType } from "@/manage/object_type/useObjectType";
+import { useQueryClient } from "@tanstack/react-query";
 
 const EditObjectTypeForm = ({
     object_type
@@ -13,22 +14,31 @@ const EditObjectTypeForm = ({
     object_type: IObjectType
 }): ReactElement => {
 
+    const queryClient = useQueryClient()
+
     const [saving, setSaving] = useState(false);
-    const [formValue, setFormValue] = useState<IFormValues>(object_type);
+    const [formValue, setFormValue] = useState<IFormValues>(object_type as unknown as IFormValues);
     const auth = useAuth();
+    const navigate = useNavigate()
 
     const onUpdate = () => {
         setSaving(true);
-        postObjectType({
-            object_type: formValue as Pick<IObjectType, ***REMOVED***label***REMOVED*** | ***REMOVED***description***REMOVED*** | ***REMOVED***slug***REMOVED***>,
+        patchObjectType({
+            uuid: object_type.uuid,
+            object_type: formValue as unknown as IObjectType,
             token: auth.user?.access_token ?? ***REMOVED******REMOVED***
         }).then(() => {
             setSaving(false);
+            queryClient.invalidateQueries(
+                { queryKey: objectTypeQueryKey(object_type.uuid) }
+            );
+            queryClient.invalidateQueries({ queryKey: [***REMOVED***object_type_list***REMOVED***] })
+            navigate(***REMOVED***/object_type***REMOVED***)
         })
     }
 
     const form: IForm = {
-        id: ***REMOVED***create-object-type***REMOVED***,
+        id: ***REMOVED***edit-object-type***REMOVED***,
         settings: {
             show_progress: false
         },
@@ -43,6 +53,12 @@ const EditObjectTypeForm = ({
                 id: ***REMOVED***description***REMOVED***,
                 label: ***REMOVED***Description***REMOVED***,
                 type: ***REMOVED***long_text***REMOVED***
+            },
+            {
+                id: ***REMOVED***slug***REMOVED***,
+                label: ***REMOVED***Slug***REMOVED***,
+                type: ***REMOVED***constant***REMOVED***,
+                defaultValue: object_type.slug
             }
         ]
     }

@@ -1,6 +1,5 @@
-import type { IObjectType } from "@/manage/object_type/types";
 import { fetchListFromPostgrest, fetchRollupFromPostgrest, fetchSingleFromPostgrest, patchToPostgrest, postToPostgrest } from "@/services/postgrest/services";
-import type { IPostgrestParams } from "@/types/types";
+import type { IPostgrestParams, IObjectType } from "@/types/types";
 
 const OBJECT_TYPES_TABLE = ***REMOVED***object_type***REMOVED***;
 
@@ -89,17 +88,20 @@ export const postObjectType = async ({
     return newObjectType;
 }
 
-export const updateObjectType = async ({
+export const patchObjectType = async ({
+    uuid,
     object_type,
     token,
     signal
 
 }: {
-    object_type: Pick<IObjectType, ***REMOVED***label***REMOVED*** | ***REMOVED***description***REMOVED***>,
+    uuid: string,
+    object_type: IObjectType,
     token: string,
     signal?: AbortSignal
 }): Promise<IObjectType> => {
-    const newObjectType = await patchToPostgrest<Pick<IObjectType, ***REMOVED***label***REMOVED*** | ***REMOVED***description***REMOVED***>, IObjectType>({
+    const newObjectType = await patchToPostgrest<IObjectType>({
+        uuid,
         table: OBJECT_TYPES_TABLE,
         body: object_type,
         token,

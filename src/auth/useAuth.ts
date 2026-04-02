@@ -1,15 +1,26 @@
 import { OIDC_POST_LOGOUT_REDIRECT_URI } from ***REMOVED***@/config/config***REMOVED***
 import type { IAuth } from ***REMOVED***@/types/types***REMOVED***
 import { useAuth as useOIDCAuth } from ***REMOVED***react-oidc-context***REMOVED***
+import { useNavigate } from ***REMOVED***react-router-dom***REMOVED***
 export const useAuth = (): IAuth => {
     const auth = useOIDCAuth()
     const [firstName, lastName] = auth.user?.profile?.given_name ? auth.user.profile.given_name.split(***REMOVED*** ***REMOVED***) : [null, null]
+    const navigate = useNavigate()
     return {
         ...auth,
         logout: async () => {
-            auth.signoutRedirect({
-               post_logout_redirect_uri: OIDC_POST_LOGOUT_REDIRECT_URI
-            })
+            
+            console.log(***REMOVED***Session state:***REMOVED***, auth.user?.session_state)
+            if(auth.user !== undefined && auth.user !== null && !auth.user.expired){
+                auth.signoutRedirect({
+                    post_logout_redirect_uri: OIDC_POST_LOGOUT_REDIRECT_URI
+                })
+            } else {
+                auth.revokeTokens()
+                navigate(***REMOVED***/login***REMOVED***)
+            }
+           
+            
         },
         login: async () => {
             auth.signinRedirect({

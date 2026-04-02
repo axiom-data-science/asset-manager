@@ -70,12 +70,12 @@ export function AppSidebar() {
         {
           name: ***REMOVED***List schemas***REMOVED***,
           icon: List,
-          url: ***REMOVED***/schema***REMOVED***
+          url: ***REMOVED***/object_schema***REMOVED***
         },
         {
           name: ***REMOVED***Create schema***REMOVED***,
           icon: Plus,
-          url: ***REMOVED***/schema/create***REMOVED***
+          url: ***REMOVED***/object_schema/create***REMOVED***
         },
         {
           name: ***REMOVED***List types***REMOVED***,

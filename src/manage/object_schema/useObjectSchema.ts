@@ -1,24 +1,23 @@
 import { useAuth } from "@/auth/useAuth"
-import { fetchObjectType} from "@/manage/object_type/services"
-
+import { fetchObjectSchema } from "@/manage/object_schema/services"
 import { useQuery } from "@tanstack/react-query"
 
-export const objectTypeQueryKey = (uuid?: string) => [***REMOVED***object_type***REMOVED***, uuid]
+export const objectSchemaQueryKey = (uuid?: string) => [***REMOVED***object_schema***REMOVED***, uuid]
 
-export const useObjectType = (uuid?: string) => {
+export const useObjectSchema = (uuid?: string) => {
     const auth = useAuth()
     const queryResult = useQuery({
-        queryKey: objectTypeQueryKey(uuid),
+        queryKey: objectSchemaQueryKey(uuid),
         enabled: !!uuid && !!auth.user?.access_token && uuid !== ***REMOVED******REMOVED***,
         queryFn: async ({ signal }) => {
             
-            const objecType = await fetchObjectType({
+            const objectSchema = await fetchObjectSchema({
                 uuid: uuid ?? ***REMOVED***NA***REMOVED***,
                 signal,
                 token: auth.user?.access_token ?? ***REMOVED******REMOVED***
             })
 
-            return objecType
+            return objectSchema
             
         }
     })

@@ -1,12 +1,15 @@
-import { Button, Loader } from "@axdspub/axiom-ui-utilities";
+import { Button, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
 import { useEffect, useState, type ReactElement } from "react";
 import { FormCreator, type IFormValues, type IForm } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
-import { postObjectType } from "@/manage/object_type/services";
+import { postObjectSchema } from "@/manage/object_schema/services";
 import { useAuth } from "@/auth/useAuth";
+import type { IObjectSchema, IObjectType } from ***REMOVED***@/types/types***REMOVED***
 import { useNavigate } from "react-router-dom";
-import type { IObjectType } from "@/types/types";
+import { useQuery } from "@tanstack/react-query";
+import { fetchListFromPostgrest } from "@/services/postgrest/services";
+import { fetchObjectTypes } from "@/manage/object_type/services";
 
-const CreateObjectType = (): ReactElement => {
+const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
 
     const navigate = useNavigate()
     const [saving, setSaving] = useState(false);
@@ -18,12 +21,14 @@ const CreateObjectType = (): ReactElement => {
     const onSave = () => {
         setSaving(true);
         const { ***REMOVED***auto-slug***REMOVED***: _, ...valuesToSave } = formValue;
-        postObjectType({
-            object_type: valuesToSave as Omit<IObjectType, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
+        postObjectSchema({
+            object_schema: {
+                ...valuesToSave as Omit<IObjectSchema, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
+            },
             token: auth.user?.access_token ?? ***REMOVED******REMOVED***
         }).then(() => {
             setSaving(false);
-            navigate(***REMOVED***/object_type***REMOVED***)
+            navigate(***REMOVED***/object_schema***REMOVED***)
         })
     }
 
@@ -61,15 +66,33 @@ const CreateObjectType = (): ReactElement => {
                 required: true,
                 conditions: {
                     field: ***REMOVED***auto-slug***REMOVED***,
-                    value: false,
+                    value: true,
                     operator: ***REMOVED***eq***REMOVED***,
-                    result: ***REMOVED***include***REMOVED***
+                    result: ***REMOVED***disable***REMOVED***
                 }
             },
             {
                 id: ***REMOVED***description***REMOVED***,
                 label: ***REMOVED***Description***REMOVED***,
                 type: ***REMOVED***long_text***REMOVED***,
+            },
+            {
+                id: ***REMOVED***object_type_uuid***REMOVED***,
+                label: ***REMOVED***Type***REMOVED***,
+                type: ***REMOVED***select***REMOVED***,
+                options: object_types.map(ot => ({ label: ot.label, value: ot.uuid })),
+                required: true
+            },
+            {
+                id: ***REMOVED***is_type_default***REMOVED***,
+                label: ***REMOVED***Is default schema for selected type***REMOVED***,
+                type: ***REMOVED***boolean***REMOVED***
+            },
+            {
+                id: ***REMOVED***schema***REMOVED***,
+                label: ***REMOVED***Schema (JSON)***REMOVED***,
+                type: ***REMOVED***json***REMOVED***,
+                required: true
             }
         ]
     }
@@ -85,7 +108,7 @@ const CreateObjectType = (): ReactElement => {
 
     return (
         <div className=***REMOVED***flex flex-col gap-4***REMOVED***>
-            <h1 className=***REMOVED***text-2xl font-bold***REMOVED***>Create object type</h1>
+            <h1 className=***REMOVED***text-2xl font-bold***REMOVED***>Create schema</h1>
             <FormCreator form={form} formValueState={[formValue, setFormValue]} />
             <div>
                 <Button onClick={onSave} type=***REMOVED***primary***REMOVED*** disabled={saving}>{saving ? <Loader className="animate-spin" /> : ***REMOVED***Save***REMOVED***}</Button>
@@ -94,4 +117,28 @@ const CreateObjectType = (): ReactElement => {
     )
 }
 
-export default CreateObjectType
+const CreateObjectSchema = (): ReactElement => {
+    const auth = useAuth();
+    const { data: object_types, isLoading, error } = useQuery({
+        queryKey: [***REMOVED***object_type_list***REMOVED***],
+        queryFn: async ({ signal }) => {
+            if (!auth.user) return Promise.resolve([]);
+            const data = await fetchObjectTypes({
+                token: auth.user.access_token,
+                signal
+            })
+            return data
+
+        }
+    })
+    return (
+        <ViewWithLoader isLoading={isLoading} error={error} data={object_types}>
+            {
+                object_types && <CreateObjectSchemaForm object_types={object_types} />
+            }
+        </ViewWithLoader>
+    )
+
+}
+
+export default CreateObjectSchema

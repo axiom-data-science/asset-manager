@@ -176,12 +176,16 @@ export const deleteFromPostgrest = async ({
 }
 
 export const patchToPostgrest = async <T, R=T>({
+    uuid,
+    uuidColumn = ***REMOVED***uuid***REMOVED***,
     table,
     params,
     token,
     signal,
     body
 }: {
+    uuid: string,
+    uuidColumn?: string,
     table: string,
     params?: IPostgrestParams,
     token: string,
@@ -189,7 +193,18 @@ export const patchToPostgrest = async <T, R=T>({
     body: Partial<T>
 }): Promise<R> => {
     try {
-        const url = postgrestUrl({table, params});
+        const p = {
+            ...params,
+            filters: [
+                {
+                    column: uuidColumn,
+                    operator: ***REMOVED***eq***REMOVED*** as const,
+                    value: uuid
+                },
+                ...(params?.filters ?? [])
+            ]
+        }
+        const url = postgrestUrl({table, params: p});
         const response = await fetch(url, {
             method: ***REMOVED***PATCH***REMOVED***,
             headers: {

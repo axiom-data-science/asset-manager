@@ -11,6 +11,8 @@ import AddDocument from ***REMOVED***@/manage/document/create***REMOVED***
 import CreateObjectType from ***REMOVED***@/manage/object_type/create***REMOVED***
 import ListObjectTypes from ***REMOVED***@/manage/object_type/list***REMOVED***
 import EditObjectType from ***REMOVED***@/manage/object_type/edit***REMOVED***
+import CreateObjectSchema from ***REMOVED***@/manage/object_schema/create***REMOVED***
+import ListObjectSchemas from ***REMOVED***@/manage/object_schema/list***REMOVED***
 
 
 const Authed = (): ReactElement => {
@@ -105,6 +107,14 @@ function App(): ReactElement {
                 } />
                 <Route path="/object_type/edit/:uuid" element={
                   <SidebarLayout><EditObjectType /></SidebarLayout>
+                } />
+
+
+                <Route path="/object_schema" element={
+                  <SidebarLayout><ListObjectSchemas /></SidebarLayout>
+                } />
+                <Route path="/object_schema/create" element={
+                  <SidebarLayout><CreateObjectSchema /></SidebarLayout>
                 } />
 
               </Routes>

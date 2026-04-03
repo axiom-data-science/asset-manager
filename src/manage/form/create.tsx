@@ -6,17 +6,25 @@ import { useAuth } from "@/auth/useAuth";
 import type { IAssetForm, IObjectType } from '@/types/types'
 import { useNavigate } from "react-router-dom";
 import { useObjectTypeList } from "@/manage/object_type/useObjectTypeList";
+import { validate } from "@/lib/utils";
+import Errors from "./components/errors";
 
 const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
 
     const navigate = useNavigate()
     const [saving, setSaving] = useState(false);
+    const [errors, setErrors] = useState<{field: string, message: string}[]>([]);
     const [formValue, setFormValue] = useState<IFormValues>({
         'auto-slug': true
     });
     const auth = useAuth();
 
-    const onSave = () => {
+    const onSave = async () => {
+        const valid = await validate({form, formValues: formValue});
+        if(!valid.valid && valid.errors.length > 0) {
+            setErrors(valid.errors);
+            return;
+        }
         setSaving(true);
         const { 'auto-slug': _, ...valuesToSave } = formValue;
         postForm({
@@ -77,11 +85,6 @@ const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactEle
                 required: true
             },
             {
-                id: 'is_type_default',
-                label: 'Is default schema for selected type',
-                type: 'boolean'
-            },
-            {
                 id: 'description',
                 label: 'Description',
                 type: 'long_text',
@@ -107,6 +110,7 @@ const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactEle
     return (
         <div className='flex flex-col gap-4'>
             <h1 className='text-2xl font-bold'>Create form</h1>
+            <Errors errors={errors} />
             <FormCreator form={form} formValueState={[formValue, setFormValue]} />
             <div>
                 <Button onClick={onSave} type='primary' disabled={saving}>{saving ? <Loader className="animate-spin" /> : 'Save'}</Button>

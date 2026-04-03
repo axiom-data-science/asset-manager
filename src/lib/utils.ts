@@ -1,3 +1,4 @@
+import type { IValidationError } from "@/types/types"
 import type { IForm, IFormValues } from "@axdspub/axiom-ui-forms"
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
@@ -9,9 +10,9 @@ export function cn(...inputs: ClassValue[]) {
 
 export const validate = async ({form, formValues, messagePrefix} : {form: IForm, formValues: IFormValues, messagePrefix?: string}): Promise<{
     valid: boolean,
-    errors: {field: string, path?: string, message: string}[]
+    errors: IValidationError[]
 }> => {
-    const errors: {field: string, path?: string, message: string}[] = [];
+    const errors: IValidationError[] = [];
     let valid = true
     form?.fields?.forEach(f => {
             if (f.required && (formValues[f.id] === undefined || formValues[f.id] === ***REMOVED******REMOVED***)) {

@@ -6,17 +6,25 @@ import { useAuth } from "@/auth/useAuth";
 import type { IAssetForm, IObjectType } from ***REMOVED***@/types/types***REMOVED***
 import { useNavigate } from "react-router-dom";
 import { useObjectTypeList } from "@/manage/object_type/useObjectTypeList";
+import { validate } from "@/lib/utils";
+import Errors from "./components/errors";
 
 const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
 
     const navigate = useNavigate()
     const [saving, setSaving] = useState(false);
+    const [errors, setErrors] = useState<{field: string, message: string}[]>([]);
     const [formValue, setFormValue] = useState<IFormValues>({
         ***REMOVED***auto-slug***REMOVED***: true
     });
     const auth = useAuth();
 
-    const onSave = () => {
+    const onSave = async () => {
+        const valid = await validate({form, formValues: formValue});
+        if(!valid.valid && valid.errors.length > 0) {
+            setErrors(valid.errors);
+            return;
+        }
         setSaving(true);
         const { ***REMOVED***auto-slug***REMOVED***: _, ...valuesToSave } = formValue;
         postForm({
@@ -77,11 +85,6 @@ const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactEle
                 required: true
             },
             {
-                id: ***REMOVED***is_type_default***REMOVED***,
-                label: ***REMOVED***Is default schema for selected type***REMOVED***,
-                type: ***REMOVED***boolean***REMOVED***
-            },
-            {
                 id: ***REMOVED***description***REMOVED***,
                 label: ***REMOVED***Description***REMOVED***,
                 type: ***REMOVED***long_text***REMOVED***,
@@ -107,6 +110,7 @@ const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactEle
     return (
         <div className=***REMOVED***flex flex-col gap-4***REMOVED***>
             <h1 className=***REMOVED***text-2xl font-bold***REMOVED***>Create form</h1>
+            <Errors errors={errors} />
             <FormCreator form={form} formValueState={[formValue, setFormValue]} />
             <div>
                 <Button onClick={onSave} type=***REMOVED***primary***REMOVED*** disabled={saving}>{saving ? <Loader className="animate-spin" /> : ***REMOVED***Save***REMOVED***}</Button>

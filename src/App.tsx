@@ -13,6 +13,7 @@ import ListObjectTypes from ***REMOVED***@/manage/object_type/list***REMOVED***
 import EditObjectType from ***REMOVED***@/manage/object_type/edit***REMOVED***
 import CreateObjectSchema from ***REMOVED***@/manage/object_schema/create***REMOVED***
 import ListObjectSchemas from ***REMOVED***@/manage/object_schema/list***REMOVED***
+import CreateFormLoader from ***REMOVED***./manage/form/create***REMOVED***
 
 
 const Authed = (): ReactElement => {
@@ -115,6 +116,11 @@ function App(): ReactElement {
                 } />
                 <Route path="/object_schema/create" element={
                   <SidebarLayout><CreateObjectSchema /></SidebarLayout>
+                } />
+
+
+                <Route path="/forms/create" element={
+                  <SidebarLayout><CreateFormLoader /></SidebarLayout>
                 } />
 
               </Routes>

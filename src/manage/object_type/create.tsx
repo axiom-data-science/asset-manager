@@ -4,15 +4,16 @@ import { FormCreator, type IFormValues, type IForm } from ***REMOVED***@axdspub/
 import { postObjectType } from "@/manage/object_type/services";
 import { useAuth } from "@/auth/useAuth";
 import { useNavigate } from "react-router-dom";
-import type { IObjectSchema, IObjectType } from "@/types/types";
+import type { IObjectSchema, IObjectType, IValidationError } from "@/types/types";
 import { postObjectSchema } from "@/manage/object_schema/services";
 import { validate } from "@/lib/utils";
+import Errors from "../form/components/errors";
 
 const CreateObjectType = (): ReactElement => {
 
     const navigate = useNavigate()
     const [saving, setSaving] = useState(false);
-    const [errorMessages, setErrorMessages] = useState<{ field: string, message: string }[]>([])
+    const [errorMessages, setErrorMessages] = useState<IValidationError[]>([])
     const [formValue, setFormValue] = useState<IFormValues>({
         ***REMOVED***auto-slug***REMOVED***: true
     });
@@ -59,7 +60,7 @@ const CreateObjectType = (): ReactElement => {
         const autoSlug = Boolean(value[***REMOVED***auto-slug***REMOVED***]);
         const label = value[***REMOVED***label***REMOVED***] as string | undefined;
         if (autoSlug && label !== undefined) {
-            const slug = label.toLowerCase().replace(/\s+/g, ***REMOVED***-***REMOVED***).replace(/[^a-z0-9\-]/g, ***REMOVED******REMOVED***);
+            const slug = label.toLowerCase().replace(/\s+/g, ***REMOVED***-***REMOVED***).replace(/[^a-z0-9-]/g, ***REMOVED******REMOVED***);
             setter(prev => ({ ...prev, slug }));
         }
     }
@@ -173,13 +174,7 @@ const CreateObjectType = (): ReactElement => {
     return (
         <div className=***REMOVED***flex flex-col gap-4***REMOVED***>
             <h1 className=***REMOVED***text-2xl font-bold***REMOVED***>Create object type</h1>
-            {
-                errorMessages.length > 0 && <div className=***REMOVED***p-4 bg-red-100 border border-red-400 text-red-700 rounded***REMOVED***>
-                    <ul className=***REMOVED***list-disc list-inside***REMOVED***>
-                        {errorMessages.map((err, i) => <li key={i}>{err.message}</li>)}
-                    </ul>
-                </div>
-            }
+            <Errors errors={errorMessages} />
             <FormCreator form={form} formValueState={[formValue, setFormValue]} />
             {
                 formValue[***REMOVED***create_default_schema***REMOVED***] && <div className=***REMOVED***flex flex-col gap-4 p-4 bg-slate-100 border-2 shadow-md rounded***REMOVED***>

@@ -188,3 +188,5 @@ export interface IAssetForm {
   is_type_default: boolean;
   config: Record<string, unknown>;
 }
+
+export type IValidationError = {field: string, path?: string, message: string}

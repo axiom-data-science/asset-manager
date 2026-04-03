@@ -130,7 +130,10 @@ export const postToPostgrest = async <T, R = T>({
             headers: {
                 ***REMOVED***Authorization***REMOVED***: `Bearer ${token}`,
                 ***REMOVED***Content-Type***REMOVED***: ***REMOVED***application/json***REMOVED***,
-                ***REMOVED***Prefer***REMOVED***: ***REMOVED***return=representation***REMOVED***
+                ***REMOVED***Prefer***REMOVED***: ***REMOVED***return=representation***REMOVED***,
+                ...(
+                    Array.isArray(body) ? {} : {***REMOVED***Accept***REMOVED***: ***REMOVED***application/vnd.pgrst.object+json***REMOVED***}
+                )
             },
             signal,
             body: JSON.stringify(body)

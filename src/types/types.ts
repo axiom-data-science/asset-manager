@@ -22,7 +22,7 @@ export type IPostgrestParams<T = Record<string, string>> = {
 
 export type IDefaultDocumentType = Record<string, string | number | boolean | null>
 
-export type IDocument<T = IDefaultDocumentType, A = IDefaultDocumentType, J = IDefaultDocumentType> = {
+export type IDocument<T = IDefaultDocumentType, A = IDefaultDocumentType> = {
   uuid: string,
   owner_sub: string
   lock_sub: string | null
@@ -33,10 +33,9 @@ export type IDocument<T = IDefaultDocumentType, A = IDefaultDocumentType, J = ID
   roles_for_update: string[]
   data: T | null
   attrs: A | null
-  json_schema: J | null
   created_at: string
   updated_at: string | null
-  type: string
+  object_type_uuid: string
   label: string
   description: string
   comments: string

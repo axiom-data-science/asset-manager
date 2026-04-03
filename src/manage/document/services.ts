@@ -74,11 +74,11 @@ export const postDocument = async <T>({
     token,
     signal
 }: {
-    document: Omit<IDocument<T>, ***REMOVED***id***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
+    document: Omit<IDocument<T>, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
     token: string,
     signal?: AbortSignal
 }): Promise<IDocument<T>> => {
-    const doc = await postToPostgrest<Omit<IDocument<T>, ***REMOVED***id***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>, IDocument<T>>({
+    const doc = await postToPostgrest<Omit<IDocument<T>, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>, IDocument<T>>({
         table: DOCUMENTS_TABLE,
         body: document,
         token,

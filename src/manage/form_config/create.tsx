@@ -6,8 +6,8 @@ import { useAuth } from "@/auth/useAuth";
 import type { IObjectSchema, IObjectType } from ***REMOVED***@/types/types***REMOVED***
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { fetchListFromPostgrest } from "@/services/postgrest/services";
 import { fetchObjectTypes } from "@/manage/object_type/services";
-import { useObjectTypeList } from "@/manage/object_type/useObjectTypeList";
 
 const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
 
@@ -23,7 +23,7 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
         const { ***REMOVED***auto-slug***REMOVED***: _, ...valuesToSave } = formValue;
         postObjectSchema({
             object_schema: {
-                ...valuesToSave as Omit<IObjectSchema, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>
+                ...valuesToSave as Omit<IObjectSchema, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
             },
             token: auth.user?.access_token ?? ***REMOVED******REMOVED***
         }).then(() => {
@@ -118,11 +118,23 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
 }
 
 const CreateObjectSchema = (): ReactElement => {
-    const { data: object_type, isLoading, error } = useObjectTypeList()
+    const auth = useAuth();
+    const { data: object_types, isLoading, error } = useQuery({
+        queryKey: [***REMOVED***object_type_list***REMOVED***],
+        queryFn: async ({ signal }) => {
+            if (!auth.user) return Promise.resolve([]);
+            const data = await fetchObjectTypes({
+                token: auth.user.access_token,
+                signal
+            })
+            return data
+
+        }
+    })
     return (
-        <ViewWithLoader isLoading={isLoading} error={error} data={object_type}>
+        <ViewWithLoader isLoading={isLoading} error={error} data={object_types}>
             {
-                object_type?.items && <CreateObjectSchemaForm object_types={object_type.items} />
+                object_types && <CreateObjectSchemaForm object_types={object_types} />
             }
         </ViewWithLoader>
     )

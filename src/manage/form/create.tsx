@@ -1,15 +1,13 @@
 import { Button, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
 import { useEffect, useState, type ReactElement } from "react";
 import { FormCreator, type IFormValues, type IForm } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
-import { postObjectSchema } from "@/manage/object_schema/services";
+import { postForm } from "@/manage/form/services";
 import { useAuth } from "@/auth/useAuth";
-import type { IObjectSchema, IObjectType } from ***REMOVED***@/types/types***REMOVED***
+import type { IAssetForm, IObjectType } from ***REMOVED***@/types/types***REMOVED***
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { fetchObjectTypes } from "@/manage/object_type/services";
 import { useObjectTypeList } from "@/manage/object_type/useObjectTypeList";
 
-const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
+const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
 
     const navigate = useNavigate()
     const [saving, setSaving] = useState(false);
@@ -21,14 +19,14 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
     const onSave = () => {
         setSaving(true);
         const { ***REMOVED***auto-slug***REMOVED***: _, ...valuesToSave } = formValue;
-        postObjectSchema({
-            object_schema: {
-                ...valuesToSave as Omit<IObjectSchema, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>
+        postForm({
+            form: {
+                ...valuesToSave as Omit<IAssetForm, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>
             },
             token: auth.user?.access_token ?? ***REMOVED******REMOVED***
         }).then(() => {
             setSaving(false);
-            navigate(***REMOVED***/object_schema***REMOVED***)
+            navigate(***REMOVED***/form***REMOVED***)
         })
     }
 
@@ -43,7 +41,7 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
     }, [formValue[***REMOVED***label***REMOVED***], formValue[***REMOVED***auto-slug***REMOVED***]])
 
     const form: IForm = {
-        id: ***REMOVED***create-object-type***REMOVED***,
+        id: ***REMOVED***create-form***REMOVED***,
         settings: {
             show_progress: false
         },
@@ -89,9 +87,9 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
                 type: ***REMOVED***long_text***REMOVED***,
             },
             {
-                id: ***REMOVED***schema***REMOVED***,
-                label: ***REMOVED***Schema (JSON)***REMOVED***,
-                type: ***REMOVED***json***REMOVED***,
+                id: ***REMOVED***is_type_default***REMOVED***,
+                label: ***REMOVED***Is default form for selected type***REMOVED***,
+                type: ***REMOVED***boolean***REMOVED***,
                 required: true
             }
         ]
@@ -108,7 +106,7 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
 
     return (
         <div className=***REMOVED***flex flex-col gap-4***REMOVED***>
-            <h1 className=***REMOVED***text-2xl font-bold***REMOVED***>Create schema</h1>
+            <h1 className=***REMOVED***text-2xl font-bold***REMOVED***>Create form</h1>
             <FormCreator form={form} formValueState={[formValue, setFormValue]} />
             <div>
                 <Button onClick={onSave} type=***REMOVED***primary***REMOVED*** disabled={saving}>{saving ? <Loader className="animate-spin" /> : ***REMOVED***Save***REMOVED***}</Button>
@@ -117,16 +115,15 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
     )
 }
 
-const CreateObjectSchema = (): ReactElement => {
+const CreateFormLoader = (): ReactElement => {
     const { data: object_type, isLoading, error } = useObjectTypeList()
     return (
         <ViewWithLoader isLoading={isLoading} error={error} data={object_type}>
             {
-                object_type?.items && <CreateObjectSchemaForm object_types={object_type.items} />
+                object_type?.items && <CreateForm object_types={object_type.items} />
             }
         </ViewWithLoader>
     )
-
 }
 
-export default CreateObjectSchema
+export default CreateFormLoader

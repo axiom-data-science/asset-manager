@@ -3,6 +3,8 @@ import type { IPostgrestParams, IObjectType } from "@/types/types";
 
 const OBJECT_TYPES_TABLE = ***REMOVED***object_type***REMOVED***;
 
+
+
 export const fetchObjectTypes = async({
     params, 
     token,

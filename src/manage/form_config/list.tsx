@@ -4,7 +4,6 @@ import { Button, SelectInput, Table, ViewWithLoader } from "@axdspub/axiom-ui-ut
 import type { ReactElement } from "react"
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
 import { useObjectTypeList } from "@/manage/object_type/useObjectTypeList"
-import { Check, CheckIcon, CrossIcon, XIcon } from "lucide-react"
 
 
 const ListObjectSchemasTable = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
@@ -56,15 +55,6 @@ const ListObjectSchemasTable = ({ object_types }: { object_types: IObjectType[] 
                                 label: ***REMOVED***Type***REMOVED***,
                                 id: ***REMOVED***object_type_uuid***REMOVED***,
                                 accessor: r => object_types_map[r.object_type_uuid] ?? r.object_type_uuid
-                            },
-                            {
-                                label: ***REMOVED***Version***REMOVED***,
-                                id: ***REMOVED***version***REMOVED***
-                            },
-                            {
-                                label: ***REMOVED***Is default***REMOVED***,
-                                id: ***REMOVED***is_type_default***REMOVED***,
-                                accessor: r => r.is_type_default ? <CheckIcon className="text-green-500" /> : <XIcon className="text-gray-300" />
                             }
 
                         ]}

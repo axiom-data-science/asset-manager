@@ -5,7 +5,7 @@ import type { ReactElement } from "react"
 
 const ListDocuments = (): ReactElement => {
 
-    const { data: documents, isLoading, error } = useDocumentList({}, [***REMOVED***owner_sub***REMOVED***, ***REMOVED***type***REMOVED***])
+    const { data: documents, isLoading, error } = useDocumentList({}, [***REMOVED***owner_sub***REMOVED***, ***REMOVED***object_type_uuid***REMOVED***])
 
     return (
         <ViewWithLoader isLoading={isLoading} error={error} data={documents}>

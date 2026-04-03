@@ -1,15 +1,13 @@
 import { Button, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
 import { useEffect, useState, type ReactElement } from "react";
 import { FormCreator, type IFormValues, type IForm } from '@axdspub/axiom-ui-forms'
-import { postObjectSchema } from "@/manage/object_schema/services";
+import { postForm } from "@/manage/form/services";
 import { useAuth } from "@/auth/useAuth";
-import type { IObjectSchema, IObjectType } from '@/types/types'
+import type { IAssetForm, IObjectType } from '@/types/types'
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { fetchObjectTypes } from "@/manage/object_type/services";
 import { useObjectTypeList } from "@/manage/object_type/useObjectTypeList";
 
-const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
+const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
 
     const navigate = useNavigate()
     const [saving, setSaving] = useState(false);
@@ -21,14 +19,14 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
     const onSave = () => {
         setSaving(true);
         const { 'auto-slug': _, ...valuesToSave } = formValue;
-        postObjectSchema({
-            object_schema: {
-                ...valuesToSave as Omit<IObjectSchema, 'uuid' | 'created_at' | 'updated_at'>
+        postForm({
+            form: {
+                ...valuesToSave as Omit<IAssetForm, 'uuid' | 'created_at' | 'updated_at'>
             },
             token: auth.user?.access_token ?? ''
         }).then(() => {
             setSaving(false);
-            navigate('/object_schema')
+            navigate('/form')
         })
     }
 
@@ -43,7 +41,7 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
     }, [formValue['label'], formValue['auto-slug']])
 
     const form: IForm = {
-        id: 'create-object-type',
+        id: 'create-form',
         settings: {
             show_progress: false
         },
@@ -89,9 +87,9 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
                 type: 'long_text',
             },
             {
-                id: 'schema',
-                label: 'Schema (JSON)',
-                type: 'json',
+                id: 'is_type_default',
+                label: 'Is default form for selected type',
+                type: 'boolean',
                 required: true
             }
         ]
@@ -108,7 +106,7 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
 
     return (
         <div className='flex flex-col gap-4'>
-            <h1 className='text-2xl font-bold'>Create schema</h1>
+            <h1 className='text-2xl font-bold'>Create form</h1>
             <FormCreator form={form} formValueState={[formValue, setFormValue]} />
             <div>
                 <Button onClick={onSave} type='primary' disabled={saving}>{saving ? <Loader className="animate-spin" /> : 'Save'}</Button>
@@ -117,16 +115,15 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
     )
 }
 
-const CreateObjectSchema = (): ReactElement => {
+const CreateFormLoader = (): ReactElement => {
     const { data: object_type, isLoading, error } = useObjectTypeList()
     return (
         <ViewWithLoader isLoading={isLoading} error={error} data={object_type}>
             {
-                object_type?.items && <CreateObjectSchemaForm object_types={object_type.items} />
+                object_type?.items && <CreateForm object_types={object_type.items} />
             }
         </ViewWithLoader>
     )
-
 }
 
-export default CreateObjectSchema
+export default CreateFormLoader

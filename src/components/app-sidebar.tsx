@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/sidebar"
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { Book, ChevronDown, Cog, List, LogOut, Network, Plus, User } from "lucide-react"
+import { Book, BookPlus, ChevronDown, Cog, List, LogOut, Network, Plus, User } from "lucide-react"
 import { SidebarGroupContent, SidebarGroupLabel } from "@/components/ui/sidebar"
 import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
@@ -90,9 +90,19 @@ export function AppSidebar() {
       ],
     },
     {
-      label: 'Form Configs',
-      icon: Cog,
+      label: 'Forms',
+      icon: BookPlus,
       actions: [
+        {
+          name: 'List forms',
+          icon: List,
+          url: '/forms'
+        },
+        {
+          name: 'Create form',
+          icon: Plus,
+          url: '/forms/create'
+        },
         {
           name: 'List form configs',
           icon: List,

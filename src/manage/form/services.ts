@@ -1,11 +1,9 @@
 import { fetchListFromPostgrest, fetchRollupFromPostgrest, fetchSingleFromPostgrest, patchToPostgrest, postToPostgrest } from "@/services/postgrest/services";
-import type { IPostgrestParams, IObjectType } from "@/types/types";
+import type { IAssetForm, IPostgrestParams } from "@/types/types";
 
-const OBJECT_TYPES_TABLE = 'object_type';
+const FORMS_TABLE = 'form';
 
-
-
-export const fetchObjectTypes = async({
+export const fetchForms = async({
     params, 
     token,
     signal
@@ -13,10 +11,10 @@ export const fetchObjectTypes = async({
     params?: IPostgrestParams, 
     token: string ,
     signal?: AbortSignal
-}): Promise<IObjectType[]> => {
+}): Promise<IAssetForm[]> => {
 
-    const documents = await fetchListFromPostgrest<IObjectType>({
-        table: OBJECT_TYPES_TABLE,
+    const documents = await fetchListFromPostgrest<IAssetForm>({
+        table: FORMS_TABLE,
         params,
         token,
         signal
@@ -25,7 +23,7 @@ export const fetchObjectTypes = async({
 
 }
 
-export const fetchObjectType = async ({
+export const fetchForm = async ({
     uuid,
     params,
     token,
@@ -35,9 +33,9 @@ export const fetchObjectType = async ({
     params?: IPostgrestParams,
     token: string,
     signal?: AbortSignal
-}): Promise<IObjectType> => {
-    const document = await fetchSingleFromPostgrest<IObjectType>({
-        table: OBJECT_TYPES_TABLE,
+}): Promise<IAssetForm> => {
+    const document = await fetchSingleFromPostgrest<IAssetForm>({
+        table: FORMS_TABLE,
         uuid,
         params,
         token,
@@ -47,7 +45,7 @@ export const fetchObjectType = async ({
 
 }
 
-export const fetchObjectTypeRollup = async ({
+export const fetchFormRollup = async ({
     rollup,
     params, 
     signal,
@@ -60,7 +58,7 @@ export const fetchObjectTypeRollup = async ({
 }): Promise<{label: string, count: number}[]> => {
     
     const list = await fetchRollupFromPostgrest({
-        table: OBJECT_TYPES_TABLE,
+        table: FORMS_TABLE,
         rollupColumn: rollup,
         params,
         token,
@@ -71,43 +69,43 @@ export const fetchObjectTypeRollup = async ({
 
 }
 
-export const postObjectType = async ({
-    object_type,
+export const postForm = async ({
+    form,
     token,
     signal
 
 }: {
-    object_type: Pick<IObjectType, 'label' | 'description' | 'slug'>,
+    form: Omit<IAssetForm, 'uuid' | 'created_at' | 'updated_at'>,
     token: string,
     signal?: AbortSignal
-}): Promise<IObjectType> => {
-    const newObjectType = await postToPostgrest<Pick<IObjectType, 'label' | 'description' | 'slug'>, IObjectType>({
-        table: OBJECT_TYPES_TABLE,
-        body: object_type,
+}): Promise<IAssetForm> => {
+    const newForm = await postToPostgrest<Omit<IAssetForm, 'uuid' | 'created_at' | 'updated_at'>, IAssetForm>({
+        table: FORMS_TABLE,
+        body: form,
         token,
         signal
     });
-    return newObjectType;
+    return newForm;
 }
 
-export const patchObjectType = async ({
+export const patchForm = async ({
     uuid,
-    object_type,
+    form,
     token,
     signal
 
 }: {
     uuid: string,
-    object_type: IObjectType,
+    form: IAssetForm,
     token: string,
     signal?: AbortSignal
-}): Promise<IObjectType> => {
-    const newObjectType = await patchToPostgrest<IObjectType>({
+}): Promise<IAssetForm> => {
+    const newForm = await patchToPostgrest<IAssetForm>({
         uuid,
-        table: OBJECT_TYPES_TABLE,
-        body: object_type,
+        table: FORMS_TABLE,
+        body: form,
         token,
         signal
     });
-    return newObjectType;
+    return newForm;
 }

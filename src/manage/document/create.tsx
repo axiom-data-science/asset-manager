@@ -4,7 +4,7 @@ import type { IObjectType } from "@/types/types";
 import { useObjectTypeList } from "@/manage/object_type/useObjectTypeList";
 import type { IDocument } from "@/types/types";
 import { FormCreator, type IForm, type IFormValues } from "@axdspub/axiom-ui-forms";
-import { Button, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
+import { Button, Loader, utils, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
 import { useState, type ReactElement } from "react";
 import { Link, useSearchParams } from "react-router-dom"
 
@@ -12,7 +12,7 @@ const CreateDocumentForm = ({
     type,
     version
 }: {
-    type?: IObjectType | null,
+    type: IObjectType,
     version?: string | null
 }): ReactElement => {
     const [saving, setSaving] = useState(false);
@@ -49,9 +49,9 @@ const CreateDocumentForm = ({
         setSaving(true);
         postDocument({
             document: {
-                type: type ?? 'test',
+                object_type_uuid: type.uuid,
                 ...formValue
-            } as Omit<IDocument<any>, 'id' | 'created_at' | 'updated_at'>,
+            } as Omit<IDocument<any>, 'uuid' | 'created_at' | 'updated_at'>,
             token: auth.user?.access_token ?? ''
         }).then(() => {
             setSaving(false);
@@ -81,9 +81,18 @@ const CreateDocument = (): ReactElement => {
     const selectedType = objectType ? typeMap[objectType] : null;
     return <ViewWithLoader isLoading={isLoading} error={error} data={object_types}>
         {object_types?.items && (
-            (objectType === null || objectType === undefined || typeMap[objectType] === undefined)
+            selectedType === null
                 ? <div className='flex flex-col gap-2'>
                     <h1 className='text-2xl font-bold'>Select document type</h1>
+
+                    {object_types.items.length === 0 && <>
+                        <p>No object types found. Please create an object type first.</p>
+                        <div className='mt-4'><Link to='/object_type/create' className={utils.createButtonClass({
+                            size: 'md',
+                            variant: 'primary'
+                        })}>Create object type</Link>
+                        </div>
+                    </>}
                     <div className='flex flex-col gap-2 max-w-70'>
                         {object_types.items.map((ot) => (
                             <Link key={ot.uuid} to={`/document/create?object_type=${ot.uuid}`} className='items-start justify-normal p-2 border rounded hover:bg-gray-100'>{ot.label}</Link>

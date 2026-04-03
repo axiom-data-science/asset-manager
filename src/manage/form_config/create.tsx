@@ -6,8 +6,8 @@ import { useAuth } from "@/auth/useAuth";
 import type { IObjectSchema, IObjectType } from '@/types/types'
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { fetchListFromPostgrest } from "@/services/postgrest/services";
 import { fetchObjectTypes } from "@/manage/object_type/services";
-import { useObjectTypeList } from "@/manage/object_type/useObjectTypeList";
 
 const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
 
@@ -23,7 +23,7 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
         const { 'auto-slug': _, ...valuesToSave } = formValue;
         postObjectSchema({
             object_schema: {
-                ...valuesToSave as Omit<IObjectSchema, 'uuid' | 'created_at' | 'updated_at'>
+                ...valuesToSave as Omit<IObjectSchema, 'uuid' | 'created_at' | 'updated_at'>,
             },
             token: auth.user?.access_token ?? ''
         }).then(() => {
@@ -118,11 +118,23 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
 }
 
 const CreateObjectSchema = (): ReactElement => {
-    const { data: object_type, isLoading, error } = useObjectTypeList()
+    const auth = useAuth();
+    const { data: object_types, isLoading, error } = useQuery({
+        queryKey: ['object_type_list'],
+        queryFn: async ({ signal }) => {
+            if (!auth.user) return Promise.resolve([]);
+            const data = await fetchObjectTypes({
+                token: auth.user.access_token,
+                signal
+            })
+            return data
+
+        }
+    })
     return (
-        <ViewWithLoader isLoading={isLoading} error={error} data={object_type}>
+        <ViewWithLoader isLoading={isLoading} error={error} data={object_types}>
             {
-                object_type?.items && <CreateObjectSchemaForm object_types={object_type.items} />
+                object_types && <CreateObjectSchemaForm object_types={object_types} />
             }
         </ViewWithLoader>
     )

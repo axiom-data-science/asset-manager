@@ -14,7 +14,8 @@ const ListObjectTypes = (): ReactElement => {
                 dir: ***REMOVED***desc***REMOVED***
             }
         ]
-    })
+    }
+    )
 
     return (
         <ViewWithLoader isLoading={isLoading} error={error} data={documents}>
@@ -33,6 +34,10 @@ const ListObjectTypes = (): ReactElement => {
                                 accessor: r => {
                                     return <Link to={`/object_type/edit/${r.uuid}`} className="text-blue-600 hover:underline">{r.label}</Link>
                                 }
+                            },
+                            {
+                                label: ***REMOVED***Category***REMOVED***,
+                                id: ***REMOVED***category***REMOVED***
                             },
                             {
                                 label: ***REMOVED***Created at***REMOVED***,

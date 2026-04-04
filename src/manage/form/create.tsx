@@ -1,6 +1,6 @@
 import { Button, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
-import { useEffect, useState, type ReactElement } from "react";
-import { FormCreator, type IFormValues, type IForm } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
+import { useState, type ReactElement } from "react";
+import { FormCreator, type IForm } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
 import { postForm } from "@/manage/form/services";
 import { useAuth } from "@/auth/useAuth";
 import type { IAssetForm, IObjectType } from ***REMOVED***@/types/types***REMOVED***
@@ -8,25 +8,26 @@ import { useNavigate } from "react-router-dom";
 import { useObjectTypeList } from "@/manage/object_type/useObjectTypeList";
 import { validate } from "@/lib/utils";
 import Errors from "./components/errors";
+import { useSlug } from "@/manage/form/components/useSlug";
 
 const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
 
     const navigate = useNavigate()
     const [saving, setSaving] = useState(false);
-    const [errors, setErrors] = useState<{field: string, message: string}[]>([]);
-    const [formValue, setFormValue] = useState<IFormValues>({
-        ***REMOVED***auto-slug***REMOVED***: true
-    });
+    const [errors, setErrors] = useState<{ field: string, message: string }[]>([]);
     const auth = useAuth();
-
     const onSave = async () => {
-        const valid = await validate({form, formValues: formValue});
-        if(!valid.valid && valid.errors.length > 0) {
+        const valid = await validate({ form, formValues });
+        if (!valid.valid && valid.errors.length > 0) {
             setErrors(valid.errors);
+            window.scrollTo({
+                top: 0,
+                behavior: ***REMOVED***smooth***REMOVED*** // Adds a gradual animation
+            })
             return;
         }
         setSaving(true);
-        const { ***REMOVED***auto-slug***REMOVED***: _, ...valuesToSave } = formValue;
+        const valuesToSave = filterForSave(formValues);
         postForm({
             form: {
                 ...valuesToSave as Omit<IAssetForm, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>
@@ -38,17 +39,9 @@ const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactEle
         })
     }
 
-    useEffect(() => {
-        if (formValue[***REMOVED***auto-slug***REMOVED***]) {
-            const label = formValue[***REMOVED***label***REMOVED***] as string | undefined;
-            if (label) {
-                const slug = label.toLowerCase().replace(/\s+/g, ***REMOVED***-***REMOVED***).replace(/[^a-z0-9\-]/g, ***REMOVED******REMOVED***);
-                setFormValue(prev => ({ ...prev, slug }));
-            }
-        }
-    }, [formValue[***REMOVED***label***REMOVED***], formValue[***REMOVED***auto-slug***REMOVED***]])
 
-    const form: IForm = {
+
+    const formWithoutSlug: IForm = {
         id: ***REMOVED***create-form***REMOVED***,
         settings: {
             show_progress: false
@@ -59,23 +52,6 @@ const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactEle
                 label: ***REMOVED***Label***REMOVED***,
                 type: ***REMOVED***text***REMOVED***,
                 required: true
-            },
-            {
-                id: ***REMOVED***auto-slug***REMOVED***,
-                label: ***REMOVED***Auto-generate slug from label***REMOVED***,
-                type: ***REMOVED***boolean***REMOVED***
-            },
-            {
-                id: ***REMOVED***slug***REMOVED***,
-                label: ***REMOVED***Slug***REMOVED***,
-                type: ***REMOVED***text***REMOVED***,
-                required: true,
-                conditions: {
-                    field: ***REMOVED***auto-slug***REMOVED***,
-                    value: true,
-                    operator: ***REMOVED***eq***REMOVED***,
-                    result: ***REMOVED***disable***REMOVED***
-                }
             },
             {
                 id: ***REMOVED***object_type_uuid***REMOVED***,
@@ -92,11 +68,12 @@ const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactEle
             {
                 id: ***REMOVED***is_type_default***REMOVED***,
                 label: ***REMOVED***Is default form for selected type***REMOVED***,
-                type: ***REMOVED***boolean***REMOVED***,
-                required: true
+                type: ***REMOVED***boolean***REMOVED***
             }
         ]
     }
+
+    const { form, formState: [formValues, setFormValue], filterForSave } = useSlug(formWithoutSlug);
 
     if (!auth.isAuthenticated) {
         return (
@@ -111,7 +88,7 @@ const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactEle
         <div className=***REMOVED***flex flex-col gap-4***REMOVED***>
             <h1 className=***REMOVED***text-2xl font-bold***REMOVED***>Create form</h1>
             <Errors errors={errors} />
-            <FormCreator form={form} formValueState={[formValue, setFormValue]} />
+            <FormCreator form={form} formValueState={[formValues, setFormValue]} />
             <div>
                 <Button onClick={onSave} type=***REMOVED***primary***REMOVED*** disabled={saving}>{saving ? <Loader className="animate-spin" /> : ***REMOVED***Save***REMOVED***}</Button>
             </div>

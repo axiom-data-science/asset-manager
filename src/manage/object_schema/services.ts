@@ -45,6 +45,39 @@ export const fetchObjectSchema = async ({
 
 }
 
+export const fetchDefaultObjectTypeSchemaAtUUID = async ({
+    object_type_uuid,
+    token,
+    signal
+}:{
+    object_type_uuid: string,
+    token: string,
+    signal?: AbortSignal
+}): Promise<IObjectSchema> => {
+    const objectSchema = await fetchSingleFromPostgrest<IObjectSchema>({
+        table: `rpc/get_default_schema_at_uuid?object_type_uuid=${object_type_uuid}`,
+        token,
+        signal
+    });
+    return objectSchema;
+}
+
+export const fetchDefaultObjectTypeSchemaAtSlug = async ({
+    object_type_slug,
+    token,
+    signal
+}:{
+    object_type_slug: string,
+    token: string,
+    signal?: AbortSignal
+}): Promise<IObjectSchema> => {
+    const objectSchema = await fetchSingleFromPostgrest<IObjectSchema>({
+        table: `rpc/get_default_schema_at_slug?object_type_slug=${object_type_slug}`,
+        token,
+        signal
+    });
+    return objectSchema;
+}
 export const fetchObjectSchemaRollup = async ({
     rollup,
     params, 

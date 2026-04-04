@@ -31,15 +31,24 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
             })
             return
         }
-        postObjectSchema({
-            object_schema: {
-                ...valuesToSave as Omit<IObjectSchema, 'uuid' | 'created_at' | 'updated_at'>,
-            },
-            token: auth.user?.access_token ?? ''
-        }).then(() => {
+        try {
+            await postObjectSchema({
+                object_schema: {
+                    ...valuesToSave as Omit<IObjectSchema, 'uuid' | 'created_at' | 'updated_at'>,
+                },
+                token: auth.user?.access_token ?? ''
+            })
             setSaving(false);
             navigate('/object_schema')
-        })
+        } catch (e) {
+            setSaving(false)
+            setErrors([{ field: 'form', message: 'An error occurred while saving. Please try again.' }])
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth' // Adds a gradual animation
+            })
+        }
+
     }
 
     const formWithoutSlug: IForm = {

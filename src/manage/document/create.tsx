@@ -66,17 +66,27 @@ const CreateDocumentForm = ({
             })
             return;
         }
-        postDocument({
-            document: {
-                object_type_uuid: type.uuid,
-                label: formValues.label ?? formValues.title ?? 'Untitled Document',
-                data: formValues
-            } as Omit<IDocument<any>, 'uuid' | 'created_at' | 'updated_at'>,
-            token: auth.user?.access_token ?? ''
-        }).then(() => {
+        setErrors([])
+        try {
+            await postDocument({
+                document: {
+                    object_type_uuid: type.uuid,
+                    label: formValues.label ?? formValues.title ?? 'Untitled Document',
+                    data: formValues
+                } as Omit<IDocument<any>, 'uuid' | 'created_at' | 'updated_at'>,
+                token: auth.user?.access_token ?? ''
+            })
+
             setSaving(false);
 
-        })
+        } catch (e: any) {
+            setSaving(false);
+            setErrors([{ field: 'form', message: e?.message ?? 'An error occurred while saving. Please try again.' }])
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth' // Adds a gradual animation
+            })
+        }
 
     }
 

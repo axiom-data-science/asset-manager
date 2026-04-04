@@ -139,13 +139,15 @@ export const postToPostgrest = async <T, R = T>({
             body: JSON.stringify(body)
         });
         if(!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorText = await response.json();
+            throw new Error(`HTTP error! status: ${response.status}. ${errorText?.message ?? ''}`);
         }
         const result = await response.json();
         return result as unknown as R;
     } catch (error) {
         console.error('Error posting to Postgrest:', error);
-        throw error;
+        throw new Error(`Error posting to Postgrest: ${error instanceof Error ? error.message : String(error)}`);
+        
     }
 }
 

@@ -1,6 +1,6 @@
 import { Button, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
-import { useEffect, useState, type ReactElement } from "react";
-import { FormCreator, type IFormValues, type IForm } from '@axdspub/axiom-ui-forms'
+import { useState, type ReactElement } from "react";
+import { FormCreator, type IForm } from '@axdspub/axiom-ui-forms'
 import { postForm } from "@/manage/form/services";
 import { useAuth } from "@/auth/useAuth";
 import type { IAssetForm, IObjectType } from '@/types/types'
@@ -8,25 +8,26 @@ import { useNavigate } from "react-router-dom";
 import { useObjectTypeList } from "@/manage/object_type/useObjectTypeList";
 import { validate } from "@/lib/utils";
 import Errors from "./components/errors";
+import { useSlug } from "@/manage/form/components/useSlug";
 
 const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
 
     const navigate = useNavigate()
     const [saving, setSaving] = useState(false);
-    const [errors, setErrors] = useState<{field: string, message: string}[]>([]);
-    const [formValue, setFormValue] = useState<IFormValues>({
-        'auto-slug': true
-    });
+    const [errors, setErrors] = useState<{ field: string, message: string }[]>([]);
     const auth = useAuth();
-
     const onSave = async () => {
-        const valid = await validate({form, formValues: formValue});
-        if(!valid.valid && valid.errors.length > 0) {
+        const valid = await validate({ form, formValues });
+        if (!valid.valid && valid.errors.length > 0) {
             setErrors(valid.errors);
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth' // Adds a gradual animation
+            })
             return;
         }
         setSaving(true);
-        const { 'auto-slug': _, ...valuesToSave } = formValue;
+        const valuesToSave = filterForSave(formValues);
         postForm({
             form: {
                 ...valuesToSave as Omit<IAssetForm, 'uuid' | 'created_at' | 'updated_at'>
@@ -38,17 +39,9 @@ const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactEle
         })
     }
 
-    useEffect(() => {
-        if (formValue['auto-slug']) {
-            const label = formValue['label'] as string | undefined;
-            if (label) {
-                const slug = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '');
-                setFormValue(prev => ({ ...prev, slug }));
-            }
-        }
-    }, [formValue['label'], formValue['auto-slug']])
 
-    const form: IForm = {
+
+    const formWithoutSlug: IForm = {
         id: 'create-form',
         settings: {
             show_progress: false
@@ -59,23 +52,6 @@ const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactEle
                 label: 'Label',
                 type: 'text',
                 required: true
-            },
-            {
-                id: 'auto-slug',
-                label: 'Auto-generate slug from label',
-                type: 'boolean'
-            },
-            {
-                id: 'slug',
-                label: 'Slug',
-                type: 'text',
-                required: true,
-                conditions: {
-                    field: 'auto-slug',
-                    value: true,
-                    operator: 'eq',
-                    result: 'disable'
-                }
             },
             {
                 id: 'object_type_uuid',
@@ -92,11 +68,12 @@ const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactEle
             {
                 id: 'is_type_default',
                 label: 'Is default form for selected type',
-                type: 'boolean',
-                required: true
+                type: 'boolean'
             }
         ]
     }
+
+    const { form, formState: [formValues, setFormValue], filterForSave } = useSlug(formWithoutSlug);
 
     if (!auth.isAuthenticated) {
         return (
@@ -111,7 +88,7 @@ const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactEle
         <div className='flex flex-col gap-4'>
             <h1 className='text-2xl font-bold'>Create form</h1>
             <Errors errors={errors} />
-            <FormCreator form={form} formValueState={[formValue, setFormValue]} />
+            <FormCreator form={form} formValueState={[formValues, setFormValue]} />
             <div>
                 <Button onClick={onSave} type='primary' disabled={saving}>{saving ? <Loader className="animate-spin" /> : 'Save'}</Button>
             </div>

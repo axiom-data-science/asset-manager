@@ -47,6 +47,35 @@ export const fetchObjectType = async ({
 
 }
 
+export const fetchObjectCategories = async ({
+    token,
+    signal
+}:{
+    token: string,
+    signal?: AbortSignal
+}): Promise<string[]> => {
+    const list = await fetchListFromPostgrest<{
+        enum_name: string,
+        enum_value:string
+    }>({
+        table: 'enum_values',
+        token,
+        signal,
+        params: {
+            filters:[
+                {
+                    column: 'enum_name',
+                    operator: 'eq',
+                    value: 'object_category'
+                }
+            ]
+        }
+    })
+
+    return list.map(d => d.enum_value);
+    
+}
+
 export const fetchObjectTypeRollup = async ({
     rollup,
     params, 

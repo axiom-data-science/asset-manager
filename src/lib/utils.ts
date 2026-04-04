@@ -14,7 +14,15 @@ export const validate = async ({form, formValues, messagePrefix} : {form: IForm,
 }> => {
     const errors: IValidationError[] = [];
     let valid = true
-    form?.fields?.forEach(f => {
+
+    const doFlat = (fields: IForm['fields']): IForm['fields'] => {
+        return (fields ?? []).map(f => {
+            return f.type === 'object' && f.fields !== undefined ? doFlat(f.fields) : f
+        }).flat(Infinity) as IForm['fields']
+    }
+
+    const flattenedFields = doFlat(form.fields) ?? []
+    flattenedFields.forEach(f => {
             if (f.required && (formValues[f.id] === undefined || formValues[f.id] === '')) {
                 valid = false;
                 errors.push({ field: f.id, message: `${messagePrefix ? messagePrefix + ': ' : ''}${f.label} is required.` });

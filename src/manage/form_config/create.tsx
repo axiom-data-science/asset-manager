@@ -3,24 +3,34 @@ import { useEffect, useState, type ReactElement } from "react";
 import { FormCreator, type IFormValues, type IForm } from '@axdspub/axiom-ui-forms'
 import { postObjectSchema } from "@/manage/object_schema/services";
 import { useAuth } from "@/auth/useAuth";
-import type { IObjectSchema, IObjectType } from '@/types/types'
+import type { IObjectSchema, IObjectType, IValidationError } from '@/types/types'
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { fetchListFromPostgrest } from "@/services/postgrest/services";
 import { fetchObjectTypes } from "@/manage/object_type/services";
+import { useSlug } from "@/manage/form/components/useSlug";
+import { validate } from "@/lib/utils";
+import Errors from "@/manage/form/components/errors";
 
 const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
 
     const navigate = useNavigate()
     const [saving, setSaving] = useState(false);
-    const [formValue, setFormValue] = useState<IFormValues>({
-        'auto-slug': true
-    });
+    const [errors, setErrors] = useState<IValidationError[]>([]);
     const auth = useAuth();
 
-    const onSave = () => {
+    const onSave = async () => {
         setSaving(true);
-        const { 'auto-slug': _, ...valuesToSave } = formValue;
+        const valuesToSave = filterForSave(formValue);
+        const vald = await validate({ form, formValues: formValue });
+        if (!vald.valid) {
+            setSaving(false);
+            setErrors(vald.errors);
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth' // Adds a gradual animation
+            })
+            return
+        }
         postObjectSchema({
             object_schema: {
                 ...valuesToSave as Omit<IObjectSchema, 'uuid' | 'created_at' | 'updated_at'>,
@@ -32,17 +42,7 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
         })
     }
 
-    useEffect(() => {
-        if (formValue['auto-slug']) {
-            const label = formValue['label'] as string | undefined;
-            if (label) {
-                const slug = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '');
-                setFormValue(prev => ({ ...prev, slug }));
-            }
-        }
-    }, [formValue['label'], formValue['auto-slug']])
-
-    const form: IForm = {
+    const formWithoutSlug: IForm = {
         id: 'create-object-type',
         settings: {
             show_progress: false
@@ -53,23 +53,6 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
                 label: 'Label',
                 type: 'text',
                 required: true
-            },
-            {
-                id: 'auto-slug',
-                label: 'Auto-generate slug from label',
-                type: 'boolean'
-            },
-            {
-                id: 'slug',
-                label: 'Slug',
-                type: 'text',
-                required: true,
-                conditions: {
-                    field: 'auto-slug',
-                    value: true,
-                    operator: 'eq',
-                    result: 'disable'
-                }
             },
             {
                 id: 'object_type_uuid',
@@ -97,6 +80,8 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
         ]
     }
 
+    const { form, formState: [formValue, setFormValue], filterForSave } = useSlug(formWithoutSlug);
+
     if (!auth.isAuthenticated) {
         return (
             <div className="p-20">
@@ -109,6 +94,7 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
     return (
         <div className='flex flex-col gap-4'>
             <h1 className='text-2xl font-bold'>Create schema</h1>
+            <Errors errors={errors} />
             <FormCreator form={form} formValueState={[formValue, setFormValue]} />
             <div>
                 <Button onClick={onSave} type='primary' disabled={saving}>{saving ? <Loader className="animate-spin" /> : 'Save'}</Button>

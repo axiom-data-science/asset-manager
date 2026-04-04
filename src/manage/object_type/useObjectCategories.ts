@@ -1,19 +1,17 @@
 import { useAuth } from "@/auth/useAuth"
-import { fetchObjectType} from "@/manage/object_type/services"
+import { fetchObjectCategories} from "@/manage/object_type/services"
 
 import { useQuery } from "@tanstack/react-query"
 
 export const objectTypeQueryKey = (uuid?: string) => ['object_type', uuid]
 
-export const useObjectType = (uuid?: string) => {
+export const useObjectCategories = () => {
     const auth = useAuth()
     const queryResult = useQuery({
-        queryKey: ['object_type', uuid],
-        enabled: !!uuid && !!auth.user?.access_token && uuid !== '',
+        queryKey: ['object_categories'],
         queryFn: async ({ signal }) => {
             
-            const objecType = await fetchObjectType({
-                uuid: uuid ?? 'NA',
+            const objecType = await fetchObjectCategories({
                 signal,
                 token: auth.user?.access_token ?? ''
             })

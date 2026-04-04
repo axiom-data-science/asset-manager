@@ -66,17 +66,27 @@ const CreateDocumentForm = ({
             })
             return;
         }
-        postDocument({
-            document: {
-                object_type_uuid: type.uuid,
-                label: formValues.label ?? formValues.title ?? ***REMOVED***Untitled Document***REMOVED***,
-                data: formValues
-            } as Omit<IDocument<any>, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
-            token: auth.user?.access_token ?? ***REMOVED******REMOVED***
-        }).then(() => {
+        setErrors([])
+        try {
+            await postDocument({
+                document: {
+                    object_type_uuid: type.uuid,
+                    label: formValues.label ?? formValues.title ?? ***REMOVED***Untitled Document***REMOVED***,
+                    data: formValues
+                } as Omit<IDocument<any>, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
+                token: auth.user?.access_token ?? ***REMOVED******REMOVED***
+            })
+
             setSaving(false);
 
-        })
+        } catch (e: any) {
+            setSaving(false);
+            setErrors([{ field: ***REMOVED***form***REMOVED***, message: e?.message ?? ***REMOVED***An error occurred while saving. Please try again.***REMOVED*** }])
+            window.scrollTo({
+                top: 0,
+                behavior: ***REMOVED***smooth***REMOVED*** // Adds a gradual animation
+            })
+        }
 
     }
 

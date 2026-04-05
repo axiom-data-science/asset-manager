@@ -6,21 +6,20 @@ import type { IDocument } from "@/types/types";
 import { FormCreator, schemaToFormUtils, type IForm, type IFormValues } from "@axdspub/axiom-ui-forms";
 import { Button, Loader, utils, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
 import { useState, type ReactElement } from "react";
-import { Link, useSearchParams } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { useDefaultObjectSchemaAtUUID } from "@/manage/object_schema/useDefaultSchemaForType";
 import { omit } from "lodash-es";
 import { validate } from "@/lib/utils";
-import Errors from "@/manage/form/components/errors";
+import Errors from "@/manage/components/errors";
 
 const CreateDocumentForm = ({
     type,
-    version,
     schema
 }: {
     type: IObjectType,
-    version?: string | null,
     schema: IObjectSchema
 }): ReactElement => {
+    const navigate = useNavigate()
     const [saving, setSaving] = useState(false);
     const [formValues, setFormValues] = useState<IFormValues>({});
     const [errors, setErrors] = useState<IValidationError[]>([])
@@ -51,7 +50,7 @@ const CreateDocumentForm = ({
 
         ]
     }
-    const dataForm = omit(schemaToFormUtils.schemaToFormObject(schema.schema), ***REMOVED***label***REMOVED***)
+    const dataForm = omit(schemaToFormUtils.schemaToFormObject(schema.json_schema), ***REMOVED***label***REMOVED***)
     const form = dataForm.fields?.length || dataForm.pages?.length || dataForm.wizard_steps?.length || dataForm.tabs?.length ? dataForm : defaultForm
 
     const onSave = async () => {
@@ -73,15 +72,16 @@ const CreateDocumentForm = ({
                     object_type_uuid: type.uuid,
                     label: formValues.label ?? formValues.title ?? ***REMOVED***Untitled Document***REMOVED***,
                     data: formValues
-                } as Omit<IDocument<any>, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
+                } as Omit<IDocument, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
                 token: auth.user?.access_token ?? ***REMOVED******REMOVED***
             })
 
             setSaving(false);
+            navigate(***REMOVED***/document***REMOVED***)
 
-        } catch (e: any) {
+        } catch (e: unknown) {
             setSaving(false);
-            setErrors([{ field: ***REMOVED***form***REMOVED***, message: e?.message ?? ***REMOVED***An error occurred while saving. Please try again.***REMOVED*** }])
+            setErrors([{ field: ***REMOVED***form***REMOVED***, message: (e as Error)?.message ?? ***REMOVED***An error occurred while saving. Please try again.***REMOVED*** }])
             window.scrollTo({
                 top: 0,
                 behavior: ***REMOVED***smooth***REMOVED*** // Adds a gradual animation
@@ -103,11 +103,11 @@ const CreateDocumentForm = ({
     )
 }
 
-const LoadSchemaAndCreateDocumentForm = ({ type, version }: { type: IObjectType, version?: string | null }): ReactElement => {
+const LoadSchemaAndCreateDocumentForm = ({ type }: { type: IObjectType }): ReactElement => {
     const { data: object_schema, isLoading, error } = useDefaultObjectSchemaAtUUID(type.uuid)
     return <ViewWithLoader isLoading={isLoading} error={error} data={object_schema}>
         {
-            object_schema && <CreateDocumentForm type={type} version={version} schema={object_schema} />
+            object_schema && <CreateDocumentForm type={type} schema={object_schema} />
         }
     </ViewWithLoader>
 }
@@ -115,13 +115,12 @@ const LoadSchemaAndCreateDocumentForm = ({ type, version }: { type: IObjectType,
 const CreateDocument = (): ReactElement => {
     const [params] = useSearchParams();
     const objectType = params.get(***REMOVED***object_type***REMOVED***);
-    const version = params.get(***REMOVED***version***REMOVED***);
     const { data: object_types, isLoading, error } = useObjectTypeList()
     const typeMap = Object.fromEntries(object_types?.items?.map((ot) => [ot.uuid, ot]) ?? [])
     const selectedType = objectType ? typeMap[objectType] : null;
     return <ViewWithLoader isLoading={isLoading} error={error} data={object_types}>
         {object_types?.items && (
-            selectedType === null
+            selectedType === null || selectedType === undefined
                 ? <div className=***REMOVED***flex flex-col gap-2***REMOVED***>
                     <h1 className=***REMOVED***text-2xl font-bold***REMOVED***>Select document type</h1>
 
@@ -139,7 +138,7 @@ const CreateDocument = (): ReactElement => {
                         ))}
                     </div>
                 </div>
-                : <LoadSchemaAndCreateDocumentForm type={selectedType} version={version} />
+                : <LoadSchemaAndCreateDocumentForm type={selectedType} />
         )
         }
     </ViewWithLoader>

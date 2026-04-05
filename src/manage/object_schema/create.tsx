@@ -1,26 +1,34 @@
 import { Button, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
-import { useEffect, useState, type ReactElement } from "react";
-import { FormCreator, type IFormValues, type IForm } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
+import { useState, type ReactElement } from "react";
+import { FormCreator, type IForm } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
 import { postObjectSchema } from "@/manage/object_schema/services";
 import { useAuth } from "@/auth/useAuth";
 import type { IObjectSchema, IObjectType } from ***REMOVED***@/types/types***REMOVED***
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { fetchObjectTypes } from "@/manage/object_type/services";
 import { useObjectTypeList } from "@/manage/object_type/useObjectTypeList";
+import { useSlug } from "../components/useSlug";
+import { validate } from "@/lib/utils";
+import Errors from "../components/errors";
 
 const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
 
     const navigate = useNavigate()
     const [saving, setSaving] = useState(false);
-    const [formValue, setFormValue] = useState<IFormValues>({
-        ***REMOVED***auto-slug***REMOVED***: true
-    });
     const auth = useAuth();
+    const [errorMessages, setErrorMessages] = useState<{ field: string, message: string }[]>([]);
 
-    const onSave = () => {
+    const onSave = async () => {
+        const valuesToSave = filterForSave(formValue);
+        const valid = await validate({ form, formValues: valuesToSave });
+        if (!valid.valid && valid.errors.length > 0) {
+            setErrorMessages(valid.errors);
+            window.scrollTo({
+                top: 0,
+                behavior: ***REMOVED***smooth***REMOVED*** // Adds a gradual animation
+            })
+            return;
+        }
         setSaving(true);
-        const { ***REMOVED***auto-slug***REMOVED***: _, ...valuesToSave } = formValue;
         postObjectSchema({
             object_schema: {
                 ...valuesToSave as Omit<IObjectSchema, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>
@@ -32,17 +40,9 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
         })
     }
 
-    useEffect(() => {
-        if (formValue[***REMOVED***auto-slug***REMOVED***]) {
-            const label = formValue[***REMOVED***label***REMOVED***] as string | undefined;
-            if (label) {
-                const slug = label.toLowerCase().replace(/\s+/g, ***REMOVED***-***REMOVED***).replace(/[^a-z0-9\-]/g, ***REMOVED******REMOVED***);
-                setFormValue(prev => ({ ...prev, slug }));
-            }
-        }
-    }, [formValue[***REMOVED***label***REMOVED***], formValue[***REMOVED***auto-slug***REMOVED***]])
 
-    const form: IForm = {
+
+    const formWithoutSlug: IForm = {
         id: ***REMOVED***create-object-type***REMOVED***,
         settings: {
             show_progress: false
@@ -53,23 +53,6 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
                 label: ***REMOVED***Label***REMOVED***,
                 type: ***REMOVED***text***REMOVED***,
                 required: true
-            },
-            {
-                id: ***REMOVED***auto-slug***REMOVED***,
-                label: ***REMOVED***Auto-generate slug from label***REMOVED***,
-                type: ***REMOVED***boolean***REMOVED***
-            },
-            {
-                id: ***REMOVED***slug***REMOVED***,
-                label: ***REMOVED***Slug***REMOVED***,
-                type: ***REMOVED***text***REMOVED***,
-                required: true,
-                conditions: {
-                    field: ***REMOVED***auto-slug***REMOVED***,
-                    value: true,
-                    operator: ***REMOVED***eq***REMOVED***,
-                    result: ***REMOVED***disable***REMOVED***
-                }
             },
             {
                 id: ***REMOVED***object_type_uuid***REMOVED***,
@@ -89,13 +72,15 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
                 type: ***REMOVED***long_text***REMOVED***,
             },
             {
-                id: ***REMOVED***schema***REMOVED***,
+                id: ***REMOVED***json_schema***REMOVED***,
                 label: ***REMOVED***Schema (JSON)***REMOVED***,
                 type: ***REMOVED***json***REMOVED***,
                 required: true
             }
         ]
     }
+
+    const {form, formState: [formValue, setFormValue], filterForSave} = useSlug(formWithoutSlug)
 
     if (!auth.isAuthenticated) {
         return (
@@ -109,6 +94,7 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
     return (
         <div className=***REMOVED***flex flex-col gap-4***REMOVED***>
             <h1 className=***REMOVED***text-2xl font-bold***REMOVED***>Create schema</h1>
+            <Errors errors={errorMessages} />
             <FormCreator form={form} formValueState={[formValue, setFormValue]} />
             <div>
                 <Button onClick={onSave} type=***REMOVED***primary***REMOVED*** disabled={saving}>{saving ? <Loader className="animate-spin" /> : ***REMOVED***Save***REMOVED***}</Button>

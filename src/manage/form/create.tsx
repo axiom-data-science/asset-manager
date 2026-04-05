@@ -7,8 +7,8 @@ import type { IAssetForm, IObjectType } from ***REMOVED***@/types/types***REMOVE
 import { useNavigate } from "react-router-dom";
 import { useObjectTypeList } from "@/manage/object_type/useObjectTypeList";
 import { validate } from "@/lib/utils";
-import Errors from "./components/errors";
-import { useSlug } from "@/manage/form/components/useSlug";
+import Errors from "../components/errors";
+import { useSlug } from "@/manage/components/useSlug";
 
 const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
 
@@ -17,7 +17,8 @@ const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactEle
     const [errors, setErrors] = useState<{ field: string, message: string }[]>([]);
     const auth = useAuth();
     const onSave = async () => {
-        const valid = await validate({ form, formValues });
+        const valuesToSave = filterForSave(formValues);
+        const valid = await validate({ form, formValues: valuesToSave });
         if (!valid.valid && valid.errors.length > 0) {
             setErrors(valid.errors);
             window.scrollTo({
@@ -27,7 +28,7 @@ const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactEle
             return;
         }
         setSaving(true);
-        const valuesToSave = filterForSave(formValues);
+        
         postForm({
             form: {
                 ...valuesToSave as Omit<IAssetForm, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>
@@ -69,11 +70,28 @@ const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactEle
                 id: ***REMOVED***is_type_default***REMOVED***,
                 label: ***REMOVED***Is default form for selected type***REMOVED***,
                 type: ***REMOVED***boolean***REMOVED***
+            },
+            {
+                id:***REMOVED***form_config***REMOVED***,
+                label: ***REMOVED***Form configuration (JSON)***REMOVED***,
+                type: ***REMOVED***json***REMOVED***,
+                required: true
+            },
+            {
+                id:***REMOVED***field_override_configs***REMOVED***,
+                label: ***REMOVED***Field override configurations (JSON)***REMOVED***,
+                description: "Provide an array of field override configs. Each config should include the id (as `prop`) of the field to override and the config to override with. Example:\n\n `[{\"prop\": \"field_to_override\", \"type\":\"radio\", \"options\": [{\"label\": \"Option 1\", \"value\": \"option_1\"}, {\"label\": \"Option 2\", \"value\": \"option_2\"}]}]`",
+                type: ***REMOVED***json***REMOVED***,
+                multiple: true
             }
         ]
     }
 
-    const { form, formState: [formValues, setFormValue], filterForSave } = useSlug(formWithoutSlug);
+    const { form, formState: [formValues, setFormValue], filterForSave } = useSlug(
+        formWithoutSlug,
+        undefined,
+        [***REMOVED***field_override_configs***REMOVED***]
+    );
 
     if (!auth.isAuthenticated) {
         return (

@@ -92,7 +92,7 @@ export interface IObjectSchema {
   created_at: string;
   updated_at: string;
   object_type_uuid: string;
-  schema: Record<string, unknown>;
+  json_schema: Record<string, unknown>;
 }
 
 export interface IDocumentForUpdate {

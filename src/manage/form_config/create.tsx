@@ -7,9 +7,9 @@ import type { IObjectSchema, IObjectType, IValidationError } from ***REMOVED***@
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fetchObjectTypes } from "@/manage/object_type/services";
-import { useSlug } from "@/manage/form/components/useSlug";
+import { useSlug } from "@/manage/components/useSlug";
 import { validate } from "@/lib/utils";
-import Errors from "@/manage/form/components/errors";
+import Errors from "@/manage/components/errors";
 
 const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
 

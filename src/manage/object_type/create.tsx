@@ -1,6 +1,6 @@
 import { Button, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
-import { useEffect, useState, type ReactElement } from "react";
-import { FormCreator, type IFormValues, type IForm } from '@axdspub/axiom-ui-forms'
+import { useState, type ReactElement } from "react";
+import { FormCreator, type IForm } from '@axdspub/axiom-ui-forms'
 import { postObjectType } from "@/manage/object_type/services";
 import { useAuth } from "@/auth/useAuth";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -8,7 +8,7 @@ import type { IObjectSchema, IObjectType } from "@/types/types";
 import { postObjectSchema } from "@/manage/object_schema/services";
 import { validate } from "@/lib/utils";
 import { useObjectCategories } from "@/manage/object_type/useObjectCategories";
-import { useSlug } from "@/manage/form/components/useSlug";
+import { useSlug } from "@/manage/components/useSlug";
 
 const CreateObjectTypeForm = ({ object_categories }: { object_categories: string[] }): ReactElement => {
 
@@ -74,7 +74,7 @@ const CreateObjectTypeForm = ({ object_categories }: { object_categories: string
                 type: 'long_text',
             },
             {
-                id: 'schema',
+                id: 'json_schema',
                 label: 'Schema (JSON)',
                 type: 'json',
                 required: true
@@ -100,6 +100,7 @@ const CreateObjectTypeForm = ({ object_categories }: { object_categories: string
 
     const onSave = async () => {
         setSaving(true);
+        try{
         const typeValid = await validate({ form, formValues: formValue });
         const schemaValid = formValue['create_default_schema'] ? await validate({ form: schemaForm, formValues: schemaFormValue, messagePrefix: 'Default schema' }) : { valid: true, errors: [] }
         const valid = {
@@ -132,7 +133,11 @@ const CreateObjectTypeForm = ({ object_categories }: { object_categories: string
         }
         setSaving(false);
         navigate('/object_type')
+    }catch(e:unknown) {
+        setSaving(false);
+        setErrorMessages([{ field: 'form', message: `An error occurred while saving. Please try again. ${(e as Error)?.message ?? ''}` }]) 
     }
+}
 
 
 

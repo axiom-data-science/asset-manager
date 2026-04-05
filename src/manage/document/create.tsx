@@ -6,21 +6,20 @@ import type { IDocument } from "@/types/types";
 import { FormCreator, schemaToFormUtils, type IForm, type IFormValues } from "@axdspub/axiom-ui-forms";
 import { Button, Loader, utils, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
 import { useState, type ReactElement } from "react";
-import { Link, useSearchParams } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { useDefaultObjectSchemaAtUUID } from "@/manage/object_schema/useDefaultSchemaForType";
 import { omit } from "lodash-es";
 import { validate } from "@/lib/utils";
-import Errors from "@/manage/form/components/errors";
+import Errors from "@/manage/components/errors";
 
 const CreateDocumentForm = ({
     type,
-    version,
     schema
 }: {
     type: IObjectType,
-    version?: string | null,
     schema: IObjectSchema
 }): ReactElement => {
+    const navigate = useNavigate()
     const [saving, setSaving] = useState(false);
     const [formValues, setFormValues] = useState<IFormValues>({});
     const [errors, setErrors] = useState<IValidationError[]>([])
@@ -51,7 +50,7 @@ const CreateDocumentForm = ({
 
         ]
     }
-    const dataForm = omit(schemaToFormUtils.schemaToFormObject(schema.schema), 'label')
+    const dataForm = omit(schemaToFormUtils.schemaToFormObject(schema.json_schema), 'label')
     const form = dataForm.fields?.length || dataForm.pages?.length || dataForm.wizard_steps?.length || dataForm.tabs?.length ? dataForm : defaultForm
 
     const onSave = async () => {
@@ -73,15 +72,16 @@ const CreateDocumentForm = ({
                     object_type_uuid: type.uuid,
                     label: formValues.label ?? formValues.title ?? 'Untitled Document',
                     data: formValues
-                } as Omit<IDocument<any>, 'uuid' | 'created_at' | 'updated_at'>,
+                } as Omit<IDocument, 'uuid' | 'created_at' | 'updated_at'>,
                 token: auth.user?.access_token ?? ''
             })
 
             setSaving(false);
+            navigate('/document')
 
-        } catch (e: any) {
+        } catch (e: unknown) {
             setSaving(false);
-            setErrors([{ field: 'form', message: e?.message ?? 'An error occurred while saving. Please try again.' }])
+            setErrors([{ field: 'form', message: (e as Error)?.message ?? 'An error occurred while saving. Please try again.' }])
             window.scrollTo({
                 top: 0,
                 behavior: 'smooth' // Adds a gradual animation
@@ -103,11 +103,11 @@ const CreateDocumentForm = ({
     )
 }
 
-const LoadSchemaAndCreateDocumentForm = ({ type, version }: { type: IObjectType, version?: string | null }): ReactElement => {
+const LoadSchemaAndCreateDocumentForm = ({ type }: { type: IObjectType }): ReactElement => {
     const { data: object_schema, isLoading, error } = useDefaultObjectSchemaAtUUID(type.uuid)
     return <ViewWithLoader isLoading={isLoading} error={error} data={object_schema}>
         {
-            object_schema && <CreateDocumentForm type={type} version={version} schema={object_schema} />
+            object_schema && <CreateDocumentForm type={type} schema={object_schema} />
         }
     </ViewWithLoader>
 }
@@ -115,13 +115,12 @@ const LoadSchemaAndCreateDocumentForm = ({ type, version }: { type: IObjectType,
 const CreateDocument = (): ReactElement => {
     const [params] = useSearchParams();
     const objectType = params.get('object_type');
-    const version = params.get('version');
     const { data: object_types, isLoading, error } = useObjectTypeList()
     const typeMap = Object.fromEntries(object_types?.items?.map((ot) => [ot.uuid, ot]) ?? [])
     const selectedType = objectType ? typeMap[objectType] : null;
     return <ViewWithLoader isLoading={isLoading} error={error} data={object_types}>
         {object_types?.items && (
-            selectedType === null
+            selectedType === null || selectedType === undefined
                 ? <div className='flex flex-col gap-2'>
                     <h1 className='text-2xl font-bold'>Select document type</h1>
 
@@ -139,7 +138,7 @@ const CreateDocument = (): ReactElement => {
                         ))}
                     </div>
                 </div>
-                : <LoadSchemaAndCreateDocumentForm type={selectedType} version={version} />
+                : <LoadSchemaAndCreateDocumentForm type={selectedType} />
         )
         }
     </ViewWithLoader>

@@ -1,26 +1,34 @@
 import { Button, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
-import { useEffect, useState, type ReactElement } from "react";
-import { FormCreator, type IFormValues, type IForm } from '@axdspub/axiom-ui-forms'
+import { useState, type ReactElement } from "react";
+import { FormCreator, type IForm } from '@axdspub/axiom-ui-forms'
 import { postObjectSchema } from "@/manage/object_schema/services";
 import { useAuth } from "@/auth/useAuth";
 import type { IObjectSchema, IObjectType } from '@/types/types'
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { fetchObjectTypes } from "@/manage/object_type/services";
 import { useObjectTypeList } from "@/manage/object_type/useObjectTypeList";
+import { useSlug } from "../components/useSlug";
+import { validate } from "@/lib/utils";
+import Errors from "../components/errors";
 
 const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
 
     const navigate = useNavigate()
     const [saving, setSaving] = useState(false);
-    const [formValue, setFormValue] = useState<IFormValues>({
-        'auto-slug': true
-    });
     const auth = useAuth();
+    const [errorMessages, setErrorMessages] = useState<{ field: string, message: string }[]>([]);
 
-    const onSave = () => {
+    const onSave = async () => {
+        const valuesToSave = filterForSave(formValue);
+        const valid = await validate({ form, formValues: valuesToSave });
+        if (!valid.valid && valid.errors.length > 0) {
+            setErrorMessages(valid.errors);
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth' // Adds a gradual animation
+            })
+            return;
+        }
         setSaving(true);
-        const { 'auto-slug': _, ...valuesToSave } = formValue;
         postObjectSchema({
             object_schema: {
                 ...valuesToSave as Omit<IObjectSchema, 'uuid' | 'created_at' | 'updated_at'>
@@ -32,17 +40,9 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
         })
     }
 
-    useEffect(() => {
-        if (formValue['auto-slug']) {
-            const label = formValue['label'] as string | undefined;
-            if (label) {
-                const slug = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '');
-                setFormValue(prev => ({ ...prev, slug }));
-            }
-        }
-    }, [formValue['label'], formValue['auto-slug']])
 
-    const form: IForm = {
+
+    const formWithoutSlug: IForm = {
         id: 'create-object-type',
         settings: {
             show_progress: false
@@ -53,23 +53,6 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
                 label: 'Label',
                 type: 'text',
                 required: true
-            },
-            {
-                id: 'auto-slug',
-                label: 'Auto-generate slug from label',
-                type: 'boolean'
-            },
-            {
-                id: 'slug',
-                label: 'Slug',
-                type: 'text',
-                required: true,
-                conditions: {
-                    field: 'auto-slug',
-                    value: true,
-                    operator: 'eq',
-                    result: 'disable'
-                }
             },
             {
                 id: 'object_type_uuid',
@@ -89,13 +72,15 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
                 type: 'long_text',
             },
             {
-                id: 'schema',
+                id: 'json_schema',
                 label: 'Schema (JSON)',
                 type: 'json',
                 required: true
             }
         ]
     }
+
+    const {form, formState: [formValue, setFormValue], filterForSave} = useSlug(formWithoutSlug)
 
     if (!auth.isAuthenticated) {
         return (
@@ -109,6 +94,7 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
     return (
         <div className='flex flex-col gap-4'>
             <h1 className='text-2xl font-bold'>Create schema</h1>
+            <Errors errors={errorMessages} />
             <FormCreator form={form} formValueState={[formValue, setFormValue]} />
             <div>
                 <Button onClick={onSave} type='primary' disabled={saving}>{saving ? <Loader className="animate-spin" /> : 'Save'}</Button>

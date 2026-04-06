@@ -6,5 +6,11 @@ services:
       dockerfile:   Dockerfile
       # extra_hosts:
       #  -  "npm-registry.srv.axiomptk=10.2.10.2"
+    environment:
+      TWOWOLVES_OIDC_AUTHORITY: "${VITE_OIDC_AUTHORITY}"
+      TWOWOLVES_OIDC_CLIENT_ID: "${VITE_OIDC_CLIENT_ID}"
+      TWOWOLVES_OIDC_REDIRECT_URI: "${VITE_OIDC_REDIRECT_URI}"
+      TWOWOLVES_OIDC_POST_LOGOUT_REDIRECT_URI: "${VITE_OIDC_POST_LOGOUT_REDIRECT_URI}"
+      TWOWOLVES_OIDC_SCOPE: "${VITE_OIDC_SCOPE}"
     ports:
     - "9797:80"

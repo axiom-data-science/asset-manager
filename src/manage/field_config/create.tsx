@@ -1,6 +1,6 @@
 import { Button, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
-import { useEffect, useState, type ReactElement } from "react";
-import { FormCreator, type IFormValues, type IForm } from '@axdspub/axiom-ui-forms'
+import {  useState, type ReactElement } from "react";
+import { FormCreator, type IForm } from '@axdspub/axiom-ui-forms'
 import { postObjectSchema } from "@/manage/object_schema/services";
 import { useAuth } from "@/auth/useAuth";
 import type { IObjectSchema, IObjectType, IValidationError } from '@/types/types'

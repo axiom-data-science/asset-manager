@@ -1,7 +1,7 @@
 import { fetchListFromPostgrest, fetchRollupFromPostgrest, fetchSingleFromPostgrest, patchToPostgrest, postToPostgrest } from "@/services/postgrest/services";
 import type { IAssetForm, IPostgrestParams } from "@/types/types";
 
-const FORMS_TABLE = 'form';
+export const FORMS_TABLE = 'form';
 
 export const fetchForms = async({
     params, 

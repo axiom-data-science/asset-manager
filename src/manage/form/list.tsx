@@ -1,11 +1,13 @@
 import type { IObjectType } from "@/types/types"
-import { Button, SelectInput, Table, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
+import { Button, SelectInput, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
 import type { ReactElement } from "react"
 import { useAuth } from '@/auth/useAuth'
 import { CheckIcon, XIcon } from "lucide-react"
 import { useFormList } from "./useFormList"
 import Link from '@/manage/components/link'
 import { useObjectTypeList } from "../object_type/useObjectTypeList"
+import Table from '@/manage/components/table'
+
 
 
 const ListFormTable = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {

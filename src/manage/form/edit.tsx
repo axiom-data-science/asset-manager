@@ -1,12 +1,16 @@
-import { Button, Input, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
+import { Button, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
 import { useState, type ReactElement } from "react";
 import { FormCreator, type IFormValues, type IForm } from '@axdspub/axiom-ui-forms'
 import { patchForm } from "@/manage/form/services";
 import { useAuth } from "@/auth/useAuth";
-import type { IAssetForm } from "@/types/types";
+import { type IValidationError, type IAssetForm } from "@/types/types";
 import { useNavigate, useParams } from "react-router-dom";
 import { formQueryKey, useForm } from "@/manage/form/useForm";
 import { useQueryClient } from "@tanstack/react-query";
+import { validate } from "@/lib/utils";
+import Errors from "../components/errors";
+import { CopyFields } from "../components/copy_field";
+import { formListQueryKey } from "./useFormList";
 
 const EditForm = ({
     assetForm
@@ -17,24 +21,30 @@ const EditForm = ({
     const queryClient = useQueryClient()
 
     const [saving, setSaving] = useState(false);
-    const [formValue, setFormValue] = useState<IFormValues>(assetForm as unknown as IFormValues);
+    const [formValues, setFormValue] = useState<IFormValues>(assetForm as unknown as IFormValues);
+    const [errors, setErrors] = useState<IValidationError[]>([]);
     const auth = useAuth();
     const navigate = useNavigate()
 
-    const onUpdate = () => {
+    const onUpdate = async () => {
         setSaving(true);
-        patchForm({
-            uuid: assetForm.uuid,
-            form: formValue as unknown as IAssetForm,
-            token: auth.user?.access_token ?? ''
-        }).then(() => {
+        const valid = await validate({formValues, form})
+        if(!valid.errors) {
             setSaving(false);
-            queryClient.invalidateQueries(
-                { queryKey: formQueryKey(assetForm.uuid) }
-            );
-            queryClient.invalidateQueries({ queryKey: ['form_list'] })
-            navigate('/form')
+            setErrors(valid.errors)
+            return;
+        }
+        await patchForm({
+            uuid: assetForm.uuid,
+            form: formValues as unknown as IAssetForm,
+            token: auth.user?.access_token ?? ''
         })
+        setSaving(false);
+        queryClient.invalidateQueries(
+            { queryKey: formQueryKey(assetForm.uuid) }
+        );
+        queryClient.invalidateQueries({ queryKey: formListQueryKey()})
+        navigate('/form')
     }
 
     const form: IForm = {
@@ -53,6 +63,12 @@ const EditForm = ({
                 id: 'description',
                 label: 'Description',
                 type: 'long_text'
+            },
+            {
+                id:'form_config',
+                label: 'Form configuration (JSON)',
+                type: 'json',
+                required: true
             },
             {
                 id: 'slug',
@@ -74,10 +90,13 @@ const EditForm = ({
 
     return (
         <div className='flex flex-col gap-4'>
-            <h1 className='text-2xl font-bold'>Edit object type</h1>
-            <FormCreator form={form} formValueState={[formValue, setFormValue]} />
-            <Input id='slug' testId='slug' type='text' label='Slug' value={assetForm.slug} disabled={true} />
-            <Input id='uuid' testId="uuid" type='text' label='UUID' value={assetForm.uuid} disabled={true} />
+            <h1 className='text-2xl font-bold'>Edit form</h1>
+            <Errors errors={errors} />
+            <CopyFields fields={[
+                { id: 'slug', label: 'Slug', value: assetForm.slug },
+                { id: 'uuid', label: 'UUID', value: assetForm.uuid }
+            ]} />
+            <FormCreator form={form} formValueState={[formValues, setFormValue]} className='-mt-8' />
             <div>
                 <Button onClick={onUpdate} type='primary' disabled={saving}>{saving ? <Loader className="animate-spin" /> : 'Update'}</Button>
             </div>

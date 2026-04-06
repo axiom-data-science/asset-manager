@@ -1,10 +1,13 @@
 import { useObjectSchemaList } from "@/manage/object_schema/useObjectSchemaList"
 import type { IObjectType } from "@/types/types"
-import { Button, SelectInput, Table, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
+import { Button, SelectInput, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
 import type { ReactElement } from "react"
 import { useAuth } from '@/auth/useAuth'
 import { useObjectTypeList } from "@/manage/object_type/useObjectTypeList"
 import {  CheckIcon, XIcon } from "lucide-react"
+import Table from '@/manage/components/table'
+import Link from "@/manage/components/link"
+
 
 
 const ListObjectSchemasTable = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
@@ -50,12 +53,13 @@ const ListObjectSchemasTable = ({ object_types }: { object_types: IObjectType[] 
                         columns={[
                             {
                                 label: 'Label',
-                                id: 'label'
+                                id: 'label',
+                                accessor: r => <Link to={`/object_schema/edit/${r.uuid}`}>{r.label}</Link>
                             },
                             {
                                 label: 'Type',
                                 id: 'object_type_uuid',
-                                accessor: r => object_types_map[r.object_type_uuid] ?? r.object_type_uuid
+                                accessor: r => <Link to={`/object_type/edit/${r.object_type_uuid}`}>{object_types_map[r.object_type_uuid] ?? r.object_type_uuid}</Link>
                             },
                             {
                                 label: 'Version',

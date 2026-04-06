@@ -1,8 +1,10 @@
 import { useDocumentList } from "@/manage/document/useDocumentList"
-import { SelectInput, Table, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
+import { SelectInput, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
 import type { ReactElement } from "react"
 import { useObjectTypeList } from "../object_type/useObjectTypeList"
 import type { IObjectType } from "@/types/types"
+import Table from '@/manage/components/table'
+import Link from "../components/link"
 
 
 const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
@@ -48,16 +50,27 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
                         columns={[
                             {
                                 label: 'Label',
-                                id: 'label'
+                                id: 'label',
+                                accessor: r => <Link to={`/document/edit/${r.uuid}`}>{r.label}</Link>
                             },
                             {
                                 label: 'Type',
                                 id: 'object_type_uuid',
-                                accessor: r => object_types_map[r.object_type_uuid]?.label ?? r.object_type_uuid
+                                accessor: r => <Link to={`/object_type/edit/${r.object_type_uuid}`}>{object_types_map[r.object_type_uuid]?.label ?? r.object_type_uuid}</Link>
                             },
                             {
                                 label: 'Owner',
                                 id: 'owner_sub'
+                            },
+                            {
+                                label: 'Updated',
+                                id: 'updated_at',
+                                accessor: r => new Date(r.updated_at).toLocaleString()
+                            },
+                            {
+                                label: 'Created',
+                                id: 'created_at',
+                                accessor: r => new Date(r.created_at).toLocaleString()
                             }
 
                         ]}

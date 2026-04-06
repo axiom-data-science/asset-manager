@@ -79,6 +79,6 @@ export const useFormList = (params?: IPostgrestParams, rollups?: string[]) => {
 
 export const useFormListWithRollups = (params?: IPostgrestParams, rollups?: string[]) => {
     const auth = useAuth()
-    const queryResult = useQuery(getFormListQueryOptions({params, rollups, token: auth.user?.access_token}))
+    const queryResult = useQuery(getFormListWithRollupsQueryOptions({params, rollups, token: auth.user?.access_token}))
     return queryResult
 }

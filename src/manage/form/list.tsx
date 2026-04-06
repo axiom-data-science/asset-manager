@@ -3,7 +3,7 @@ import { Button, SelectInput, ViewWithLoader } from "@axdspub/axiom-ui-utilities
 import type { ReactElement } from "react"
 import { useAuth } from '@/auth/useAuth'
 import { CheckIcon, XIcon } from "lucide-react"
-import { useFormList } from "./useFormList"
+import {  useFormListWithRollups } from "./useFormList"
 import Link from '@/manage/components/link'
 import { useObjectTypeList } from "../object_type/useObjectTypeList"
 import Table from '@/manage/components/table'
@@ -12,7 +12,7 @@ import Table from '@/manage/components/table'
 
 const ListFormTable = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
 
-    const { data: forms, isLoading, error } = useFormList({}, ['object_type_uuid'])
+    const { data: forms, isLoading, error } = useFormListWithRollups({}, ['object_type_uuid'])
     const object_types_map = Object.fromEntries(object_types.map(ot => [ot.uuid, ot.label]))
 
     return (
@@ -95,7 +95,7 @@ const ListForm = (): ReactElement => {
     }
     return (
         <ViewWithLoader isLoading={isLoading} error={error} data={object_types}>
-            {object_types && <ListFormTable object_types={object_types.items ?? []} />}
+            {object_types && <ListFormTable object_types={object_types?.items} />}
         </ViewWithLoader>
     )
 }

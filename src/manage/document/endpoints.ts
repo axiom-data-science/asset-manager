@@ -8,7 +8,7 @@ import type { IPostgrestParams } from "@/types/types";
 
 
 export const getDocument = (uuid: string, prop: string = 'uuid') => {
-    return postgrestUrl('document', {
+    return postgrestUrl({ table: 'document', params: {
         filters: [
             {
                 column: prop,
@@ -16,7 +16,7 @@ export const getDocument = (uuid: string, prop: string = 'uuid') => {
                 value: uuid
             }
         ]
-    })
+    }})
 }
 
 

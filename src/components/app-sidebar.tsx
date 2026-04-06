@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/sidebar"
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { Book, BookPlus, ChevronDown, Cog, List, LogOut, Network, Plus, User } from "lucide-react"
+import { Book, BookPlus, ChevronDown, List, LogOut, Network, Plus, User } from "lucide-react"
 import { SidebarGroupContent, SidebarGroupLabel } from "@/components/ui/sidebar"
 import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"

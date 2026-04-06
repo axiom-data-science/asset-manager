@@ -1,15 +1,15 @@
 import { Button, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
 import { useState, type ReactElement } from "react";
 import { FormCreator, type IFormValues, type IForm } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
-import { fetchObjectType, patchObjectType } from "@/manage/object_type/services";
+import { patchObjectType } from "@/manage/object_type/services";
 import { useAuth } from "@/auth/useAuth";
 import type { IAssetForm, IObjectType } from "@/types/types";
 import { useNavigate, useParams } from "react-router-dom";
-import { objectTypeFormsQueryKey, objectTypeQueryKey } from "@/manage/object_type/useObjectType";
+import { getObjectTypeQuery, objectTypeQueryKey } from "@/manage/object_type/useObjectType";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
-import { fetchForms } from "@/manage/form/services";
 import { CopyFields } from "../components/copy_field";
-import {Link} from ***REMOVED***react-router-dom***REMOVED***
+import { getFormListForObjectTypeQueryOptions } from "../form/useFormList";
+import Link from ***REMOVED***@/manage/components/link***REMOVED***
 
 const EditObjectTypeForm = ({
     object_type,
@@ -91,13 +91,13 @@ const EditObjectTypeForm = ({
                     forms.map(form => {
                         return (<div key={form.uuid} className=***REMOVED***p-4 bg-white rounded-md flex flex-col gap-2***REMOVED***>
                             <div className=***REMOVED***flex flex-col gap-2***REMOVED***>
-                                <Link to={`/forms/edit/${form.uuid}`}>
-                                    <h2 className=***REMOVED***font-semibold***REMOVED***>{form.label}</h2>
+                                
+                                    <Link to={`/forms/edit/${form.uuid}`}><h2 className=***REMOVED***font-semibold***REMOVED***>{form.label}</h2></Link>
                                     <CopyFields fields={[
                                         { id: `slug-${form.uuid}`, label: ***REMOVED***Slug***REMOVED***, value: form.slug },
                                         { id: `uuid-${form.uuid}`, label: ***REMOVED***UUID***REMOVED***, value: form.uuid }
                                     ]} />
-                                </Link>
+                               
                             </div>
                             <p className=***REMOVED***text-sm text-gray-600***REMOVED***>{form.description}</p>
                         </div>
@@ -118,54 +118,21 @@ const EditObjectType = (): ReactElement => {
     const uuid = params.uuid
     const auth = useAuth();
 
+    const queryObject = {
+        object_type: getObjectTypeQuery(uuid ?? ***REMOVED******REMOVED***, auth.user?.access_token ?? ***REMOVED******REMOVED***),
+        forms: getFormListForObjectTypeQueryOptions({object_type_uuid: uuid ?? ***REMOVED******REMOVED***, token: auth.user?.access_token ?? ***REMOVED******REMOVED***})
+    }
+
     
     const {isLoading, error, data} = useQueries({
-        queries: [
-            {
-                queryKey: objectTypeQueryKey(uuid ?? ***REMOVED******REMOVED***),
-                enabled: !!uuid, 
-                queryFn: async ({signal}) => {
-                    if (!uuid) return Promise.reject(new Error(***REMOVED***No UUID provided***REMOVED***))
-                    const object_type = await fetchObjectType({
-                        uuid,
-                        signal,
-                        token: auth?.user?.access_token ?? ***REMOVED******REMOVED***
-                    })
-                    return {object_type}
-                }
-            },
-            {
-                queryKey: objectTypeFormsQueryKey(uuid ?? ***REMOVED******REMOVED***),
-                enabled: !!uuid,
-                queryFn: async ({signal}) => {
-                    if (!uuid) return Promise.reject(new Error(***REMOVED***No UUID provided***REMOVED***))
-                    const forms = await fetchForms({
-                        params: {
-                            filters: [
-                                {
-                                    column: ***REMOVED***object_type_uuid***REMOVED***,
-                                    operator: ***REMOVED***eq***REMOVED***,
-                                    value: uuid
-                                }
-                            ]
-                        },
-                        signal,
-                        token: auth?.user?.access_token ?? ***REMOVED******REMOVED***
-                    })
-                    return {forms}
-                    
-                }
-
-            }
-            
-        ],
+        queries: Object.values(queryObject),
         combine: (results) => {
             const isLoading = results.some(r => r.isLoading);
             return {
                 isLoading,
                 isPending: results.some(r => r.isPending),
                 error: results.find(r => r.error)?.error ?? null,
-                data: !isLoading ? Object.fromEntries(results.map(r => r.data ? [Object.keys(r.data)[0], Object.values(r.data)[0]] : [])) : null
+                data: !isLoading ? Object.fromEntries(results.map((r, index) => r.data ? [Object.keys(queryObject)[index], r.data] : [])) : null
             }
         }
     })

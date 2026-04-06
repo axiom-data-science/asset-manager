@@ -1,11 +1,14 @@
 import { useDocumentList } from "@/manage/document/useDocumentList"
 import { SelectInput, Table, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
 import type { ReactElement } from "react"
+import { useObjectTypeList } from "../object_type/useObjectTypeList"
+import type { IObjectType } from "@/types/types"
 
 
-const ListDocuments = (): ReactElement => {
+const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
 
     const { data: documents, isLoading, error } = useDocumentList({}, ['owner_sub', 'object_type_uuid'])
+    const object_types_map = Object.fromEntries(object_types.map(ot => [ot.uuid, ot]))
 
     return (
         <ViewWithLoader isLoading={isLoading} error={error} data={documents}>
@@ -18,7 +21,7 @@ const ListDocuments = (): ReactElement => {
                         if (rollup?.length === 0) return null;
                         return (
                             <div className='flex flex-row gap-2' key={r}>
-                                <span className='font-semibold'>{r.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}</span>
+                                <span className='font-semibold'>{r.split('_').filter((w,i) => i < 1 || w.toLowerCase() !== 'uuid').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}</span>
                                 <SelectInput
                                     id={r}
                                     testId={r}
@@ -26,7 +29,7 @@ const ListDocuments = (): ReactElement => {
                                     label={null}
                                     size='xs'
                                     options={rollup?.map(item => ({
-                                        label: `${item.label} (${item.count})`,
+                                        label: `${r === 'object_type_uuid' ? object_types_map[item.label]?.label : item.label} (${item.count})`,
                                         value: item.label
                                     })) ?? []}
                                 />
@@ -49,7 +52,8 @@ const ListDocuments = (): ReactElement => {
                             },
                             {
                                 label: 'Type',
-                                id: 'type'
+                                id: 'object_type_uuid',
+                                accessor: r => object_types_map[r.object_type_uuid]?.label ?? r.object_type_uuid
                             },
                             {
                                 label: 'Owner',
@@ -66,4 +70,15 @@ const ListDocuments = (): ReactElement => {
 
 }
 
-export default ListDocuments
+const ListDocumentsLoader = (): ReactElement => {
+    const {data: object_types, isLoading, error} = useObjectTypeList()
+    return (
+        <ViewWithLoader isLoading={isLoading} error={error} data={object_types}>
+            {
+                object_types && <ListDocuments object_types={object_types.items} />
+            }
+        </ViewWithLoader>
+    )
+}
+
+export default ListDocumentsLoader

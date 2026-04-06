@@ -1,15 +1,15 @@
 import { Button, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
 import { useState, type ReactElement } from "react";
 import { FormCreator, type IFormValues, type IForm } from '@axdspub/axiom-ui-forms'
-import { fetchObjectType, patchObjectType } from "@/manage/object_type/services";
+import { patchObjectType } from "@/manage/object_type/services";
 import { useAuth } from "@/auth/useAuth";
 import type { IAssetForm, IObjectType } from "@/types/types";
 import { useNavigate, useParams } from "react-router-dom";
-import { objectTypeFormsQueryKey, objectTypeQueryKey } from "@/manage/object_type/useObjectType";
+import { getObjectTypeQuery, objectTypeQueryKey } from "@/manage/object_type/useObjectType";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
-import { fetchForms } from "@/manage/form/services";
 import { CopyFields } from "../components/copy_field";
-import {Link} from 'react-router-dom'
+import { getFormListForObjectTypeQueryOptions } from "../form/useFormList";
+import Link from '@/manage/components/link'
 
 const EditObjectTypeForm = ({
     object_type,
@@ -91,13 +91,13 @@ const EditObjectTypeForm = ({
                     forms.map(form => {
                         return (<div key={form.uuid} className='p-4 bg-white rounded-md flex flex-col gap-2'>
                             <div className='flex flex-col gap-2'>
-                                <Link to={`/forms/edit/${form.uuid}`}>
-                                    <h2 className='font-semibold'>{form.label}</h2>
+                                
+                                    <Link to={`/forms/edit/${form.uuid}`}><h2 className='font-semibold'>{form.label}</h2></Link>
                                     <CopyFields fields={[
                                         { id: `slug-${form.uuid}`, label: 'Slug', value: form.slug },
                                         { id: `uuid-${form.uuid}`, label: 'UUID', value: form.uuid }
                                     ]} />
-                                </Link>
+                               
                             </div>
                             <p className='text-sm text-gray-600'>{form.description}</p>
                         </div>
@@ -118,54 +118,21 @@ const EditObjectType = (): ReactElement => {
     const uuid = params.uuid
     const auth = useAuth();
 
+    const queryObject = {
+        object_type: getObjectTypeQuery(uuid ?? '', auth.user?.access_token ?? ''),
+        forms: getFormListForObjectTypeQueryOptions({object_type_uuid: uuid ?? '', token: auth.user?.access_token ?? ''})
+    }
+
     
     const {isLoading, error, data} = useQueries({
-        queries: [
-            {
-                queryKey: objectTypeQueryKey(uuid ?? ''),
-                enabled: !!uuid, 
-                queryFn: async ({signal}) => {
-                    if (!uuid) return Promise.reject(new Error('No UUID provided'))
-                    const object_type = await fetchObjectType({
-                        uuid,
-                        signal,
-                        token: auth?.user?.access_token ?? ''
-                    })
-                    return {object_type}
-                }
-            },
-            {
-                queryKey: objectTypeFormsQueryKey(uuid ?? ''),
-                enabled: !!uuid,
-                queryFn: async ({signal}) => {
-                    if (!uuid) return Promise.reject(new Error('No UUID provided'))
-                    const forms = await fetchForms({
-                        params: {
-                            filters: [
-                                {
-                                    column: 'object_type_uuid',
-                                    operator: 'eq',
-                                    value: uuid
-                                }
-                            ]
-                        },
-                        signal,
-                        token: auth?.user?.access_token ?? ''
-                    })
-                    return {forms}
-                    
-                }
-
-            }
-            
-        ],
+        queries: Object.values(queryObject),
         combine: (results) => {
             const isLoading = results.some(r => r.isLoading);
             return {
                 isLoading,
                 isPending: results.some(r => r.isPending),
                 error: results.find(r => r.error)?.error ?? null,
-                data: !isLoading ? Object.fromEntries(results.map(r => r.data ? [Object.keys(r.data)[0], Object.values(r.data)[0]] : [])) : null
+                data: !isLoading ? Object.fromEntries(results.map((r, index) => r.data ? [Object.keys(queryObject)[index], r.data] : [])) : null
             }
         }
     })

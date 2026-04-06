@@ -88,6 +88,8 @@ export const postForm = async ({
     return newForm;
 }
 
+
+
 export const patchForm = async ({
     uuid,
     form,
@@ -96,11 +98,11 @@ export const patchForm = async ({
 
 }: {
     uuid: string,
-    form: IAssetForm,
+    form: Omit<IAssetForm, ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
     token: string,
     signal?: AbortSignal
 }): Promise<IAssetForm> => {
-    const newForm = await patchToPostgrest<IAssetForm>({
+    const newForm = await patchToPostgrest<Omit<IAssetForm, ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>, IAssetForm>({
         uuid,
         table: FORMS_TABLE,
         body: form,

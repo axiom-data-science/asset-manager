@@ -1,16 +1,16 @@
 import { useAuth } from "@/auth/useAuth";
 import { postDocument } from "@/manage/document/services";
 import { type IValidationError, type IObjectSchema, type IObjectType } from "@/types/types";
-import { useObjectTypeList } from "@/manage/object_type/useObjectTypeList";
 import type { IDocument } from "@/types/types";
 import { FormCreator, schemaToFormUtils, type IForm, type IFormValues } from "@axdspub/axiom-ui-forms";
-import { Button, Loader, utils, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
+import { Button, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
 import { useState, type ReactElement } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import { useDefaultObjectSchemaAtUUID } from "@/manage/object_schema/useDefaultSchemaForType";
 import { omit } from "lodash-es";
 import { validate } from "@/lib/utils";
 import Errors from "@/manage/components/errors";
+import ObjectTypeLoader from "../components/object_type_loader";
 
 const CreateDocumentForm = ({
     type,
@@ -112,7 +112,7 @@ const LoadSchemaAndCreateDocumentForm = ({ type }: { type: IObjectType }): React
     </ViewWithLoader>
 }
 
-const CreateDocument = (): ReactElement => {
+/* const CreateDocumentold = (): ReactElement => {
     const [params] = useSearchParams();
     const objectType = params.get(***REMOVED***object_type***REMOVED***);
     const { data: object_types, isLoading, error } = useObjectTypeList()
@@ -143,6 +143,10 @@ const CreateDocument = (): ReactElement => {
         }
     </ViewWithLoader>
 
+} */
+
+const CreateDocument = (): ReactElement => {
+    return <ObjectTypeLoader urlRoot="/document/create" View={LoadSchemaAndCreateDocumentForm} />
 }
 
 

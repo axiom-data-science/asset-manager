@@ -1,5 +1,6 @@
 import { fetchListFromPostgrest, fetchRollupFromPostgrest, fetchSingleFromPostgrest, patchToPostgrest, postToPostgrest } from "@/services/postgrest/services";
 import type { IPostgrestParams, IObjectType } from "@/types/types";
+import { omit } from ***REMOVED***lodash-es***REMOVED***
 
 const OBJECT_TYPES_TABLE = ***REMOVED***object_type***REMOVED***;
 
@@ -91,7 +92,7 @@ export const fetchObjectTypeRollup = async ({
     const list = await fetchRollupFromPostgrest({
         table: OBJECT_TYPES_TABLE,
         rollupColumn: rollup,
-        params,
+        params: omit(params, [***REMOVED***order***REMOVED***]),
         token,
         signal
     });

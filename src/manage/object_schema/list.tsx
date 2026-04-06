@@ -4,7 +4,7 @@ import { Button, SelectInput, Table, ViewWithLoader } from "@axdspub/axiom-ui-ut
 import type { ReactElement } from "react"
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
 import { useObjectTypeList } from "@/manage/object_type/useObjectTypeList"
-import { Check, CheckIcon, CrossIcon, XIcon } from "lucide-react"
+import {  CheckIcon, XIcon } from "lucide-react"
 
 
 const ListObjectSchemasTable = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {

@@ -102,6 +102,33 @@ export const fetchObjectSchemaRollup = async ({
 
 }
 
+export const fetchSchemasForObjectType = async ({
+    object_type_uuid,
+    token,
+    signal
+}: {
+    object_type_uuid: string,
+    token: string,
+    signal?: AbortSignal
+}): Promise<IObjectSchema[]> => {
+    const list = await fetchObjectSchemas({
+        params: {
+            filters: [
+                {
+                    column: ***REMOVED***object_type_uuid***REMOVED***,
+                    operator: ***REMOVED***eq***REMOVED***,
+                    value: object_type_uuid
+                }
+            ]
+        },
+        token,
+        signal
+    })
+
+    return list
+        
+}
+
 export const postObjectSchema = async ({
     object_schema,
     token,

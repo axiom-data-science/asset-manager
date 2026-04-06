@@ -1,18 +1,18 @@
 import { useAuth } from "@/auth/useAuth"
-import { fetchObjectSchemaRollup, fetchObjectSchemas } from "@/manage/object_schema/services"
 import {  postgrestRollupArgs } from "@/services/postgrest/endpoints"
 import type {  IPostgrestParams } from "@/types/types"
 import { useQuery } from "@tanstack/react-query"
+import { fetchFormRollup, fetchForms } from "./services"
 
-export const objectSchemaListQueryKey = (params?: IPostgrestParams, rollups?: string[]) => [***REMOVED***object_schema-list***REMOVED***].concat((rollups ?? []).map(r => postgrestRollupArgs({rollupColumn: r, params}).toString()))
+export const formListQueryKey = (params?: IPostgrestParams, rollups?: string[]) => [***REMOVED***form-list***REMOVED***].concat((rollups ?? []).map(r => postgrestRollupArgs({rollupColumn: r, params}).toString()))
 
-export const useObjectSchemaList = (params?: IPostgrestParams, rollups?: string[]) => {
+export const useFormList = (params?: IPostgrestParams, rollups?: string[]) => {
     const auth = useAuth()
     const queryResult = useQuery({
-        queryKey: objectSchemaListQueryKey(params, rollups),
+        queryKey: formListQueryKey(params, rollups),
         queryFn: async ({ signal }) => {
 
-            const rollupResults = await Promise.all((rollups ?? []).map(rollup => fetchObjectSchemaRollup({
+            const rollupResults = await Promise.all((rollups ?? []).map(rollup => fetchFormRollup({
                 rollup,
                 params,
                 token: auth.user?.access_token || ***REMOVED******REMOVED***,
@@ -20,7 +20,7 @@ export const useObjectSchemaList = (params?: IPostgrestParams, rollups?: string[
             })))
 
 
-            const items = await fetchObjectSchemas({
+            const items = await fetchForms({
                 params: {
                     ...params,
                     limit: 100

@@ -183,10 +183,29 @@ export interface IAssetForm {
   description?: string;
   created_at: string;
   updated_at: string;
-  object_type_uuid?: string;
+  object_type_uuid: string;
   object_schema_version: number;
   is_type_default: boolean;
   config: Record<string, unknown>;
+}
+
+
+export interface IFieldOverrideConfig {
+  uuid: string;
+  object_schema_uuid: string;
+  object_schema_version: number;
+  created_at: string;
+  updated_at: string;
+  config: JSON;
+}
+
+export interface IFormToFieldConfig {
+  uuid: string,
+  form_uuid: string,
+  fields_override_config_uuid: string,
+  weight?: number,
+  created_at: string,
+  updated_at: string
 }
 
 export type IValidationError = {field: string, path?: string, message: string}

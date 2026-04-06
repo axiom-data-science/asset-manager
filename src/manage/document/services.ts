@@ -1,4 +1,4 @@
-import { fetchListFromPostgrest, fetchRollupFromPostgrest, fetchSingleFromPostgrest, postToPostgrest } from "@/services/postgrest/services";
+import { fetchListFromPostgrest, fetchRollupFromPostgrest, fetchSingleFromPostgrest, patchToPostgrest, postToPostgrest } from "@/services/postgrest/services";
 import type { IDocument, IPostgrestParams } from "@/types/types";
 
 const DOCUMENTS_TABLE = ***REMOVED***document***REMOVED***;
@@ -85,4 +85,26 @@ export const postDocument = async <T>({
         signal
     });
     return doc;
+}
+
+export const patchDocument = async ({
+    uuid,
+    document,
+    token,
+    signal
+
+}: {
+    uuid: string,
+    document: Omit<IDocument, ***REMOVED***updated_at***REMOVED*** | ***REMOVED***created_at***REMOVED***>,
+    token: string,
+    signal?: AbortSignal
+}): Promise<IDocument> => {
+    const newFieldOverrideConfig = await patchToPostgrest<Omit<IDocument, ***REMOVED***updated_at***REMOVED*** | ***REMOVED***created_at***REMOVED***>, IDocument>({
+        uuid,
+        table: DOCUMENTS_TABLE,
+        body: document,
+        token,
+        signal
+    });
+    return newFieldOverrideConfig;
 }

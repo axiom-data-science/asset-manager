@@ -1,8 +1,10 @@
 import { dateTime } from "@/lib/date"
 import { useObjectTypeList } from "@/manage/object_type/useObjectTypeList"
-import { SelectInput, Table, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
+import { SelectInput, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
 import type { ReactElement } from "react"
 import Link from ***REMOVED***@/manage/components/link***REMOVED***
+import Table from ***REMOVED***@/manage/components/table***REMOVED***
+
 
 const ListObjectTypes = (): ReactElement => {
 

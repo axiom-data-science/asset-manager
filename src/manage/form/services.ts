@@ -1,7 +1,7 @@
 import { fetchListFromPostgrest, fetchRollupFromPostgrest, fetchSingleFromPostgrest, patchToPostgrest, postToPostgrest } from "@/services/postgrest/services";
 import type { IAssetForm, IPostgrestParams } from "@/types/types";
 
-const FORMS_TABLE = ***REMOVED***form***REMOVED***;
+export const FORMS_TABLE = ***REMOVED***form***REMOVED***;
 
 export const fetchForms = async({
     params, 

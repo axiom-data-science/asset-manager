@@ -4,6 +4,7 @@ import { fetchObjectType} from "@/manage/object_type/services"
 import { useQuery } from "@tanstack/react-query"
 
 export const objectTypeQueryKey = (uuid?: string) => [***REMOVED***object_type***REMOVED***, uuid]
+export const objectTypeFormsQueryKey = (object_type_uuid?: string) => [***REMOVED***object_type***REMOVED***, ***REMOVED***forms***REMOVED***, object_type_uuid]
 
 export const useObjectType = (uuid?: string) => {
     const auth = useAuth()

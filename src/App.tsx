@@ -16,6 +16,7 @@ import ListObjectSchemas from ***REMOVED***@/manage/object_schema/list***REMOVED
 import CreateFormLoader from ***REMOVED***./manage/form/create***REMOVED***
 import ListForm from ***REMOVED***./manage/form/list***REMOVED***
 import EditFormLoader from ***REMOVED***./manage/form/edit***REMOVED***
+import EditDocument from ***REMOVED***./manage/document/edit***REMOVED***
 
 
 const Authed = (): ReactElement => {
@@ -85,6 +86,7 @@ function App(): ReactElement {
                 <Route path="/" element={
                   <SidebarLayout><p>Main</p></SidebarLayout>
                 } />
+                
                 <Route path="/document" element={
                   <SidebarLayout>
                     <ListDocuments />
@@ -95,6 +97,13 @@ function App(): ReactElement {
                     <AddDocument />
                   </SidebarLayout>
                 } />
+
+                 <Route path="/document/edit/:uuid" element={
+                  <SidebarLayout>
+                    <EditDocument />
+                  </SidebarLayout>
+                } />
+
 
 
                 <Route path="/schema" element={

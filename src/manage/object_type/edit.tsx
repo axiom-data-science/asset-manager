@@ -1,17 +1,22 @@
-import { Button, Input, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
+import { Button, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
 import { useState, type ReactElement } from "react";
 import { FormCreator, type IFormValues, type IForm } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
-import { patchObjectType } from "@/manage/object_type/services";
+import { fetchObjectType, patchObjectType } from "@/manage/object_type/services";
 import { useAuth } from "@/auth/useAuth";
-import type { IObjectType } from "@/types/types";
+import type { IAssetForm, IObjectType } from "@/types/types";
 import { useNavigate, useParams } from "react-router-dom";
-import { objectTypeQueryKey, useObjectType } from "@/manage/object_type/useObjectType";
-import { useQueryClient } from "@tanstack/react-query";
+import { objectTypeFormsQueryKey, objectTypeQueryKey } from "@/manage/object_type/useObjectType";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { fetchForms } from "@/manage/form/services";
+import { CopyFields } from "../components/copy_field";
+import {Link} from ***REMOVED***react-router-dom***REMOVED***
 
 const EditObjectTypeForm = ({
-    object_type
+    object_type,
+    forms
 }: {
-    object_type: IObjectType
+    object_type: IObjectType,
+    forms: IAssetForm[]
 }): ReactElement => {
 
     const queryClient = useQueryClient()
@@ -75,9 +80,31 @@ const EditObjectTypeForm = ({
     return (
         <div className=***REMOVED***flex flex-col gap-4***REMOVED***>
             <h1 className=***REMOVED***text-2xl font-bold***REMOVED***>Edit object type</h1>
+            <CopyFields fields={[
+                { id: ***REMOVED***slug***REMOVED***, label: ***REMOVED***Slug***REMOVED***, value: object_type.slug },
+                { id: ***REMOVED***uuid***REMOVED***, label: ***REMOVED***UUID***REMOVED***, value: object_type.uuid }
+            ]} />
             <FormCreator form={form} formValueState={[formValue, setFormValue]} />
-            <Input id=***REMOVED***slug***REMOVED*** testId=***REMOVED***slug***REMOVED*** type=***REMOVED***text***REMOVED*** label=***REMOVED***Slug***REMOVED*** value={object_type.slug} disabled={true} />
-            <Input id=***REMOVED***uuid***REMOVED*** testId="uuid" type=***REMOVED***text***REMOVED*** label=***REMOVED***UUID***REMOVED*** value={object_type.uuid} disabled={true} />
+            <h4 className=***REMOVED***font-bold text-slate-600***REMOVED***>Associated Forms</h4>
+            <div className=***REMOVED***p-8 bg-slate-200 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 rounded-md***REMOVED***>
+                {
+                    forms.map(form => {
+                        return (<div key={form.uuid} className=***REMOVED***p-4 bg-white rounded-md flex flex-col gap-2***REMOVED***>
+                            <div className=***REMOVED***flex flex-col gap-2***REMOVED***>
+                                <Link to={`/forms/edit/${form.uuid}`}>
+                                    <h2 className=***REMOVED***font-semibold***REMOVED***>{form.label}</h2>
+                                    <CopyFields fields={[
+                                        { id: `slug-${form.uuid}`, label: ***REMOVED***Slug***REMOVED***, value: form.slug },
+                                        { id: `uuid-${form.uuid}`, label: ***REMOVED***UUID***REMOVED***, value: form.uuid }
+                                    ]} />
+                                </Link>
+                            </div>
+                            <p className=***REMOVED***text-sm text-gray-600***REMOVED***>{form.description}</p>
+                        </div>
+                        )
+                    })
+                }
+            </div>
             <div>
                 <Button onClick={onUpdate} type=***REMOVED***primary***REMOVED*** disabled={saving}>{saving ? <Loader className="animate-spin" /> : ***REMOVED***Update***REMOVED***}</Button>
             </div>
@@ -85,12 +112,70 @@ const EditObjectTypeForm = ({
     )
 }
 
+
 const EditObjectType = (): ReactElement => {
     const params = useParams()
     const uuid = params.uuid
-    const { data: object_type, isLoading, error } = useObjectType(uuid ?? ***REMOVED******REMOVED***)
-    return <ViewWithLoader isLoading={isLoading} error={error} data={object_type}>
-        {object_type && <EditObjectTypeForm object_type={object_type} />}
+    const auth = useAuth();
+
+    
+    const {isLoading, error, data} = useQueries({
+        queries: [
+            {
+                queryKey: objectTypeQueryKey(uuid ?? ***REMOVED******REMOVED***),
+                enabled: !!uuid, 
+                queryFn: async ({signal}) => {
+                    if (!uuid) return Promise.reject(new Error(***REMOVED***No UUID provided***REMOVED***))
+                    const object_type = await fetchObjectType({
+                        uuid,
+                        signal,
+                        token: auth?.user?.access_token ?? ***REMOVED******REMOVED***
+                    })
+                    return {object_type}
+                }
+            },
+            {
+                queryKey: objectTypeFormsQueryKey(uuid ?? ***REMOVED******REMOVED***),
+                enabled: !!uuid,
+                queryFn: async ({signal}) => {
+                    if (!uuid) return Promise.reject(new Error(***REMOVED***No UUID provided***REMOVED***))
+                    const forms = await fetchForms({
+                        params: {
+                            filters: [
+                                {
+                                    column: ***REMOVED***object_type_uuid***REMOVED***,
+                                    operator: ***REMOVED***eq***REMOVED***,
+                                    value: uuid
+                                }
+                            ]
+                        },
+                        signal,
+                        token: auth?.user?.access_token ?? ***REMOVED******REMOVED***
+                    })
+                    return {forms}
+                    
+                }
+
+            }
+            
+        ],
+        combine: (results) => {
+            const isLoading = results.some(r => r.isLoading);
+            return {
+                isLoading,
+                isPending: results.some(r => r.isPending),
+                error: results.find(r => r.error)?.error ?? null,
+                data: !isLoading ? Object.fromEntries(results.map(r => r.data ? [Object.keys(r.data)[0], Object.values(r.data)[0]] : [])) : null
+            }
+        }
+    })
+
+
+    console.log(data)
+
+    //const { data: object_type, isLoading, error } = useObjectType(uuid ?? ***REMOVED******REMOVED***)
+    return <ViewWithLoader isLoading={isLoading} error={error} data={data}>
+        {data && <EditObjectTypeForm object_type={data.object_type} forms={data.forms} />}
     </ViewWithLoader>
 }
 

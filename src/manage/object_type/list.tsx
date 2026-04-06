@@ -1,9 +1,8 @@
 import { dateTime } from "@/lib/date"
 import { useObjectTypeList } from "@/manage/object_type/useObjectTypeList"
-import { Table, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
+import { SelectInput, Table, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
 import type { ReactElement } from "react"
-import { Link } from "react-router-dom"
-
+import Link from '@/manage/components/link'
 
 const ListObjectTypes = (): ReactElement => {
 
@@ -14,12 +13,37 @@ const ListObjectTypes = (): ReactElement => {
                 dir: 'desc'
             }
         ]
-    }
+    },
+    ['category']
     )
 
     return (
         <ViewWithLoader isLoading={isLoading} error={error} data={documents}>
             <h1 className="text-2xl font-bold py-2 sticky top-0 bg-white">Object types</h1>
+                        <div className='flex flex-row gap-4 p-2 sticky top-10 bg-white z-10'>
+                {
+                    Object.keys(documents?.rollups ?? []).map(r => {
+                        const rollup = documents?.rollups?.[r].filter(item => item.label !== null && item.label !== '') as { label: string, count: number }[] | undefined;
+                        if (rollup?.length === 0) return null;
+                        return (
+                            <div className='flex flex-row gap-2' key={r}>
+                                <span className='font-semibold'>{r.split('_').filter((d, i) => !(i > 0 && d === 'uuid')).map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}</span>
+                                <SelectInput
+                                    id={r}
+                                    testId={r}
+                                    key={r}
+                                    label={null}
+                                    size='xs'
+                                    options={rollup?.map(item => ({
+                                        label: `${item.label} (${item.count})`,
+                                        value: item.label
+                                    })) ?? []}
+                                />
+                            </div>
+                        )
+                    })
+                }
+            </div>
             {
                 documents && (
                     <Table

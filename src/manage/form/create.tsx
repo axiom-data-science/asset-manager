@@ -3,19 +3,22 @@ import { useState, type ReactElement } from "react";
 import { FormCreator, type IForm } from '@axdspub/axiom-ui-forms'
 import { postForm } from "@/manage/form/services";
 import { useAuth } from "@/auth/useAuth";
-import type { IAssetForm, IObjectType } from '@/types/types'
+import type { IAssetForm, IFormToFieldConfig, IObjectSchema, IObjectType } from '@/types/types'
 import { useNavigate } from "react-router-dom";
-import { useObjectTypeList } from "@/manage/object_type/useObjectTypeList";
 import { validate } from "@/lib/utils";
 import Errors from "../components/errors";
 import { useSlug } from "@/manage/components/useSlug";
+import ObjectTypeLoader from "@/manage/components/object_type_loader";
+import { useSchemaListForObjectType } from "@/manage/object_schema/useDefaultSchemaForType";
+import { postFieldsOverrideConfig, postFormToFieldsConfig } from "@/manage/field_config/services";
 
-const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
+const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSchema[] }): ReactElement => {
 
     const navigate = useNavigate()
     const [saving, setSaving] = useState(false);
     const [errors, setErrors] = useState<{ field: string, message: string }[]>([]);
     const auth = useAuth();
+    const schemasByVersion = Object.fromEntries(schemas.map(s => [s.version, s]))
     const onSave = async () => {
         const valuesToSave = filterForSave(formValues);
         const valid = await validate({ form, formValues: valuesToSave });
@@ -29,15 +32,56 @@ const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactEle
         }
         setSaving(true);
         
-        postForm({
-            form: {
-                ...valuesToSave as Omit<IAssetForm, 'uuid' | 'created_at' | 'updated_at'>
-            },
-            token: auth.user?.access_token ?? ''
-        }).then(() => {
+        try{
+            const newForm = await postForm({
+                form: {
+                    ...valuesToSave as Omit<IAssetForm, 'uuid' | 'created_at' | 'updated_at'>,
+                    object_type_uuid: type.uuid
+                },
+                token: auth.user?.access_token ?? ''
+            })
+
+            const formFieldOverrideConfigs: {
+                config: JSON,
+                weight: number
+            }[]  = (Array.isArray(formValues.field_override_configs) ? formValues.field_override_configs : []) as {
+                config: JSON,
+                weight: number
+            }[];
+
+            await Promise.all(formFieldOverrideConfigs.map(async (overrideConfig) => {
+                const schemaForVersion = schemasByVersion[+formValues.object_schema_version!]
+                if(schemaForVersion !== undefined && overrideConfig.config !== null && overrideConfig.weight !== undefined && JSON.stringify(overrideConfig.config) !== ''){
+                    const formFieldOverrideConfig = await postFieldsOverrideConfig({
+                        fields_override_config: {
+                            config: overrideConfig.config,
+                            object_schema_uuid: schemaForVersion.uuid,
+                            object_schema_version: schemaForVersion.version
+                        },
+                        token: auth.user?.access_token ?? ''
+                    })
+                    await postFormToFieldsConfig({
+                        formToFieldsConfig: {
+                            form_uuid: newForm.uuid,
+                            fields_override_config_uuid: formFieldOverrideConfig.uuid,
+                            weight: +overrideConfig.weight
+                        } as unknown as Omit<IFormToFieldConfig, 'uuid' | 'created_at' | 'updated_at'>,
+                        token: auth.user?.access_token ?? ''
+                    })
+                }
+
+            }))
+
             setSaving(false);
-            navigate('/form')
-        })
+            navigate('/forms')
+        }catch(e: unknown ){
+            setSaving(false);
+            setErrors([{ field: 'form', message: (e as Error).message ?? 'An error occurred while saving the form.' }]);
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth' // Adds a gradual animation
+            })
+        }
     }
 
 
@@ -55,20 +99,20 @@ const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactEle
                 required: true
             },
             {
-                id: 'object_type_uuid',
-                label: 'Type',
-                type: 'select',
-                options: object_types.map(ot => ({ label: ot.label, value: ot.uuid })),
-                required: true
-            },
-            {
                 id: 'description',
                 label: 'Description',
                 type: 'long_text',
             },
             {
+                id: 'object_schema_version',
+                label: 'Object schema version',
+                type: 'select',
+                options: schemas.map(schema => ({ label: `${schema.version.toString()}${schema.is_type_default ? ' (default)' : ''}`, value: schema.version })),
+                required: true
+            },
+            {
                 id: 'is_type_default',
-                label: 'Is default form for selected type',
+                label: 'Is default form for selected type and version?',
                 type: 'boolean'
             },
             {
@@ -78,18 +122,33 @@ const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactEle
                 required: true
             },
             {
-                id:'field_override_configs',
-                label: 'Field override configurations (JSON)',
-                description: "Provide an array of field override configs. Each config should include the id (as `prop`) of the field to override and the config to override with. Example:\n\n `[{\"prop\": \"field_to_override\", \"type\":\"radio\", \"options\": [{\"label\": \"Option 1\", \"value\": \"option_1\"}, {\"label\": \"Option 2\", \"value\": \"option_2\"}]}]`",
-                type: 'json',
-                multiple: true
+                id: 'field_override_configs',
+                type: 'object',
+                multiple: true,
+                fields: [
+                    {
+                        id: 'weight',
+                        label: 'Weight',
+                        type: 'number',
+                        defaultValue: 0
+                    },
+                    {
+                        id:'config',
+                        label: 'Field override configurations (JSON)',
+                        description: `Provide an array of field override configs. Each config should include the id (as \`prop\`) of the field to override and the config to override with. **Example:** 
+                        \`[{"prop": "field_to_override", "type":"radio", "options": [{"label": "Option 1", "value": "option_1"}, {"label": "Option 2", "value": "option_2"}]}]\``,
+                        type: 'json'
+                    }
+                ]
             }
         ]
     }
 
     const { form, formState: [formValues, setFormValue], filterForSave } = useSlug(
         formWithoutSlug,
-        undefined,
+        {
+            object_schema_version: schemas.find(s => s.is_type_default)?.version.toString() ?? schemas.sort((a,b) => b.version - a.version)[0]?.version.toString() ?? '',
+        },
         ['field_override_configs']
     );
 
@@ -114,15 +173,20 @@ const CreateForm = ({ object_types }: { object_types: IObjectType[] }): ReactEle
     )
 }
 
+const LoadSchemaVersions = ({type}: {type: IObjectType}): ReactElement => {
+    const { data: schemas, isLoading, error } = useSchemaListForObjectType(type.uuid)
+    return <ViewWithLoader isLoading={isLoading} error={error} data={schemas}>
+        {
+            schemas && (
+                <CreateForm type={type} schemas={schemas} />
+            )
+        }
+    </ViewWithLoader>
+}
+
+
 const CreateFormLoader = (): ReactElement => {
-    const { data: object_type, isLoading, error } = useObjectTypeList()
-    return (
-        <ViewWithLoader isLoading={isLoading} error={error} data={object_type}>
-            {
-                object_type?.items && <CreateForm object_types={object_type.items} />
-            }
-        </ViewWithLoader>
-    )
+    return <ObjectTypeLoader urlRoot="/forms/create" View={LoadSchemaVersions} />
 }
 
 export default CreateFormLoader

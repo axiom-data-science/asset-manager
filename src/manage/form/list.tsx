@@ -1,25 +1,26 @@
-import { useObjectSchemaList } from "@/manage/object_schema/useObjectSchemaList"
 import type { IObjectType } from "@/types/types"
 import { Button, SelectInput, Table, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
 import type { ReactElement } from "react"
 import { useAuth } from '@/auth/useAuth'
-import { useObjectTypeList } from "@/manage/object_type/useObjectTypeList"
-import { Check, CheckIcon, CrossIcon, XIcon } from "lucide-react"
+import { CheckIcon, XIcon } from "lucide-react"
+import { useFormList } from "./useFormList"
+import Link from '@/manage/components/link'
+import { useObjectTypeList } from "../object_type/useObjectTypeList"
 
 
-const ListObjectSchemasTable = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
+const ListFormTable = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
 
-    const { data: object_schemas, isLoading, error } = useObjectSchemaList({}, ['object_type_uuid'])
+    const { data: forms, isLoading, error } = useFormList({}, ['object_type_uuid'])
     const object_types_map = Object.fromEntries(object_types.map(ot => [ot.uuid, ot.label]))
 
     return (
-        <ViewWithLoader isLoading={isLoading} error={error} data={object_schemas}>
+        <ViewWithLoader isLoading={isLoading} error={error} data={forms}>
 
-            <h1 className="text-2xl font-bold py-2 sticky top-0 bg-white">Object Schemas</h1>
+            <h1 className="text-2xl font-bold py-2 sticky top-0 bg-white">Forms</h1>
             <div className='flex flex-row gap-4 p-2 sticky top-10 bg-white z-10'>
                 {
-                    Object.keys(object_schemas?.rollups ?? []).map(r => {
-                        const rollup = object_schemas?.rollups?.[r].filter(item => item.label !== null && item.label !== '') as { label: string, count: number }[] | undefined;
+                    Object.keys(forms?.rollups ?? []).map(r => {
+                        const rollup = forms?.rollups?.[r].filter(item => item.label !== null && item.label !== '') as { label: string, count: number }[] | undefined;
                         if (rollup?.length === 0) return null;
                         return (
                             <div className='flex flex-row gap-2' key={r}>
@@ -41,16 +42,17 @@ const ListObjectSchemasTable = ({ object_types }: { object_types: IObjectType[] 
                 }
             </div>
             {
-                object_schemas && (
+                forms && (
                     <Table
                         className='w-full'
                         rowClassName="odd:bg-slate-100"
                         theadClassName="sticky top-26"
-                        data={object_schemas?.items}
+                        data={forms?.items}
                         columns={[
                             {
                                 label: 'Label',
-                                id: 'label'
+                                id: 'label',
+                                accessor: r => <Link to={`/forms/edit/${r.uuid}`}>{r.label}</Link>
                             },
                             {
                                 label: 'Type',
@@ -59,7 +61,7 @@ const ListObjectSchemasTable = ({ object_types }: { object_types: IObjectType[] 
                             },
                             {
                                 label: 'Version',
-                                id: 'version'
+                                id: 'object_schema_version'
                             },
                             {
                                 label: 'Is default',
@@ -77,7 +79,7 @@ const ListObjectSchemasTable = ({ object_types }: { object_types: IObjectType[] 
 
 }
 
-const ListObjectSchemas = (): ReactElement => {
+const ListForm = (): ReactElement => {
 
     const auth = useAuth();
     const { data: object_types, isLoading, error } = useObjectTypeList()
@@ -91,9 +93,10 @@ const ListObjectSchemas = (): ReactElement => {
     }
     return (
         <ViewWithLoader isLoading={isLoading} error={error} data={object_types}>
-            {object_types && <ListObjectSchemasTable object_types={object_types.items ?? []} />}
+            {object_types && <ListFormTable object_types={object_types.items ?? []} />}
         </ViewWithLoader>
     )
 }
 
-export default ListObjectSchemas
+
+export default ListForm

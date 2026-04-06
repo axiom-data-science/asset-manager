@@ -14,6 +14,8 @@ import EditObjectType from '@/manage/object_type/edit'
 import CreateObjectSchema from '@/manage/object_schema/create'
 import ListObjectSchemas from '@/manage/object_schema/list'
 import CreateFormLoader from './manage/form/create'
+import ListForm from './manage/form/list'
+import EditFormLoader from './manage/form/edit'
 
 
 const Authed = (): ReactElement => {
@@ -119,8 +121,15 @@ function App(): ReactElement {
                 } />
 
 
+                <Route path="/forms" element={
+                  <SidebarLayout><ListForm /></SidebarLayout>
+                } />
                 <Route path="/forms/create" element={
                   <SidebarLayout><CreateFormLoader /></SidebarLayout>
+                } />
+
+                <Route path="/forms/edit/:uuid" element={
+                  <SidebarLayout><EditFormLoader /></SidebarLayout>
                 } />
 
               </Routes>

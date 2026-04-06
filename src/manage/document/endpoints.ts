@@ -8,7 +8,7 @@ import type { IPostgrestParams } from "@/types/types";
 
 
 export const getDocument = (uuid: string, prop: string = ***REMOVED***uuid***REMOVED***) => {
-    return postgrestUrl(***REMOVED***document***REMOVED***, {
+    return postgrestUrl({ table: ***REMOVED***document***REMOVED***, params: {
         filters: [
             {
                 column: prop,
@@ -16,10 +16,10 @@ export const getDocument = (uuid: string, prop: string = ***REMOVED***uuid***REM
                 value: uuid
             }
         ]
-    })
+    }})
 }
 
 
 export const getDocuments = (params?: IPostgrestParams): string => {
-    return postgrestUrl(***REMOVED***document***REMOVED***, params);
+    return postgrestUrl({ table: ***REMOVED***document***REMOVED***, params });
 }

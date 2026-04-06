@@ -15,18 +15,22 @@ fi
 
 
 find "$DIR_TO_REPLACE" \
-    -type f -iname '*.template' \
+    -type f -iname '*.js' \
     | while read -r line; do \
         envsubst "$VARS_TO_REPLACE" < "$line" > "$line.replaced";
 
         dn="$( dirname "$line.replaced" )";
-        bn="$( basename "$line.replaced" ".template.replaced" )";
+        bn="$( basename "$line.replaced" ".replaced" )";
 
-        echo "replacing $line with $dn/$bn"
-        # cat "$line.replaced";
+        if cmp -s "$line" "$line.replaced"; then
+            # No changes.
+            continue
+        else
+            echo "replacing $line with $dn/$bn"
+            # cat "$line.replaced";
 
-        # rename to the not-templated name
-        #   initdb.sh.template.replaced -> initdb.sh)
-        mv -v "$line.replaced" "$dn/$bn"
-
+            # rename to the not-templated name
+            #   initdb.sh.template.replaced -> initdb.sh)
+            mv -v "$line.replaced" "$dn/$bn"
+        fi
     done

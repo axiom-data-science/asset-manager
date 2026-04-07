@@ -1,31 +1,33 @@
 import { dateTime } from "@/lib/date"
-import { useObjectTypeList } from "@/manage/object_type/useObjectTypeList"
+import { useObjectTypeListWithRollups } from "@/manage/object_type/useObjectTypeList"
 import { SelectInput, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
 import type { ReactElement } from "react"
 import Link from ***REMOVED***@/manage/components/link***REMOVED***
 import Table from ***REMOVED***@/manage/components/table***REMOVED***
+import type { IRollup } from "@/types/types"
 
 
 const ListObjectTypes = (): ReactElement => {
 
-    const { data: documents, isLoading, error } = useObjectTypeList({
-        order: [
-            {
-                column: ***REMOVED***created_at***REMOVED***,
-                dir: ***REMOVED***desc***REMOVED***
-            }
-        ]
-    },
-    [***REMOVED***category***REMOVED***]
-    )
+    const { data: documents, isLoading, error } = useObjectTypeListWithRollups({
+        params: {
+            order: [
+                {
+                    column: ***REMOVED***created_at***REMOVED***,
+                    dir: ***REMOVED***desc***REMOVED***
+                }
+            ]
+        },
+        rollups: [***REMOVED***category***REMOVED***]
+    })
 
     return (
         <ViewWithLoader isLoading={isLoading} error={error} data={documents}>
             <h1 className="text-2xl font-bold py-2 sticky top-0 bg-white">Object types</h1>
-                        <div className=***REMOVED***flex flex-row gap-4 p-2 sticky top-10 bg-white z-10***REMOVED***>
+            <div className=***REMOVED***flex flex-row gap-4 p-2 sticky top-10 bg-white z-10***REMOVED***>
                 {
                     Object.keys(documents?.rollups ?? []).map(r => {
-                        const rollup = documents?.rollups?.[r].filter(item => item.label !== null && item.label !== ***REMOVED******REMOVED***) as { label: string, count: number }[] | undefined;
+                        const rollup = documents?.rollups?.[r].filter(item => item.label !== null && item.label !== ***REMOVED******REMOVED***) as IRollup[] | undefined;
                         if (rollup?.length === 0) return null;
                         return (
                             <div className=***REMOVED***flex flex-row gap-2***REMOVED*** key={r}>

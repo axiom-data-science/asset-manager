@@ -1,28 +1,27 @@
-import type { IObjectType } from "@/types/types"
+import type { IAssetForm, IObjectType, IRollup } from "@/types/types"
 import { Button, SelectInput, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
 import type { ReactElement } from "react"
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
 import { CheckIcon, XIcon } from "lucide-react"
-import {  useFormListWithRollups } from "./useFormList"
 import Link from ***REMOVED***@/manage/components/link***REMOVED***
-import { useObjectTypeList } from "../object_type/useObjectTypeList"
 import Table from ***REMOVED***@/manage/components/table***REMOVED***
+import { useFormListWithRollupsAndLookups } from "@/manage/form/useFormList"
 
 
 
-const ListFormTable = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
+const ListFormTable = ({ object_types, forms }: { object_types: IObjectType[], forms: { items: IAssetForm[], rollups: Record<string, IRollup[]> } }): ReactElement => {
 
-    const { data: forms, isLoading, error } = useFormListWithRollups({}, [***REMOVED***object_type_uuid***REMOVED***])
+
     const object_types_map = Object.fromEntries(object_types.map(ot => [ot.uuid, ot.label]))
 
     return (
-        <ViewWithLoader isLoading={isLoading} error={error} data={forms}>
+        <>
 
             <h1 className="text-2xl font-bold py-2 sticky top-0 bg-white">Forms</h1>
             <div className=***REMOVED***flex flex-row gap-4 p-2 sticky top-10 bg-white z-10***REMOVED***>
                 {
                     Object.keys(forms?.rollups ?? []).map(r => {
-                        const rollup = forms?.rollups?.[r].filter(item => item.label !== null && item.label !== ***REMOVED******REMOVED***) as { label: string, count: number }[] | undefined;
+                        const rollup = forms?.rollups?.[r].filter(item => item.label !== null && item.label !== ***REMOVED******REMOVED***) as IRollup[] | undefined;
                         if (rollup?.length === 0) return null;
                         return (
                             <div className=***REMOVED***flex flex-row gap-2***REMOVED*** key={r}>
@@ -59,7 +58,7 @@ const ListFormTable = ({ object_types }: { object_types: IObjectType[] }): React
                             {
                                 label: ***REMOVED***Type***REMOVED***,
                                 id: ***REMOVED***object_type_uuid***REMOVED***,
-                                accessor: r => object_types_map[r.object_type_uuid] ?? r.object_type_uuid
+                                accessor: r => <Link to={`/object_type/edit/${r.object_type_uuid}`}>{object_types_map[r.object_type_uuid] ?? r.object_type_uuid}</Link>
                             },
                             {
                                 label: ***REMOVED***Version***REMOVED***,
@@ -75,8 +74,7 @@ const ListFormTable = ({ object_types }: { object_types: IObjectType[] }): React
                     />
                 )
             }
-
-        </ViewWithLoader>
+        </>
     )
 
 }
@@ -84,7 +82,7 @@ const ListFormTable = ({ object_types }: { object_types: IObjectType[] }): React
 const ListForm = (): ReactElement => {
 
     const auth = useAuth();
-    const { data: object_types, isLoading, error } = useObjectTypeList()
+    const { data, isLoading, error } = useFormListWithRollupsAndLookups({ rollups: [***REMOVED***object_type_uuid***REMOVED***] })
     if (!auth.user) {
         return (
             <div className="p-20">
@@ -94,8 +92,8 @@ const ListForm = (): ReactElement => {
         )
     }
     return (
-        <ViewWithLoader isLoading={isLoading} error={error} data={object_types}>
-            {object_types && <ListFormTable object_types={object_types?.items} />}
+        <ViewWithLoader isLoading={isLoading} error={error} data={data}>
+            {data && <ListFormTable object_types={data.object_types} forms={data.forms} />}
         </ViewWithLoader>
     )
 }

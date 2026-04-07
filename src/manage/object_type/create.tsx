@@ -100,44 +100,44 @@ const CreateObjectTypeForm = ({ object_categories }: { object_categories: string
 
     const onSave = async () => {
         setSaving(true);
-        try{
-        const typeValid = await validate({ form, formValues: formValue });
-        const schemaValid = formValue[***REMOVED***create_default_schema***REMOVED***] ? await validate({ form: schemaForm, formValues: schemaFormValue, messagePrefix: ***REMOVED***Default schema***REMOVED*** }) : { valid: true, errors: [] }
-        const valid = {
-            valid: typeValid.valid && schemaValid.valid,
-            errors: [...typeValid.errors, ...schemaValid.errors]
-        }
-        if (!valid.valid) {
-            setSaving(false)
-            setErrorMessages(valid.errors)
-            window.scrollTo({
-                top: 0,
-                behavior: ***REMOVED***smooth***REMOVED*** // Adds a gradual animation
-            })
-            return
-        }
-        setErrorMessages([])
-        const valuesToSave = filterForSave(formValue);
-        const newObjectType = await postObjectType({
-            object_type: valuesToSave as Omit<IObjectType, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
-            token: auth.user?.access_token ?? ***REMOVED******REMOVED***
-        })
-        if (formValue[***REMOVED***create_default_schema***REMOVED***]) {
-            const schemaValuesToSave = schemaFilterForSave(schemaFormValue);
-            schemaValuesToSave[***REMOVED***object_type_uuid***REMOVED***] = newObjectType.uuid;
-            schemaValuesToSave[***REMOVED***is_type_default***REMOVED***] = true;
-            await postObjectSchema({
-                object_schema: schemaValuesToSave as Omit<IObjectSchema, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
+        try {
+            const typeValid = await validate({ form, formValues: formValue });
+            const schemaValid = formValue[***REMOVED***create_default_schema***REMOVED***] ? await validate({ form: schemaForm, formValues: schemaFormValue, messagePrefix: ***REMOVED***Default schema***REMOVED*** }) : { valid: true, errors: [] }
+            const valid = {
+                valid: typeValid.valid && schemaValid.valid,
+                errors: [...typeValid.errors, ...schemaValid.errors]
+            }
+            if (!valid.valid) {
+                setSaving(false)
+                setErrorMessages(valid.errors)
+                window.scrollTo({
+                    top: 0,
+                    behavior: ***REMOVED***smooth***REMOVED*** // Adds a gradual animation
+                })
+                return
+            }
+            setErrorMessages([])
+            const valuesToSave = filterForSave(formValue);
+            const newObjectType = await postObjectType({
+                object_type: valuesToSave as Omit<IObjectType, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
                 token: auth.user?.access_token ?? ***REMOVED******REMOVED***
-            });
+            })
+            if (formValue[***REMOVED***create_default_schema***REMOVED***]) {
+                const schemaValuesToSave = schemaFilterForSave(schemaFormValue);
+                schemaValuesToSave[***REMOVED***object_type_uuid***REMOVED***] = newObjectType.uuid;
+                schemaValuesToSave[***REMOVED***is_type_default***REMOVED***] = true;
+                await postObjectSchema({
+                    object_schema: schemaValuesToSave as Omit<IObjectSchema, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
+                    token: auth.user?.access_token ?? ***REMOVED******REMOVED***
+                });
+            }
+            setSaving(false);
+            navigate(***REMOVED***/object_type***REMOVED***)
+        } catch (e: unknown) {
+            setSaving(false);
+            setErrorMessages([{ field: ***REMOVED***form***REMOVED***, message: `An error occurred while saving. Please try again. ${(e as Error)?.message ?? ***REMOVED******REMOVED***}` }])
         }
-        setSaving(false);
-        navigate(***REMOVED***/object_type***REMOVED***)
-    }catch(e:unknown) {
-        setSaving(false);
-        setErrorMessages([{ field: ***REMOVED***form***REMOVED***, message: `An error occurred while saving. Please try again. ${(e as Error)?.message ?? ***REMOVED******REMOVED***}` }]) 
     }
-}
 
 
 
@@ -169,7 +169,7 @@ const CreateObjectTypeForm = ({ object_categories }: { object_categories: string
                     </div>
                 </div>
             }
-            <div>
+            <div className=***REMOVED***flex flex-row gap-2 sticky bg-white/80 bottom-0 py-4***REMOVED***>
                 <Button onClick={onSave} type=***REMOVED***primary***REMOVED*** disabled={saving}>{saving ? <Loader className="animate-spin" /> : ***REMOVED***Save***REMOVED***}</Button>
             </div>
         </div>

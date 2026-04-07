@@ -28,8 +28,8 @@ const EditForm = ({
 
     const onUpdate = async () => {
         setSaving(true);
-        const valid = await validate({formValues, form})
-        if(!valid.errors) {
+        const valid = await validate({ formValues, form })
+        if (!valid.errors) {
             setSaving(false);
             setErrors(valid.errors)
             return;
@@ -43,7 +43,7 @@ const EditForm = ({
         queryClient.invalidateQueries(
             { queryKey: formQueryKey(assetForm.uuid) }
         );
-        queryClient.invalidateQueries({ queryKey: formListQueryKey()})
+        queryClient.invalidateQueries({ queryKey: formListQueryKey() })
         navigate(***REMOVED***/form***REMOVED***)
     }
 
@@ -65,7 +65,12 @@ const EditForm = ({
                 type: ***REMOVED***long_text***REMOVED***
             },
             {
-                id:***REMOVED***form_config***REMOVED***,
+                id: ***REMOVED***is_type_default***REMOVED***,
+                label: ***REMOVED***Is default form for object type and schema version?***REMOVED***,
+                type: ***REMOVED***boolean***REMOVED***
+            },
+            {
+                id: ***REMOVED***form_config***REMOVED***,
                 label: ***REMOVED***Form configuration (JSON)***REMOVED***,
                 type: ***REMOVED***json***REMOVED***,
                 required: true
@@ -94,7 +99,8 @@ const EditForm = ({
             <Errors errors={errors} />
             <CopyFields fields={[
                 { id: ***REMOVED***slug***REMOVED***, label: ***REMOVED***Slug***REMOVED***, value: assetForm.slug },
-                { id: ***REMOVED***uuid***REMOVED***, label: ***REMOVED***UUID***REMOVED***, value: assetForm.uuid }
+                { id: ***REMOVED***uuid***REMOVED***, label: ***REMOVED***UUID***REMOVED***, value: assetForm.uuid },
+                { id: ***REMOVED***object_type_uuid***REMOVED***, label: ***REMOVED***Object type***REMOVED***, value: assetForm.object_type_uuid }
             ]} />
             <FormCreator form={form} formValueState={[formValues, setFormValue]} className=***REMOVED***-mt-8***REMOVED*** />
             <div>

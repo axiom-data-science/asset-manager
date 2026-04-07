@@ -20,7 +20,7 @@ const ListObjectSchemasTable = ({ object_types }: { object_types: IObjectType[] 
             <div className=***REMOVED***flex flex-row gap-4 p-2 sticky top-10 bg-white z-10***REMOVED***>
                 {
                     Object.keys(object_schemas?.rollups ?? []).map(r => {
-                        const rollup = object_schemas?.rollups?.[r].filter(item => item.label !== null && item.label !== ***REMOVED******REMOVED***) as { label: string, count: number }[] | undefined;
+                        const rollup = object_schemas?.rollups?.[r].filter(item => item.label !== null && item.label !== ***REMOVED******REMOVED***) as IRollup[] | undefined;
                         if (rollup?.length === 0) return null;
                         return (
                             <div className=***REMOVED***flex flex-row gap-2***REMOVED*** key={r}>

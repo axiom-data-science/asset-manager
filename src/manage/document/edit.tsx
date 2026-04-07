@@ -94,11 +94,11 @@ const EditDocumentForm = ({
 
 
     return (
-        <div className=***REMOVED***flex flex-col gap-4***REMOVED***>
+        <div className=***REMOVED***flex flex-col gap-4 relative***REMOVED***>
             <h1 className=***REMOVED***text-2xl font-bold***REMOVED***>Edit document</h1>
             <Errors errors={errors} />
             <FormCreator form={form} formValueState={[formValues, setFormValues]} />
-            <div>
+            <div className=***REMOVED***flex flex-row gap-4  p-4 sticky bottom-0 bg-white/80 z-10***REMOVED***>
                 <Button onClick={onSave} type=***REMOVED***primary***REMOVED*** disabled={saving}>{saving ? <Loader className="animate-spin" /> : ***REMOVED***Save***REMOVED***}</Button>
             </div>
         </div>
@@ -119,10 +119,10 @@ const LoadSchemaAndCreateDocumentForm = ({ document }: { document: IDocument }):
 
 
 const EditDocument = (): ReactElement => {
-        const uuid = useParams().uuid ?? null
+    const uuid = useParams().uuid ?? null
 
-    const {data: document, isLoading, error} = useDocument(uuid)
-    if(uuid === null || uuid === undefined) {
+    const { data: document, isLoading, error } = useDocument(uuid)
+    if (uuid === null || uuid === undefined) {
         return (
             <div className="p-20">
                 <p>No document specified. Please select a document to edit.</p>
@@ -131,7 +131,7 @@ const EditDocument = (): ReactElement => {
     }
     return <ViewWithLoader isLoading={isLoading} error={error} data={document}>
         {
-            document && <LoadSchemaAndCreateDocumentForm  document={document as IDocument} />
+            document && <LoadSchemaAndCreateDocumentForm document={document as IDocument} />
         }
     </ViewWithLoader>
 

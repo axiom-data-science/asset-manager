@@ -63,7 +63,7 @@ function App(): ReactElement {
         {
           auth.isLoading ?
             <div className=***REMOVED***p-20***REMOVED***>
-              <Button disabled={true}>Log in <Loader className=***REMOVED***animate-spin***REMOVED*** /></Button>
+              <Button disabled={true}><Loader className=***REMOVED***animate-spin***REMOVED*** /></Button>
             </div>
             : !auth.isAuthenticated ?
               <Routes>
@@ -86,7 +86,7 @@ function App(): ReactElement {
                 <Route path="/" element={
                   <SidebarLayout><p>Main</p></SidebarLayout>
                 } />
-                
+
                 <Route path="/document" element={
                   <SidebarLayout>
                     <ListDocuments />
@@ -98,7 +98,7 @@ function App(): ReactElement {
                   </SidebarLayout>
                 } />
 
-                 <Route path="/document/edit/:uuid" element={
+                <Route path="/document/edit/:uuid" element={
                   <SidebarLayout>
                     <EditDocument />
                   </SidebarLayout>

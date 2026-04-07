@@ -3,6 +3,8 @@ import {  postgrestRollupArgs } from "@/services/postgrest/endpoints"
 import type {  IPostgrestParams } from "@/types/types"
 import { queryOptions, useQuery } from "@tanstack/react-query"
 import { fetchFormRollup, fetchForms } from "./services"
+import { getObjectTypeListQuery } from "@/manage/object_type/useObjectTypeList"
+import { useCombinedQueries } from "@/hooks/use-combined-queries"
 
 export const formListQueryKey = (params?: IPostgrestParams, rollups?: string[]) => [***REMOVED***form-list***REMOVED***].concat((rollups ?? []).map(r => postgrestRollupArgs({rollupColumn: r, params}).toString()))
 
@@ -81,4 +83,13 @@ export const useFormListWithRollups = (params?: IPostgrestParams, rollups?: stri
     const auth = useAuth()
     const queryResult = useQuery(getFormListWithRollupsQueryOptions({params, rollups, token: auth.user?.access_token}))
     return queryResult
+}
+
+export const useFormListWithRollupsAndLookups = ({params, rollups}: {params?: IPostgrestParams, rollups?: string[]} = {}) => {
+    const auth = useAuth()
+    const queryObjects = {
+        forms: getFormListWithRollupsQueryOptions({params, rollups, token: auth?.user?.access_token}),
+        object_types: getObjectTypeListQuery({params, token: auth?.user?.access_token})
+    }
+    return useCombinedQueries(queryObjects)
 }

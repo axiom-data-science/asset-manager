@@ -31,8 +31,8 @@ const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSche
             return;
         }
         setSaving(true);
-        
-        try{
+
+        try {
             const newForm = await postForm({
                 form: {
                     ...valuesToSave as Omit<IAssetForm, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
@@ -44,14 +44,14 @@ const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSche
             const formFieldOverrideConfigs: {
                 config: JSON,
                 weight: number
-            }[]  = (Array.isArray(formValues.field_override_configs) ? formValues.field_override_configs : []) as {
+            }[] = (Array.isArray(formValues.field_override_configs) ? formValues.field_override_configs : []) as {
                 config: JSON,
                 weight: number
             }[];
 
             await Promise.all(formFieldOverrideConfigs.map(async (overrideConfig) => {
                 const schemaForVersion = schemasByVersion[+formValues.object_schema_version!]
-                if(schemaForVersion !== undefined && overrideConfig.config !== null && overrideConfig.weight !== undefined && JSON.stringify(overrideConfig.config) !== ***REMOVED******REMOVED***){
+                if (schemaForVersion !== undefined && overrideConfig.config !== null && overrideConfig.weight !== undefined && JSON.stringify(overrideConfig.config) !== ***REMOVED******REMOVED***) {
                     const formFieldOverrideConfig = await postFieldsOverrideConfig({
                         fields_override_config: {
                             config: overrideConfig.config,
@@ -74,7 +74,7 @@ const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSche
 
             setSaving(false);
             navigate(***REMOVED***/forms***REMOVED***)
-        }catch(e: unknown ){
+        } catch (e: unknown) {
             setSaving(false);
             setErrors([{ field: ***REMOVED***form***REMOVED***, message: (e as Error).message ?? ***REMOVED***An error occurred while saving the form.***REMOVED*** }]);
             window.scrollTo({
@@ -116,7 +116,7 @@ const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSche
                 type: ***REMOVED***boolean***REMOVED***
             },
             {
-                id:***REMOVED***form_config***REMOVED***,
+                id: ***REMOVED***form_config***REMOVED***,
                 label: ***REMOVED***Form configuration (JSON)***REMOVED***,
                 type: ***REMOVED***json***REMOVED***,
                 required: true
@@ -133,7 +133,7 @@ const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSche
                         defaultValue: 0
                     },
                     {
-                        id:***REMOVED***config***REMOVED***,
+                        id: ***REMOVED***config***REMOVED***,
                         label: ***REMOVED***Field override configurations (JSON)***REMOVED***,
                         description: `Provide an array of field override configs. Each config should include the id (as \`prop\`) of the field to override and the config to override with. **Example:** 
                         \`[{"prop": "field_to_override", "type":"radio", "options": [{"label": "Option 1", "value": "option_1"}, {"label": "Option 2", "value": "option_2"}]}]\``,
@@ -147,7 +147,7 @@ const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSche
     const { form, formState: [formValues, setFormValue], filterForSave } = useSlug(
         formWithoutSlug,
         {
-            object_schema_version: schemas.find(s => s.is_type_default)?.version.toString() ?? schemas.sort((a,b) => b.version - a.version)[0]?.version.toString() ?? ***REMOVED******REMOVED***,
+            object_schema_version: schemas.find(s => s.is_type_default)?.version.toString() ?? schemas.sort((a, b) => b.version - a.version)[0]?.version.toString() ?? ***REMOVED******REMOVED***,
         },
         [***REMOVED***field_override_configs***REMOVED***]
     );
@@ -166,14 +166,14 @@ const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSche
             <h1 className=***REMOVED***text-2xl font-bold***REMOVED***>Create form</h1>
             <Errors errors={errors} />
             <FormCreator form={form} formValueState={[formValues, setFormValue]} />
-            <div>
+            <div className=***REMOVED***flex flex-row sticky bottom-0 py-4 bg-white/80***REMOVED***>
                 <Button onClick={onSave} type=***REMOVED***primary***REMOVED*** disabled={saving}>{saving ? <Loader className="animate-spin" /> : ***REMOVED***Save***REMOVED***}</Button>
             </div>
         </div>
     )
 }
 
-const LoadSchemaVersions = ({type}: {type: IObjectType}): ReactElement => {
+const LoadSchemaVersions = ({ type }: { type: IObjectType }): ReactElement => {
     const { data: schemas, isLoading, error } = useSchemaListForObjectType(type.uuid)
     return <ViewWithLoader isLoading={isLoading} error={error} data={schemas}>
         {

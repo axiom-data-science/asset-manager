@@ -1,10 +1,10 @@
-import { useObjectSchemaList } from "@/manage/object_schema/useObjectSchemaList"
+import { useObjectSchemaListWithRollups } from "@/manage/object_schema/useObjectSchemaList"
 import type { IObjectType } from "@/types/types"
 import { Button, SelectInput, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
 import type { ReactElement } from "react"
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
 import { useObjectTypeList } from "@/manage/object_type/useObjectTypeList"
-import {  CheckIcon, XIcon } from "lucide-react"
+import { CheckIcon, XIcon } from "lucide-react"
 import Table from ***REMOVED***@/manage/components/table***REMOVED***
 import Link from "@/manage/components/link"
 
@@ -12,7 +12,7 @@ import Link from "@/manage/components/link"
 
 const ListObjectSchemasTable = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
 
-    const { data: object_schemas, isLoading, error } = useObjectSchemaList({}, [***REMOVED***object_type_uuid***REMOVED***])
+    const { data: object_schemas, isLoading, error } = useObjectSchemaListWithRollups({ rollups: [***REMOVED***object_type_uuid***REMOVED***] })
     const object_types_map = Object.fromEntries(object_types.map(ot => [ot.uuid, ot.label]))
 
     return (
@@ -22,7 +22,7 @@ const ListObjectSchemasTable = ({ object_types }: { object_types: IObjectType[] 
             <div className=***REMOVED***flex flex-row gap-4 p-2 sticky top-10 bg-white z-10***REMOVED***>
                 {
                     Object.keys(object_schemas?.rollups ?? []).map(r => {
-                        const rollup = object_schemas?.rollups?.[r].filter(item => item.label !== null && item.label !== ***REMOVED******REMOVED***) as { label: string, count: number }[] | undefined;
+                        const rollup = object_schemas?.rollups?.[r].filter(item => item.label !== null && item.label !== ***REMOVED******REMOVED***);
                         if (rollup?.length === 0) return null;
                         return (
                             <div className=***REMOVED***flex flex-row gap-2***REMOVED*** key={r}>
@@ -95,7 +95,7 @@ const ListObjectSchemas = (): ReactElement => {
     }
     return (
         <ViewWithLoader isLoading={isLoading} error={error} data={object_types}>
-            {object_types && <ListObjectSchemasTable object_types={object_types.items ?? []} />}
+            {object_types && <ListObjectSchemasTable object_types={object_types ?? []} />}
         </ViewWithLoader>
     )
 }

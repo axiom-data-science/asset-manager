@@ -41,17 +41,6 @@ export type IDocument<T = IDefaultDocumentType, A = IDefaultDocumentType> = {
   comments: string
 }
 
-export type IDocumentType = {
-  label: string
-  description: string
-  id: string
-}
-
-export type IDocumentSchema = {
-  version: number
-  schema: Record<string, unknown>
-}
-
 export type IAuth = {
   isLoading: boolean
   isAuthenticated: boolean
@@ -75,6 +64,7 @@ export type IAuth = {
 
 export interface IObjectType {
   uuid: string;
+  owner_sub: string;
   label: string;
   slug: string;
   category: string,
@@ -85,6 +75,7 @@ export interface IObjectType {
 
 export interface IObjectSchema {
   uuid: string;
+  owner_sub: string;
   slug: string;
   label: string;
   description?: string;
@@ -140,6 +131,7 @@ export interface IDocumentRevision {
 
 export interface IFormOverrideConfig {
   uuid: string;
+  owner_sub: string;
   label: string;
   description?: string;
   created_at: string;
@@ -171,6 +163,7 @@ export interface IPerson {
 
 export interface IAssetFormFieldsOverrideConfig {
   uuid: string;
+  owner_sub: string;
   form_uuid?: string;
   config: Array<Record<string, unknown>>;
   created_at: string;
@@ -179,6 +172,7 @@ export interface IAssetFormFieldsOverrideConfig {
 
 export interface IAssetForm {
   uuid: string;
+  owner_sub: string;
   slug: string;
   label: string;
   description?: string;
@@ -186,13 +180,16 @@ export interface IAssetForm {
   updated_at: string;
   object_type_uuid: string;
   object_schema_version: number;
-  is_type_default: boolean;
+  is_schema_and_version_default: boolean;
   config: Record<string, unknown>;
 }
 
 
 export interface IFieldOverrideConfig {
   uuid: string;
+  label: string;
+  description?: string;
+  owner_sub: string;
   object_schema_uuid: string;
   object_schema_version: number;
   created_at: string;
@@ -202,6 +199,7 @@ export interface IFieldOverrideConfig {
 
 export interface IFormToFieldConfig {
   uuid: string,
+  owner_sub: string;
   form_uuid: string,
   fields_override_config_uuid: string,
   weight?: number,

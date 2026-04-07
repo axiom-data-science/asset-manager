@@ -34,17 +34,26 @@ const EditForm = ({
             setErrors(valid.errors)
             return;
         }
-        await patchForm({
-            uuid: assetForm.uuid,
-            form: formValues as unknown as IAssetForm,
-            token: auth.user?.access_token ?? ''
-        })
-        setSaving(false);
-        queryClient.invalidateQueries(
-            { queryKey: formQueryKey(assetForm.uuid) }
-        );
-        queryClient.invalidateQueries({ queryKey: formListQueryKey() })
-        navigate('/form')
+        try {
+            await patchForm({
+                uuid: assetForm.uuid,
+                form: formValues as unknown as IAssetForm,
+                token: auth.user?.access_token ?? ''
+            })
+            setSaving(false);
+            queryClient.invalidateQueries(
+                { queryKey: formQueryKey(assetForm.uuid) }
+            );
+            queryClient.invalidateQueries({ queryKey: formListQueryKey() })
+            navigate('/form')
+        } catch (e) {
+            setSaving(false);
+            setErrors([{ field: 'form', message: `An error occurred while updating the form. Please try again.${(e as Error).message ? ` Error: ${(e as Error).message}` : ''}` }])
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            })
+        }
     }
 
     const form: IForm = {
@@ -65,7 +74,7 @@ const EditForm = ({
                 type: 'long_text'
             },
             {
-                id: 'is_type_default',
+                id: 'is_schema_and_version_default',
                 label: 'Is default form for object type and schema version?',
                 type: 'boolean'
             },

@@ -11,6 +11,7 @@ import { useSlug } from "@/manage/components/useSlug";
 import ObjectTypeLoader from "@/manage/components/object_type_loader";
 import { useSchemaListForObjectType } from "@/manage/object_schema/useDefaultSchemaForType";
 import { postFieldsOverrideConfig, postFormToFieldsConfig } from "@/manage/field_config/services";
+import Link from "@/manage/components/link";
 
 const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSchema[] }): ReactElement => {
 
@@ -43,17 +44,20 @@ const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSche
 
             const formFieldOverrideConfigs: {
                 config: JSON,
-                weight: number
+                weight: number,
+                label: string
             }[] = (Array.isArray(formValues.field_override_configs) ? formValues.field_override_configs : []) as {
                 config: JSON,
-                weight: number
+                weight: number,
+                label: string
             }[];
 
             await Promise.all(formFieldOverrideConfigs.map(async (overrideConfig) => {
                 const schemaForVersion = schemasByVersion[+formValues.object_schema_version!]
-                if (schemaForVersion !== undefined && overrideConfig.config !== null && overrideConfig.weight !== undefined && JSON.stringify(overrideConfig.config) !== '') {
+                if (schemaForVersion !== undefined && overrideConfig.config !== null && overrideConfig.weight !== undefined && overrideConfig.label !== undefined && JSON.stringify(overrideConfig.config) !== '') {
                     const formFieldOverrideConfig = await postFieldsOverrideConfig({
                         fields_override_config: {
+                            label: overrideConfig.label,
                             config: overrideConfig.config,
                             object_schema_uuid: schemaForVersion.uuid,
                             object_schema_version: schemaForVersion.version
@@ -111,11 +115,6 @@ const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSche
                 required: true
             },
             {
-                id: 'is_type_default',
-                label: 'Is default form for selected type and version?',
-                type: 'boolean'
-            },
-            {
                 id: 'form_config',
                 label: 'Form configuration (JSON)',
                 type: 'json',
@@ -126,6 +125,12 @@ const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSche
                 type: 'object',
                 multiple: true,
                 fields: [
+                    {
+                        id: 'label',
+                        label: 'Label',
+                        type: 'text',
+                        required: true
+                    },
                     {
                         id: 'weight',
                         label: 'Weight',
@@ -163,6 +168,7 @@ const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSche
 
     return (
         <div className='flex flex-col gap-4'>
+            <h4 className='text-sm text-gray-500'>Object type: <Link to={`/object_type/edit/${type.uuid}`} className='font-semibold'>{type.label}</Link></h4>
             <h1 className='text-2xl font-bold'>Create form</h1>
             <Errors errors={errors} />
             <FormCreator form={form} formValueState={[formValues, setFormValue]} />

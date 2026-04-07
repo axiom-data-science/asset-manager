@@ -74,11 +74,11 @@ export const postDocument = async <T>({
     token,
     signal
 }: {
-    document: Omit<IDocument<T>, 'uuid' | 'created_at' | 'updated_at'>,
+    document: Omit<IDocument<T>, 'owner_sub' | 'uuid' | 'created_at' | 'updated_at'>,
     token: string,
     signal?: AbortSignal
 }): Promise<IDocument<T>> => {
-    const doc = await postToPostgrest<Omit<IDocument<T>, 'uuid' | 'created_at' | 'updated_at'>, IDocument<T>>({
+    const doc = await postToPostgrest<Omit<IDocument<T>, 'owner_sub' | 'uuid' | 'created_at' | 'updated_at'>, IDocument<T>>({
         table: DOCUMENTS_TABLE,
         body: document,
         token,
@@ -95,11 +95,11 @@ export const patchDocument = async ({
 
 }: {
     uuid: string,
-    document: Omit<IDocument, 'updated_at' | 'created_at'>,
+    document: Omit<IDocument, 'owner_sub' | 'updated_at' | 'created_at'>,
     token: string,
     signal?: AbortSignal
 }): Promise<IDocument> => {
-    const newFieldOverrideConfig = await patchToPostgrest<Omit<IDocument, 'updated_at' | 'created_at'>, IDocument>({
+    const newFieldOverrideConfig = await patchToPostgrest<Omit<IDocument, 'owner_sub' | 'updated_at' | 'created_at'>, IDocument>({
         uuid,
         table: DOCUMENTS_TABLE,
         body: document,

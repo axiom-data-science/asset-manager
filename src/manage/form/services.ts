@@ -75,11 +75,11 @@ export const postForm = async ({
     signal
 
 }: {
-    form: Omit<IAssetForm, 'uuid' | 'created_at' | 'updated_at'>,
+    form: Omit<IAssetForm, 'owner_sub' | 'uuid' | 'created_at' | 'updated_at'>,
     token: string,
     signal?: AbortSignal
 }): Promise<IAssetForm> => {
-    const newForm = await postToPostgrest<Omit<IAssetForm, 'uuid' | 'created_at' | 'updated_at'>, IAssetForm>({
+    const newForm = await postToPostgrest<Omit<IAssetForm, 'owner_sub' | 'uuid' | 'created_at' | 'updated_at'>, IAssetForm>({
         table: FORMS_TABLE,
         body: form,
         token,
@@ -98,11 +98,11 @@ export const patchForm = async ({
 
 }: {
     uuid: string,
-    form: Omit<IAssetForm, 'created_at' | 'updated_at'>,
+    form: Omit<IAssetForm, 'owner_sub' | 'created_at' | 'updated_at'>,
     token: string,
     signal?: AbortSignal
 }): Promise<IAssetForm> => {
-    const newForm = await patchToPostgrest<Omit<IAssetForm, 'created_at' | 'updated_at'>, IAssetForm>({
+    const newForm = await patchToPostgrest<Omit<IAssetForm, 'owner_sub' | 'created_at' | 'updated_at'>, IAssetForm>({
         uuid,
         table: FORMS_TABLE,
         body: form,

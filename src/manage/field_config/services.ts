@@ -122,11 +122,11 @@ export const postFieldsOverrideConfig = async ({
     signal
 
 }: {
-    fields_override_config: Omit<IFieldOverrideConfig, 'uuid' | 'created_at' | 'updated_at'>,
+    fields_override_config: Omit<IFieldOverrideConfig, 'owner_sub' | 'uuid' | 'created_at' | 'updated_at'>,
     token: string,
     signal?: AbortSignal
 }): Promise<IFieldOverrideConfig> => {
-    const newFieldOverrideConfig = await postToPostgrest<Omit<IFieldOverrideConfig, 'uuid' | 'created_at' | 'updated_at'>, IFieldOverrideConfig>({
+    const newFieldOverrideConfig = await postToPostgrest<Omit<IFieldOverrideConfig, 'owner_sub' | 'uuid' | 'created_at' | 'updated_at'>, IFieldOverrideConfig>({
         table: FIELDS_OVERRIDE_CONFIG_TABLE,
         body: fields_override_config,
         token,
@@ -143,11 +143,11 @@ export const patchFieldsOverrideConfig = async ({
 
 }: {
     uuid: string,
-    fields_override_config: Omit<IFieldOverrideConfig, 'updated_at' | 'created_at'>,
+    fields_override_config: Omit<IFieldOverrideConfig, 'owner_sub' | 'updated_at' | 'created_at'>,
     token: string,
     signal?: AbortSignal
 }): Promise<IFieldOverrideConfig> => {
-    const newFieldOverrideConfig = await patchToPostgrest<Omit<IFieldOverrideConfig, 'updated_at' | 'created_at'>, IFieldOverrideConfig>({
+    const newFieldOverrideConfig = await patchToPostgrest<Omit<IFieldOverrideConfig, 'owner_sub' | 'updated_at' | 'created_at'>, IFieldOverrideConfig>({
         uuid,
         table: FIELDS_OVERRIDE_CONFIG_TABLE,
         body: fields_override_config,

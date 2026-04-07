@@ -57,6 +57,20 @@ const ListObjectSchemasTable = ({ object_types }: { object_types: IObjectType[] 
                                 label: 'Type',
                                 id: 'object_type_uuid',
                                 accessor: r => object_types_map[r.object_type_uuid] ?? r.object_type_uuid
+                            },
+                            {
+                                label: 'Owner',
+                                id: 'owner_sub'
+                            },
+                            {
+                                label: 'Created at',
+                                id: 'created_at',
+                                accessor: r => new Date(r.created_at).toLocaleString()
+                            },
+                            {
+                                label: 'Updated at',
+                                id: 'updated_at',
+                                accessor: r => new Date(r.updated_at).toLocaleString()
                             }
 
                         ]}

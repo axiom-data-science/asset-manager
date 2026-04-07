@@ -46,20 +46,29 @@ const CreateObjectSchemaForm = ({ object_types, type }: { object_types: IObjectT
             setErrorMessages(valid.errors);
             window.scrollTo({
                 top: 0,
-                behavior: 'smooth' // Adds a gradual animation
+                behavior: 'smooth'
             })
             return;
         }
         setSaving(true);
-        postObjectSchema({
-            object_schema: {
-                ...valuesToSave as Omit<IObjectSchema, 'uuid' | 'created_at' | 'updated_at'>
-            },
-            token: auth.user?.access_token ?? ''
-        }).then(() => {
+        try {
+            await postObjectSchema({
+                object_schema: {
+                    ...valuesToSave as Omit<IObjectSchema, 'uuid' | 'created_at' | 'updated_at'>
+                },
+                token: auth.user?.access_token ?? ''
+            })
             setSaving(false);
             navigate('/object_schema')
-        })
+        } catch (e) {
+            setSaving(false);
+            setErrorMessages([{ field: 'form', message: `An error occurred while creating the object schema. Please try again.${(e as Error).message ? ` Error: ${(e as Error).message}` : ''}` }])
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            })
+        }
+
     }
 
 
@@ -92,11 +101,6 @@ const CreateObjectSchemaForm = ({ object_types, type }: { object_types: IObjectT
                     result: 'include'
 
                 }
-            },
-            {
-                id: 'is_type_default',
-                label: 'Is default schema for selected type',
-                type: 'boolean'
             },
             {
                 id: 'description',
@@ -141,7 +145,9 @@ const CreateObjectSchemaForm = ({ object_types, type }: { object_types: IObjectT
                         if (!formValue.object_type_uuid) {
                             return <></>
                         } else {
-                            return <div className='max-w-40'><LatestVersionAtType object_type_uuid={String(formValue.object_type_uuid)} /></div>
+                            return <div className='max-w-60'>
+                                <LatestVersionAtType object_type_uuid={String(formValue.object_type_uuid)} />
+                            </div>
                         }
                     }
                 }}

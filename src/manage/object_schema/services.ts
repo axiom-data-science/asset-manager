@@ -135,11 +135,11 @@ export const postObjectSchema = async ({
     signal
 
 }: {
-    object_schema: Omit<IObjectSchema, 'uuid' | 'created_at' | 'updated_at'>,
+    object_schema: Omit<IObjectSchema, 'owner_sub' | 'uuid' | 'created_at' | 'updated_at'>,
     token: string,
     signal?: AbortSignal
 }): Promise<IObjectSchema> => {
-    const newObjectSchema = await postToPostgrest<Omit<IObjectSchema, 'uuid' | 'created_at' | 'updated_at'>, IObjectSchema>({
+    const newObjectSchema = await postToPostgrest<Omit<IObjectSchema, 'owner_sub' | 'uuid' | 'created_at' | 'updated_at'>, IObjectSchema>({
         table: OBJECT_SCHEMAS_TABLE,
         body: object_schema,
         token,
@@ -156,11 +156,11 @@ export const patchObjectSchema = async ({
 
 }: {
     uuid: string,
-    object_schema: IObjectSchema,
+    object_schema: Omit<IObjectSchema, 'owner_sub' | 'uuid' | 'created_at' | 'updated_at'>,
     token: string,
     signal?: AbortSignal
 }): Promise<IObjectSchema> => {
-    const newObjectSchema = await patchToPostgrest<IObjectSchema>({
+    const newObjectSchema = await patchToPostgrest<Omit<IObjectSchema, 'owner_sub' | 'uuid' | 'created_at' | 'updated_at'>, IObjectSchema>({
         uuid,
         table: OBJECT_SCHEMAS_TABLE,
         body: object_schema,

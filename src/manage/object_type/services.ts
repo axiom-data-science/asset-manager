@@ -107,11 +107,11 @@ export const postObjectType = async ({
     signal
 
 }: {
-    object_type: Pick<IObjectType, 'label' | 'description' | 'slug'>,
+    object_type: Omit<IObjectType, 'owner_sub' | 'uuid' | 'created_at' | 'updated_at'>,
     token: string,
     signal?: AbortSignal
 }): Promise<IObjectType> => {
-    const newObjectType = await postToPostgrest<Pick<IObjectType, 'label' | 'description' | 'slug'>, IObjectType>({
+    const newObjectType = await postToPostgrest<Omit<IObjectType, 'owner_sub' | 'uuid' | 'created_at' | 'updated_at'>, IObjectType>({
         table: OBJECT_TYPES_TABLE,
         body: object_type,
         token,

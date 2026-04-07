@@ -39,7 +39,18 @@ export const useObjectTypeFull = ({uuid}: {uuid?: string}) => {
     const auth = useAuth();
     return useCombinedQueries({
         object_type: getObjectTypeQuery(uuid ?? '', auth.user?.access_token ?? ''),
-        schemas: getObjectSchemaListQueryOptions({token: auth.user?.access_token ?? ''}),
+        schemas: getObjectSchemaListQueryOptions({
+            token: auth.user?.access_token ?? '',
+            params:{
+                filters: [
+                    {
+                        column:'object_type_uuid',
+                        operator: 'eq',
+                        value: uuid ?? ''
+                    }
+                ]
+            }
+        }),
         forms: getFormListForObjectTypeQueryOptions({object_type_uuid: uuid ?? '', token: auth.user?.access_token ?? ''})
     })
 }

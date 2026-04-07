@@ -11,6 +11,7 @@ import { omit } from "lodash-es";
 import { validate } from "@/lib/utils";
 import Errors from "@/manage/components/errors";
 import ObjectTypeLoader from "../components/object_type_loader";
+import Link from "@/manage/components/link";
 
 const CreateDocumentForm = ({
     type,
@@ -92,7 +93,8 @@ const CreateDocumentForm = ({
 
     return (
         <div className='flex flex-col gap-4'>
-            <h1 className='text-2xl font-bold'>Create new {type?.label ?? ''} document</h1>
+            <h4 className='text-sm text-gray-500'>Object type: <Link to={`/object_type/edit/${type.uuid}`} className='font-semibold'>{type.label}</Link>, schema: <Link to={`/form/edit/${schema.uuid}`} className='font-semibold'>{schema.label}</Link></h4>
+            <h1 className='text-2xl font-bold'>Create new document</h1>
             <Errors errors={errors} />
             <FormCreator form={form} formValueState={[formValues, setFormValues]} />
             <div className='flex flex-row gap-4  p-4 sticky bottom-0 bg-white/80 z-10 -mx-1'>

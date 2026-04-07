@@ -24,7 +24,7 @@ WORKDIR /app
 
 COPY --from=builder /app/dist/ /usr/share/nginx/html
 
-COPY ./docker/nginx/conf.d/* /etc/nginx/conf.d/
+COPY ./docker/nginx/conf.d/*.template /etc/nginx/templates/
 
 # Adds the runtime envsubstr on /usr/share/nginx/html to update env vars
 # passed to the container (instead of building them into the image)

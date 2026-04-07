@@ -23,7 +23,8 @@ find "$DIR_TO_REPLACE" \
         bn="$( basename "$line.replaced" ".replaced" )";
 
         if cmp -s "$line" "$line.replaced"; then
-            # No changes.
+            # No changes, clean up and continue
+            rm "$line.replaced";
             continue
         else
             echo "replacing $line with $dn/$bn"

@@ -137,7 +137,7 @@ const CreateObjectSchemaForm = ({ object_types, type }: { object_types: IObjectT
                 form={form}
                 formValueState={[formValue, setFormValue]}
                 inputOverrides={{
-                    'custom:version': (props) => {
+                    'custom:version': () => {
                         if (!formValue.object_type_uuid) {
                             return <></>
                         } else {

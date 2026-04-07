@@ -34,17 +34,26 @@ const EditForm = ({
             setErrors(valid.errors)
             return;
         }
-        await patchForm({
-            uuid: assetForm.uuid,
-            form: formValues as unknown as IAssetForm,
-            token: auth.user?.access_token ?? ***REMOVED******REMOVED***
-        })
-        setSaving(false);
-        queryClient.invalidateQueries(
-            { queryKey: formQueryKey(assetForm.uuid) }
-        );
-        queryClient.invalidateQueries({ queryKey: formListQueryKey() })
-        navigate(***REMOVED***/form***REMOVED***)
+        try {
+            await patchForm({
+                uuid: assetForm.uuid,
+                form: formValues as unknown as IAssetForm,
+                token: auth.user?.access_token ?? ***REMOVED******REMOVED***
+            })
+            setSaving(false);
+            queryClient.invalidateQueries(
+                { queryKey: formQueryKey(assetForm.uuid) }
+            );
+            queryClient.invalidateQueries({ queryKey: formListQueryKey() })
+            navigate(***REMOVED***/form***REMOVED***)
+        } catch (e) {
+            setSaving(false);
+            setErrors([{ field: ***REMOVED***form***REMOVED***, message: `An error occurred while updating the form. Please try again.${(e as Error).message ? ` Error: ${(e as Error).message}` : ***REMOVED******REMOVED***}` }])
+            window.scrollTo({
+                top: 0,
+                behavior: ***REMOVED***smooth***REMOVED***
+            })
+        }
     }
 
     const form: IForm = {
@@ -65,7 +74,7 @@ const EditForm = ({
                 type: ***REMOVED***long_text***REMOVED***
             },
             {
-                id: ***REMOVED***is_type_default***REMOVED***,
+                id: ***REMOVED***is_schema_and_version_default***REMOVED***,
                 label: ***REMOVED***Is default form for object type and schema version?***REMOVED***,
                 type: ***REMOVED***boolean***REMOVED***
             },

@@ -1,34 +1,50 @@
 import { Input } from "@axdspub/axiom-ui-utilities";
 import { Check, Copy } from "lucide-react";
-import { useState, type ReactElement } from "react";
+import { useState, type ReactElement, type ReactNode } from "react";
 
-const CopyField = ({label, id, value}: {label: string, id: string, value: string | number}): ReactElement => {
+
+export const CopyButton = ({ value, size = 14 }: { value: string | number | ReactNode, size?: number }): ReactElement => {
     const [copied, setCopied] = useState(false);
 
     const onCopy = () => {
+        setCopied(true);
         navigator.clipboard.writeText(String(value)).then(() => {
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
+            setTimeout(() => setCopied(false), 1000);
         })
     }
-
     return (
-        <div className="relative cursor-pointer" onClick={onCopy}>
-            <Input id={id} testId={id} type=***REMOVED***text***REMOVED*** size=***REMOVED***xs***REMOVED*** label={label} value={value} disabled={true} />
-            <span  className={`absolute right-2 top-7 p-1 rounded-2xl ${copied ? ***REMOVED***bg-slate-800 text-white***REMOVED*** : ***REMOVED***bg-white/50 text-gray-600***REMOVED***} transition-colors`}>
+        <span className={`rounded-2xl ${copied ? ***REMOVED***bg-slate-800 text-green-600***REMOVED*** : ***REMOVED***bg-white/50 text-gray-600***REMOVED***} transition-colors`} onClick={onCopy}>
             {
-                copied 
-                    ? <Check size={14} />
-                    : <Copy size={14} />
+                copied
+                    ? <Check size={size} />
+                    : <Copy size={size} />
             }
-            </span>
-            <span className=***REMOVED***block absolute left-0 top-0 right-0 bottom-0 bg-white/5 cursor-pointer***REMOVED***></span>
+        </span>
+    )
+}
+
+
+const CopyField = ({ label, id, value, noCopy }: { label?: string, id: string, value: string | number | ReactNode, noCopy?: boolean }): ReactElement => {
+    return (
+        <div className="relative cursor-pointer">
+            {noCopy
+                ? <div className=***REMOVED***flex flex-col gap-1***REMOVED***>
+                    {label && <span className=***REMOVED***text-xs text-gray-500***REMOVED***>{label}</span>}
+                    <span className=***REMOVED***p-1***REMOVED***>{value}</span>
+                </div>
+                : <><Input id={id} testId={id} type=***REMOVED***text***REMOVED*** size=***REMOVED***xs***REMOVED*** label={label} value={String(value)} disabled={true} />
+
+                    <span className=***REMOVED***absolute right-2 bottom-1***REMOVED***>
+                        <CopyButton value={value} />
+                    </span>
+                </>
+            }
         </div>
     )
 
 }
 
-export const CopyFields = ({fields}: {fields: {label: string, id: string, value: string | number}[]}): ReactElement => {
+export const CopyFields = ({ fields }: { fields: { label: string, id: string, value: ReactNode, noCopy?: boolean }[] }): ReactElement => {
     return (
         <div className="flex flex-row gap-4">
             {

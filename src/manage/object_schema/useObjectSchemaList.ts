@@ -4,11 +4,11 @@ import {  postgrestRollupArgs } from "@/services/postgrest/endpoints"
 import type {  IPostgrestParams } from "@/types/types"
 import { queryOptions, useQuery } from "@tanstack/react-query"
 
-export const objectSchemaListQueryKey = (params?: IPostgrestParams, rollups?: string[]) => [***REMOVED***object_schema-list***REMOVED***].concat((rollups ?? []).map(r => postgrestRollupArgs({rollupColumn: r, params}).toString()))
+export const objectSchemaListQueryKey = ({params, rollups}: {params?: IPostgrestParams, rollups?: string[]}) => [***REMOVED***object_schema-list***REMOVED***].concat((rollups ?? []).map(r => postgrestRollupArgs({rollupColumn: r, params}).toString()))
 
 export const getObjectSchemaListWithRollupsQueryOptions = ({params, rollups, token}: {params?: IPostgrestParams, rollups?: string[], token?: string}) => {
     return queryOptions({
-        queryKey: objectSchemaListQueryKey(params, rollups),
+        queryKey: objectSchemaListQueryKey({params, rollups}),
         queryFn: async ({ signal }) => {
 
             const rollupResults = await Promise.all((rollups ?? []).map(rollup => fetchObjectSchemaRollup({
@@ -39,7 +39,7 @@ export const getObjectSchemaListWithRollupsQueryOptions = ({params, rollups, tok
 
 export const getObjectSchemaListQueryOptions = ({params, token}: {params?: IPostgrestParams, token?: string}) => {
     return queryOptions({
-        queryKey: objectSchemaListQueryKey(params),
+        queryKey: objectSchemaListQueryKey({params}),
         queryFn: async ({ signal }) => {
 
 
@@ -54,6 +54,30 @@ export const getObjectSchemaListQueryOptions = ({params, token}: {params?: IPost
 
            return items
             
+        }
+    })
+}
+
+export const getObjectSchemaListAtObjectTypeQueryOptions = ({object_type_uuid, token}: {object_type_uuid: string, token?: string}) => {
+    const params: IPostgrestParams = {
+                    filters: [
+                        {
+                            column: ***REMOVED***object_type_uuid***REMOVED***,
+                            operator: ***REMOVED***eq***REMOVED***,
+                            value: object_type_uuid
+                        }
+                    ],
+                    limit: 100
+                }
+    return queryOptions({
+        queryKey: objectSchemaListQueryKey({params}),
+        queryFn: async ({ signal }) => {
+            const items = await fetchObjectSchemas({
+                params,
+                token:token ?? ***REMOVED******REMOVED***,
+                signal
+            })
+            return items
         }
     })
 }

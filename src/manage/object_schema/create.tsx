@@ -46,20 +46,29 @@ const CreateObjectSchemaForm = ({ object_types, type }: { object_types: IObjectT
             setErrorMessages(valid.errors);
             window.scrollTo({
                 top: 0,
-                behavior: ***REMOVED***smooth***REMOVED*** // Adds a gradual animation
+                behavior: ***REMOVED***smooth***REMOVED***
             })
             return;
         }
         setSaving(true);
-        postObjectSchema({
-            object_schema: {
-                ...valuesToSave as Omit<IObjectSchema, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>
-            },
-            token: auth.user?.access_token ?? ***REMOVED******REMOVED***
-        }).then(() => {
+        try {
+            await postObjectSchema({
+                object_schema: {
+                    ...valuesToSave as Omit<IObjectSchema, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>
+                },
+                token: auth.user?.access_token ?? ***REMOVED******REMOVED***
+            })
             setSaving(false);
             navigate(***REMOVED***/object_schema***REMOVED***)
-        })
+        } catch (e) {
+            setSaving(false);
+            setErrorMessages([{ field: ***REMOVED***form***REMOVED***, message: `An error occurred while creating the object schema. Please try again.${(e as Error).message ? ` Error: ${(e as Error).message}` : ***REMOVED******REMOVED***}` }])
+            window.scrollTo({
+                top: 0,
+                behavior: ***REMOVED***smooth***REMOVED***
+            })
+        }
+
     }
 
 
@@ -92,11 +101,6 @@ const CreateObjectSchemaForm = ({ object_types, type }: { object_types: IObjectT
                     result: ***REMOVED***include***REMOVED***
 
                 }
-            },
-            {
-                id: ***REMOVED***is_type_default***REMOVED***,
-                label: ***REMOVED***Is default schema for selected type***REMOVED***,
-                type: ***REMOVED***boolean***REMOVED***
             },
             {
                 id: ***REMOVED***description***REMOVED***,
@@ -141,7 +145,9 @@ const CreateObjectSchemaForm = ({ object_types, type }: { object_types: IObjectT
                         if (!formValue.object_type_uuid) {
                             return <></>
                         } else {
-                            return <div className=***REMOVED***max-w-40***REMOVED***><LatestVersionAtType object_type_uuid={String(formValue.object_type_uuid)} /></div>
+                            return <div className=***REMOVED***max-w-60***REMOVED***>
+                                <LatestVersionAtType object_type_uuid={String(formValue.object_type_uuid)} />
+                            </div>
                         }
                     }
                 }}

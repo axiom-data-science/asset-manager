@@ -1,20 +1,20 @@
 import { useAuth } from "@/auth/useAuth"
+import { useCombinedQueries } from "@/hooks/use-combined-queries"
 import { fetchObjectSchema } from "@/manage/object_schema/services"
-import { useQuery } from "@tanstack/react-query"
+import { getObjectTypeListQuery } from "@/manage/object_type/useObjectTypeList"
+import { queryOptions, useQuery } from "@tanstack/react-query"
 
 export const objectSchemaQueryKey = (uuid?: string) => [***REMOVED***object_schema***REMOVED***, uuid]
-
-export const useObjectSchema = (uuid?: string) => {
-    const auth = useAuth()
-    const queryResult = useQuery({
+export const getObjectSchemaQueryOptions = ({uuid, token}: {uuid?: string, token?: string}) => {
+    return queryOptions({
         queryKey: objectSchemaQueryKey(uuid),
-        enabled: !!uuid && !!auth.user?.access_token && uuid !== ***REMOVED******REMOVED***,
+        enabled: !!uuid && token !== undefined && uuid !== ***REMOVED******REMOVED***,
         queryFn: async ({ signal }) => {
             
             const objectSchema = await fetchObjectSchema({
                 uuid: uuid ?? ***REMOVED***NA***REMOVED***,
                 signal,
-                token: auth.user?.access_token ?? ***REMOVED******REMOVED***
+                token: token ?? ***REMOVED******REMOVED***
             })
 
             return objectSchema
@@ -22,5 +22,21 @@ export const useObjectSchema = (uuid?: string) => {
         }
     })
 
+}
+
+export const useObjectSchema = ({uuid}: {uuid?: string} = {}) => {
+    const auth = useAuth()
+    const queryResult = useQuery(getObjectSchemaQueryOptions({uuid, token: auth.user?.access_token}))
+
     return queryResult
+}
+
+export const useObjectSchemaFull = ({uuid}: {uuid?: string} = {}) => {
+    const auth = useAuth();
+    return useCombinedQueries({
+        object_schema: getObjectSchemaQueryOptions({uuid, token: auth.user?.access_token}),
+        object_types: getObjectTypeListQuery({token: auth.user?.access_token})
+    })
+
+    
 }

@@ -135,11 +135,11 @@ export const postObjectSchema = async ({
     signal
 
 }: {
-    object_schema: Omit<IObjectSchema, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
+    object_schema: Omit<IObjectSchema, ***REMOVED***owner_sub***REMOVED*** | ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
     token: string,
     signal?: AbortSignal
 }): Promise<IObjectSchema> => {
-    const newObjectSchema = await postToPostgrest<Omit<IObjectSchema, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>, IObjectSchema>({
+    const newObjectSchema = await postToPostgrest<Omit<IObjectSchema, ***REMOVED***owner_sub***REMOVED*** | ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>, IObjectSchema>({
         table: OBJECT_SCHEMAS_TABLE,
         body: object_schema,
         token,
@@ -156,11 +156,11 @@ export const patchObjectSchema = async ({
 
 }: {
     uuid: string,
-    object_schema: IObjectSchema,
+    object_schema: Omit<IObjectSchema, ***REMOVED***owner_sub***REMOVED*** | ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
     token: string,
     signal?: AbortSignal
 }): Promise<IObjectSchema> => {
-    const newObjectSchema = await patchToPostgrest<IObjectSchema>({
+    const newObjectSchema = await patchToPostgrest<Omit<IObjectSchema, ***REMOVED***owner_sub***REMOVED*** | ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>, IObjectSchema>({
         uuid,
         table: OBJECT_SCHEMAS_TABLE,
         body: object_schema,

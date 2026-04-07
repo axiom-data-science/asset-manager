@@ -68,6 +68,20 @@ const ListFormTable = ({ object_types, forms }: { object_types: IObjectType[], f
                                 label: ***REMOVED***Is default***REMOVED***,
                                 id: ***REMOVED***is_type_default***REMOVED***,
                                 accessor: r => r.is_type_default ? <CheckIcon className="text-green-500" /> : <XIcon className="text-gray-300" />
+                            },
+                            {
+                                label: ***REMOVED***Owner***REMOVED***,
+                                id: ***REMOVED***owner_sub***REMOVED***
+                            },
+                            {
+                                label: ***REMOVED***Created at***REMOVED***,
+                                id: ***REMOVED***created_at***REMOVED***,
+                                accessor: r => new Date(r.created_at).toLocaleString()
+                            },
+                            {
+                                label: ***REMOVED***Updated at***REMOVED***,
+                                id: ***REMOVED***updated_at***REMOVED***,
+                                accessor: r => new Date(r.updated_at).toLocaleString()
                             }
 
                         ]}

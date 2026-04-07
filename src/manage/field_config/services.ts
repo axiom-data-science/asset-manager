@@ -122,11 +122,11 @@ export const postFieldsOverrideConfig = async ({
     signal
 
 }: {
-    fields_override_config: Omit<IFieldOverrideConfig, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
+    fields_override_config: Omit<IFieldOverrideConfig, ***REMOVED***owner_sub***REMOVED*** | ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
     token: string,
     signal?: AbortSignal
 }): Promise<IFieldOverrideConfig> => {
-    const newFieldOverrideConfig = await postToPostgrest<Omit<IFieldOverrideConfig, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>, IFieldOverrideConfig>({
+    const newFieldOverrideConfig = await postToPostgrest<Omit<IFieldOverrideConfig, ***REMOVED***owner_sub***REMOVED*** | ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>, IFieldOverrideConfig>({
         table: FIELDS_OVERRIDE_CONFIG_TABLE,
         body: fields_override_config,
         token,
@@ -143,11 +143,11 @@ export const patchFieldsOverrideConfig = async ({
 
 }: {
     uuid: string,
-    fields_override_config: Omit<IFieldOverrideConfig, ***REMOVED***updated_at***REMOVED*** | ***REMOVED***created_at***REMOVED***>,
+    fields_override_config: Omit<IFieldOverrideConfig, ***REMOVED***owner_sub***REMOVED*** | ***REMOVED***updated_at***REMOVED*** | ***REMOVED***created_at***REMOVED***>,
     token: string,
     signal?: AbortSignal
 }): Promise<IFieldOverrideConfig> => {
-    const newFieldOverrideConfig = await patchToPostgrest<Omit<IFieldOverrideConfig, ***REMOVED***updated_at***REMOVED*** | ***REMOVED***created_at***REMOVED***>, IFieldOverrideConfig>({
+    const newFieldOverrideConfig = await patchToPostgrest<Omit<IFieldOverrideConfig, ***REMOVED***owner_sub***REMOVED*** | ***REMOVED***updated_at***REMOVED*** | ***REMOVED***created_at***REMOVED***>, IFieldOverrideConfig>({
         uuid,
         table: FIELDS_OVERRIDE_CONFIG_TABLE,
         body: fields_override_config,

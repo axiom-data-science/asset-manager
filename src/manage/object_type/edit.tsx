@@ -87,25 +87,40 @@ const EditObjectTypeForm = ({
                 { id: ***REMOVED***slug***REMOVED***, label: ***REMOVED***Slug***REMOVED***, value: object_type.slug },
                 { id: ***REMOVED***uuid***REMOVED***, label: ***REMOVED***UUID***REMOVED***, value: object_type.uuid }
             ]} />
-            <FormCreator form={form} formValueState={[formValue, setFormValue]} />
-            <h4 className=***REMOVED***font-bold text-slate-600 flex flex-row gap-2 items-center***REMOVED***><BookPlus size={14} /> Associated Forms <Link
-                to={`/forms/create?object_type=${object_type.uuid}`}
-                className={
-                    utils.createButtonClass({
-                        size: ***REMOVED***xs***REMOVED***,
-                        type: ***REMOVED***create***REMOVED***,
-                        className: ***REMOVED***ml-2 gap-1***REMOVED***
-                    })
-                }
+            <FormCreator form={form} formValueState={[formValue, setFormValue]} className=***REMOVED***-mt-6***REMOVED*** />
+            <h4 className=***REMOVED***font-bold text-slate-600 flex flex-row gap-2 items-center***REMOVED***><BookPlus size={14} /> Associated Forms {
+                forms.length > 0 && <Link
+                    to={`/forms/create?object_type=${object_type.uuid}`}
+                    className={
+                        utils.createButtonClass({
+                            size: ***REMOVED***xs***REMOVED***,
+                            type: ***REMOVED***create***REMOVED***,
+                            className: ***REMOVED***ml-2 gap-1***REMOVED***
+                        })
+                    }
 
-            ><Plus /> Create form for <strong className=***REMOVED***underline underline-offset-2 decoration-dotted***REMOVED***>{object_type.label}</strong> type</Link></h4>
+                ><Plus /> Create form for <strong className=***REMOVED***underline underline-offset-2 decoration-dotted***REMOVED***>{object_type.label}</strong> type</Link>
+            }</h4>
             <div className=***REMOVED***p-8 bg-slate-200 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 rounded-md***REMOVED***>
+                {
+                    forms.length < 1 && (
+                        <div className="flex flex-col gap-4">
+                            <p>No forms found for this object type.</p>
+                            <div>
+                                <Link to={`/forms/create?object_type=${object_type.uuid}`} className={utils.createButtonClass({
+                                    size: ***REMOVED***md***REMOVED***,
+                                    variant: ***REMOVED***primary***REMOVED***
+                                })}>Create form</Link>
+                            </div>
+                        </div>
+                    )
+                }
                 {
                     forms.map(form => {
                         return (<div key={form.uuid} className=***REMOVED***p-4 bg-white rounded-md flex flex-col gap-2***REMOVED***>
                             <div className=***REMOVED***flex flex-col gap-2***REMOVED***>
                                 {
-                                    form.is_type_default && <span className=***REMOVED***text-xs text-slate-400***REMOVED***><Check size={14} className=***REMOVED***inline text-slate-600***REMOVED*** /> Default form for {object_type.label} v{form.object_schema_version}</span>
+                                    form.is_schema_and_version_default && <span className=***REMOVED***text-xs text-slate-400***REMOVED***><Check size={14} className=***REMOVED***inline text-slate-600***REMOVED*** /> Default form for {object_type.label} v{form.object_schema_version}</span>
                                 }
                                 <Link to={`/forms/edit/${form.uuid}`}><h2 className=***REMOVED***font-semibold***REMOVED***>{form.label}</h2></Link>
                                 <CopyFields fields={[
@@ -120,18 +135,34 @@ const EditObjectTypeForm = ({
                     })
                 }
             </div>
-            <h4 className=***REMOVED***font-bold text-slate-600 flex flex-row gap-2 items-center***REMOVED***><Network size={14} /> Associated Schemas <Link
-                to={`/object_schema/create?object_type=${object_type.uuid}`}
-                className={
-                    utils.createButtonClass({
-                        size: ***REMOVED***xs***REMOVED***,
-                        type: ***REMOVED***create***REMOVED***,
-                        className: ***REMOVED***ml-2 gap-1***REMOVED***
-                    })
-                }
+            <h4 className=***REMOVED***font-bold text-slate-600 flex flex-row gap-2 items-center***REMOVED***><Network size={14} /> Associated Schemas{
+                schemas.length > 0 &&
+                <Link
+                    to={`/object_schema/create?object_type=${object_type.uuid}`}
+                    className={
+                        utils.createButtonClass({
+                            size: ***REMOVED***xs***REMOVED***,
+                            type: ***REMOVED***create***REMOVED***,
+                            className: ***REMOVED***ml-2 gap-1***REMOVED***
+                        })
+                    }
 
-            ><Plus /> Create schema for <strong className=***REMOVED***underline underline-offset-2 decoration-dotted***REMOVED***>{object_type.label}</strong> type</Link></h4>
+                ><Plus /> Create schema for <strong className=***REMOVED***underline underline-offset-2 decoration-dotted***REMOVED***>{object_type.label}</strong> type</Link>
+            }</h4>
             <div className=***REMOVED***p-8 bg-slate-200 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 rounded-md***REMOVED***>
+                {
+                    schemas.length < 1 && (
+                        <div className="flex flex-col gap-4">
+                            <p>No schema found for this object type.</p>
+                            <div>
+                                <Link to={`/object_schema/create?object_type=${object_type.uuid}`} className={utils.createButtonClass({
+                                    size: ***REMOVED***md***REMOVED***,
+                                    variant: ***REMOVED***primary***REMOVED***
+                                })}>Create schema</Link>
+                            </div>
+                        </div>
+                    )
+                }
                 {
                     schemas.map(schema => {
                         return (<div key={schema.uuid} className=***REMOVED***p-4 bg-white rounded-md flex flex-col gap-2***REMOVED***>

@@ -100,44 +100,44 @@ const CreateObjectTypeForm = ({ object_categories }: { object_categories: string
 
     const onSave = async () => {
         setSaving(true);
-        try{
-        const typeValid = await validate({ form, formValues: formValue });
-        const schemaValid = formValue['create_default_schema'] ? await validate({ form: schemaForm, formValues: schemaFormValue, messagePrefix: 'Default schema' }) : { valid: true, errors: [] }
-        const valid = {
-            valid: typeValid.valid && schemaValid.valid,
-            errors: [...typeValid.errors, ...schemaValid.errors]
-        }
-        if (!valid.valid) {
-            setSaving(false)
-            setErrorMessages(valid.errors)
-            window.scrollTo({
-                top: 0,
-                behavior: 'smooth' // Adds a gradual animation
-            })
-            return
-        }
-        setErrorMessages([])
-        const valuesToSave = filterForSave(formValue);
-        const newObjectType = await postObjectType({
-            object_type: valuesToSave as Omit<IObjectType, 'uuid' | 'created_at' | 'updated_at'>,
-            token: auth.user?.access_token ?? ''
-        })
-        if (formValue['create_default_schema']) {
-            const schemaValuesToSave = schemaFilterForSave(schemaFormValue);
-            schemaValuesToSave['object_type_uuid'] = newObjectType.uuid;
-            schemaValuesToSave['is_type_default'] = true;
-            await postObjectSchema({
-                object_schema: schemaValuesToSave as Omit<IObjectSchema, 'uuid' | 'created_at' | 'updated_at'>,
+        try {
+            const typeValid = await validate({ form, formValues: formValue });
+            const schemaValid = formValue['create_default_schema'] ? await validate({ form: schemaForm, formValues: schemaFormValue, messagePrefix: 'Default schema' }) : { valid: true, errors: [] }
+            const valid = {
+                valid: typeValid.valid && schemaValid.valid,
+                errors: [...typeValid.errors, ...schemaValid.errors]
+            }
+            if (!valid.valid) {
+                setSaving(false)
+                setErrorMessages(valid.errors)
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth' // Adds a gradual animation
+                })
+                return
+            }
+            setErrorMessages([])
+            const valuesToSave = filterForSave(formValue);
+            const newObjectType = await postObjectType({
+                object_type: valuesToSave as Omit<IObjectType, 'uuid' | 'created_at' | 'updated_at'>,
                 token: auth.user?.access_token ?? ''
-            });
+            })
+            if (formValue['create_default_schema']) {
+                const schemaValuesToSave = schemaFilterForSave(schemaFormValue);
+                schemaValuesToSave['object_type_uuid'] = newObjectType.uuid;
+                schemaValuesToSave['is_type_default'] = true;
+                await postObjectSchema({
+                    object_schema: schemaValuesToSave as Omit<IObjectSchema, 'uuid' | 'created_at' | 'updated_at'>,
+                    token: auth.user?.access_token ?? ''
+                });
+            }
+            setSaving(false);
+            navigate('/object_type')
+        } catch (e: unknown) {
+            setSaving(false);
+            setErrorMessages([{ field: 'form', message: `An error occurred while saving. Please try again. ${(e as Error)?.message ?? ''}` }])
         }
-        setSaving(false);
-        navigate('/object_type')
-    }catch(e:unknown) {
-        setSaving(false);
-        setErrorMessages([{ field: 'form', message: `An error occurred while saving. Please try again. ${(e as Error)?.message ?? ''}` }]) 
     }
-}
 
 
 
@@ -169,7 +169,7 @@ const CreateObjectTypeForm = ({ object_categories }: { object_categories: string
                     </div>
                 </div>
             }
-            <div>
+            <div className='flex flex-row gap-2 sticky bg-white/80 bottom-0 py-4'>
                 <Button onClick={onSave} type='primary' disabled={saving}>{saving ? <Loader className="animate-spin" /> : 'Save'}</Button>
             </div>
         </div>

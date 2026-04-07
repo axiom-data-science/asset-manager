@@ -1,15 +1,15 @@
-import { useDocumentList } from "@/manage/document/useDocumentList"
+import { useDocumentListWithRollups } from "@/manage/document/useDocumentList"
 import { SelectInput, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
 import type { ReactElement } from "react"
 import { useObjectTypeList } from "../object_type/useObjectTypeList"
-import type { IObjectType } from "@/types/types"
+import type { IObjectType, IRollup } from "@/types/types"
 import Table from '@/manage/components/table'
 import Link from "../components/link"
 
 
 const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
 
-    const { data: documents, isLoading, error } = useDocumentList({}, ['owner_sub', 'object_type_uuid'])
+    const { data: documents, isLoading, error } = useDocumentListWithRollups({ params: {}, rollups: ['owner_sub', 'object_type_uuid'] })
     const object_types_map = Object.fromEntries(object_types.map(ot => [ot.uuid, ot]))
 
     return (
@@ -19,11 +19,11 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
             <div className='flex flex-row gap-4 p-2 sticky top-10 bg-white z-10'>
                 {
                     Object.keys(documents?.rollups ?? []).map(r => {
-                        const rollup = documents?.rollups?.[r].filter(item => item.label !== null && item.label !== '') as { label: string, count: number }[] | undefined;
+                        const rollup = documents?.rollups?.[r].filter(item => item.label !== null && item.label !== '') as IRollup[] | undefined;
                         if (rollup?.length === 0) return null;
                         return (
                             <div className='flex flex-row gap-2' key={r}>
-                                <span className='font-semibold'>{r.split('_').filter((w,i) => i < 1 || w.toLowerCase() !== 'uuid').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}</span>
+                                <span className='font-semibold'>{r.split('_').filter((w, i) => i < 1 || w.toLowerCase() !== 'uuid').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}</span>
                                 <SelectInput
                                     id={r}
                                     testId={r}
@@ -84,11 +84,11 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
 }
 
 const ListDocumentsLoader = (): ReactElement => {
-    const {data: object_types, isLoading, error} = useObjectTypeList()
+    const { data: object_types, isLoading, error } = useObjectTypeList()
     return (
         <ViewWithLoader isLoading={isLoading} error={error} data={object_types}>
             {
-                object_types && <ListDocuments object_types={object_types.items} />
+                object_types && <ListDocuments object_types={object_types} />
             }
         </ViewWithLoader>
     )

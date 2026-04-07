@@ -77,6 +77,7 @@ export interface IObjectType {
   uuid: string;
   label: string;
   slug: string;
+  category: string,
   description?: string;
   created_at: string;
   updated_at: string;
@@ -207,5 +208,7 @@ export interface IFormToFieldConfig {
   created_at: string,
   updated_at: string
 }
+
+export type IRollup = { label: string, count: number }
 
 export type IValidationError = {field: string, path?: string, message: string}

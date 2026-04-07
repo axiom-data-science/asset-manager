@@ -1,22 +1,24 @@
-import { Button, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
+import { Button, Loader, utils, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
 import { useState, type ReactElement } from "react";
 import { FormCreator, type IFormValues, type IForm } from '@axdspub/axiom-ui-forms'
 import { patchObjectType } from "@/manage/object_type/services";
 import { useAuth } from "@/auth/useAuth";
-import type { IAssetForm, IObjectType } from "@/types/types";
+import type { IAssetForm, IObjectSchema, IObjectType } from "@/types/types";
 import { useNavigate, useParams } from "react-router-dom";
-import { getObjectTypeQuery, objectTypeQueryKey } from "@/manage/object_type/useObjectType";
-import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { objectTypeQueryKey, useObjectTypeFull } from "@/manage/object_type/useObjectType";
+import { useQueryClient } from "@tanstack/react-query";
 import { CopyFields } from "../components/copy_field";
-import { getFormListForObjectTypeQueryOptions } from "../form/useFormList";
 import Link from '@/manage/components/link'
+import { BookPlus, Check, Network, Plus } from "lucide-react";
 
 const EditObjectTypeForm = ({
     object_type,
-    forms
+    forms,
+    schemas
 }: {
     object_type: IObjectType,
-    forms: IAssetForm[]
+    forms: IAssetForm[],
+    schemas: IObjectSchema[]
 }): ReactElement => {
 
     const queryClient = useQueryClient()
@@ -79,27 +81,72 @@ const EditObjectTypeForm = ({
 
     return (
         <div className='flex flex-col gap-4'>
-            <h1 className='text-2xl font-bold'>Edit object type</h1>
+            <h1 className='text-2xl font-bold'>Edit object type ({object_type.category})</h1>
             <CopyFields fields={[
+                { id: 'category', label: 'Category', value: object_type.category },
                 { id: 'slug', label: 'Slug', value: object_type.slug },
                 { id: 'uuid', label: 'UUID', value: object_type.uuid }
             ]} />
             <FormCreator form={form} formValueState={[formValue, setFormValue]} />
-            <h4 className='font-bold text-slate-600'>Associated Forms</h4>
+            <h4 className='font-bold text-slate-600 flex flex-row gap-2 items-center'><BookPlus size={14} /> Associated Forms <Link
+                to={`/forms/create?object_type=${object_type.uuid}`}
+                className={
+                    utils.createButtonClass({
+                        size: 'xs',
+                        type: 'create',
+                        className: 'ml-2 gap-1'
+                    })
+                }
+
+            ><Plus /> Create form for <strong className='underline underline-offset-2 decoration-dotted'>{object_type.label}</strong> type</Link></h4>
             <div className='p-8 bg-slate-200 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 rounded-md'>
                 {
                     forms.map(form => {
                         return (<div key={form.uuid} className='p-4 bg-white rounded-md flex flex-col gap-2'>
                             <div className='flex flex-col gap-2'>
-                                
-                                    <Link to={`/forms/edit/${form.uuid}`}><h2 className='font-semibold'>{form.label}</h2></Link>
-                                    <CopyFields fields={[
-                                        { id: `slug-${form.uuid}`, label: 'Slug', value: form.slug },
-                                        { id: `uuid-${form.uuid}`, label: 'UUID', value: form.uuid }
-                                    ]} />
-                               
+                                {
+                                    form.is_type_default && <span className='text-xs text-slate-400'><Check size={14} className='inline text-slate-600' /> Default form for {object_type.label} v{form.object_schema_version}</span>
+                                }
+                                <Link to={`/forms/edit/${form.uuid}`}><h2 className='font-semibold'>{form.label}</h2></Link>
+                                <CopyFields fields={[
+                                    { id: `slug-${form.uuid}`, label: 'Slug', value: form.slug },
+                                    { id: `uuid-${form.uuid}`, label: 'UUID', value: form.uuid }
+                                ]} />
+
                             </div>
                             <p className='text-sm text-gray-600'>{form.description}</p>
+                        </div>
+                        )
+                    })
+                }
+            </div>
+            <h4 className='font-bold text-slate-600 flex flex-row gap-2 items-center'><Network size={14} /> Associated Schemas <Link
+                to={`/object_schema/create?object_type=${object_type.uuid}`}
+                className={
+                    utils.createButtonClass({
+                        size: 'xs',
+                        type: 'create',
+                        className: 'ml-2 gap-1'
+                    })
+                }
+
+            ><Plus /> Create schema for <strong className='underline underline-offset-2 decoration-dotted'>{object_type.label}</strong> type</Link></h4>
+            <div className='p-8 bg-slate-200 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 rounded-md'>
+                {
+                    schemas.map(schema => {
+                        return (<div key={schema.uuid} className='p-4 bg-white rounded-md flex flex-col gap-2'>
+                            <div className='flex flex-col gap-2'>
+                                {
+                                    schema.is_type_default && <span className='text-xs text-slate-400'><Check size={14} className='inline text-slate-600' /> Default schema for {object_type.label}</span>
+                                }
+                                <h2 className='font-semibold'>{schema.label} (version: {schema.version})</h2>
+                                <CopyFields fields={[
+                                    { id: `slug-${schema.uuid}`, label: 'Slug', value: schema.slug },
+                                    { id: `uuid-${schema.uuid}`, label: 'UUID', value: schema.uuid }
+                                ]} />
+
+                            </div>
+                            <p className='text-sm text-gray-600'>{schema.description}</p>
                         </div>
                         )
                     })
@@ -116,33 +163,11 @@ const EditObjectTypeForm = ({
 const EditObjectType = (): ReactElement => {
     const params = useParams()
     const uuid = params.uuid
-    const auth = useAuth();
-
-    const queryObject = {
-        object_type: getObjectTypeQuery(uuid ?? '', auth.user?.access_token ?? ''),
-        forms: getFormListForObjectTypeQueryOptions({object_type_uuid: uuid ?? '', token: auth.user?.access_token ?? ''})
-    }
-
-    
-    const {isLoading, error, data} = useQueries({
-        queries: Object.values(queryObject),
-        combine: (results) => {
-            const isLoading = results.some(r => r.isLoading);
-            return {
-                isLoading,
-                isPending: results.some(r => r.isPending),
-                error: results.find(r => r.error)?.error ?? null,
-                data: !isLoading ? Object.fromEntries(results.map((r, index) => r.data ? [Object.keys(queryObject)[index], r.data] : [])) : null
-            }
-        }
-    })
-
-
-    console.log(data)
+    const { isLoading, error, data } = useObjectTypeFull({ uuid })
 
     //const { data: object_type, isLoading, error } = useObjectType(uuid ?? '')
     return <ViewWithLoader isLoading={isLoading} error={error} data={data}>
-        {data && <EditObjectTypeForm object_type={data.object_type} forms={data.forms} />}
+        {data && <EditObjectTypeForm object_type={data.object_type} forms={data.forms} schemas={data.schemas} />}
     </ViewWithLoader>
 }
 

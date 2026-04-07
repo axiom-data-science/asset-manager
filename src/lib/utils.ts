@@ -1,6 +1,8 @@
 import type { IValidationError } from "@/types/types"
 import type { IForm, IFormValues } from "@axdspub/axiom-ui-forms"
+import { useQueries } from "@tanstack/react-query"
 import { clsx, type ClassValue } from "clsx"
+import type { queryOptions } from "node_modules/@tanstack/react-query/build/legacy/queryOptions"
 import { twMerge } from "tailwind-merge"
 
 export function cn(...inputs: ClassValue[]) {
@@ -29,4 +31,20 @@ export const validate = async ({form, formValues, messagePrefix} : {form: IForm,
             }
         })
     return { valid, errors };
+}
+
+export const useQueriesWithSignatures = (queryObject: ReturnType<typeof queryOptions>[]) => {
+    const r = useQueries({
+        queries: Object.values(queryObject),
+        combine: (results) => {
+            const isLoading = results.some(r => r.isLoading);
+            return {
+                isLoading,
+                isPending: results.some(r => r.isPending),
+                error: results.find(r => r.error)?.error ?? null,
+                data: !isLoading ? Object.fromEntries(results.map((r, index) => r.data ? [Object.keys(queryObject)[index], r.data] : [])) : null
+            }
+        }
+    })
+    return r
 }

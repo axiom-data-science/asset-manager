@@ -31,8 +31,8 @@ const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSche
             return;
         }
         setSaving(true);
-        
-        try{
+
+        try {
             const newForm = await postForm({
                 form: {
                     ...valuesToSave as Omit<IAssetForm, 'uuid' | 'created_at' | 'updated_at'>,
@@ -44,14 +44,14 @@ const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSche
             const formFieldOverrideConfigs: {
                 config: JSON,
                 weight: number
-            }[]  = (Array.isArray(formValues.field_override_configs) ? formValues.field_override_configs : []) as {
+            }[] = (Array.isArray(formValues.field_override_configs) ? formValues.field_override_configs : []) as {
                 config: JSON,
                 weight: number
             }[];
 
             await Promise.all(formFieldOverrideConfigs.map(async (overrideConfig) => {
                 const schemaForVersion = schemasByVersion[+formValues.object_schema_version!]
-                if(schemaForVersion !== undefined && overrideConfig.config !== null && overrideConfig.weight !== undefined && JSON.stringify(overrideConfig.config) !== ''){
+                if (schemaForVersion !== undefined && overrideConfig.config !== null && overrideConfig.weight !== undefined && JSON.stringify(overrideConfig.config) !== '') {
                     const formFieldOverrideConfig = await postFieldsOverrideConfig({
                         fields_override_config: {
                             config: overrideConfig.config,
@@ -74,7 +74,7 @@ const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSche
 
             setSaving(false);
             navigate('/forms')
-        }catch(e: unknown ){
+        } catch (e: unknown) {
             setSaving(false);
             setErrors([{ field: 'form', message: (e as Error).message ?? 'An error occurred while saving the form.' }]);
             window.scrollTo({
@@ -116,7 +116,7 @@ const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSche
                 type: 'boolean'
             },
             {
-                id:'form_config',
+                id: 'form_config',
                 label: 'Form configuration (JSON)',
                 type: 'json',
                 required: true
@@ -133,7 +133,7 @@ const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSche
                         defaultValue: 0
                     },
                     {
-                        id:'config',
+                        id: 'config',
                         label: 'Field override configurations (JSON)',
                         description: `Provide an array of field override configs. Each config should include the id (as \`prop\`) of the field to override and the config to override with. **Example:** 
                         \`[{"prop": "field_to_override", "type":"radio", "options": [{"label": "Option 1", "value": "option_1"}, {"label": "Option 2", "value": "option_2"}]}]\``,
@@ -147,7 +147,7 @@ const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSche
     const { form, formState: [formValues, setFormValue], filterForSave } = useSlug(
         formWithoutSlug,
         {
-            object_schema_version: schemas.find(s => s.is_type_default)?.version.toString() ?? schemas.sort((a,b) => b.version - a.version)[0]?.version.toString() ?? '',
+            object_schema_version: schemas.find(s => s.is_type_default)?.version.toString() ?? schemas.sort((a, b) => b.version - a.version)[0]?.version.toString() ?? '',
         },
         ['field_override_configs']
     );
@@ -166,14 +166,14 @@ const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSche
             <h1 className='text-2xl font-bold'>Create form</h1>
             <Errors errors={errors} />
             <FormCreator form={form} formValueState={[formValues, setFormValue]} />
-            <div>
+            <div className='flex flex-row sticky bottom-0 py-4 bg-white/80'>
                 <Button onClick={onSave} type='primary' disabled={saving}>{saving ? <Loader className="animate-spin" /> : 'Save'}</Button>
             </div>
         </div>
     )
 }
 
-const LoadSchemaVersions = ({type}: {type: IObjectType}): ReactElement => {
+const LoadSchemaVersions = ({ type }: { type: IObjectType }): ReactElement => {
     const { data: schemas, isLoading, error } = useSchemaListForObjectType(type.uuid)
     return <ViewWithLoader isLoading={isLoading} error={error} data={schemas}>
         {

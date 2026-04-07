@@ -1,7 +1,7 @@
 import { fetchListFromPostgrest, fetchRollupFromPostgrest, fetchSingleFromPostgrest, patchToPostgrest, postToPostgrest } from "@/services/postgrest/services";
 import type { IDocument, IPostgrestParams } from "@/types/types";
 
-const DOCUMENTS_TABLE = 'document';
+export const DOCUMENTS_TABLE = 'document';
 
 export const fetchDocuments = async <T>({
     params, 

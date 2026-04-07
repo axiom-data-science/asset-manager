@@ -28,8 +28,8 @@ const EditForm = ({
 
     const onUpdate = async () => {
         setSaving(true);
-        const valid = await validate({formValues, form})
-        if(!valid.errors) {
+        const valid = await validate({ formValues, form })
+        if (!valid.errors) {
             setSaving(false);
             setErrors(valid.errors)
             return;
@@ -43,7 +43,7 @@ const EditForm = ({
         queryClient.invalidateQueries(
             { queryKey: formQueryKey(assetForm.uuid) }
         );
-        queryClient.invalidateQueries({ queryKey: formListQueryKey()})
+        queryClient.invalidateQueries({ queryKey: formListQueryKey() })
         navigate('/form')
     }
 
@@ -65,7 +65,12 @@ const EditForm = ({
                 type: 'long_text'
             },
             {
-                id:'form_config',
+                id: 'is_type_default',
+                label: 'Is default form for object type and schema version?',
+                type: 'boolean'
+            },
+            {
+                id: 'form_config',
                 label: 'Form configuration (JSON)',
                 type: 'json',
                 required: true
@@ -94,7 +99,8 @@ const EditForm = ({
             <Errors errors={errors} />
             <CopyFields fields={[
                 { id: 'slug', label: 'Slug', value: assetForm.slug },
-                { id: 'uuid', label: 'UUID', value: assetForm.uuid }
+                { id: 'uuid', label: 'UUID', value: assetForm.uuid },
+                { id: 'object_type_uuid', label: 'Object type', value: assetForm.object_type_uuid }
             ]} />
             <FormCreator form={form} formValueState={[formValues, setFormValue]} className='-mt-8' />
             <div>

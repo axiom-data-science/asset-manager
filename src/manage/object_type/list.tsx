@@ -1,31 +1,33 @@
 import { dateTime } from "@/lib/date"
-import { useObjectTypeList } from "@/manage/object_type/useObjectTypeList"
+import { useObjectTypeListWithRollups } from "@/manage/object_type/useObjectTypeList"
 import { SelectInput, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
 import type { ReactElement } from "react"
 import Link from '@/manage/components/link'
 import Table from '@/manage/components/table'
+import type { IRollup } from "@/types/types"
 
 
 const ListObjectTypes = (): ReactElement => {
 
-    const { data: documents, isLoading, error } = useObjectTypeList({
-        order: [
-            {
-                column: 'created_at',
-                dir: 'desc'
-            }
-        ]
-    },
-    ['category']
-    )
+    const { data: documents, isLoading, error } = useObjectTypeListWithRollups({
+        params: {
+            order: [
+                {
+                    column: 'created_at',
+                    dir: 'desc'
+                }
+            ]
+        },
+        rollups: ['category']
+    })
 
     return (
         <ViewWithLoader isLoading={isLoading} error={error} data={documents}>
             <h1 className="text-2xl font-bold py-2 sticky top-0 bg-white">Object types</h1>
-                        <div className='flex flex-row gap-4 p-2 sticky top-10 bg-white z-10'>
+            <div className='flex flex-row gap-4 p-2 sticky top-10 bg-white z-10'>
                 {
                     Object.keys(documents?.rollups ?? []).map(r => {
-                        const rollup = documents?.rollups?.[r].filter(item => item.label !== null && item.label !== '') as { label: string, count: number }[] | undefined;
+                        const rollup = documents?.rollups?.[r].filter(item => item.label !== null && item.label !== '') as IRollup[] | undefined;
                         if (rollup?.length === 0) return null;
                         return (
                             <div className='flex flex-row gap-2' key={r}>

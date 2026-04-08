@@ -5,7 +5,6 @@ import type { ReactElement } from "react"
 import Link from ***REMOVED***@/manage/components/link***REMOVED***
 import Table from ***REMOVED***@/manage/components/table***REMOVED***
 import type { IRollup } from "@/types/types"
-import CopyField from "@/manage/components/copy_field"
 
 
 const ListObjectTypes = (): ReactElement => {

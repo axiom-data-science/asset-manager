@@ -1,17 +1,16 @@
 import { Button, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
 import { useState, type ReactElement } from "react";
 import { FormCreator, type IForm, type IFormValues } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
-import { patchObjectSchema, postObjectSchema } from "@/manage/object_schema/services";
+import { patchObjectSchema } from "@/manage/object_schema/services";
 import { useAuth } from "@/auth/useAuth";
 import type { IObjectSchema, IObjectType } from ***REMOVED***@/types/types***REMOVED***
 import { useNavigate, useParams } from "react-router-dom";
-import { useSlug } from "../components/useSlug";
 import { validate } from "@/lib/utils";
 import Errors from "../components/errors";
-import { useObjectSchema, useObjectSchemaFull } from "@/manage/object_schema/useObjectSchema";
+import { useObjectSchemaFull } from "@/manage/object_schema/useObjectSchema";
 import { omit } from "lodash-es";
 import { CopyButton, CopyFields } from "@/manage/components/copy_field";
-import { Check, Copy, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 
 
 

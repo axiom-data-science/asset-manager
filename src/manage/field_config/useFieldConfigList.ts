@@ -3,11 +3,32 @@ import { fetchObjectSchemaRollup, fetchObjectSchemas } from "@/manage/object_sch
 import {  postgrestRollupArgs } from "@/services/postgrest/endpoints"
 import type {  IPostgrestParams } from "@/types/types"
 import { queryOptions, useQuery } from "@tanstack/react-query"
+import { fetchFieldConfigs } from "./services"
 
-export const fieldConfigListQueryKey = (params?: IPostgrestParams, rollups?: string[]) => [***REMOVED***field_config-list***REMOVED***].concat((rollups ?? []).map(r => postgrestRollupArgs({rollupColumn: r, params}).toString()))
+export const fieldConfigListQueryKey = ({params, rollups}: {params?: IPostgrestParams, rollups?: string[]}) => [***REMOVED***field_config-list***REMOVED***].concat((rollups ?? []).map(r => postgrestRollupArgs({rollupColumn: r, params}).toString()))
+
+export const getFieldConfigListQuery = ({params, token}: {params?: IPostgrestParams, token: string}) => {
+    return queryOptions({
+        queryKey: fieldConfigListQueryKey({params}),
+        queryFn: async ({ signal }) => {
+            const items = await fetchFieldConfigs({
+                params: {
+                    ...params,
+                    limit: 100
+                },
+                token: token ?? ***REMOVED******REMOVED***,
+                signal
+            })
+            return items
+        }
+    })
+}
+
+
+
 export const getFieldConfigListWithRollupsQuery = ({params, rollups, token}: {params?: IPostgrestParams, rollups?: string[], token: string}) => {
     return queryOptions({
-        queryKey: fieldConfigListQueryKey(params, rollups),
+        queryKey: fieldConfigListQueryKey({params, rollups}),
         queryFn: async ({ signal }) => {
 
             const rollupResults = await Promise.all((rollups ?? []).map(rollup => fetchObjectSchemaRollup({
@@ -36,14 +57,23 @@ export const getFieldConfigListWithRollupsQuery = ({params, rollups, token}: {pa
     })
 }
 
-export const getFieldConfigListQuery = ({params, token}: {params?: IPostgrestParams, token: string}) => {
+export const getFieldConfigListAtFormQuery = ({form_uuid, token}: {form_uuid: string, token: string}) => {
+    const params:IPostgrestParams = {
+        filters: [
+            {
+                column: ***REMOVED***form_uuid***REMOVED***,
+                operator: ***REMOVED***eq***REMOVED***,
+                value: form_uuid
+            }
+        ]
+    }
     return queryOptions({
-        queryKey: fieldConfigListQueryKey(params),
+        queryKey: fieldConfigListQueryKey({params}),
+
         queryFn: async ({ signal }) => {
 
 
-
-            const items = await fetchObjectSchemas({
+            const items = await fetchFieldConfigs({
                 params: {
                     ...params,
                     limit: 100

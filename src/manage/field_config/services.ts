@@ -1,14 +1,8 @@
 import { fetchListFromPostgrest, fetchRollupFromPostgrest, fetchSingleFromPostgrest, patchToPostgrest, postToPostgrest } from "@/services/postgrest/services";
 import type { IFieldOverrideConfig, IFormToFieldConfig, IObjectSchema, IPostgrestParams } from "@/types/types";
 
-const FIELDS_OVERRIDE_CONFIG_TO_FORM_TABLE = ***REMOVED***fields_override_config_to_form***REMOVED***;
-const FIELDS_OVERRIDE_CONFIG_TABLE = ***REMOVED***fields_override_config***REMOVED***;
-
-
-
-
-
-
+export const FIELDS_CONFIG_TO_FORM_TABLE = ***REMOVED***fields_override_config_to_form***REMOVED***;
+export const FIELD_CONFIG_TABLE = ***REMOVED***fields_override_config***REMOVED***;
 
 export const postFormToFieldsConfig = async ({
     formToFieldsConfig,
@@ -20,7 +14,7 @@ export const postFormToFieldsConfig = async ({
     signal?: AbortSignal
 }): Promise<IFormToFieldConfig> => {
     const newFormToFieldsConfig = await postToPostgrest<Omit<IFormToFieldConfig, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>, IFormToFieldConfig>({
-        table: FIELDS_OVERRIDE_CONFIG_TO_FORM_TABLE,
+        table: FIELDS_CONFIG_TO_FORM_TABLE,
         body: formToFieldsConfig,
         token,
         signal
@@ -41,7 +35,7 @@ export const patchFormToFieldsConfig = async ({
 }): Promise<IFormToFieldConfig> => {
     const newFormToFieldsConfig = await patchToPostgrest<Omit<IFormToFieldConfig, ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>, IFormToFieldConfig>({
         uuid,
-        table: FIELDS_OVERRIDE_CONFIG_TABLE,
+        table: FIELDS_CONFIG_TO_FORM_TABLE,
         body: formToFieldsConfig,
         token,
         signal
@@ -50,7 +44,7 @@ export const patchFormToFieldsConfig = async ({
 }
 
 
-export const fetchFieldsOverrideConfigs = async({
+export const fetchFieldConfigs = async({
     params, 
     token,
     signal
@@ -61,7 +55,7 @@ export const fetchFieldsOverrideConfigs = async({
 }): Promise<IObjectSchema[]> => {
 
     const documents = await fetchListFromPostgrest<IObjectSchema>({
-        table: FIELDS_OVERRIDE_CONFIG_TABLE,
+        table: FIELD_CONFIG_TABLE,
         params,
         token,
         signal
@@ -82,7 +76,7 @@ export const fetchFieldOverrideConfig = async ({
     signal?: AbortSignal
 }): Promise<IObjectSchema> => {
     const document = await fetchSingleFromPostgrest<IObjectSchema>({
-        table: FIELDS_OVERRIDE_CONFIG_TABLE,
+        table: FIELD_CONFIG_TABLE,
         uuid,
         params,
         token,
@@ -92,7 +86,7 @@ export const fetchFieldOverrideConfig = async ({
 
 }
 
-export const fetchObjectSchemaRollup = async ({
+export const fetchFieldConfigRollup = async ({
     rollup,
     params, 
     signal,
@@ -105,7 +99,7 @@ export const fetchObjectSchemaRollup = async ({
 }): Promise<{label: string, count: number}[]> => {
     
     const list = await fetchRollupFromPostgrest({
-        table: FIELDS_OVERRIDE_CONFIG_TABLE,
+        table: FIELD_CONFIG_TABLE,
         rollupColumn: rollup,
         params,
         token,
@@ -116,7 +110,7 @@ export const fetchObjectSchemaRollup = async ({
 
 }
 
-export const postFieldsOverrideConfig = async ({
+export const postFieldConfig = async ({
     fields_override_config,
     token,
     signal
@@ -127,7 +121,7 @@ export const postFieldsOverrideConfig = async ({
     signal?: AbortSignal
 }): Promise<IFieldOverrideConfig> => {
     const newFieldOverrideConfig = await postToPostgrest<Omit<IFieldOverrideConfig, ***REMOVED***owner_sub***REMOVED*** | ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>, IFieldOverrideConfig>({
-        table: FIELDS_OVERRIDE_CONFIG_TABLE,
+        table: FIELD_CONFIG_TABLE,
         body: fields_override_config,
         token,
         signal
@@ -135,7 +129,7 @@ export const postFieldsOverrideConfig = async ({
     return newFieldOverrideConfig;
 }
 
-export const patchFieldsOverrideConfig = async ({
+export const patchFieldConfig = async ({
     uuid,
     fields_override_config,
     token,
@@ -149,7 +143,7 @@ export const patchFieldsOverrideConfig = async ({
 }): Promise<IFieldOverrideConfig> => {
     const newFieldOverrideConfig = await patchToPostgrest<Omit<IFieldOverrideConfig, ***REMOVED***owner_sub***REMOVED*** | ***REMOVED***updated_at***REMOVED*** | ***REMOVED***created_at***REMOVED***>, IFieldOverrideConfig>({
         uuid,
-        table: FIELDS_OVERRIDE_CONFIG_TABLE,
+        table: FIELD_CONFIG_TABLE,
         body: fields_override_config,
         token,
         signal

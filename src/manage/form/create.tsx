@@ -10,7 +10,7 @@ import Errors from "../components/errors";
 import { useSlug } from "@/manage/components/useSlug";
 import ObjectTypeLoader from "@/manage/components/object_type_loader";
 import { useSchemaListForObjectType } from "@/manage/object_schema/useDefaultSchemaForType";
-import { postFieldsOverrideConfig, postFormToFieldsConfig } from "@/manage/field_config/services";
+import {   postFieldConfig, postFormToFieldsConfig } from "@/manage/field_config/services";
 import Link from "@/manage/components/link";
 
 const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSchema[] }): ReactElement => {
@@ -55,7 +55,7 @@ const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSche
             await Promise.all(formFieldOverrideConfigs.map(async (overrideConfig) => {
                 const schemaForVersion = schemasByVersion[+formValues.object_schema_version!]
                 if (schemaForVersion !== undefined && overrideConfig.config !== null && overrideConfig.weight !== undefined && overrideConfig.label !== undefined && JSON.stringify(overrideConfig.config) !== '') {
-                    const formFieldOverrideConfig = await postFieldsOverrideConfig({
+                    const formFieldOverrideConfig = await postFieldConfig({
                         fields_override_config: {
                             label: overrideConfig.label,
                             config: overrideConfig.config,
@@ -113,6 +113,12 @@ const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSche
                 type: 'select',
                 options: schemas.map(schema => ({ label: `${schema.version.toString()}${schema.is_type_default ? ' (default)' : ''}`, value: schema.version })),
                 required: true
+            },
+            {
+                id: 'is_schema_and_version_default',
+                label: 'Is default for object type and schema version?',
+                type: 'boolean',
+                description: 'If true, this form will be the default form for the selected object schema version. If false, it will not be the default form, but can still be selected when creating or editing an object.'
             },
             {
                 id: 'form_config',

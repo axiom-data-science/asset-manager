@@ -66,8 +66,8 @@ const ListFormTable = ({ object_types, forms }: { object_types: IObjectType[], f
                             },
                             {
                                 label: 'Is default',
-                                id: 'is_type_default',
-                                accessor: r => r.is_type_default ? <CheckIcon className="text-green-500" /> : <XIcon className="text-gray-300" />
+                                id: 'is_schema_and_version_default',
+                                accessor: r => r.is_schema_and_version_default ? <CheckIcon className="text-green-500" /> : <XIcon className="text-gray-300" />
                             },
                             {
                                 label: 'Owner',

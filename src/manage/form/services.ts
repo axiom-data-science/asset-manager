@@ -45,6 +45,26 @@ export const fetchForm = async ({
 
 }
 
+export const fetchDefaultFormAtObjectType = async({
+    object_type_uuid,
+    token,
+    signal
+}:{
+    object_type_uuid: string,
+    token: string,
+    signal?: AbortSignal
+}): Promise<IAssetForm | null> => {
+    const form = await fetchSingleFromPostgrest<IAssetForm>({
+        table: `/get_default_form_at_object_type_uuid?object_type_uuid=eq.${object_type_uuid}`,
+        token,
+        signal
+    })
+    if(form.uuid === null){
+        return null
+    }
+    return form
+}
+
 export const fetchFormRollup = async ({
     rollup,
     params, 

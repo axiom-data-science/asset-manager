@@ -104,14 +104,14 @@ export function AppSidebar() {
           url: ***REMOVED***/forms/create***REMOVED***
         },
         {
-          name: ***REMOVED***List form configs***REMOVED***,
+          name: ***REMOVED***List field configs***REMOVED***,
           icon: List,
-          url: ***REMOVED***/form-configs***REMOVED***
+          url: ***REMOVED***/field_configs***REMOVED***
         },
         {
-          name: ***REMOVED***Create form config***REMOVED***,
+          name: ***REMOVED***Create field config***REMOVED***,
           icon: Plus,
-          url: ***REMOVED***/form-configs/create***REMOVED***
+          url: ***REMOVED***/field_configs/create***REMOVED***
         }
       ]
     },

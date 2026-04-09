@@ -44,9 +44,9 @@ const CopyField = ({ label, id, value, noCopy }: { label?: string, id: string, v
 
 }
 
-export const CopyFields = ({ fields }: { fields: { label: string, id: string, value: ReactNode, noCopy?: boolean }[] }): ReactElement => {
+export const CopyFields = ({ fields, stack }: { fields: { label: string, id: string, value: ReactNode, noCopy?: boolean }[], stack?: boolean }): ReactElement => {
     return (
-        <div className="flex flex-row gap-4">
+        <div className={`flex ${stack ? ***REMOVED***flex-col gap-2***REMOVED*** : ***REMOVED***flex-row  gap-4***REMOVED***}`}>
             {
                 fields.map(field => (
                     <CopyField key={field.id} {...field} />

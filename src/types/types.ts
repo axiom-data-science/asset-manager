@@ -15,7 +15,11 @@ export type IPostgrestParams<T = Record<string, string>> = {
   select?: (string | {
     column: string | keyof T
     fn?: ***REMOVED***count***REMOVED*** | ***REMOVED***sum***REMOVED*** | ***REMOVED***avg***REMOVED*** | ***REMOVED***min***REMOVED*** | ***REMOVED***max***REMOVED***
-    as?: string
+    as?: string,
+    join?: {
+      table: string,
+      fields?: string[]
+    }
   })[],
   filters?: IPostgrestFilter[]
 }
@@ -205,6 +209,10 @@ export interface IFormToFieldConfig {
   weight?: number,
   created_at: string,
   updated_at: string
+}
+
+export interface IFormToFieldConfigWithDetails extends IFormToFieldConfig {
+  fields_override_config: IFieldOverrideConfig
 }
 
 export type IRollup = { label: string, count: number }

@@ -1,3 +1,4 @@
+import { fetchObjectSchema } from "@/manage/object_schema/services";
 import { fetchListFromPostgrest, fetchRollupFromPostgrest, fetchSingleFromPostgrest, patchToPostgrest, postToPostgrest } from "@/services/postgrest/services";
 import type { IAssetForm, IPostgrestParams } from "@/types/types";
 
@@ -87,6 +88,74 @@ export const fetchFormRollup = async ({
     return list
 
 
+}
+
+export const fetchFormsAtSchema = async ({
+    object_schema_uuid,
+    params,
+    token,
+    signal,
+}: {
+    object_schema_uuid: string,
+    params?: IPostgrestParams,
+    token: string,
+    signal?: AbortSignal
+}) => {
+    const schema = await fetchObjectSchema({
+        uuid: object_schema_uuid,
+        token,
+        signal,
+    })
+    const forms = await fetchListFromPostgrest<IAssetForm>({
+        table: FORMS_TABLE,
+        params:{
+            ...params,
+            filters:[
+                {
+                    column: ***REMOVED***object_type_uuid***REMOVED***,
+                    operator: ***REMOVED***eq***REMOVED***,
+                    value: schema.object_type_uuid
+                },
+                {
+                    column: ***REMOVED***object_schema_version***REMOVED***,
+                    operator: ***REMOVED***eq***REMOVED***,
+                    value: schema.version
+                }
+            ]
+        },
+        token,
+        signal,
+    })
+    return forms;
+}
+
+export const fetchFormsAtType = async ({
+    object_type_uuid,
+    params,
+    token,
+    signal
+}: {
+    object_type_uuid: string,
+    params?: IPostgrestParams,
+    token: string,
+    signal?: AbortSignal
+}) => {
+    const forms = await fetchListFromPostgrest<IAssetForm>({
+        table: FORMS_TABLE,
+        params:{
+            ...params,
+            filters:[
+                {
+                    column: ***REMOVED***object_type_uuid***REMOVED***,
+                    operator: ***REMOVED***eq***REMOVED***,
+                    value: object_type_uuid
+                }
+            ]
+        },
+        token,
+        signal
+    })
+    return forms;
 }
 
 export const postForm = async ({

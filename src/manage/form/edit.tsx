@@ -1,21 +1,27 @@
-import { Button, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
+import { Button, Loader, utils, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
 import { useState, type ReactElement } from "react";
 import { FormCreator, type IFormValues, type IForm } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
 import { patchForm } from "@/manage/form/services";
 import { useAuth } from "@/auth/useAuth";
-import { type IValidationError, type IAssetForm } from "@/types/types";
+import { type IValidationError, type IAssetForm, type IFormToFieldConfigWithDetails, type IObjectSchema } from "@/types/types";
 import { useNavigate, useParams } from "react-router-dom";
-import { formQueryKey, useForm } from "@/manage/form/useForm";
+import { formQueryKey, useFullForm } from "@/manage/form/useForm";
 import { useQueryClient } from "@tanstack/react-query";
 import { validate } from "@/lib/utils";
 import Errors from "../components/errors";
 import { CopyFields } from "../components/copy_field";
 import { formListQueryKey } from "./useFormList";
+import { Cog, Network, Plus } from "lucide-react";
+import Link from "@/manage/components/link";
 
 const EditForm = ({
-    assetForm
+    assetForm,
+    fieldConfigs,
+    objectSchema
 }: {
-    assetForm: IAssetForm
+    assetForm: IAssetForm,
+    fieldConfigs: IFormToFieldConfigWithDetails[],
+    objectSchema: IObjectSchema
 }): ReactElement => {
 
     const queryClient = useQueryClient()
@@ -111,8 +117,69 @@ const EditForm = ({
                 { id: ***REMOVED***uuid***REMOVED***, label: ***REMOVED***UUID***REMOVED***, value: assetForm.uuid },
                 { id: ***REMOVED***object_type_uuid***REMOVED***, label: ***REMOVED***Object type***REMOVED***, value: assetForm.object_type_uuid }
             ]} />
+
             <FormCreator form={form} formValueState={[formValues, setFormValue]} className=***REMOVED***-mt-8***REMOVED*** />
-            <div>
+            <div className=***REMOVED***flex flex-col gap-8 bg-slate-100 p-4 rounded-md***REMOVED***>
+                <div className=***REMOVED***flex flex-col gap-2***REMOVED***>
+                    <h4 className=***REMOVED***flex flex-row gap-2 items-center***REMOVED***><Network size={14} /> Associated Schema</h4>
+                    <div className=***REMOVED***p-4 bg-slate-200 rounded-md***REMOVED***>
+                        <p className=***REMOVED***font-semibold***REMOVED***><Link to={`/object_schema/edit/${objectSchema.uuid}`}>{objectSchema.label}</Link></p>
+                        <CopyFields fields={[
+                            { id: `uuid-${objectSchema.uuid}`, label: ***REMOVED***UUID***REMOVED***, value: objectSchema.uuid },
+                            { id: `object_type_uuid-${objectSchema.uuid}`, label: ***REMOVED***Object type***REMOVED***, value: objectSchema.object_type_uuid },
+                            { id: `version-${objectSchema.uuid}`, label: ***REMOVED***Version***REMOVED***, value: objectSchema.version }
+                        ]} />
+                    </div>
+                </div>
+                <div className=***REMOVED***flex flex-col gap-2***REMOVED***>
+                    <h4 className=***REMOVED***flex flex-row gap-2 items-center***REMOVED***><Cog size={14} /> Associated Field Overrides{
+                        fieldConfigs.length > 0 &&
+                        <Link
+                            to={`/field_configs/create?form_uuid=${assetForm.uuid}`}
+                            className={
+                                utils.createButtonClass({
+                                    size: ***REMOVED***xs***REMOVED***,
+                                    type: ***REMOVED***create***REMOVED***,
+                                    className: ***REMOVED***ml-2 gap-1***REMOVED***
+                                })
+                            }
+
+                        ><Plus /> Create field override for <strong className=***REMOVED***underline underline-offset-2 decoration-dotted***REMOVED***>{assetForm.label}</strong> form</Link>
+                    }</h4>
+                    <div className=***REMOVED***p-8 bg-slate-200 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 rounded-md***REMOVED***>
+                        {
+                            fieldConfigs.length < 1 && (
+                                <div className="flex flex-col gap-4">
+                                    <p>No schema found for this object type.</p>
+                                    <div>
+                                        <Link to={`/field_configs/create?form_uuid=${assetForm.uuid}`} className={utils.createButtonClass({
+                                            size: ***REMOVED***md***REMOVED***,
+                                            variant: ***REMOVED***primary***REMOVED***
+                                        })}>Create schema</Link>
+                                    </div>
+                                </div>
+                            )
+                        }
+                        {
+                            fieldConfigs.map(fieldConfig => {
+                                return (<div key={fieldConfig.uuid} className=***REMOVED***p-4 bg-white rounded-md flex flex-col gap-2***REMOVED***>
+                                    <div className=***REMOVED***flex flex-col gap-2***REMOVED***>
+                                        <h2 className=***REMOVED***font-semibold***REMOVED***>{fieldConfig.fields_override_config.label}</h2>
+                                        <CopyFields fields={[
+                                            { id: `uuid-${fieldConfig.uuid}`, label: ***REMOVED***UUID***REMOVED***, value: fieldConfig.uuid },
+                                            { id: `object_schema_uuid-${fieldConfig.uuid}`, label: ***REMOVED***Object schema UUID***REMOVED***, value: fieldConfig.fields_override_config.object_schema_uuid }
+                                        ]} />
+
+                                    </div>
+                                </div>
+                                )
+                            })
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex flex-row sticky bottom-0 bg-white/80 py-4">
                 <Button onClick={onUpdate} type=***REMOVED***primary***REMOVED*** disabled={saving}>{saving ? <Loader className="animate-spin" /> : ***REMOVED***Update***REMOVED***}</Button>
             </div>
         </div>
@@ -122,9 +189,9 @@ const EditForm = ({
 const EditFormLoader = (): ReactElement => {
     const params = useParams()
     const uuid = params.uuid
-    const { data: form, isLoading, error } = useForm(uuid ?? ***REMOVED******REMOVED***)
-    return <ViewWithLoader isLoading={isLoading} error={error} data={form}>
-        {form && <EditForm assetForm={form} />}
+    const { data, isLoading, error } = useFullForm({ uuid: uuid ?? ***REMOVED******REMOVED*** })
+    return <ViewWithLoader isLoading={isLoading} error={error} data={data}>
+        {data && <EditForm assetForm={data.form} fieldConfigs={data.field_configs} objectSchema={data.object_schema} />}
     </ViewWithLoader>
 }
 

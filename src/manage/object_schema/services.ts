@@ -1,3 +1,4 @@
+import { fetchForm } from "@/manage/form/services";
 import { fetchListFromPostgrest, fetchRollupFromPostgrest, fetchSingleFromPostgrest, patchToPostgrest, postToPostgrest } from "@/services/postgrest/services";
 import type { IObjectSchema, IPostgrestParams } from "@/types/types";
 
@@ -128,6 +129,50 @@ export const fetchSchemasForObjectType = async ({
     return list
         
 }
+
+export const fetchSchemaAtForm = async ({
+    form_uuid,
+    params,
+    token,
+    signal
+}: {
+    form_uuid: string,
+    token: string,
+    params?: IPostgrestParams,
+    signal?: AbortSignal
+}) => {
+    const form = await fetchForm({
+        uuid: form_uuid,
+        params:{
+            select:[***REMOVED***object_type_uuid***REMOVED***, ***REMOVED***object_schema_version***REMOVED***],
+        },
+        token,
+        signal
+    })
+    const schema = await fetchSingleFromPostgrest<IObjectSchema>({
+        table: OBJECT_SCHEMAS_TABLE,
+        params: {
+            ...params,
+            filters:[
+                {
+                    column: ***REMOVED***object_type_uuid***REMOVED***,
+                    operator: ***REMOVED***eq***REMOVED***,
+                    value: form.object_type_uuid
+                },
+                {
+                    column: ***REMOVED***version***REMOVED***,
+                    operator: ***REMOVED***eq***REMOVED***,
+                    value: form.object_schema_version
+                }
+            ]
+        },
+        token,
+        signal
+     })
+     return schema;
+}
+
+
 
 export const postObjectSchema = async ({
     object_schema,

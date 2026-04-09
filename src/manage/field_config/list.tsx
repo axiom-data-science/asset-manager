@@ -1,26 +1,27 @@
-import { useObjectSchemaListWithRollups } from "@/manage/object_schema/useObjectSchemaList"
-import type { IObjectType } from "@/types/types"
+import { useObjectSchemaList } from "@/manage/object_schema/useObjectSchemaList"
+import type { IObjectSchema } from "@/types/types"
 import { Button, SelectInput, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
 import type { ReactElement } from "react"
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
-import { useObjectTypeList } from "@/manage/object_type/useObjectTypeList"
 import Table from ***REMOVED***@/manage/components/table***REMOVED***
+import { useFieldConfigListWithRollups } from "@/manage/field_config/useFieldConfigList"
+import Link from "@/manage/components/link"
 
 
 
-const ListObjectSchemasTable = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
+const ListFieldConfigTable = ({ object_schemas }: { object_schemas: IObjectSchema[] }): ReactElement => {
 
-    const { data: object_schemas, isLoading, error } = useObjectSchemaListWithRollups({ rollups: [***REMOVED***object_type_uuid***REMOVED***] })
-    const object_types_map = Object.fromEntries(object_types.map(ot => [ot.uuid, ot.label]))
+    const { data: field_configs, isLoading, error } = useFieldConfigListWithRollups()
+    const object_schemas_map = Object.fromEntries(object_schemas.map(ot => [ot.uuid, ot.label]))
 
     return (
-        <ViewWithLoader isLoading={isLoading} error={error} data={object_schemas}>
+        <ViewWithLoader isLoading={isLoading} error={error} data={field_configs}>
 
-            <h1 className="text-2xl font-bold py-2 sticky top-0 bg-white">Object Schemas</h1>
+            <h1 className="text-2xl font-bold py-2 sticky top-0 bg-white">Field Configurations</h1>
             <div className=***REMOVED***flex flex-row gap-4 p-2 sticky top-10 bg-white z-10***REMOVED***>
                 {
-                    Object.keys(object_schemas?.rollups ?? []).map(r => {
-                        const rollup = object_schemas?.rollups?.[r].filter(item => item.label !== null && item.label !== ***REMOVED******REMOVED***);
+                    Object.keys(field_configs?.rollups ?? []).map(r => {
+                        const rollup = field_configs?.rollups?.[r].filter(item => item.label !== null && item.label !== ***REMOVED******REMOVED***);
                         if (rollup?.length === 0) return null;
                         return (
                             <div className=***REMOVED***flex flex-row gap-2***REMOVED*** key={r}>
@@ -32,7 +33,7 @@ const ListObjectSchemasTable = ({ object_types }: { object_types: IObjectType[] 
                                     label={null}
                                     size=***REMOVED***xs***REMOVED***
                                     options={rollup?.map(item => ({
-                                        label: `${r === ***REMOVED***object_type_uuid***REMOVED*** ? object_types_map[item.label] : item.label} (${item.count})`,
+                                        label: `${r === ***REMOVED***object_schema_uuid***REMOVED*** ? object_schemas_map[item.label] : item.label} (${item.count})`,
                                         value: item.label
                                     })) ?? []}
                                 />
@@ -42,21 +43,22 @@ const ListObjectSchemasTable = ({ object_types }: { object_types: IObjectType[] 
                 }
             </div>
             {
-                object_schemas && (
+                field_configs && (
                     <Table
                         className=***REMOVED***w-full***REMOVED***
                         rowClassName="odd:bg-slate-100"
                         theadClassName="sticky top-26"
-                        data={object_schemas?.items}
+                        data={field_configs?.items}
                         columns={[
                             {
                                 label: ***REMOVED***Label***REMOVED***,
-                                id: ***REMOVED***label***REMOVED***
+                                id: ***REMOVED***label***REMOVED***,
+                                accessor: r => <Link to={`/field_configs/edit/${r.uuid}`}>{r.label}</Link>
                             },
                             {
-                                label: ***REMOVED***Type***REMOVED***,
-                                id: ***REMOVED***object_type_uuid***REMOVED***,
-                                accessor: r => object_types_map[r.object_type_uuid] ?? r.object_type_uuid
+                                label: ***REMOVED***Schema***REMOVED***,
+                                id: ***REMOVED***object_schema_uuid***REMOVED***,
+                                accessor: r => object_schemas_map[r.object_schema_uuid] ?? r.object_schema_uuid
                             },
                             {
                                 label: ***REMOVED***Owner***REMOVED***,
@@ -83,10 +85,10 @@ const ListObjectSchemasTable = ({ object_types }: { object_types: IObjectType[] 
 
 }
 
-const ListObjectSchemas = (): ReactElement => {
+const ListFieldConfigs = (): ReactElement => {
 
     const auth = useAuth();
-    const { data: object_types, isLoading, error } = useObjectTypeList()
+    const { data: object_schemas, isLoading, error } = useObjectSchemaList()
     if (!auth.user) {
         return (
             <div className="p-20">
@@ -96,10 +98,10 @@ const ListObjectSchemas = (): ReactElement => {
         )
     }
     return (
-        <ViewWithLoader isLoading={isLoading} error={error} data={object_types}>
-            {object_types && <ListObjectSchemasTable object_types={object_types} />}
+        <ViewWithLoader isLoading={isLoading} error={error} data={object_schemas}>
+            {object_schemas && <ListFieldConfigTable object_schemas={object_schemas} />}
         </ViewWithLoader>
     )
 }
 
-export default ListObjectSchemas
+export default ListFieldConfigs

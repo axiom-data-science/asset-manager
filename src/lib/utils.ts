@@ -1,16 +1,17 @@
 import type { IValidationError } from "@/types/types"
-import type { IForm, IFormValues } from "@axdspub/axiom-ui-forms"
+import { schemaToFormUtils, type IForm, type IFormValues } from "@axdspub/axiom-ui-forms"
 import { useQueries } from "@tanstack/react-query"
 import { clsx, type ClassValue } from "clsx"
 import type { queryOptions } from "node_modules/@tanstack/react-query/build/legacy/queryOptions"
 import { twMerge } from "tailwind-merge"
+import { get } from "lodash-es"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
 
-export const validate = async ({form, formValues, messagePrefix} : {form: IForm, formValues: IFormValues, messagePrefix?: string}): Promise<{
+export const validate = async ({form, formValues, messagePrefix, schemaFields} : {form: IForm, formValues: IFormValues, messagePrefix?: string, schemaFields?: string[]}): Promise<{
     valid: boolean,
     errors: IValidationError[]
 }> => {
@@ -30,6 +31,15 @@ export const validate = async ({form, formValues, messagePrefix} : {form: IForm,
                 errors.push({ field: f.id, message: `${messagePrefix ? messagePrefix + ***REMOVED***: ***REMOVED*** : ***REMOVED******REMOVED***}${f.label} is required.` });
             }
         })
+    if(schemaFields?.length){
+        schemaFields.forEach(field => {
+            const schemaValid = schemaToFormUtils.validateSchema(get(formValues, field) ?? {})
+            if(schemaValid.error){
+                errors.push({ field, message: `${messagePrefix ? messagePrefix + ***REMOVED***: ***REMOVED*** : ***REMOVED******REMOVED***}${field} field is not a valid JSON schema. ${schemaValid.error}` })
+                valid = false;
+            }
+        })
+    }
     return { valid, errors };
 }
 

@@ -171,7 +171,7 @@ const EditObjectTypeForm = ({
                                     schema.is_type_default && <span className=***REMOVED***text-xs text-slate-400***REMOVED***><Check size={14} className=***REMOVED***inline text-slate-600***REMOVED*** /> Default schema for {object_type.label}</span>
                                 }
                                 <h2 className=***REMOVED***font-semibold***REMOVED***>{schema.label} (version: {schema.version})</h2>
-                                <CopyFields fields={[
+                                <CopyFields stack={true} fields={[
                                     { id: `slug-${schema.uuid}`, label: ***REMOVED***Slug***REMOVED***, value: schema.slug },
                                     { id: `uuid-${schema.uuid}`, label: ***REMOVED***UUID***REMOVED***, value: schema.uuid }
                                 ]} />
@@ -183,7 +183,7 @@ const EditObjectTypeForm = ({
                     })
                 }
             </div>
-            <div>
+            <div className=***REMOVED***flex flex-row bg-white/80 py-4 sticky bottom-0***REMOVED***>
                 <Button onClick={onUpdate} type=***REMOVED***primary***REMOVED*** disabled={saving}>{saving ? <Loader className="animate-spin" /> : ***REMOVED***Update***REMOVED***}</Button>
             </div>
         </div>

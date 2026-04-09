@@ -88,7 +88,7 @@ export const useObjectSchemaListWithRollups = ({params, rollups}: {params?: IPos
     return queryResult
 }
 
-export const useObjectSchemaList = ({params}: {params?: IPostgrestParams}) => {
+export const useObjectSchemaList = ({params}: {params?: IPostgrestParams} = {}) => {
     const auth = useAuth()
     const queryResult = useQuery(getObjectSchemaListQueryOptions({params, token: auth.user?.access_token ?? ***REMOVED******REMOVED***}))
     return queryResult

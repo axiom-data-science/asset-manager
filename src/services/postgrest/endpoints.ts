@@ -21,7 +21,7 @@ export const postgrestArgs = <T,>(params: IPostgrestParams<T>): URLSearchParams 
     if (params.select !== undefined) {
         const select = params.select.map(s => {
             const o = typeof s === ***REMOVED***string***REMOVED*** ? { column: s } : s;
-            return `${o.as ? `${o.as}:` : ***REMOVED******REMOVED***}${String(o.column)}${o.fn !== undefined ? `.${o.fn}()` : ***REMOVED******REMOVED***}`
+            return `${o.as ? `${o.as}:` : ***REMOVED******REMOVED***}${String(o.column)}${o.fn !== undefined ? `.${o.fn}()` : `${o.join !== undefined ? `(${o.join.table}${o.join.fields !== undefined ? `(${o.join.fields.join(***REMOVED***,***REMOVED***)})` : ***REMOVED***(*)***REMOVED***})` : ***REMOVED******REMOVED***}`}`
         }).join(***REMOVED***,***REMOVED***);
         args.append(***REMOVED***select***REMOVED***, select);
     }

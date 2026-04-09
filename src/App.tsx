@@ -18,6 +18,7 @@ import ListForm from './manage/form/list'
 import EditFormLoader from './manage/form/edit'
 import EditDocument from './manage/document/edit'
 import EditObjectSchema from '@/manage/object_schema/edit'
+import ListFieldConfigs from '@/manage/field_config/list'
 
 
 const Authed = (): ReactElement => {
@@ -144,6 +145,15 @@ function App(): ReactElement {
                 <Route path="/forms/edit/:uuid" element={
                   <SidebarLayout><EditFormLoader /></SidebarLayout>
                 } />
+
+
+                <Route path="/field_configs" element={
+                  <SidebarLayout><ListFieldConfigs /></SidebarLayout>
+                } />
+
+                {/* <Route path="/field_configs/edit/:uuid" element={
+                  <SidebarLayout><EditFieldConfig /></SidebarLayout>
+                } /> */}
 
               </Routes>
 

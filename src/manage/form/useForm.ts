@@ -4,6 +4,9 @@ import { fetchDefaultFormAtObjectType, fetchForm } from "./services"
 import { useCombinedQueries } from "@/hooks/use-combined-queries"
 import { getObjectTypeListQuery } from "@/manage/object_type/useObjectTypeList"
 import { getFieldConfigListAtFormQuery } from "../field_config/useFieldConfigList"
+import { fetchSchemaAtForm } from "@/manage/object_schema/services"
+import { postgrestArgs } from "@/services/postgrest/endpoints"
+import type { IPostgrestParams } from "@/types/types"
 
 export const formQueryKey = (uuid?: string) => ['form', uuid]
 export const formWithLookupsQueryKey = (uuid?: string) => ['form', 'object-types', uuid]
@@ -44,16 +47,43 @@ export const getFormAtObjectTypeQuery = ({object_type_uuid, token}: {object_type
 
 }
 
+export const getSchemaAtFormQuery = ({form_uuid, params, token}: {form_uuid?: string, params?: IPostgrestParams, token?: string}) => {
+    return queryOptions({
+        queryKey: ['form', 'object_schema', form_uuid, postgrestArgs(params ?? {}).toString()],
+        enabled: !!form_uuid && !!token && form_uuid !== '',
+        queryFn: async ({ signal }) => {
+            const objectSchema = await fetchSchemaAtForm({
+                form_uuid: form_uuid ?? 'NA',
+                params,
+                signal,
+                token: token ?? ''
+            })
+            return objectSchema
+        }
+    })
+}
+
 export const useForm = (uuid?: string) => {
     const auth = useAuth()
     const queryResult = useQuery(getFormQuery({ uuid, token: auth.user?.access_token }))
     return queryResult
 }
 
+export const useFullForm = ({uuid}: {uuid?: string}) => {
+    const auth = useAuth()
+    const queryObjects = {
+        form: getFormQuery({uuid, token: auth.user?.access_token}),
+        field_configs: getFieldConfigListAtFormQuery({form_uuid: uuid ?? 'NA', token: auth.user?.access_token ?? ''}),
+        object_schema: getSchemaAtFormQuery({form_uuid: uuid ?? 'NA', token: auth.user?.access_token ?? ''})
+    }
+    return useCombinedQueries(queryObjects)
+}
+
+
 export const  useFormWithLookups = ({uuid}: {uuid?: string}) => {
     const auth = useAuth()
     const queryObjects = {
-        form: getFormQuery({uuid, token: useAuth().user?.access_token}),
+        form: getFormQuery({uuid, token: auth.user?.access_token}),
         object_types: getObjectTypeListQuery({token: auth.user?.access_token}),
         field_configs: getFieldConfigListAtFormQuery({form_uuid: uuid ?? 'NA', token: auth.user?.access_token ?? ''})
     }   

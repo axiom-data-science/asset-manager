@@ -104,14 +104,14 @@ export function AppSidebar() {
           url: '/forms/create'
         },
         {
-          name: 'List form configs',
+          name: 'List field configs',
           icon: List,
-          url: '/form-configs'
+          url: '/field_configs'
         },
         {
-          name: 'Create form config',
+          name: 'Create field config',
           icon: Plus,
-          url: '/form-configs/create'
+          url: '/field_configs/create'
         }
       ]
     },

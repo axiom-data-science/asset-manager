@@ -102,7 +102,12 @@ const CreateObjectTypeForm = ({ object_categories }: { object_categories: string
         setSaving(true);
         try {
             const typeValid = await validate({ form, formValues: formValue });
-            const schemaValid = formValue['create_default_schema'] ? await validate({ form: schemaForm, formValues: schemaFormValue, messagePrefix: 'Default schema' }) : { valid: true, errors: [] }
+            const schemaValid = formValue['create_default_schema'] ? await validate({
+                form: schemaForm,
+                formValues: schemaFormValue,
+                messagePrefix: 'Default schema',
+                schemaFields: ['json_schema']
+            }) : { valid: true, errors: [] }
             const valid = {
                 valid: typeValid.valid && schemaValid.valid,
                 errors: [...typeValid.errors, ...schemaValid.errors]

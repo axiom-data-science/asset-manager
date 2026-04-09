@@ -21,7 +21,7 @@ export const postgrestArgs = <T,>(params: IPostgrestParams<T>): URLSearchParams 
     if (params.select !== undefined) {
         const select = params.select.map(s => {
             const o = typeof s === 'string' ? { column: s } : s;
-            return `${o.as ? `${o.as}:` : ''}${String(o.column)}${o.fn !== undefined ? `.${o.fn}()` : ''}`
+            return `${o.as ? `${o.as}:` : ''}${String(o.column)}${o.fn !== undefined ? `.${o.fn}()` : `${o.join !== undefined ? `(${o.join.table}${o.join.fields !== undefined ? `(${o.join.fields.join(',')})` : '(*)'})` : ''}`}`
         }).join(',');
         args.append('select', select);
     }

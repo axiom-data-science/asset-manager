@@ -3,19 +3,20 @@ import { useState, type ReactElement } from "react";
 import { FormCreator, type IForm, type IFormValues } from '@axdspub/axiom-ui-forms'
 import { patchObjectSchema } from "@/manage/object_schema/services";
 import { useAuth } from "@/auth/useAuth";
-import type { IObjectSchema, IObjectType } from '@/types/types'
+import type { IAssetForm, IObjectSchema, IObjectType } from '@/types/types'
 import { useNavigate, useParams } from "react-router-dom";
 import { validate } from "@/lib/utils";
 import Errors from "../components/errors";
 import { useObjectSchemaFull } from "@/manage/object_schema/useObjectSchema";
 import { omit } from "lodash-es";
 import { CopyButton, CopyFields } from "@/manage/components/copy_field";
-import { Check, X } from "lucide-react";
+import { BookPlus, Check, X } from "lucide-react";
+import Link from "@/manage/components/link";
 
 
 
 
-const CreateObjectSchemaForm = ({ object_schema, object_types }: { object_schema: IObjectSchema, object_types: IObjectType[] }): ReactElement => {
+const CreateObjectSchemaForm = ({ object_schema, object_types, assetForms }: { object_schema: IObjectSchema, object_types: IObjectType[], assetForms: IAssetForm[] }): ReactElement => {
 
     const navigate = useNavigate()
     const [saving, setSaving] = useState(false);
@@ -23,6 +24,7 @@ const CreateObjectSchemaForm = ({ object_schema, object_types }: { object_schema
     const [errorMessages, setErrorMessages] = useState<{ field: string, message: string }[]>([]);
     const [formValues, setFormValues] = useState<IFormValues>(omit(object_schema, 'is_type_default', 'json_config', 'owner_sub', 'uuid', 'created_at', 'updated_at') as IFormValues);
     const objectTypeMap = Object.fromEntries(object_types.map(ot => [ot.uuid, ot]))
+    const objectType = objectTypeMap[object_schema.object_type_uuid]
 
     const onUpdate = async () => {
         const valid = await validate({ form, formValues });
@@ -87,30 +89,69 @@ const CreateObjectSchemaForm = ({ object_schema, object_types }: { object_schema
 
     return (
         <div className='flex flex-col gap-4'>
-            <h1 className='text-2xl font-bold'>Create schema</h1>
+            <h1 className='text-2xl font-bold'>Edit schema details</h1>
             <Errors errors={errorMessages} />
-            <CopyFields fields={[
-                { id: 'object_type_uuid', label: 'Object type', value: objectTypeMap[object_schema.object_type_uuid]?.label ?? object_schema.object_type_uuid },
-                { id: 'version', label: 'Version', value: object_schema.version },
-                { id: 'is_type_default', label: 'Is default schema for object type?', value: object_schema.is_type_default ? <Check size={22} color='green' /> : <X size={22} color="red" />, noCopy: true }
-            ]}
-            />
             <FormCreator
                 form={form}
                 formValueState={[formValues, setFormValues]}
             />
-            <div>
-                <p className='font-bold'>JSON config</p>
-                <pre className='max-h-125 overflow-scroll bg-gray-100 p-4 rounded text-xs relative'>
-                    <span className='cursor-pointer absolute right-4 top-4 text-slate-400'>
-                        <CopyButton value={JSON.stringify(object_schema.json_schema, null, 2)} size={48} />
-                    </span>
+            <div className='p-4 bg-slate-100 flex flex-col gap-8 rounded'>
+                <div>
+                    <h4>Schema version</h4>
+                    <div className='p-4 bg-slate-200 rounded-md'>
+                        <p className='font-semibold'>{object_schema.version}</p>
+                    </div>
+                </div>
+                <div>
+                    <h4>Is default schema for object type?</h4>
+                    <div className='p-4 bg-slate-200 rounded-md flex items-center gap-2'>
+                        {object_schema.is_type_default ? <Check size={22} color='green' /> : <X size={22} color="red" />}
+                        <span>{object_schema.is_type_default ? 'Yes' : 'No'}</span>
+                    </div>
+                </div>
+                <div>
+                    <p className='mb-2'>JSON config</p>
+                    <pre className='max-h-125 overflow-scroll bg-slate-200 p-4 rounded-md text-xs relative whitespace-pre-wrap'>
+                        <span className='cursor-pointer absolute right-4 top-4 text-slate-400'>
+                            <CopyButton value={JSON.stringify(object_schema.json_schema, null, 2)} size={48} />
+                        </span>
 
 
-                    {JSON.stringify(object_schema.json_schema, null, 2)}
-                </pre>
+                        {JSON.stringify(object_schema.json_schema, null, 2)}
+                    </pre>
+                </div>
+                <div>
+                    <h4>Associated Type</h4>
+                    <div className='p-8 bg-slate-200 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 rounded-md'>
+                        <div className='mb-4 bg-white p-4 rounded-md'>
+                            <p className='font-semibold'><Link to={`/object_type/edit/${objectType.uuid}`}>{objectType.label} ({objectType.category})</Link></p>
+                            <CopyFields stack={true} fields={[
+                                { id: `uuid-${objectType.uuid}`, label: 'UUID', value: objectType.uuid },
+                            ]} />
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h4 className='flex flex-row gap-2 items-center'><BookPlus size={18} />Associated Forms</h4>
+                    <div className='p-8 bg-slate-200 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 rounded-md'>
+                        {assetForms.map(assetForm => {
+                            return (
+                                <div key={assetForm.uuid} className='mb-4 bg-white p-4 rounded-md'>
+                                    <p className='font-semibold'><Link to={`/forms/edit/${assetForm.uuid}`}>{assetForm.label}</Link></p>
+                                    <CopyFields stack={true} fields={[
+                                        { id: `uuid-${assetForm.uuid}`, label: 'UUID', value: assetForm.uuid },
+                                        { id: `slug-${assetForm.uuid}`, label: 'Slug', value: assetForm.slug },
+                                        { id: `version-${assetForm.uuid}`, label: 'Schema version', value: assetForm.object_schema_version }
+                                    ]} />
+                                </div>
+                            )
+                        }) ?? <p>No forms associated with this schema.</p>}
+                    </div>
+                </div>
             </div>
-            <div>
+
+
+            <div className='flex flex-row sticky bottom-0 bg-white/80 py-4'>
                 <Button onClick={onUpdate} type='primary' disabled={saving}>{saving ? <Loader className="animate-spin" /> : 'Update'}</Button>
             </div>
         </div>
@@ -130,7 +171,7 @@ const EditObjectSchema = (): ReactElement => {
     return (
         <ViewWithLoader isLoading={isLoading} error={error} data={data}>
             {
-                data && <CreateObjectSchemaForm object_schema={data.object_schema} object_types={data.object_types} />
+                data && <CreateObjectSchemaForm object_schema={data.object_schema} object_types={data.object_types} assetForms={data.forms} />
             }
         </ViewWithLoader>
     )

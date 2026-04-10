@@ -1,11 +1,32 @@
 import { dateTime } from "@/lib/date"
 import { useObjectTypeListWithRollups } from "@/manage/object_type/useObjectTypeList"
-import { SelectInput, utils, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
-import type { ReactElement } from "react"
+import { Button, SelectInput, utils, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
+import { useState, type ReactElement } from "react"
 import Link from '@/manage/components/link'
 import Table from '@/manage/components/table'
-import type { IRollup } from "@/types/types"
+import type { IObjectType, IRollup } from "@/types/types"
+import { deleteObjectType } from "./services"
+import { useAuth } from "react-oidc-context"
 
+
+const DeleteButton = ({object_type}: {object_type: IObjectType}): ReactElement => {
+    const [confirm, setConfirm] = useState(false);
+    const auth = useAuth()
+    const handleClick = (): void => {
+        if (!confirm) {
+            setConfirm(true);
+        } else {
+            handleDelete()
+        }
+    }
+    const handleDelete = (): void => {
+        deleteObjectType({
+            uuid: object_type.uuid,
+            token: auth?.user?.access_token ?? ''
+        })
+    }
+    return <Button onClick={handleClick} size='xs' type='alert' className='text-white'>{confirm ? 'Confirm' : 'Delete'}</Button>
+}
 
 const ListObjectTypes = (): ReactElement => {
 
@@ -59,6 +80,7 @@ const ListObjectTypes = (): ReactElement => {
                                     })
                                 }
                             </div>
+                            
 
 
                                 <Table
@@ -91,6 +113,11 @@ const ListObjectTypes = (): ReactElement => {
                                             label: 'Updated at',
                                             id: 'updated_at',
                                             accessor: r => r.updated_at ? dateTime(r.updated_at) : 'NA'
+                                        },
+                                        {
+                                            label: 'Delete',
+                                            id: 'delete',
+                                            accessor: r => <DeleteButton object_type={r as IObjectType} />
                                         }
 
                                     ]}

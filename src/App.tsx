@@ -7,7 +7,7 @@ import { useAuth } from '@/auth/useAuth'
 import { Route, Routes, useNavigate } from 'react-router-dom'
 import ListDocuments from '@/manage/document/list'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import AddDocument from '@/manage/document/create'
+import { CreateDocumentFromForm, CreateDocumentFromSchema, SelectDocumentForm } from '@/manage/document/create'
 import CreateObjectType from '@/manage/object_type/create'
 import ListObjectTypes from '@/manage/object_type/list'
 import EditObjectType from '@/manage/object_type/edit'
@@ -96,7 +96,20 @@ function App(): ReactElement {
                 } />
                 <Route path="/document/create" element={
                   <SidebarLayout>
-                    <AddDocument />
+                    <SelectDocumentForm />
+                  </SidebarLayout>
+                } />
+
+                <Route path="/document/create/:object_schema_uuid/object_schema" element={
+                  <SidebarLayout>
+                    <CreateDocumentFromSchema />
+                  </SidebarLayout>
+                } />
+
+
+                <Route path="/document/create/:object_type_uuid/object_type/:form_uuid/form" element={
+                  <SidebarLayout>
+                    <CreateDocumentFromForm />
                   </SidebarLayout>
                 } />
 

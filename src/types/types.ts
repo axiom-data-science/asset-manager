@@ -91,6 +91,10 @@ export interface IObjectSchema {
   json_schema: Record<string, unknown>;
 }
 
+export interface IObjectSchemaWithObjectType extends IObjectSchema {
+  object_type: IObjectType
+}
+
 export interface IDocumentForUpdate {
   uuid?: string;
   owner_sub?: string;

@@ -1,10 +1,10 @@
 import { APPS_API_BASE_URL } from "@/config/config";
 import type { IPostgrestParams } from "@/types/types";
 
-export const postgrestArgs = <T,>(params: IPostgrestParams<T>): URLSearchParams => {
+export const postgrestArgs = <T,>(params: IPostgrestParams<T>, existingArgs?: URLSearchParams): URLSearchParams => {
 
 
-    const args = new URLSearchParams();
+    const args = existingArgs ?? new URLSearchParams();
 
 
 
@@ -28,7 +28,7 @@ export const postgrestArgs = <T,>(params: IPostgrestParams<T>): URLSearchParams 
     return args;
 }
 
-export const postgrestRollupArgs = ({rollupColumn, params} : {rollupColumn: string, params?: IPostgrestParams}): URLSearchParams => {
+export const postgrestRollupArgs = ({rollupColumn, params, existingArgs}: {rollupColumn: string, params?: IPostgrestParams, existingArgs?: URLSearchParams}): URLSearchParams => {
     const p: IPostgrestParams = {
         ...(params ?? {}),
         select: [
@@ -41,7 +41,7 @@ export const postgrestRollupArgs = ({rollupColumn, params} : {rollupColumn: stri
             }
         ]
     } 
-    return postgrestArgs(p);
+    return postgrestArgs(p, existingArgs);
 }
 
 
@@ -50,7 +50,7 @@ export const postgrestUrl = ({table, params, args}: {table: string, params?: IPo
     if (args) {
         url.search = args.toString();
     } else if (params) {
-        const args = postgrestArgs(params);
+        const args = postgrestArgs(params, url.searchParams);
         url.search = args.toString();
     }
     return url.toString();

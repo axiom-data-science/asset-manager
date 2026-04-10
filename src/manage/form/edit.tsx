@@ -51,7 +51,7 @@ const EditForm = ({
                 { queryKey: formQueryKey(assetForm.uuid) }
             );
             queryClient.invalidateQueries({ queryKey: formListQueryKey() })
-            navigate('/form')
+            navigate('/forms')
         } catch (e) {
             setSaving(false);
             setErrors([{ field: 'form', message: `An error occurred while updating the form. Please try again.${(e as Error).message ? ` Error: ${(e as Error).message}` : ''}` }])

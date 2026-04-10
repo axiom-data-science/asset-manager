@@ -116,29 +116,47 @@
       "title": "Creator url",
       "description": "URL of the person or organization that collected the data."
     },
-    "contributor_role:custodian": {
-      "type": "string",
-      "title": "Custodian name",
-      "description": "The name of any individuals or institutions that contributed to the creation of this data. Custodian is party that accepts accountability and responsibility for the data, and ensures appropriate care and maintenance of the resource"
-    },
-    "custodian-telephone-primary": {
-      "type": "string",
-      "format": "phone",
-      "title": "Custodian Telephone (primary)",
-      "description": "Custodian (operator) phone number"
-    },
-    "contributor_email": {
-      "type": "string",
-      "title": "Sponsor Email"
-    },
-    "contributor_url": {
-      "type": "string",
-      "title": "Sponsor URL"
-    },
-    "custodian-affliation-or-organization": {
-      "type": "string",
-      "title": "Custodian affliation or organization",
-      "description": "Custodian (operator)  affiliation/organization"
+    "contributors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties":{
+          "contributor_type":{
+            "type": "string",
+            "title": "Contributor type",
+            "enum": [
+              "owner",
+              "data_publisher",
+              "data_processor",
+              "funder"
+            ]
+          },
+          "contributor_role:custodian": {
+            "type": "string",
+            "title": "Custodian name",
+            "description": "The name of any individuals or institutions that contributed to the creation of this data. Custodian is party that accepts accountability and responsibility for the data, and ensures appropriate care and maintenance of the resource"
+          },
+          "custodian-telephone-primary": {
+            "type": "string",
+            "format": "phone",
+            "title": "Telephone (primary)",
+            "description": "Custodian (operator) phone number"
+          },
+          "contributor_email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "contributor_url": {
+            "type": "string",
+            "title": "URL"
+          },
+          "custodian-affliation-or-organization": {
+            "type": "string",
+            "title": "Custodian affliation or organization",
+            "description": "Custodian (operator)  affiliation/organization"
+          }
+        }
+      }
     },
     "community-poc-name": {
       "type": "string",
@@ -644,7 +662,8 @@
             "title": "Real time?",
             "description": "Yes/No if the instrument reports in real time",
             "enum": [
-              "Yes"
+              "Yes",
+              "No"
             ]
           },
           "sample-interval-min": {

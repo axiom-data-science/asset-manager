@@ -189,7 +189,7 @@ const EditForm = ({
 const EditFormLoader = (): ReactElement => {
     const params = useParams()
     const uuid = params.uuid
-    const { data, isLoading, error } = useFullForm({ uuid: uuid ?? ***REMOVED******REMOVED*** })
+    const { data, isLoading, error } = useFullForm({ form_uuid: uuid ?? ***REMOVED******REMOVED*** })
     return <ViewWithLoader isLoading={isLoading} error={error} data={data}>
         {data && <EditForm assetForm={data.form} fieldConfigs={data.field_configs} objectSchema={data.object_schema} />}
     </ViewWithLoader>

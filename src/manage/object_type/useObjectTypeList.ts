@@ -3,6 +3,9 @@ import { fetchObjectTypeRollup, fetchObjectTypes } from "@/manage/object_type/se
 import {  postgrestRollupArgs } from "@/services/postgrest/endpoints"
 import type {  IPostgrestParams } from "@/types/types"
 import { queryOptions, useQuery } from "@tanstack/react-query"
+import { getFormListQueryOptions } from "../form/useFormList"
+import { getObjectSchemaListQueryOptions } from "../object_schema/useObjectSchemaList"
+import { useCombinedQueries } from "@/hooks/use-combined-queries"
 
 export const objectTypeListQueryKey = (params?: IPostgrestParams, rollups?: string[]) => [***REMOVED***object_type-list***REMOVED***].concat((rollups ?? []).map(r => postgrestRollupArgs({rollupColumn: r, params}).toString()))
 
@@ -83,3 +86,12 @@ export const useObjectTypeListAtCategory = ({category}: {category?: string} = {c
 }
 
 
+export const useObjectTypesAndFormsAndSchemas = ({params}: {params?: IPostgrestParams} = {}) => {
+    const auth = useAuth()
+    const queryObject = {
+        object_types: getObjectTypeListQuery({params, token: auth.user?.access_token}),
+        forms: getFormListQueryOptions({params, token: auth.user?.access_token}),
+        schemas: getObjectSchemaListQueryOptions({params, token: auth.user?.access_token})
+    }
+    return useCombinedQueries(queryObject)
+}

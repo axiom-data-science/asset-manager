@@ -57,11 +57,13 @@ const CreateDocumentForm = ({
         ]
     }
     const fieldConfigJSON = fieldConfigs?.map(fc => fc.fields_override_config.config as unknown as IFormFieldOverride) ?? []
-    const dataForm = omit(schemaToFormUtils.overridesAndSchemaToFormObject({
-        schema: schema.json_schema,
-        formOverrides: assetForm?.form_config ? [assetForm?.form_config as IFormOverride] : undefined,
-        formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined
-    }), ***REMOVED***label***REMOVED***)
+    const dataForm = assetForm?.form_config !== undefined || fieldConfigJSON !== undefined 
+        ? omit(schemaToFormUtils.overridesAndSchemaToFormObject({
+            schema: schema.json_schema,
+            formOverrides: assetForm?.form_config ? [assetForm?.form_config as IFormOverride] : undefined,
+            formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined
+        }), ***REMOVED***label***REMOVED***)
+        : schemaToFormUtils.schemaToFormObject(schema.json_schema)
     const form = dataForm.fields?.length || dataForm.pages?.length || dataForm.wizard_steps?.length || dataForm.tabs?.length ? dataForm : defaultForm
     form.settings = {
         ...form.settings,

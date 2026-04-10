@@ -1,0 +1,41 @@
+https://stage-asset-docs-postgrest.srv.axds.co/document?uuid=eq.709f1b6f-e057-4f4f-894a-c0bae02aeb14
+    &select=
+        id:data->>station-id,
+        infoUrl:data->>info_url,
+        Conventions:data->>conventions,
+        creator_institution:data->>creator_institution,
+        cdm_data_type:data->>cdm_data_type,
+        contributor_email:data->>contributor_email,
+        contributor_url:data->>contributor_url,
+        contributor_role:data->>contributor_role,
+        contributor_role_vocabulary:data->>contributor_role_vocabulary,
+        creator_country:data->>creator_country,
+        creator_email:data->>creator_email,
+        creator_institution:data->>creator_institution,
+        creator_name:data->>creator_name,
+        creator_sector:data->>creator_sector,
+        creator_type:data->>creator_type,
+        creator_url:data->>creator_url,
+        Easternmost_Easting:data->>longitude,
+        Westernmost_Easting:data->>longitude,
+        Northernmost_Northing:data->>latitude,
+        Southernmost_Northing:data->>latitude,
+        sourceUrl:data->>source_url,
+        featureType:data->>feature_type,
+        time_coverage_end:data->>time_coverage_end,
+        time_coverage_start:data->>time_coverage_start,
+        geospatial_lat_max:data->>latitude,
+        geospatial_lat_min:data->>latitude,
+        geospatial_lon_max:data->>longitude,
+        geospatial_lon_min:data->>longitude
+
+
+
+
+
+
+
+
+
+
+        

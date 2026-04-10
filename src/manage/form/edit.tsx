@@ -51,7 +51,7 @@ const EditForm = ({
                 { queryKey: formQueryKey(assetForm.uuid) }
             );
             queryClient.invalidateQueries({ queryKey: formListQueryKey() })
-            navigate(***REMOVED***/form***REMOVED***)
+            navigate(***REMOVED***/forms***REMOVED***)
         } catch (e) {
             setSaving(false);
             setErrors([{ field: ***REMOVED***form***REMOVED***, message: `An error occurred while updating the form. Please try again.${(e as Error).message ? ` Error: ${(e as Error).message}` : ***REMOVED******REMOVED***}` }])

@@ -185,7 +185,7 @@ export interface IAssetForm {
   object_type_uuid: string;
   object_schema_version: number;
   is_schema_and_version_default: boolean;
-  config: Record<string, unknown>;
+  form_config: Record<string, unknown>;
 }
 
 

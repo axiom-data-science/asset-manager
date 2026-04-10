@@ -49,14 +49,17 @@ export const fetchForm = async ({
 export const fetchDefaultFormAtObjectType = async({
     object_type_uuid,
     token,
+    params,
     signal
 }:{
     object_type_uuid: string,
+    params?: IPostgrestParams,
     token: string,
     signal?: AbortSignal
 }): Promise<IAssetForm | null> => {
     const form = await fetchSingleFromPostgrest<IAssetForm>({
-        table: `/get_default_form_at_object_type_uuid?object_type_uuid=eq.${object_type_uuid}`,
+        table: `rpc/get_default_form_at_object_type_uuid?object_type_uuid=${object_type_uuid}`,
+        params,
         token,
         signal
     })

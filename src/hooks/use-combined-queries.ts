@@ -25,7 +25,7 @@ export function useCombinedQueries<T extends QueryOptionsRecord>(queryObject: T)
     return useQueries({
         queries,
         combine: (results) => {
-            const isLoading = results.some(r => r.isLoading)
+            const isLoading = results.some(r => r.isLoading) || results.some(r => r.isPending)
             return {
                 isLoading,
                 isPending: results.some(r => r.isPending),

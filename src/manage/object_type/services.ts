@@ -1,4 +1,4 @@
-import { fetchListFromPostgrest, fetchRollupFromPostgrest, fetchSingleFromPostgrest, patchToPostgrest, postToPostgrest } from "@/services/postgrest/services";
+import { deleteFromPostgrest, fetchListFromPostgrest, fetchRollupFromPostgrest, fetchSingleFromPostgrest, patchToPostgrest, postToPostgrest } from "@/services/postgrest/services";
 import type { IPostgrestParams, IObjectType } from "@/types/types";
 import { omit } from 'lodash-es'
 
@@ -140,4 +140,31 @@ export const patchObjectType = async ({
         signal
     });
     return newObjectType;
+}
+
+export const deleteObjectType = async ({
+    uuid,
+    token,
+    signal
+}: {
+    uuid: string,
+    token: string,
+    signal?: AbortSignal
+}): Promise<void> => {
+    await deleteFromPostgrest({
+        table: OBJECT_TYPES_TABLE,
+        params:{
+            limit: 1,
+            filters:[
+                {
+                    column: 'uuid',
+                    operator: 'eq',
+                    value: uuid
+                }
+            ]
+
+        },
+        token,
+        signal
+    });
 }

@@ -1,6 +1,6 @@
 import { fetchForm } from "@/manage/form/services";
 import { fetchListFromPostgrest, fetchRollupFromPostgrest, fetchSingleFromPostgrest, patchToPostgrest, postToPostgrest } from "@/services/postgrest/services";
-import type { IObjectSchema, IPostgrestParams } from "@/types/types";
+import type { IObjectSchema, IObjectSchemaWithObjectType, IPostgrestParams } from "@/types/types";
 
 const OBJECT_SCHEMAS_TABLE = ***REMOVED***object_schema***REMOVED***;
 
@@ -45,6 +45,42 @@ export const fetchObjectSchema = async ({
     return document;
 
 }
+
+export const fetchObjectSchemaAndObjectTypeAtObjectType = async ({
+    object_type_uuid,
+    params,
+    token,
+    signal
+}:{
+    object_type_uuid: string,
+    params?: IPostgrestParams,
+    token: string,
+    signal?: AbortSignal
+}): Promise<IObjectSchemaWithObjectType> => {
+    const combinedParams: IPostgrestParams = {
+        ...params,
+        filters: [
+            {
+                column: ***REMOVED***object_type_uuid***REMOVED***,
+                operator: ***REMOVED***eq***REMOVED***,
+                value: object_type_uuid
+            }
+        ],
+        select: [
+            ***REMOVED*******REMOVED***,
+            ***REMOVED***object_type(*)***REMOVED***
+        ]
+    }
+    const result = await fetchSingleFromPostgrest<IObjectSchemaWithObjectType>({
+        table: OBJECT_SCHEMAS_TABLE,
+        params: combinedParams,
+        token,
+        signal
+    })   
+    return result;
+
+}
+
 
 export const fetchDefaultObjectTypeSchemaAtUUID = async ({
     object_type_uuid,

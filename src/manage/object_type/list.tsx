@@ -1,11 +1,32 @@
 import { dateTime } from "@/lib/date"
 import { useObjectTypeListWithRollups } from "@/manage/object_type/useObjectTypeList"
-import { SelectInput, utils, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
-import type { ReactElement } from "react"
+import { Button, SelectInput, utils, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
+import { useState, type ReactElement } from "react"
 import Link from ***REMOVED***@/manage/components/link***REMOVED***
 import Table from ***REMOVED***@/manage/components/table***REMOVED***
-import type { IRollup } from "@/types/types"
+import type { IObjectType, IRollup } from "@/types/types"
+import { deleteObjectType } from "./services"
+import { useAuth } from "react-oidc-context"
 
+
+const DeleteButton = ({object_type}: {object_type: IObjectType}): ReactElement => {
+    const [confirm, setConfirm] = useState(false);
+    const auth = useAuth()
+    const handleClick = (): void => {
+        if (!confirm) {
+            setConfirm(true);
+        } else {
+            handleDelete()
+        }
+    }
+    const handleDelete = (): void => {
+        deleteObjectType({
+            uuid: object_type.uuid,
+            token: auth?.user?.access_token ?? ***REMOVED******REMOVED***
+        })
+    }
+    return <Button onClick={handleClick} size=***REMOVED***xs***REMOVED*** type=***REMOVED***alert***REMOVED*** className=***REMOVED***text-white***REMOVED***>{confirm ? ***REMOVED***Confirm***REMOVED*** : ***REMOVED***Delete***REMOVED***}</Button>
+}
 
 const ListObjectTypes = (): ReactElement => {
 
@@ -59,6 +80,7 @@ const ListObjectTypes = (): ReactElement => {
                                     })
                                 }
                             </div>
+                            
 
 
                                 <Table
@@ -91,6 +113,11 @@ const ListObjectTypes = (): ReactElement => {
                                             label: ***REMOVED***Updated at***REMOVED***,
                                             id: ***REMOVED***updated_at***REMOVED***,
                                             accessor: r => r.updated_at ? dateTime(r.updated_at) : ***REMOVED***NA***REMOVED***
+                                        },
+                                        {
+                                            label: ***REMOVED***Delete***REMOVED***,
+                                            id: ***REMOVED***delete***REMOVED***,
+                                            accessor: r => <DeleteButton object_type={r as IObjectType} />
                                         }
 
                                     ]}

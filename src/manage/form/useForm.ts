@@ -7,6 +7,7 @@ import { getFieldConfigListAtFormQuery } from "../field_config/useFieldConfigLis
 import { fetchSchemaAtForm } from "@/manage/object_schema/services"
 import { postgrestArgs } from "@/services/postgrest/endpoints"
 import type { IPostgrestParams } from "@/types/types"
+import { getObjectSchemaAndObjectTypeQuery } from "../object_schema/useObjectSchema"
 
 export const formQueryKey = (uuid?: string) => [***REMOVED***form***REMOVED***, uuid]
 export const formWithLookupsQueryKey = (uuid?: string) => [***REMOVED***form***REMOVED***, ***REMOVED***object-types***REMOVED***, uuid]
@@ -71,12 +72,12 @@ export const useForm = (uuid?: string) => {
     return queryResult
 }
 
-export const useFullForm = ({uuid}: {uuid?: string}) => {
+export const useFullForm = ({form_uuid, object_type_uuid}: {form_uuid?: string, object_type_uuid?: string}) => {
     const auth = useAuth()
     const queryObjects = {
-        form: getFormQuery({uuid, token: auth.user?.access_token}),
-        field_configs: getFieldConfigListAtFormQuery({form_uuid: uuid ?? ***REMOVED***NA***REMOVED***, token: auth.user?.access_token ?? ***REMOVED******REMOVED***}),
-        object_schema: getSchemaAtFormQuery({form_uuid: uuid ?? ***REMOVED***NA***REMOVED***, token: auth.user?.access_token ?? ***REMOVED******REMOVED***})
+        form: getFormQuery({uuid: form_uuid, token: auth.user?.access_token}),
+        field_configs: getFieldConfigListAtFormQuery({form_uuid: form_uuid ?? ***REMOVED***NA***REMOVED***, token: auth.user?.access_token ?? ***REMOVED******REMOVED***}),
+        object_schema: getObjectSchemaAndObjectTypeQuery({object_type_uuid: object_type_uuid ?? ***REMOVED***NA***REMOVED***, token: auth.user?.access_token ?? ***REMOVED******REMOVED***})
     }
     return useCombinedQueries(queryObjects)
 }

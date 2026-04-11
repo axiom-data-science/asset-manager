@@ -48,6 +48,7 @@ const ListFormTable = ({ object_types, forms }: { object_types: IObjectType[], f
                         className='w-full'
                         rowClassName="odd:bg-slate-100"
                         theadClassName="sticky top-26"
+                        tbodyClassName="text-sm"
                         data={forms?.items}
                         columns={[
                             {
@@ -72,6 +73,11 @@ const ListFormTable = ({ object_types, forms }: { object_types: IObjectType[], f
                             {
                                 label: 'Owner',
                                 id: 'owner_sub'
+                            },
+                            {
+                                label: 'Config Type',
+                                id: '_type',
+                                accessor: r => r.use_form_config ? 'Form' : 'Schema override'
                             },
                             {
                                 label: 'Created at',

@@ -9,21 +9,22 @@ import { postgrestArgs } from "@/services/postgrest/endpoints"
 import type { IPostgrestParams } from "@/types/types"
 import { getObjectSchemaAndObjectTypeQuery } from "../object_schema/useObjectSchema"
 
-export const formQueryKey = (uuid?: string) => ['form', uuid]
+export const formQueryKey = (uuid?: string, params?: IPostgrestParams) => ['form', uuid, postgrestArgs(params ?? {}).toString()]
 export const formWithLookupsQueryKey = (uuid?: string) => ['form', 'object-types', uuid]
 export const formAtObjectTypeQueryKey = ({object_type_uuid}: {object_type_uuid?: string}) => ['form', 'object_type', object_type_uuid]
 export const fullFormAtObjectTypeQueryKey = ({object_type_uuid}: {object_type_uuid?: string}) => ['form', 'object_type', object_type_uuid, 'full']
 
-export const getFormQuery = ({uuid, token}: {uuid?: string, token?: string}) => {
+export const getFormQuery = ({uuid, token, params}: {uuid?: string, token?: string, params?: IPostgrestParams}) => {
     return queryOptions({
-        queryKey: formQueryKey(uuid),
+        queryKey: formQueryKey(uuid,params),
         enabled: !!uuid && !!token && uuid !== '',
         queryFn: async ({ signal }) => {
             
             const objectSchema = await fetchForm({
                 uuid: uuid ?? 'NA',
                 signal,
-                token: token ?? ''
+                token: token ?? '',
+                params
             })
 
             return objectSchema
@@ -72,12 +73,18 @@ export const useForm = (uuid?: string) => {
     return queryResult
 }
 
-export const useFullForm = ({form_uuid, object_type_uuid}: {form_uuid?: string, object_type_uuid?: string}) => {
+export const useFullForm = ({form_uuid}: {form_uuid?: string}) => {
     const auth = useAuth()
+    const form = useQuery(getFormQuery({uuid: form_uuid, token: auth.user?.access_token, params: {
+        select: ['object_type_uuid']
+    }}))
     const queryObjects = {
         form: getFormQuery({uuid: form_uuid, token: auth.user?.access_token}),
         field_configs: getFieldConfigListAtFormQuery({form_uuid: form_uuid ?? 'NA', token: auth.user?.access_token ?? ''}),
-        object_schema: getObjectSchemaAndObjectTypeQuery({object_type_uuid: object_type_uuid ?? 'NA', token: auth.user?.access_token ?? ''})
+        object_schema: {
+            ...getObjectSchemaAndObjectTypeQuery({object_type_uuid: form.data?.object_type_uuid ?? 'NA', token: auth.user?.access_token ?? ''}),
+            enabled: !!form.data && !!auth.user?.access_token && form.data.object_type_uuid !== ''
+        }
     }
     return useCombinedQueries(queryObjects)
 }

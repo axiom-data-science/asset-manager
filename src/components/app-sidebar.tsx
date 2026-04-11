@@ -60,6 +60,11 @@ export function AppSidebar() {
           name: 'Create document',
           icon: Plus,
           url: '/document/create'
+        },
+        {
+          name: 'Upload a file',
+          icon: Plus,
+          url: '/files/upload'
         }
       ]
     },

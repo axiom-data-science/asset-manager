@@ -10,7 +10,7 @@ import Errors from "../components/errors";
 import { useSlug } from "@/manage/components/useSlug";
 import ObjectTypeLoader from "@/manage/components/object_type_loader";
 import { useSchemaListForObjectType } from "@/manage/object_schema/useDefaultSchemaForType";
-import {   postFieldConfig, postFormToFieldsConfig } from "@/manage/field_config/services";
+import { postFieldConfig, postFormToFieldsConfig } from "@/manage/field_config/services";
 import Link from "@/manage/components/link";
 
 const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSchema[] }): ReactElement => {
@@ -121,35 +121,82 @@ const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSche
                 description: 'If true, this form will be the default form for the selected object schema version. If false, it will not be the default form, but can still be selected when creating or editing an object.'
             },
             {
-                id: 'form_config',
-                label: 'Form configuration (JSON)',
-                type: 'json',
-                required: true
+                id: 'use_form_config',
+                label: 'Use form config rather than overriding schema',
+                type: 'boolean',
+                description: 'If true, the form will use the provided form configuration rather than generating a form based on the object schema. This allows for more customization, but requires you to provide a complete form configuration.'
             },
             {
-                id: 'field_override_configs',
+                id: 'form_config_wrap',
+                label: 'Form creation',
                 type: 'object',
-                multiple: true,
+                skip_path: true,
+                conditions: {
+                    "field": 'use_form_config',
+                    "value": false,
+                    "result": "disable"
+                },
                 fields: [
                     {
-                        id: 'label',
-                        label: 'Label',
-                        type: 'text',
-                        required: true
-                    },
-                    {
-                        id: 'weight',
-                        label: 'Weight',
-                        type: 'number',
-                        defaultValue: 0
-                    },
-                    {
-                        id: 'config',
-                        label: 'Field override configurations (JSON)',
-                        description: `Provide an array of field override configs. Each config should include the id (as \`prop\`) of the field to override and the config to override with. **Example:** 
-                        \`[{"prop": "field_to_override", "type":"radio", "options": [{"label": "Option 1", "value": "option_1"}, {"label": "Option 2", "value": "option_2"}]}]\``,
-                        type: 'json'
+                        id: 'form_config',
+                        label: 'Form configuration (JSON)',
+                        description: 'Provide a complete form configuration. The schema will not be used at all to generate the form, so this allows for maximum customization. However, you must provide a complete form configuration with all necessary fields.',
+                        type: 'json',
+                        conditions: {
+                            "field": 'use_form_config',
+                            "value": false,
+                            "result": "disable"
+                        }
                     }
+
+                ]
+            },
+            {
+                id: 'schema_overries',
+                label: 'Schema overrides',
+                skip_path: true,
+                type: 'object',
+                conditions: {
+                    "field": 'use_form_config',
+                    "value": true,
+                    "result": "disable"
+                },
+                fields: [
+                    {
+                        id: 'schema_override_config',
+                        label: 'Schema override form configuration (JSON)',
+                        description: 'Provide a form configuration to override the default form configuration generated from the object schema. There are some limitations. For instance, nested objects can not be customized.',
+                        type: 'json'
+
+                    },
+                    {
+                        id: 'field_override_configs',
+                        label: 'Schema field override configurations (JSON)',
+                        type: 'object',
+                        multiple: true,
+                        fields: [
+                            {
+                                id: 'label',
+                                label: 'Label',
+                                type: 'text',
+                                required: true
+                            },
+                            {
+                                id: 'weight',
+                                label: 'Weight',
+                                type: 'number',
+                                defaultValue: 0
+                            },
+                            {
+                                id: 'config',
+                                label: 'Field override configurations (JSON)',
+                                description: `Provide an array of field override configs. Each config should include the id (as \`prop\`) of the field to override and the config to override with. **Example:** 
+                        \`[{"prop": "field_to_override", "type":"radio", "options": [{"label": "Option 1", "value": "option_1"}, {"label": "Option 2", "value": "option_2"}]}]\``,
+                                type: 'json'
+                            }
+                        ]
+                    }
+
                 ]
             }
         ]

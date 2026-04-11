@@ -19,6 +19,7 @@ import EditFormLoader from ***REMOVED***./manage/form/edit***REMOVED***
 import EditDocument from ***REMOVED***./manage/document/edit***REMOVED***
 import EditObjectSchema from ***REMOVED***@/manage/object_schema/edit***REMOVED***
 import ListFieldConfigs from ***REMOVED***@/manage/field_config/list***REMOVED***
+import UploadFile from ***REMOVED***@/manage/document/upload_file***REMOVED***
 
 
 const Authed = (): ReactElement => {
@@ -167,6 +168,10 @@ function App(): ReactElement {
                 {/* <Route path="/field_configs/edit/:uuid" element={
                   <SidebarLayout><EditFieldConfig /></SidebarLayout>
                 } /> */}
+
+                <Route path="/files/upload" element={
+                  <SidebarLayout><UploadFile /></SidebarLayout>
+                } />
 
               </Routes>
 

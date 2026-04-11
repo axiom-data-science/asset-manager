@@ -48,6 +48,7 @@ const ListFormTable = ({ object_types, forms }: { object_types: IObjectType[], f
                         className=***REMOVED***w-full***REMOVED***
                         rowClassName="odd:bg-slate-100"
                         theadClassName="sticky top-26"
+                        tbodyClassName="text-sm"
                         data={forms?.items}
                         columns={[
                             {
@@ -72,6 +73,11 @@ const ListFormTable = ({ object_types, forms }: { object_types: IObjectType[], f
                             {
                                 label: ***REMOVED***Owner***REMOVED***,
                                 id: ***REMOVED***owner_sub***REMOVED***
+                            },
+                            {
+                                label: ***REMOVED***Config Type***REMOVED***,
+                                id: ***REMOVED***_type***REMOVED***,
+                                accessor: r => r.use_form_config ? ***REMOVED***Form***REMOVED*** : ***REMOVED***Schema override***REMOVED***
                             },
                             {
                                 label: ***REMOVED***Created at***REMOVED***,

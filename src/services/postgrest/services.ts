@@ -115,19 +115,21 @@ export const postToPostgrest = async <T, R = T>({
     params,
     token,
     signal,
-    body
+    body,
+    headers
 }: {
     table: string,
     params?: IPostgrestParams,
     token: string ,
     signal?: AbortSignal,
-    body: T
+    body: T,
+    headers?: Record<string, string>
 }): Promise<R> => {
     try{
         const url = postgrestUrl({table, params});
         const response = await fetch(url, {
             method: ***REMOVED***POST***REMOVED***,
-            headers: {
+            headers: headers ?? {
                 ***REMOVED***Authorization***REMOVED***: `Bearer ${token}`,
                 ***REMOVED***Content-Type***REMOVED***: ***REMOVED***application/json***REMOVED***,
                 ***REMOVED***Prefer***REMOVED***: ***REMOVED***return=representation***REMOVED***,

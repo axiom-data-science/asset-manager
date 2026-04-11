@@ -190,6 +190,8 @@ export interface IAssetForm {
   object_schema_version: number;
   is_schema_and_version_default: boolean;
   form_config: Record<string, unknown>;
+  schema_override_config: Record<string, unknown>;
+  use_form_config: boolean;
 }
 
 

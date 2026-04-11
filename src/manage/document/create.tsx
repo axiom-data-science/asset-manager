@@ -57,13 +57,16 @@ const CreateDocumentForm = ({
         ]
     }
     const fieldConfigJSON = fieldConfigs?.map(fc => fc.fields_override_config.config as unknown as IFormFieldOverride) ?? []
-    const dataForm = assetForm?.form_config !== undefined || fieldConfigJSON !== undefined 
-        ? omit(schemaToFormUtils.overridesAndSchemaToFormObject({
-            schema: schema.json_schema,
-            formOverrides: assetForm?.form_config ? [assetForm?.form_config as IFormOverride] : undefined,
-            formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined
-        }), ***REMOVED***label***REMOVED***)
-        : schemaToFormUtils.schemaToFormObject(schema.json_schema)
+    const dataForm = (assetForm?.use_form_config === true && assetForm?.form_config !== undefined && assetForm?.form_config !== null
+        ? assetForm.form_config
+        : assetForm?.schema_override_config !== undefined || fieldConfigJSON !== undefined
+            ? omit(schemaToFormUtils.overridesAndSchemaToFormObject({
+                schema: schema.json_schema,
+                formOverrides: assetForm?.schema_override_config ? [assetForm?.schema_override_config as IFormOverride] : undefined,
+                formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined
+            }), ***REMOVED***label***REMOVED***)
+            : schemaToFormUtils.schemaToFormObject(schema.json_schema)
+    ) as IForm
     const form = dataForm.fields?.length || dataForm.pages?.length || dataForm.wizard_steps?.length || dataForm.tabs?.length ? dataForm : defaultForm
     form.settings = {
         ...form.settings,
@@ -124,7 +127,7 @@ const CreateDocumentForm = ({
 export const CreateDocumentFromObjectType = (): ReactElement => {
     const params = useParams()
     const object_type_uuid = params.object_type_uuid as string
-    const { data, isLoading, error } = useObjectSchemaAndType({object_type_uuid})
+    const { data, isLoading, error } = useObjectSchemaAndType({ object_type_uuid })
 
     return <ViewWithLoader isLoading={isLoading} error={error} data={data}>
         {
@@ -140,7 +143,7 @@ export const CreateDocumentFromObjectType = (): ReactElement => {
 export const CreateDocumentFromSchema = (): ReactElement => {
     const params = useParams()
     const object_schema_uuid = params.object_schema_uuid as string
-    const { data, isLoading, error } = useObjectSchemaFull({uuid:object_schema_uuid})
+    const { data, isLoading, error } = useObjectSchemaFull({ uuid: object_schema_uuid })
 
     return <ViewWithLoader isLoading={isLoading} error={error} data={data}>
         {
@@ -154,9 +157,8 @@ export const CreateDocumentFromSchema = (): ReactElement => {
 
 export const CreateDocumentFromForm = (): ReactElement => {
     const params = useParams()
-    const object_type_uuid = params.object_type_uuid as string
     const form_uuid = params.form_uuid as string
-    const { data, isLoading, error } = useFullForm({form_uuid, object_type_uuid})
+    const { data, isLoading, error } = useFullForm({ form_uuid })
 
     return <ViewWithLoader isLoading={isLoading} error={error} data={data}>
         {
@@ -174,12 +176,12 @@ export const CreateDocumentFromForm = (): ReactElement => {
 export const SelectDocumentForm = (): ReactElement => {
     const { data, isLoading, error } = useObjectTypesAndFormsAndSchemas()
     return <>
-    <h2 className="text-2xl font-bold">Create new document</h2>
-    
-    <ViewWithLoader isLoading={isLoading} error={error} data={data}>
-        <>{
-             data && 
-                data.object_types.filter(d=>d.category === ***REMOVED***document***REMOVED***).map(type => {
+        <h2 className="text-2xl font-bold">Create new document</h2>
+
+        <ViewWithLoader isLoading={isLoading} error={error} data={data}>
+            <>{
+                data &&
+                data.object_types.filter(d => d.category === ***REMOVED***document***REMOVED***).map(type => {
                     const schema = data.schemas.find((s) => s.object_type_uuid === type.uuid)
                     if (!schema) {
                         return <div key={type.uuid} className=***REMOVED***p-4 border rounded***REMOVED***>
@@ -197,25 +199,25 @@ export const SelectDocumentForm = (): ReactElement => {
                     const forms = data.forms.filter((f) => f.object_type_uuid === type.uuid)
                     const defaultSchema = data.schemas.find((s) => s.object_type_uuid === type.uuid && s.is_type_default) ?? data.schemas.filter((s) => s.object_type_uuid === type.uuid).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
                     return <div key={type.uuid} className=***REMOVED***p-4 border rounded***REMOVED***>
-                       <h4 className=***REMOVED***font-bold text-lg***REMOVED***>{type.label}</h4>
-                       <div className=***REMOVED***p-4 flex flex-col gap-2***REMOVED***>
+                        <h4 className=***REMOVED***font-bold text-lg***REMOVED***>{type.label}</h4>
+                        <div className=***REMOVED***p-4 flex flex-col gap-2***REMOVED***>
                             <p>Create a document:</p>
                             <div className=***REMOVED***flex flex-col gap-2 p-2***REMOVED***>
-                            <p><Link to={`/document/create/${defaultSchema.uuid}/object_schema`}>Schema only</Link></p>
-                            {
-                                forms.map(form => {
-                                    return <Link key={form.uuid} to={`/document/create/${type.uuid}/object_type/${form.uuid}/form`}>Form: {form.label} (schema version: {form.object_schema_version})</Link>
-                                    
-                                })
-                            }
+                                <p><Link to={`/document/create/${defaultSchema.uuid}/object_schema`}>Schema only</Link></p>
+                                {
+                                    forms.map(form => {
+                                        return <Link key={form.uuid} to={`/document/create/${type.uuid}/object_type/${form.uuid}/form`}>Form: {form.label} (schema version: {form.object_schema_version})</Link>
+
+                                    })
+                                }
                             </div>
-                       </div>
+                        </div>
                     </div>
                 })
-        }
-        </>
-    </ViewWithLoader>
+            }
+            </>
+        </ViewWithLoader>
     </>
-    
-    
+
+
 }

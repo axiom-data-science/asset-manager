@@ -2,6 +2,7 @@
   "type": "object",
   "$schema": "http://json-schema.org/draft-06/schema#",
   "title": "COLLAB Water Level Metadata",
+  "additionalProperties": true,
   "properties": {
     "prepared-by": {
       "type": "string",
@@ -18,10 +19,7 @@
       "type": "string",
       "title": "Update or new station? ",
       "description": "Is this an update to an existing station or an entirely new station? ",
-      "enum": [
-        "Update",
-        "New"
-      ]
+      "enum": ["Update", "New"]
     },
     "previous-site-log": {
       "type": "string",
@@ -120,16 +118,11 @@
       "type": "array",
       "items": {
         "type": "object",
-        "properties":{
-          "contributor_type":{
+        "properties": {
+          "contributor_type": {
             "type": "string",
             "title": "Contributor type",
-            "enum": [
-              "owner",
-              "data_publisher",
-              "data_processor",
-              "funder"
-            ]
+            "enum": ["owner", "data_publisher", "data_processor", "funder"]
           },
           "contributor_role:custodian": {
             "type": "string",
@@ -254,9 +247,7 @@
       "type": "string",
       "title": "State",
       "description": "State in which the asset is located",
-      "enum": [
-        "[state list]"
-      ]
+      "enum": ["[state list]"]
     },
     "platform_name": {
       "type": "string",
@@ -271,18 +262,13 @@
       "type": "string",
       "title": "CO-OPS ID",
       "description": "Provided by CO-OPS. Only provide if known/established. Do not create. ",
-      "enum": [
-        "[CO-OPS ref list by state]"
-      ]
+      "enum": ["[CO-OPS ref list by state]"]
     },
     "is-this-a-co-ops-station": {
       "type": "string",
       "title": "Is this a CO-OPS Station? (yes/no)",
       "description": "Filterable question to determine type of station being installed.",
-      "enum": [
-        "Yes",
-        "No"
-      ]
+      "enum": ["Yes", "No"]
     },
     "other-id": {
       "type": "string",
@@ -293,13 +279,7 @@
       "type": "string",
       "title": "Water body setting",
       "description": "Ex: Next to coast, Lake coastline, etc",
-      "enum": [
-        "Inlet",
-        "River",
-        "Ocean coastline",
-        "Lake",
-        "Other"
-      ]
+      "enum": ["Inlet", "River", "Ocean coastline", "Lake", "Other"]
     },
     "approximate-position": {
       "type": "string",
@@ -353,22 +333,12 @@
     "computational-tool": {
       "type": "string",
       "title": "Computational Tool:",
-      "enum": [
-        "WALI",
-        "CO-OPS Tidal Datum Analysis Calculator",
-        "Tidelab",
-        "Manual",
-        "Other"
-      ]
+      "enum": ["WALI", "CO-OPS Tidal Datum Analysis Calculator", "Tidelab", "Manual", "Other"]
     },
     "computation-method": {
       "type": "string",
       "title": "Computation method",
-      "enum": [
-        "TBYT",
-        "MMSC",
-        "FRED"
-      ]
+      "enum": ["TBYT", "MMSC", "FRED"]
     },
     "nwlon-control-station": {
       "type": "string",
@@ -377,19 +347,12 @@
     "control-station-epoch": {
       "type": "string",
       "title": "Control Station Epoch:",
-      "enum": [
-        "Present: 1983-2001",
-        "Superceded: 1960-1978"
-      ]
+      "enum": ["Present: 1983-2001", "Superceded: 1960-1978"]
     },
     "datum-type": {
       "type": "string",
       "title": "Datum Type:",
-      "enum": [
-        "Standard NTDE",
-        "Modified Procedure",
-        "Direct"
-      ]
+      "enum": ["Standard NTDE", "Modified Procedure", "Direct"]
     },
     "computation-date": {
       "type": "string",
@@ -476,18 +439,22 @@
       "description": "Low water datum"
     },
     "is-collocation": {
-      "type": "string",
+      "type": "boolean",
       "title": "Is this a collocation? (yes/no)"
+    },
+    "additional-collocation-information": {
+      "type": "string",
+      "title": "Additional collocation information"
     },
     "ecc-url": {
       "type": "string",
       "title": "ECC URL:"
     },
     "was-nepa-completed": {
-      "type": "string",
+      "type": "boolean",
       "title": "Was Nepa Completed:"
     },
-    "notes": {
+    "ecc-notes": {
       "type": "string",
       "title": "Notes:"
     },
@@ -579,6 +546,7 @@
       "type": "array",
       "items": {
         "type": "object",
+        "additionalProperties": true,
         "properties": {
           "prior-wmo-id": {
             "type": "boolean",
@@ -604,25 +572,13 @@
             "type": "string",
             "title": "Brand of instrument/sensor/provider",
             "description": "Brand of the overall device that houses single or multiple instruments/components. For example, ***REMOVED***Hohonu***REMOVED*** is the brand of a sensor that can contain multiple instruments. ",
-            "enum": [
-              "Hohonu",
-              "Greenstream",
-              "Hobo",
-              "Divirod",
-              "Community Sensor"
-            ]
+            "enum": ["Hohonu", "Greenstream", "Hobo", "Divirod", "Community Sensor"]
           },
           "instrument-brand": {
             "type": "string",
             "title": "Instrument brand",
             "description": "Instrument is defined as the overall physical device that houses multiple sensors and components. For example, a Hohonu instrument includes individual WL sensor and a separate telecommunication component.",
-            "enum": [
-              "Hohonu",
-              "Greenstream",
-              "Hobo",
-              "Divirod",
-              "Community Sensor"
-            ]
+            "enum": ["Hohonu", "Greenstream", "Hobo", "Divirod", "Community Sensor"]
           },
           "instrument": {
             "type": "string",
@@ -641,63 +597,37 @@
             "type": "string",
             "title": "Instrument component",
             "description": "The value of a component applies to the like-named field in the IOOS SOS Asset Identifier URN; it is used to identify individual, distinct components, or sub-assets (for example, two different sensor types), on a single platform. The :component is mapped to the Asset Identifier as follows:   Asset Identifier = urn:ioos:asset_type:authority:label[:component][:discriminant][#functional_parameters]  See examples below.",
-            "enum": [
-              "Senix"
-            ]
+            "enum": ["Senix"]
           },
           "instrument_variable:make_model": {
             "type": "string",
             "title": "Instrument make/model",
             "description": "The make and model of the instrument.",
-            "enum": [
-              "ToughSonic 50"
-            ]
+            "enum": ["ToughSonic 50"]
           },
-          "sensor---serial-number": {
+          "sensor-serial-number": {
             "type": "string",
             "title": "Sensor - Serial number"
           },
           "is-real-time": {
-            "type": "string",
+            "type": "boolean",
             "title": "Real time?",
-            "description": "Yes/No if the instrument reports in real time",
-            "enum": [
-              "Yes",
-              "No"
-            ]
+            "description": "Yes/No if the instrument reports in real time"
           },
           "sample-interval-min": {
             "type": "string",
             "title": "Sample interval (min)",
-            "enum": [
-              "1 min",
-              "6 min",
-              "15 min",
-              "60 min",
-              "Other"
-            ]
+            "enum": ["1 min", "6 min", "15 min", "60 min", "Other"]
           },
           "sample-average-window-sec": {
             "type": "string",
             "title": "Sample average window (sec)",
-            "enum": [
-              "0 sec",
-              "60 sec",
-              "181 sec",
-              "Other"
-            ]
+            "enum": ["0 sec", "60 sec", "181 sec", "Other"]
           },
           "mounting-structure": {
             "type": "string",
             "title": "Mounting structure",
-            "enum": [
-              "Bridge",
-              "Seawall",
-              "Dock",
-              "Bedrock",
-              "Anchor",
-              "Other"
-            ]
+            "enum": ["Bridge", "Seawall", "Dock", "Bedrock", "Anchor", "Other"]
           },
           "geophysical_variable:accuracy": {
             "type": "string",
@@ -716,13 +646,7 @@
           "telemetry-method": {
             "type": "string",
             "title": "Telemetry method",
-            "enum": [
-              "Cellular",
-              "Satellite",
-              "Iridium",
-              "GOES",
-              "Wifi"
-            ]
+            "enum": ["Cellular", "Satellite", "Iridium", "GOES", "Wifi"]
           },
           "modem-communication-manufacturer-model": {
             "type": "string",
@@ -738,12 +662,8 @@
             "title": "Date removed, if applicable"
           },
           "is-station-surveyed": {
-            "type": "string",
-            "title": "Is the station surveyed?",
-            "enum": [
-              "Yes",
-              "No"
-            ]
+            "type": "boolean",
+            "title": "Is the station surveyed?"
           },
           "marker-stamping": {
             "type": "string",
@@ -753,10 +673,7 @@
             "type": "string",
             "title": "Marker NGS PID",
             "description": "NGS = National Geodetic Survey; PID = Permanent Identifier Can be completed pre-field work during recon.",
-            "enum": [
-              "Other (enter PID)",
-              "Not available - this opens up the VM# field"
-            ]
+            "enum": ["other", "none"]
           },
           "marker-co-ops-vm": {
             "type": "string",
@@ -771,12 +688,7 @@
             "type": "string",
             "title": "Survey method",
             "description": "Survey / measurement method. ",
-            "enum": [
-              "Static GNSS",
-              "RTK",
-              "Optical Level",
-              "Digital Level"
-            ]
+            "enum": ["Static GNSS", "RTK", "Optical Level", "Digital Level"]
           },
           "date-of-most-recent-survey": {
             "type": "string",
@@ -796,7 +708,7 @@
             "type": "string",
             "title": "Station datum height (m)"
           },
-          "additional-information": {
+          "additional-survey-information": {
             "type": "string",
             "title": "Additional information"
           },
@@ -818,53 +730,48 @@
             "title": "Processing software"
           },
           "movement-since-last-survey": {
-            "type": "string",
-            "title": "Has there been movement since last survey? ",
-            "enum": [
-              "Yes",
-              "No"
-            ]
+            "type": "boolean",
+            "title": "Has there been movement since last survey?"
           },
           "difference-since-last-survey": {
             "type": "string",
             "title": "If so, what is the difference?"
           },
           "difference-within-5-cm": {
+            "type": "boolean",
+            "title": "Is the difference within 5 cm?"
+          },
+          "additional-sensor-information": {
             "type": "string",
-            "title": "Is the difference within 5 cm?",
-            "enum": [
-              "Yes",
-              "No"
-            ]
+            "title": "Additional sensor information"
           }
         }
       }
     },
     "sample_file": {
-        "type": "object",
-        "properties":{
-            "file_uri": {
+      "type": "object",
+      "properties": {
+        "file_uri": {
+          "type": "string"
+        },
+        "headers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "cell_header": {
                 "type": "string"
-            },
-            "headers": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "cell_header": {
-                            "type": "string"
-                        },
-                        "cell_parameter": {
-                            "type": "string"
-                        },
-                        "cell_units": {
-                            "type": "string"
-                        }
-                        
-                    }
-                }
+              },
+              "cell_parameter": {
+                "type": "string"
+              },
+              "cell_units": {
+                "type": "string"
+              }
             }
+          }
         }
+      }
     }
   }
 }

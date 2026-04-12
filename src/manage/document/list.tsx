@@ -1,97 +1,117 @@
-import { useDocumentListWithRollups } from "@/manage/document/useDocumentList"
-import { SelectInput, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
-import type { ReactElement } from "react"
-import { useObjectTypeList } from "../object_type/useObjectTypeList"
-import type { IObjectType, IRollup } from "@/types/types"
+import { useDocumentListWithRollups } from '@/manage/document/useDocumentList'
+import { SelectInput, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
+import type { ReactElement } from 'react'
+import { useObjectTypeList } from '../object_type/useObjectTypeList'
+import type { IObjectType, IRollup } from '@/types/types'
 import Table from '@/manage/components/table'
-import Link from "../components/link"
-
+import Link from '../components/link'
 
 const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
+  const uuidsForDocuments = object_types
+    .filter((ot) => ot.category === 'document')
+    .map((ot) => ot.uuid)
+  const {
+    data: documents,
+    isLoading,
+    error,
+  } = useDocumentListWithRollups({
+    params: {
+      filters: [
+        {
+          column: 'object_type_uuid',
+          value: uuidsForDocuments,
+          operator: 'in',
+        },
+      ],
+    },
+    rollups: ['owner_sub', 'object_type_uuid'],
+  })
+  const object_types_map = Object.fromEntries(object_types.map((ot) => [ot.uuid, ot]))
 
-    const { data: documents, isLoading, error } = useDocumentListWithRollups({ params: {}, rollups: ['owner_sub', 'object_type_uuid'] })
-    const object_types_map = Object.fromEntries(object_types.map(ot => [ot.uuid, ot]))
-
-    return (
-        <ViewWithLoader isLoading={isLoading} error={error} data={documents}>
-
-            <h1 className="text-2xl font-bold py-2 sticky top-0 bg-white">Documents</h1>
-            <div className='flex flex-row gap-4 p-2 sticky top-10 bg-white z-10'>
-                {
-                    Object.keys(documents?.rollups ?? []).map(r => {
-                        const rollup = documents?.rollups?.[r].filter(item => item.label !== null && item.label !== '') as IRollup[] | undefined;
-                        if (rollup?.length === 0) return null;
-                        return (
-                            <div className='flex flex-row gap-2' key={r}>
-                                <span className='font-semibold'>{r.split('_').filter((w, i) => i < 1 || w.toLowerCase() !== 'uuid').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}</span>
-                                <SelectInput
-                                    id={r}
-                                    testId={r}
-                                    key={r}
-                                    label={null}
-                                    size='xs'
-                                    options={rollup?.map(item => ({
-                                        label: `${r === 'object_type_uuid' ? object_types_map[item.label]?.label : item.label} (${item.count})`,
-                                        value: item.label
-                                    })) ?? []}
-                                />
-                            </div>
-                        )
-                    })
+  return (
+    <ViewWithLoader isLoading={isLoading} error={error} data={documents}>
+      <h1 className="text-2xl font-bold py-2 sticky top-0 bg-white">Documents</h1>
+      <div className="flex flex-row gap-4 p-2 sticky top-10 bg-white z-10">
+        {Object.keys(documents?.rollups ?? []).map((r) => {
+          const rollup = documents?.rollups?.[r].filter(
+            (item) => item.label !== null && item.label !== ''
+          ) as IRollup[] | undefined
+          if (rollup?.length === 0) return null
+          return (
+            <div className="flex flex-row gap-2" key={r}>
+              <span className="font-semibold">
+                {r
+                  .split('_')
+                  .filter((w, i) => i < 1 || w.toLowerCase() !== 'uuid')
+                  .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                  .join(' ')}
+              </span>
+              <SelectInput
+                id={r}
+                testId={r}
+                key={r}
+                label={null}
+                size="xs"
+                options={
+                  rollup?.map((item) => ({
+                    label: `${r === 'object_type_uuid' ? object_types_map[item.label]?.label : item.label} (${item.count})`,
+                    value: item.label,
+                  })) ?? []
                 }
+              />
             </div>
+          )
+        })}
+      </div>
+      {documents && (
+        <Table
+          className="w-full"
+          rowClassName="odd:bg-slate-100"
+          theadClassName="sticky top-26"
+          data={documents?.items}
+          columns={[
             {
-                documents && (
-                    <Table
-                        className='w-full'
-                        rowClassName="odd:bg-slate-100"
-                        theadClassName="sticky top-26"
-                        data={documents?.items}
-                        columns={[
-                            {
-                                label: 'Label',
-                                id: 'label',
-                                accessor: r => <Link to={`/document/edit/${r.uuid}`}>{r.label}</Link>
-                            },
-                            {
-                                label: 'Type',
-                                id: 'object_type_uuid',
-                                accessor: r => <Link to={`/object_type/edit/${r.object_type_uuid}`}>{object_types_map[r.object_type_uuid]?.label ?? r.object_type_uuid}</Link>
-                            },
-                            {
-                                label: 'Owner',
-                                id: 'owner_sub'
-                            },
-                            {
-                                label: 'Updated',
-                                id: 'updated_at',
-                                accessor: r => new Date(r.updated_at).toLocaleString()
-                            },
-                            {
-                                label: 'Created',
-                                id: 'created_at',
-                                accessor: r => new Date(r.created_at).toLocaleString()
-                            }
-
-                        ]}
-                    />
-                )
-            }
-
-        </ViewWithLoader>
-    )
-
+              label: 'Label',
+              id: 'label',
+              accessor: (r) => <Link to={`/document/edit/${r.uuid}`}>{r.label}</Link>,
+            },
+            {
+              label: 'Type',
+              id: 'object_type_uuid',
+              accessor: (r) => (
+                <Link to={`/object_type/edit/${r.object_type_uuid}`}>
+                  {object_types_map[r.object_type_uuid]?.label ?? r.object_type_uuid}
+                </Link>
+              ),
+            },
+            {
+              label: 'Owner',
+              id: 'owner_sub',
+            },
+            {
+              label: 'Updated',
+              id: 'updated_at',
+              accessor: (r) => new Date(r.updated_at).toLocaleString(),
+            },
+            {
+              label: 'Created',
+              id: 'created_at',
+              accessor: (r) => new Date(r.created_at).toLocaleString(),
+            },
+          ]}
+        />
+      )}
+    </ViewWithLoader>
+  )
 }
 
 const ListDocumentsLoader = (): ReactElement => {
-    const { data: object_types, isLoading, error } = useObjectTypeList()
-    return (
-        <ViewWithLoader isLoading={isLoading} error={error} data={object_types}>
-            {
-                object_types && <ListDocuments object_types={object_types} />
-            }
-        </ViewWithLoader>
-    )
+  const { data: object_types, isLoading, error } = useObjectTypeList()
+  return (
+    <ViewWithLoader isLoading={isLoading} error={error} data={object_types}>
+      {object_types && <ListDocuments object_types={object_types} />}
+    </ViewWithLoader>
+  )
 }
 
 export default ListDocumentsLoader

@@ -19,6 +19,7 @@ import Errors from '@/manage/components/errors'
 import { documentQueryKey, useDocument } from './useDocument'
 import { useFullDefaultFormAtObjectType } from '../form/useForm'
 import { useQueryClient } from '@tanstack/react-query'
+import FileUpload from '../custom_inputs/file_upload'
 
 const EditDocumentForm = ({
   document,
@@ -151,6 +152,9 @@ const EditDocumentForm = ({
           },
         }}
         formValueState={[formValues, setFormValues]}
+        inputOverrides={{
+          'custom:file_upload': FileUpload,
+        }}
       />
       <div className="flex flex-row gap-4  p-4 sticky bottom-0 bg-white/80 z-10">
         <Button onClick={onSave} type="primary" disabled={saving}>

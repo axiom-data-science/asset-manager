@@ -16,6 +16,8 @@ COPY src  src
 COPY eslint.config.js vite.config.ts tsconfig.json tsconfig.app.json tsconfig.node.json ./
 COPY --from=deps /app/node_modules ./node_modules
 
+ENV NODE_ENV=staging
+
 RUN npm run build
 
 # Production image, copy all the files and run vite

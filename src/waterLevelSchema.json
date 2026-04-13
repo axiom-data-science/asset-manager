@@ -246,8 +246,7 @@
     "state": {
       "type": "string",
       "title": "State",
-      "description": "State in which the asset is located",
-      "enum": ["[state list]"]
+      "description": "State in which the asset is located"
     },
     "platform_name": {
       "type": "string",
@@ -261,14 +260,12 @@
     "wmo_platform_code": {
       "type": "string",
       "title": "CO-OPS ID",
-      "description": "Provided by CO-OPS. Only provide if known/established. Do not create. ",
-      "enum": ["[CO-OPS ref list by state]"]
+      "description": "Provided by CO-OPS. Only provide if known/established. Do not create. "
     },
     "is-this-a-co-ops-station": {
-      "type": "string",
+      "type": "boolean",
       "title": "Is this a CO-OPS Station? (yes/no)",
-      "description": "Filterable question to determine type of station being installed.",
-      "enum": ["Yes", "No"]
+      "description": "Filterable question to determine type of station being installed."
     },
     "other-id": {
       "type": "string",

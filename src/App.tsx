@@ -7,7 +7,11 @@ import { useAuth } from '@/auth/useAuth'
 import { Route, Routes, useNavigate } from 'react-router-dom'
 import ListDocuments from '@/manage/document/list'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { CreateDocumentFromForm, CreateDocumentFromSchema, SelectDocumentForm } from '@/manage/document/create'
+import {
+  CreateDocumentFromForm,
+  CreateDocumentFromSchema,
+  SelectDocumentForm,
+} from '@/manage/document/create'
 import CreateObjectType from '@/manage/object_type/create'
 import ListObjectTypes from '@/manage/object_type/list'
 import EditObjectType from '@/manage/object_type/edit'
@@ -20,162 +24,298 @@ import EditDocument from './manage/document/edit'
 import EditObjectSchema from '@/manage/object_schema/edit'
 import ListFieldConfigs from '@/manage/field_config/list'
 import UploadFile from '@/manage/document/upload_file'
-
+import Link from './manage/components/link'
+import SimpleLayout from './layouts/simple'
 
 const Authed = (): ReactElement => {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
 
   useEffect(() => {
-    navigate('/');
-  }, [navigate]);
-  return (
-    <></>
-  )
+    navigate('/')
+  }, [navigate])
+  return <></>
 }
-
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: false
-    }
-  }
+      refetchOnWindowFocus: false,
+    },
+  },
 })
 
 function App(): ReactElement {
-
   function fallbackRender(props: FallbackProps): ReactElement {
     // Call resetErrorBoundary() to reset the error boundary and retry the render.
 
     return (
-      <div role="alert" className='p-20'>
+      <div role="alert" className="p-20">
         <p>Something went wrong:</p>
-        <pre style={{ color: 'red' }}>{props.error instanceof Error ? props.error.message : String(props.error)}</pre>
+        <pre style={{ color: 'red' }}>
+          {props.error instanceof Error ? props.error.message : String(props.error)}
+        </pre>
       </div>
     )
   }
 
-  const auth = useAuth();
+  const auth = useAuth()
   console.log(auth)
-
 
   return (
     <ErrorBoundary fallbackRender={fallbackRender}>
       <QueryClientProvider client={queryClient}>
+        {auth.isLoading ? (
+          <div className="p-20">
+            <Button disabled={true}>
+              <Loader className="animate-spin" />
+            </Button>
+          </div>
+        ) : !auth.isAuthenticated ? (
+          <Routes>
+            <Route
+              path="*"
+              element={
+                <div className="p-20">
+                  <Button onClick={() => void auth.login()}>Log in</Button>
+                </div>
+              }
+            />
+            <Route
+              path="/loggedout"
+              element={
+                <div className="p-20">
+                  <h1>You have been logged out</h1>
+                  <Button onClick={() => void auth.login()}>Log in again</Button>
+                </div>
+              }
+            />
+          </Routes>
+        ) : (
+          <Routes>
+            <Route path="/authed" element={<Authed />} />
+            <Route
+              path="/"
+              element={
+                <SimpleLayout>
+                  <SimpleLayout>
+                    <SelectDocumentForm
+                      returnToOnSuccess="/create-document-success"
+                      documentCreatePath="/create-document"
+                    />
+                  </SimpleLayout>
+                </SimpleLayout>
+              }
+            />
+            <Route
+              path="/manage"
+              element={
+                <SidebarLayout>
+                  <p>Main</p>
+                </SidebarLayout>
+              }
+            />
 
-        {
-          auth.isLoading ?
-            <div className='p-20'>
-              <Button disabled={true}><Loader className='animate-spin' /></Button>
-            </div>
-            : !auth.isAuthenticated ?
-              <Routes>
-                <Route path="*" element={
-                  <div className='p-20'>
-                    <Button onClick={() => void auth.login()}>Log in</Button>
+            <Route
+              path="/document"
+              element={
+                <SidebarLayout>
+                  <ListDocuments />
+                </SidebarLayout>
+              }
+            />
+            <Route
+              path="/document/create"
+              element={
+                <SidebarLayout>
+                  <SelectDocumentForm />
+                </SidebarLayout>
+              }
+            />
+
+            <Route
+              path="/create-document"
+              element={
+                <SimpleLayout>
+                  <SelectDocumentForm
+                    returnToOnSuccess="/create-document-success"
+                    documentCreatePath="/create-document"
+                  />
+                </SimpleLayout>
+              }
+            />
+
+            <Route
+              path="/create-document-success"
+              element={
+                <SimpleLayout>
+                  <div className="p-20 text-center">
+                    Document created successfully! <Link to="/create-document">Create another</Link>
                   </div>
-                } />
-                <Route path="/loggedout" element={
-                  <div className='p-20'>
-                    <h1>You have been logged out</h1>
-                    <Button onClick={() => void auth.login()}>Log in again</Button>
-                  </div>
-                } />
-              </Routes>
-              : <Routes>
-                <Route path="/authed" element={
-                  <Authed />
-                } />
-                <Route path="/" element={
-                  <SidebarLayout><p>Main</p></SidebarLayout>
-                } />
+                </SimpleLayout>
+              }
+            />
 
-                <Route path="/document" element={
-                  <SidebarLayout>
-                    <ListDocuments />
-                  </SidebarLayout>
-                } />
-                <Route path="/document/create" element={
-                  <SidebarLayout>
-                    <SelectDocumentForm />
-                  </SidebarLayout>
-                } />
+            <Route
+              path="/document/create/:object_schema_uuid/object_schema"
+              element={
+                <SidebarLayout>
+                  <CreateDocumentFromSchema />
+                </SidebarLayout>
+              }
+            />
+            <Route
+              path="/create-document/:object_schema_uuid/object_schema"
+              element={
+                <SimpleLayout>
+                  <CreateDocumentFromSchema returnToOnSuccess="/create-document-success" />
+                </SimpleLayout>
+              }
+            />
 
-                <Route path="/document/create/:object_schema_uuid/object_schema" element={
-                  <SidebarLayout>
-                    <CreateDocumentFromSchema />
-                  </SidebarLayout>
-                } />
+            <Route
+              path="/document/create/:object_type_uuid/object_type/:form_uuid/form"
+              element={
+                <SidebarLayout>
+                  <CreateDocumentFromForm />
+                </SidebarLayout>
+              }
+            />
 
+            <Route
+              path="/create-document/:object_type_uuid/object_type/:form_uuid/form"
+              element={
+                <SimpleLayout>
+                  <CreateDocumentFromForm />
+                </SimpleLayout>
+              }
+            />
 
-                <Route path="/document/create/:object_type_uuid/object_type/:form_uuid/form" element={
-                  <SidebarLayout>
-                    <CreateDocumentFromForm />
-                  </SidebarLayout>
-                } />
+            <Route
+              path="/create-document/:object_schema_uuid/object_schema/:form_uuid/form"
+              element={
+                <SimpleLayout>
+                  <CreateDocumentFromForm returnToOnSuccess="/create-document-success" />
+                </SimpleLayout>
+              }
+            />
 
-                <Route path="/document/edit/:uuid" element={
-                  <SidebarLayout>
-                    <EditDocument />
-                  </SidebarLayout>
-                } />
+            <Route
+              path="/document/edit/:uuid"
+              element={
+                <SidebarLayout>
+                  <EditDocument />
+                </SidebarLayout>
+              }
+            />
 
+            <Route
+              path="/schema"
+              element={
+                <SidebarLayout>
+                  <p>Schemas</p>
+                </SidebarLayout>
+              }
+            />
 
+            <Route
+              path="/object_type"
+              element={
+                <SidebarLayout>
+                  <ListObjectTypes />
+                </SidebarLayout>
+              }
+            />
+            <Route
+              path="/object_type/create"
+              element={
+                <SidebarLayout>
+                  <CreateObjectType />
+                </SidebarLayout>
+              }
+            />
+            <Route
+              path="/object_type/edit/:uuid"
+              element={
+                <SidebarLayout>
+                  <EditObjectType />
+                </SidebarLayout>
+              }
+            />
 
-                <Route path="/schema" element={
-                  <SidebarLayout><p>Schemas</p></SidebarLayout>
-                } />
+            <Route
+              path="/object_schema"
+              element={
+                <SidebarLayout>
+                  <ListObjectSchemas />
+                </SidebarLayout>
+              }
+            />
+            <Route
+              path="/object_schema/create"
+              element={
+                <SidebarLayout>
+                  <CreateObjectSchema />
+                </SidebarLayout>
+              }
+            />
+            <Route
+              path="/object_schema/edit/:uuid"
+              element={
+                <SidebarLayout>
+                  <EditObjectSchema />
+                </SidebarLayout>
+              }
+            />
 
+            <Route
+              path="/forms"
+              element={
+                <SidebarLayout>
+                  <ListForm />
+                </SidebarLayout>
+              }
+            />
+            <Route
+              path="/forms/create"
+              element={
+                <SidebarLayout>
+                  <CreateFormLoader />
+                </SidebarLayout>
+              }
+            />
 
-                <Route path="/object_type" element={
-                  <SidebarLayout><ListObjectTypes /></SidebarLayout>
-                } />
-                <Route path="/object_type/create" element={
-                  <SidebarLayout><CreateObjectType /></SidebarLayout>
-                } />
-                <Route path="/object_type/edit/:uuid" element={
-                  <SidebarLayout><EditObjectType /></SidebarLayout>
-                } />
+            <Route
+              path="/forms/edit/:uuid"
+              element={
+                <SidebarLayout>
+                  <EditFormLoader />
+                </SidebarLayout>
+              }
+            />
 
+            <Route
+              path="/field_configs"
+              element={
+                <SidebarLayout>
+                  <ListFieldConfigs />
+                </SidebarLayout>
+              }
+            />
 
-                <Route path="/object_schema" element={
-                  <SidebarLayout><ListObjectSchemas /></SidebarLayout>
-                } />
-                <Route path="/object_schema/create" element={
-                  <SidebarLayout><CreateObjectSchema /></SidebarLayout>
-                } />
-                <Route path="/object_schema/edit/:uuid" element={
-                  <SidebarLayout><EditObjectSchema /></SidebarLayout>
-                } />
-
-
-                <Route path="/forms" element={
-                  <SidebarLayout><ListForm /></SidebarLayout>
-                } />
-                <Route path="/forms/create" element={
-                  <SidebarLayout><CreateFormLoader /></SidebarLayout>
-                } />
-
-                <Route path="/forms/edit/:uuid" element={
-                  <SidebarLayout><EditFormLoader /></SidebarLayout>
-                } />
-
-
-                <Route path="/field_configs" element={
-                  <SidebarLayout><ListFieldConfigs /></SidebarLayout>
-                } />
-
-                {/* <Route path="/field_configs/edit/:uuid" element={
+            {/* <Route path="/field_configs/edit/:uuid" element={
                   <SidebarLayout><EditFieldConfig /></SidebarLayout>
                 } /> */}
 
-                <Route path="/files/upload" element={
-                  <SidebarLayout><UploadFile /></SidebarLayout>
-                } />
-
-              </Routes>
-
-        }
+            <Route
+              path="/files/upload"
+              element={
+                <SidebarLayout>
+                  <UploadFile />
+                </SidebarLayout>
+              }
+            />
+          </Routes>
+        )}
       </QueryClientProvider>
     </ErrorBoundary>
   )

@@ -6,46 +6,17 @@ import {
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
-  SidebarMenuItem
-} from "@/components/ui/sidebar"
+  SidebarMenuItem,
+} from '@/components/ui/sidebar'
 
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { Book, BookPlus, ChevronDown, List, LogOut, Network, Plus, User } from "lucide-react"
-import { SidebarGroupContent, SidebarGroupLabel } from "@/components/ui/sidebar"
-import { Link } from "react-router-dom"
-import { Button } from "@/components/ui/button"
-import { useAuth } from "@/auth/useAuth"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Book, BookPlus, ChevronDown, List, Network, Plus, User } from 'lucide-react'
+import { SidebarGroupContent, SidebarGroupLabel } from '@/components/ui/sidebar'
+import { Link } from 'react-router-dom'
 
-const colors = [
-  'bg-red-100 text-red-800',
-  'bg-yellow-100 text-yellow-800',
-  'bg-green-100 text-green-800',
-  'bg-blue-100 text-blue-800',
-  'bg-indigo-100 text-indigo-800',
-  'bg-purple-100 text-purple-800',
-  'bg-pink-100 text-pink-800',
-  'bg-teal-100 text-teal-800',
-]
-
-function getColorFromName(name: string) {
-  let hash = 0
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash)
-  }
-  return colors[Math.abs(hash) % colors.length]
-}
+import UserView from '@/manage/components/user'
 
 export function AppSidebar() {
-  const auth = useAuth();
-  console.log(auth)
-  const user = auth.user?.profile;
-  const initials = `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}`.toUpperCase();
-  const avatarColor = user
-    ? getColorFromName(`${user.firstName} ${user.lastName}`)
-    : ''
-
   const navGroups = [
     {
       label: 'Documents',
@@ -54,19 +25,19 @@ export function AppSidebar() {
         {
           name: 'Find document',
           icon: List,
-          url: '/document'
+          url: '/document',
         },
         {
           name: 'Create document',
           icon: Plus,
-          url: '/document/create'
+          url: '/document/create',
         },
         {
           name: 'Upload a file',
           icon: Plus,
-          url: '/files/upload'
-        }
-      ]
+          url: '/files/upload',
+        },
+      ],
     },
     {
       label: 'Schemas',
@@ -75,23 +46,23 @@ export function AppSidebar() {
         {
           name: 'List schemas',
           icon: List,
-          url: '/object_schema'
+          url: '/object_schema',
         },
         {
           name: 'Create schema',
           icon: Plus,
-          url: '/object_schema/create'
+          url: '/object_schema/create',
         },
         {
           name: 'List types',
           icon: List,
-          url: '/object_type'
+          url: '/object_type',
         },
         {
           name: 'Create type',
           icon: Plus,
-          url: '/object_type/create'
-        }
+          url: '/object_type/create',
+        },
       ],
     },
     {
@@ -101,24 +72,24 @@ export function AppSidebar() {
         {
           name: 'List forms',
           icon: List,
-          url: '/forms'
+          url: '/forms',
         },
         {
           name: 'Create form',
           icon: Plus,
-          url: '/forms/create'
+          url: '/forms/create',
         },
         {
           name: 'List field configs',
           icon: List,
-          url: '/field_configs'
+          url: '/field_configs',
         },
         {
           name: 'Create field config',
           icon: Plus,
-          url: '/field_configs/create'
-        }
-      ]
+          url: '/field_configs/create',
+        },
+      ],
     },
     {
       label: 'Users',
@@ -127,14 +98,14 @@ export function AppSidebar() {
         {
           name: 'List users',
           icon: List,
-          url: '/users'
+          url: '/users',
         },
         {
           name: 'Create user',
           icon: Plus,
-          url: '/users/create'
-        }
-      ]
+          url: '/users/create',
+        },
+      ],
     },
   ]
 
@@ -142,70 +113,38 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader />
       <SidebarContent>
-        {
-          navGroups.map((group) => (
-            <Collapsible key={group.label} defaultOpen className="group/collapsible">
-              <SidebarGroup>
-                <SidebarGroupLabel asChild className="font-bold text-lg cursor-pointer">
-                  <CollapsibleTrigger>
-                    <group.icon className="mr-2" /> {group.label}
-                    <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                  </CollapsibleTrigger>
-                </SidebarGroupLabel>
-                <CollapsibleContent className='py-2'>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      {group.actions.map((action) => (
-                        <SidebarMenuItem key={action.name}>
-                          <SidebarMenuButton asChild>
-                            <Link to={action.url}>
-                              <action.icon />
-                              <span>{action.name}</span>
-                            </Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      ))}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </CollapsibleContent>
-              </SidebarGroup>
-            </Collapsible>
-          ))
-        }
+        {navGroups.map((group) => (
+          <Collapsible key={group.label} defaultOpen className="group/collapsible">
+            <SidebarGroup>
+              <SidebarGroupLabel asChild className="font-bold text-lg cursor-pointer">
+                <CollapsibleTrigger>
+                  <group.icon className="mr-2" /> {group.label}
+                  <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                </CollapsibleTrigger>
+              </SidebarGroupLabel>
+              <CollapsibleContent className="py-2">
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {group.actions.map((action) => (
+                      <SidebarMenuItem key={action.name}>
+                        <SidebarMenuButton asChild>
+                          <Link to={action.url}>
+                            <action.icon />
+                            <span>{action.name}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </CollapsibleContent>
+            </SidebarGroup>
+          </Collapsible>
+        ))}
       </SidebarContent>
       <SidebarFooter>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant='ghost'
-              className='h-12 w-full justify-start gap-2 px-2'
-            >
-              <Avatar>
-                <AvatarFallback className={avatarColor}>
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-              <div className='flex flex-col items-start text-left cursor-pointer'>
-                <span className='text-sm font-medium'>
-                  {auth.user?.profile?.firstName ? `${auth.user.profile.firstName} ${auth.user.profile.lastName ?? ''}` : ''}
-                </span>
-                <span className='text-xs text-muted-foreground'>
-                  {auth.user?.profile?.email}
-                </span>
-              </div>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className='w-56' align='start' side='top'>
-            <DropdownMenuItem className='cursor-pointer' onClick={() => {
-              auth.logout()
-            }}>
-              <LogOut className='mr-2 h-4 w-4' />
-              Log out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <UserView />
       </SidebarFooter>
-    </Sidebar >
+    </Sidebar>
   )
 }

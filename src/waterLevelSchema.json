@@ -46,7 +46,7 @@
       "description": "If known, please provide the grant"
     },
     "deployment-year-of-proposal": {
-      "type": "string",
+      "type": "number",
       "title": "Deployment year of proposal"
     },
     "creator_name": {

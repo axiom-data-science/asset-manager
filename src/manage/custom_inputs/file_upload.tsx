@@ -1,11 +1,11 @@
 import { APPS_API_BASE_URL } from ***REMOVED***@/config/config***REMOVED***
 import { uploadFileToPostgrest } from ***REMOVED***@/services/postgrest/services***REMOVED***
 import type { IFieldInputProps } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
-import { CloudUpload, X } from ***REMOVED***lucide-react***REMOVED***
+import { CloudUpload, File, X } from ***REMOVED***lucide-react***REMOVED***
 import { useState, type ReactElement } from ***REMOVED***react***REMOVED***
 import { useAuth } from ***REMOVED***react-oidc-context***REMOVED***
 import { useDocument } from ***REMOVED***../document/useDocument***REMOVED***
-import { ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
+import { utils, ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
 import Link from ***REMOVED***../components/link***REMOVED***
 
 const FileDisplay = ({ fileRef }: { fileRef: string }): ReactElement => {
@@ -54,12 +54,13 @@ const FileUpload = ({ field, value, onChange }: IFieldInputProps): ReactElement 
   const [error, setError] = useState<string | null>(null)
   const auth = useAuth()
 
-  const onUpload = async () => {
-    if (!file) return
+  const onUpload = async (f?: File | null) => {
+    const _file = f ?? file
+    if (!_file) return
     setUploading(true)
     try {
       const fileUuid = await uploadFileToPostgrest({
-        file,
+        file: _file,
         token: auth.user?.access_token || ***REMOVED******REMOVED***,
       })
       const url = `${APPS_API_BASE_URL}/rpc/get_document_file?uuid=${fileUuid}`
@@ -75,11 +76,13 @@ const FileUpload = ({ field, value, onChange }: IFieldInputProps): ReactElement 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files ? e.target.files[0] : null
     setFile(file)
+    onUpload(file)
   }
   return (
-    <>
-      <strong>{field.label}</strong>
+    <div className="flex flex-col gap-2">
+      <p>{field.label}</p>
       {field.description && <p className="text-sm text-gray-600 mb-2">{field.description}</p>}
+
       <label className="block">
         {error && <span className="text-red-500 text-sm mb-2 block">{error}</span>}
         <span className="sr-only">Choose profile photo</span>
@@ -90,14 +93,25 @@ const FileUpload = ({ field, value, onChange }: IFieldInputProps): ReactElement 
           disabled={file !== null}
           onChange={handleFileChange}
         />
-        <div
-          className={`px-4 py-2 rounded-lg cursor-pointer inline-block ${file !== null ? ***REMOVED***bg-slate-200 text-slate-400***REMOVED*** : ***REMOVED***bg-blue-600 hover:bg-blue-700 text-white***REMOVED***}`}
-        >
-          {uploading ? <span className="flex flex-row gap-1">Uploading ...</span> : ***REMOVED***Browse Files***REMOVED***}
-        </div>
+        {!fileRef && (
+          <div
+            className={`${utils.createButtonClass({
+              size: ***REMOVED***sm***REMOVED***,
+              variant: ***REMOVED***create***REMOVED***,
+            })} px-4 py-2 rounded-lg cursor-pointer inline-block ${file !== null ? ***REMOVED***bg-slate-200 text-slate-400***REMOVED*** : ***REMOVED******REMOVED***}`}
+          >
+            {uploading ? (
+              <span className="flex flex-row gap-1">Uploading ...</span>
+            ) : (
+              ***REMOVED***Browse Files***REMOVED***
+            )}
+          </div>
+        )}
         {file && (
-          <span className="ml-2 text-gray-700">
-            {file.name}{***REMOVED*** ***REMOVED***}
+          <span className="text-sm text-gray-700">
+            <span className="bg-slate-200 p-2 my-2 inline-flex items-center gap-1 rounded-md">
+              <File size={14} /> {file.name}{***REMOVED*** ***REMOVED***}
+            </span>
             {!fileRef && (
               <CloudUpload
                 className="inline-block ml-1 cursor-pointer"
@@ -118,7 +132,7 @@ const FileUpload = ({ field, value, onChange }: IFieldInputProps): ReactElement 
         )}
       </label>
       {fileRef && <FileDisplay fileRef={fileRef} />}
-    </>
+    </div>
   )
 }
 

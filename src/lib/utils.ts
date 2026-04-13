@@ -1,60 +1,96 @@
-import type { IValidationError } from "@/types/types"
-import { schemaToFormUtils, type IForm, type IFormValues } from "@axdspub/axiom-ui-forms"
-import { useQueries } from "@tanstack/react-query"
-import { clsx, type ClassValue } from "clsx"
-import type { queryOptions } from "node_modules/@tanstack/react-query/build/legacy/queryOptions"
-import { twMerge } from "tailwind-merge"
-import { get } from "lodash-es"
+import type { IValidationError } from ***REMOVED***@/types/types***REMOVED***
+import { getters, schemaToFormUtils, type IForm, type IFormValues } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
+import { useQueries } from ***REMOVED***@tanstack/react-query***REMOVED***
+import { clsx, type ClassValue } from ***REMOVED***clsx***REMOVED***
+import type { queryOptions } from ***REMOVED***node_modules/@tanstack/react-query/build/legacy/queryOptions***REMOVED***
+import { twMerge } from ***REMOVED***tailwind-merge***REMOVED***
+import { get, omit } from ***REMOVED***lodash-es***REMOVED***
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-
-export const validate = async ({form, formValues, messagePrefix, schemaFields} : {form: IForm, formValues: IFormValues, messagePrefix?: string, schemaFields?: string[]}): Promise<{
-    valid: boolean,
-    errors: IValidationError[]
+export const validate = async ({
+  form,
+  formValues,
+  schema,
+  messagePrefix,
+  schemaFields,
+}: {
+  form: IForm
+  formValues: IFormValues
+  schema?: Record<string, unknown>
+  messagePrefix?: string
+  schemaFields?: string[]
+}): Promise<{
+  valid: boolean
+  errors: IValidationError[]
 }> => {
-    const errors: IValidationError[] = [];
-    let valid = true
+  const errors: IValidationError[] = []
+  let valid = true
 
-    const doFlat = (fields: IForm[***REMOVED***fields***REMOVED***]): IForm[***REMOVED***fields***REMOVED***] => {
-        return (fields ?? []).map(f => {
-            return f.type === ***REMOVED***object***REMOVED*** && f.fields !== undefined ? doFlat(f.fields) : f
-        }).flat(Infinity) as IForm[***REMOVED***fields***REMOVED***]
+  const flattenedFields = getters.getFieldsFromFormSection(form)
+  const fieldsById = Object.fromEntries(flattenedFields.map((f) => [f.id, f]))
+  flattenedFields.forEach((f) => {
+    if (f.required && (formValues[f.id] === undefined || formValues[f.id] === ***REMOVED******REMOVED***)) {
+      valid = false
+      errors.push({
+        field: f.id,
+        message: `${messagePrefix ? messagePrefix + ***REMOVED***: ***REMOVED*** : ***REMOVED******REMOVED***}${f.label} is required.`,
+      })
     }
-
-    const flattenedFields = doFlat(form.fields) ?? []
-    flattenedFields.forEach(f => {
-            if (f.required && (formValues[f.id] === undefined || formValues[f.id] === ***REMOVED******REMOVED***)) {
-                valid = false;
-                errors.push({ field: f.id, message: `${messagePrefix ? messagePrefix + ***REMOVED***: ***REMOVED*** : ***REMOVED******REMOVED***}${f.label} is required.` });
-            }
+  })
+  if (schemaFields?.length) {
+    schemaFields.forEach((field) => {
+      const schemaValid = schemaToFormUtils.validateSchema(get(formValues, field) ?? {})
+      if (schemaValid.error) {
+        errors.push({
+          field,
+          message: `${messagePrefix ? messagePrefix + ***REMOVED***: ***REMOVED*** : ***REMOVED******REMOVED***}${field} field is not a valid JSON schema. ${schemaValid.error}`,
         })
-    if(schemaFields?.length){
-        schemaFields.forEach(field => {
-            const schemaValid = schemaToFormUtils.validateSchema(get(formValues, field) ?? {})
-            if(schemaValid.error){
-                errors.push({ field, message: `${messagePrefix ? messagePrefix + ***REMOVED***: ***REMOVED*** : ***REMOVED******REMOVED***}${field} field is not a valid JSON schema. ${schemaValid.error}` })
-                valid = false;
-            }
+        valid = false
+      }
+    })
+  }
+  if (schema !== undefined) {
+    const againstSchema = schemaToFormUtils.validateAgainstSchema(
+      omit(schema, ***REMOVED***$schema***REMOVED***),
+      formValues
+    )
+    if (againstSchema?.length) {
+      valid = false
+      errors.push(
+        ...againstSchema.map((e) => {
+          const fieldKey = e.split(***REMOVED*** ***REMOVED***)[0].replace(/\//g, ***REMOVED***.***REMOVED***).replace(/^\./, ***REMOVED******REMOVED***)
+          const field = fieldsById[fieldKey as keyof typeof fieldsById]?.label ?? fieldKey
+          const currentValue = get(formValues, fieldKey)
+          return {
+            field: fieldKey,
+            message: `${messagePrefix ? messagePrefix + ***REMOVED***: ***REMOVED*** : ***REMOVED******REMOVED***}${field} ${e.split(***REMOVED*** ***REMOVED***).slice(1).join(***REMOVED*** ***REMOVED***)}${typeof currentValue !== ***REMOVED***undefined***REMOVED*** ? `. Current value: ${JSON.stringify(currentValue)}` : ***REMOVED******REMOVED***} [${fieldKey}]`,
+          }
         })
+      )
     }
-    return { valid, errors };
+  }
+  return { valid, errors }
 }
 
 export const useQueriesWithSignatures = (queryObject: ReturnType<typeof queryOptions>[]) => {
-    const r = useQueries({
-        queries: Object.values(queryObject),
-        combine: (results) => {
-            const isLoading = results.some(r => r.isLoading);
-            return {
-                isLoading,
-                isPending: results.some(r => r.isPending),
-                error: results.find(r => r.error)?.error ?? null,
-                data: !isLoading ? Object.fromEntries(results.map((r, index) => r.data ? [Object.keys(queryObject)[index], r.data] : [])) : null
-            }
-        }
-    })
-    return r
+  const r = useQueries({
+    queries: Object.values(queryObject),
+    combine: (results) => {
+      const isLoading = results.some((r) => r.isLoading)
+      return {
+        isLoading,
+        isPending: results.some((r) => r.isPending),
+        error: results.find((r) => r.error)?.error ?? null,
+        data: !isLoading
+          ? Object.fromEntries(
+              results.map((r, index) => (r.data ? [Object.keys(queryObject)[index], r.data] : []))
+            )
+          : null,
+      }
+    },
+  })
+  return r
 }

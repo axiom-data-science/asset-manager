@@ -690,6 +690,9 @@
                   "description": "Provided by CO-OPS. Only provide if known/established. Do not create. ",
                   "required": false,
                   "type": "text",
+                  "settings": {
+                    "descriptionPresentation": "tooltip"
+                  },
                   "conditions": {
                     "field": "is-this-a-co-ops-station",
                     "value": false,
@@ -1880,9 +1883,9 @@
           "fields": [
             {
               "id": "file_uri",
-              "label": "File uri",
+              "label": "Sample CSV or NETCDF file",
               "required": false,
-              "type": "text"
+              "type": "custom:file_upload"
             },
             {
               "id": "headers",

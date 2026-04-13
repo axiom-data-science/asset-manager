@@ -17,22 +17,29 @@ import { omit } from ***REMOVED***lodash-es***REMOVED***
 import { validate } from ***REMOVED***@/lib/utils***REMOVED***
 import Errors from ***REMOVED***@/manage/components/errors***REMOVED***
 import Link from ***REMOVED***@/manage/components/link***REMOVED***
-import { useObjectTypesAndFormsAndSchemas } from ***REMOVED***../object_type/useObjectTypeList***REMOVED***
-import { useObjectSchemaAndType, useObjectSchemaFull } from ***REMOVED***../object_schema/useObjectSchema***REMOVED***
-import { useFullForm } from ***REMOVED***../form/useForm***REMOVED***
-import FileUpload from ***REMOVED***../custom_inputs/file_upload***REMOVED***
+import { useObjectTypesAndFormsAndSchemas } from ***REMOVED***@/manage/object_type/useObjectTypeList***REMOVED***
+import { useObjectSchemaAndType, useObjectSchemaFull } from ***REMOVED***@/manage/object_schema/useObjectSchema***REMOVED***
+import { useFullForm } from ***REMOVED***@/manage/form/useForm***REMOVED***
+import FileUpload from ***REMOVED***@/manage/custom_inputs/file_upload***REMOVED***
+import { Book, BookPlus, Check, Network } from ***REMOVED***lucide-react***REMOVED***
 
 const CreateDocumentForm = ({
   type,
   assetForm,
   fieldConfigs,
   schema,
+  returnToOnSuccess,
 }: {
   type: IObjectType
   assetForm?: IAssetForm
   fieldConfigs?: IFormToFieldConfigWithDetails[]
   schema: IObjectSchema
+  returnToOnSuccess?: string
 }): ReactElement => {
+  const navPath =
+    returnToOnSuccess ??
+    new URLSearchParams(window.location.search).get(***REMOVED***returnToOnSuccess***REMOVED***) ??
+    undefined
   const navigate = useNavigate()
   const [saving, setSaving] = useState(false)
   const [formValues, setFormValues] = useState<IFormValues>({})
@@ -94,7 +101,7 @@ const CreateDocumentForm = ({
 
   const onSave = async () => {
     setSaving(true)
-    const valid = await validate({ form, formValues })
+    const valid = await validate({ form, formValues, schema: schema.json_schema })
     if (!valid.valid && valid.errors.length > 0) {
       setErrors(valid.errors)
       setSaving(false)
@@ -116,7 +123,7 @@ const CreateDocumentForm = ({
       })
 
       setSaving(false)
-      navigate(***REMOVED***/document***REMOVED***)
+      navigate(navPath ?? ***REMOVED***/document***REMOVED***)
     } catch (e: unknown) {
       setSaving(false)
       setErrors([
@@ -132,9 +139,11 @@ const CreateDocumentForm = ({
     }
   }
 
+  const includeSaveButton = form.wizard_steps !== undefined
+
   return (
     <div className="flex flex-col gap-4">
-      <h4 className="text-sm text-gray-500">
+      <h4 className="text-sm text-gray-500 hidden">
         Object type:{***REMOVED*** ***REMOVED***}
         <Link to={`/object_type/edit/${type.uuid}`} className="font-semibold">
           {type.label}
@@ -152,11 +161,14 @@ const CreateDocumentForm = ({
           </>
         )}
       </h4>
-      <h1 className="text-2xl font-bold">Create new document</h1>
+      <h1 className="text-2xl font-bold">
+        {assetForm?.label ?? `Create new ${type.label} document`}
+      </h1>
       <Errors errors={errors} />
       <FormCreator
         form={{
           ...form,
+          label: undefined,
           settings: {
             ...form.settings,
             url_navigable: false,
@@ -166,12 +178,21 @@ const CreateDocumentForm = ({
         inputOverrides={{
           ***REMOVED***custom:file_upload***REMOVED***: FileUpload,
         }}
+        SubmitButton={
+          includeSaveButton && (
+            <Button onClick={onSave} type="primary" disabled={saving}>
+              {saving ? <Loader className="animate-spin" /> : ***REMOVED***Save***REMOVED***}
+            </Button>
+          )
+        }
       />
-      <div className="flex flex-row gap-4  p-4 sticky bottom-0 bg-white/80 z-10 -mx-1 justify-end">
-        <Button onClick={onSave} type="primary" disabled={saving}>
-          {saving ? <Loader className="animate-spin" /> : ***REMOVED***Save***REMOVED***}
-        </Button>
-      </div>
+      {!includeSaveButton && (
+        <div className="flex flex-row gap-4  p-4 sticky bottom-0 bg-white/80 z-10 -mx-1 justify-end">
+          <Button onClick={onSave} type="primary" disabled={saving}>
+            {saving ? <Loader className="animate-spin" /> : ***REMOVED***Save***REMOVED***}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
@@ -188,7 +209,11 @@ export const CreateDocumentFromObjectType = (): ReactElement => {
   )
 }
 
-export const CreateDocumentFromSchema = (): ReactElement => {
+export const CreateDocumentFromSchema = ({
+  returnToOnSuccess,
+}: {
+  returnToOnSuccess?: string
+}): ReactElement => {
   const params = useParams()
   const object_schema_uuid = params.object_schema_uuid as string
   const { data, isLoading, error } = useObjectSchemaFull({ uuid: object_schema_uuid })
@@ -202,13 +227,18 @@ export const CreateDocumentFromSchema = (): ReactElement => {
             data.object_types.find((ot) => ot.uuid === data.object_schema.object_type_uuid) ??
             data.object_types[0]
           }
+          returnToOnSuccess={returnToOnSuccess}
         />
       )}
     </ViewWithLoader>
   )
 }
 
-export const CreateDocumentFromForm = (): ReactElement => {
+export const CreateDocumentFromForm = ({
+  returnToOnSuccess,
+}: {
+  returnToOnSuccess?: string
+}): ReactElement => {
   const params = useParams()
   const form_uuid = params.form_uuid as string
   const { data, isLoading, error } = useFullForm({ form_uuid })
@@ -221,81 +251,112 @@ export const CreateDocumentFromForm = (): ReactElement => {
           type={data.object_schema.object_type}
           assetForm={data.form}
           fieldConfigs={data.field_configs}
+          returnToOnSuccess={returnToOnSuccess}
         />
       )}
     </ViewWithLoader>
   )
 }
 
-export const SelectDocumentForm = (): ReactElement => {
-  const { data, isLoading, error } = useObjectTypesAndFormsAndSchemas()
+export const SelectDocumentForm = ({
+  returnToOnSuccess,
+  documentCreatePath = ***REMOVED***/document/create***REMOVED***,
+}: {
+  returnToOnSuccess?: string
+  documentCreatePath?: string
+}): ReactElement => {
+  const { data, isLoading, error } = useObjectTypesAndFormsAndSchemas({
+    object_type_params: {
+      filters: [
+        {
+          column: ***REMOVED***category***REMOVED***,
+          operator: ***REMOVED***eq***REMOVED***,
+          value: ***REMOVED***document***REMOVED***,
+        },
+      ],
+    },
+  })
   return (
     <>
-      <h2 className="text-2xl font-bold">Create new document</h2>
+      <h2 className="text-2xl font-bold mb-2 flex flex-row items-center gap-2">
+        <Book size={18} /> Create new document
+      </h2>
 
       <ViewWithLoader isLoading={isLoading} error={error} data={data}>
-        <>
+        <div className="my-4 flex flex-col gap-4">
           {data &&
-            data.object_types
-              .filter((d) => d.category === ***REMOVED***document***REMOVED***)
-              .map((type) => {
-                const schema = data.schemas.find((s) => s.object_type_uuid === type.uuid)
-                if (!schema) {
-                  return (
-                    <div key={type.uuid} className="p-4 border rounded">
-                      <h4 className="font-bold">{type.label}</h4>
-                      <div className="">
-                        <p>No schema found for this object type. Please create a schema first.</p>
-                        <div className="mt-4">
-                          <Link
-                            to={`/form/create/${type.uuid}/object_type`}
-                            className={utils.createButtonClass({
-                              size: ***REMOVED***md***REMOVED***,
-                              variant: ***REMOVED***primary***REMOVED***,
-                            })}
-                          >
-                            Create schema
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                }
-                const forms = data.forms.filter((f) => f.object_type_uuid === type.uuid)
-                const defaultSchema =
-                  data.schemas.find((s) => s.object_type_uuid === type.uuid && s.is_type_default) ??
-                  data.schemas
-                    .filter((s) => s.object_type_uuid === type.uuid)
-                    .sort(
-                      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-                    )[0]
+            data.object_types.map((type) => {
+              const schema = data.schemas.find((s) => s.object_type_uuid === type.uuid)
+              if (!schema) {
                 return (
-                  <div key={type.uuid} className="p-4 border rounded">
-                    <h4 className="font-bold text-lg">{type.label}</h4>
-                    <div className="p-4 flex flex-col gap-2">
-                      <p>Create a document:</p>
-                      <div className="flex flex-col gap-2 p-2">
-                        <p>
-                          <Link to={`/document/create/${defaultSchema.uuid}/object_schema`}>
-                            Schema only
-                          </Link>
-                        </p>
-                        {forms.map((form) => {
-                          return (
-                            <Link
-                              key={form.uuid}
-                              to={`/document/create/${type.uuid}/object_type/${form.uuid}/form`}
-                            >
-                              Form: {form.label} (schema version: {form.object_schema_version})
-                            </Link>
-                          )
-                        })}
+                  <div key={type.uuid}>
+                    <h4 className="font-bold">{type.label}</h4>
+                    <div className="">
+                      <p>No schema found for this object type. Please create a schema first.</p>
+                      <div className="mt-4">
+                        <Link
+                          to={`/form/create/${type.uuid}/object_type`}
+                          className={utils.createButtonClass({
+                            size: ***REMOVED***md***REMOVED***,
+                            variant: ***REMOVED***primary***REMOVED***,
+                          })}
+                        >
+                          Create schema
+                        </Link>
                       </div>
                     </div>
                   </div>
                 )
-              })}
-        </>
+              }
+              const forms = data.forms.filter((f) => f.object_type_uuid === type.uuid)
+              const defaultSchema =
+                data.schemas.find((s) => s.object_type_uuid === type.uuid && s.is_type_default) ??
+                data.schemas
+                  .filter((s) => s.object_type_uuid === type.uuid)
+                  .sort(
+                    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                  )[0]
+              return (
+                <div key={type.uuid}>
+                  <h4 className="font-bold text-lg">{type.label}</h4>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-4 px-2 py-4">
+                      {forms.map((form) => {
+                        return (
+                          <Link
+                            key={form.uuid}
+                            to={`${documentCreatePath.replace(/\/$/, ***REMOVED******REMOVED***)}/${type.uuid}/object_type/${form.uuid}/form${returnToOnSuccess ? `?returnToOnSuccess=${returnToOnSuccess}` : ***REMOVED******REMOVED***}`}
+                          >
+                            {form.is_schema_and_version_default ? (
+                              <>
+                                <span className="text-xs text-slate-400 flex flex-row gap-2 items-center">
+                                  <Check size={12} color="green" /> Default
+                                </span>
+                              </>
+                            ) : null}
+                            <span
+                              className={`flex flex-row gap-2 items-center${form.is_schema_and_version_default ? ***REMOVED*** font-semibold text-lg***REMOVED*** : ***REMOVED******REMOVED***}`}
+                            >
+                              <BookPlus size={12} /> Form: {form.label} (schema version:{***REMOVED*** ***REMOVED***}
+                              {form.object_schema_version})
+                            </span>
+                          </Link>
+                        )
+                      })}
+                      <p>
+                        <Link
+                          to={`${documentCreatePath.replace(/\/$/, ***REMOVED******REMOVED***)}/${defaultSchema.uuid}/object_schema${returnToOnSuccess ? `?returnToOnSuccess=${returnToOnSuccess}` : ***REMOVED******REMOVED***}`}
+                          className="flex flex-row gap-2 items-center"
+                        >
+                          <Network size={12} /> Schema only form (version: {defaultSchema.version})
+                        </Link>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+        </div>
       </ViewWithLoader>
     </>
   )

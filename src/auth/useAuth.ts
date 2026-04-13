@@ -22,8 +22,12 @@ export const useAuth = (): IAuth => {
       }
     },
     login: async () => {
+      const redirect_uri =
+        window.location.pathname === ***REMOVED***/loggedout***REMOVED***
+          ? `${window.location.origin}/`
+          : window.location.href
       auth.signinRedirect({
-        redirect_uri: window.location.href,
+        redirect_uri,
       })
     },
     user: auth.user

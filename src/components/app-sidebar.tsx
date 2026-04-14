@@ -23,7 +23,7 @@ export function AppSidebar() {
       icon: Book,
       actions: [
         {
-          name: 'Find document',
+          name: 'List documents',
           icon: List,
           url: '/document',
         },
@@ -35,7 +35,12 @@ export function AppSidebar() {
         {
           name: 'Upload a file',
           icon: Plus,
-          url: '/files/upload',
+          url: '/file/upload',
+        },
+        {
+          name: 'List files',
+          icon: List,
+          url: '/file/list',
         },
       ],
     },

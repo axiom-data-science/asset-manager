@@ -406,7 +406,7 @@
             {
               "id": "platform_name",
               "label": "Station Name",
-              "required": false,
+              "required": true,
               "type": "text"
             },
             {

@@ -17,9 +17,10 @@ import { omit } from 'lodash-es'
 import { validate } from '@/lib/utils'
 import Errors from '@/manage/components/errors'
 import { documentQueryKey, useDocument } from './useDocument'
-import { useFullDefaultFormAtObjectType } from '../form/useForm'
+import { useFullDefaultFormAtObjectType } from '@/manage/form/useForm'
 import { useQueryClient } from '@tanstack/react-query'
-import FileUpload from '../custom_inputs/file_upload'
+import FileUpload from '@/manage/custom_inputs/file_upload'
+import StationSearch from '@/manage/custom_inputs/station_search'
 
 const EditDocumentForm = ({
   document,
@@ -104,7 +105,7 @@ const EditDocumentForm = ({
         behavior: 'smooth', // Adds a gradual animation
       })
       queryClient.invalidateQueries({
-        queryKey: documentQueryKey(document.uuid),
+        queryKey: documentQueryKey({ uuid: document.uuid }),
       })
       return
     }
@@ -113,11 +114,13 @@ const EditDocumentForm = ({
       await patchDocument({
         uuid: document.uuid,
         document: {
-          uuid: document.uuid,
-          label: formValues.label ?? formValues.title ?? 'Untitled Document',
-          description: formValues.description ?? '',
-          data: formValues,
-        } as Omit<IDocument, 'created_at' | 'updated_at'>,
+          ...document,
+          ...{
+            label: formValues.label ?? formValues.title ?? 'Untitled Document',
+            description: formValues.description ?? '',
+            data: formValues,
+          },
+        } as IDocument,
         token: auth.user?.access_token ?? '',
       })
 
@@ -154,6 +157,7 @@ const EditDocumentForm = ({
         formValueState={[formValues, setFormValues]}
         inputOverrides={{
           'custom:file_upload': FileUpload,
+          'custom:station_search': StationSearch,
         }}
       />
       <div className="flex flex-row gap-4  p-4 sticky bottom-0 bg-white/80 z-10">

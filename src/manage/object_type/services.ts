@@ -1,170 +1,159 @@
-import { deleteFromPostgrest, fetchListFromPostgrest, fetchRollupFromPostgrest, fetchSingleFromPostgrest, patchToPostgrest, postToPostgrest } from "@/services/postgrest/services";
-import type { IPostgrestParams, IObjectType } from "@/types/types";
+import {
+  deleteFromPostgrest,
+  fetchListFromPostgrest,
+  fetchRollupFromPostgrest,
+  fetchSingleFromPostgrest,
+  patchToPostgrest,
+  postToPostgrest,
+} from '@/services/postgrest/services'
+import type { IPostgrestParams, IObjectType } from '@/types/types'
 import { omit } from 'lodash-es'
 
-const OBJECT_TYPES_TABLE = 'object_type';
+const OBJECT_TYPES_TABLE = 'object_type'
 
-
-
-export const fetchObjectTypes = async({
-    params, 
-    token,
-    signal
-}: { 
-    params?: IPostgrestParams, 
-    token: string ,
-    signal?: AbortSignal
+export const fetchObjectTypes = async ({
+  params,
+  token,
+  signal,
+}: {
+  params?: IPostgrestParams
+  token: string
+  signal?: AbortSignal
 }): Promise<IObjectType[]> => {
-
-    const documents = await fetchListFromPostgrest<IObjectType>({
-        table: OBJECT_TYPES_TABLE,
-        params,
-        token,
-        signal
-    });
-    return documents;
-
+  const documents = await fetchListFromPostgrest<IObjectType>({
+    table: OBJECT_TYPES_TABLE,
+    params,
+    token,
+    signal,
+  })
+  return documents
 }
 
 export const fetchObjectType = async ({
+  uuid,
+  params,
+  token,
+  signal,
+}: {
+  uuid: string
+  params?: IPostgrestParams
+  token: string
+  signal?: AbortSignal
+}): Promise<IObjectType> => {
+  const document = await fetchSingleFromPostgrest<IObjectType>({
+    table: OBJECT_TYPES_TABLE,
     uuid,
     params,
     token,
-    signal
-}:{
-    uuid: string,
-    params?: IPostgrestParams,
-    token: string,
-    signal?: AbortSignal
-}): Promise<IObjectType> => {
-    const document = await fetchSingleFromPostgrest<IObjectType>({
-        table: OBJECT_TYPES_TABLE,
-        uuid,
-        params,
-        token,
-        signal
-    })   
-    return document;
-
+    signal,
+  })
+  return document
 }
 
 export const fetchObjectCategories = async ({
-    token,
-    signal
-}:{
-    token: string,
-    signal?: AbortSignal
+  token,
+  signal,
+}: {
+  token: string
+  signal?: AbortSignal
 }): Promise<string[]> => {
-    const list = await fetchListFromPostgrest<{
-        enum_name: string,
-        enum_value:string
-    }>({
-        table: 'enum_values',
-        token,
-        signal,
-        params: {
-            filters:[
-                {
-                    column: 'enum_name',
-                    operator: 'eq',
-                    value: 'object_category'
-                }
-            ]
-        }
-    })
+  const list = await fetchListFromPostgrest<{
+    enum_name: string
+    enum_value: string
+  }>({
+    table: 'enum_values',
+    token,
+    signal,
+    params: {
+      filters: [
+        {
+          column: 'enum_name',
+          operator: 'eq',
+          value: 'object_category',
+        },
+      ],
+    },
+  })
 
-    return list.map(d => d.enum_value);
-    
+  return list.map((d) => d.enum_value)
 }
 
 export const fetchObjectTypeRollup = async ({
-    rollup,
-    params, 
-    signal,
-    token
+  rollup,
+  params,
+  signal,
+  token,
 }: {
-    rollup: string 
-    params?: IPostgrestParams, 
-    token: string ,
-    signal?: AbortSignal
-}): Promise<{label: string, count: number}[]> => {
-    
-    const list = await fetchRollupFromPostgrest({
-        table: OBJECT_TYPES_TABLE,
-        rollupColumn: rollup,
-        params: omit(params, ['order']),
-        token,
-        signal
-    });
-    return list
-
-
+  rollup: string
+  params?: IPostgrestParams
+  token: string
+  signal?: AbortSignal
+}): Promise<{ label: string; count: number }[]> => {
+  const list = await fetchRollupFromPostgrest({
+    table: OBJECT_TYPES_TABLE,
+    rollupColumn: rollup,
+    params: omit(params, ['order']),
+    token,
+    signal,
+  })
+  return list
 }
 
 export const postObjectType = async ({
-    object_type,
-    token,
-    signal
-
+  object_type,
+  token,
+  signal,
 }: {
-    object_type: Omit<IObjectType, 'owner_sub' | 'uuid' | 'created_at' | 'updated_at'>,
-    token: string,
-    signal?: AbortSignal
+  object_type: Omit<IObjectType, 'owner_sub' | 'uuid' | 'created_at' | 'updated_at'>
+  token: string
+  signal?: AbortSignal
 }): Promise<IObjectType> => {
-    const newObjectType = await postToPostgrest<Omit<IObjectType, 'owner_sub' | 'uuid' | 'created_at' | 'updated_at'>, IObjectType>({
-        table: OBJECT_TYPES_TABLE,
-        body: object_type,
-        token,
-        signal
-    });
-    return newObjectType;
+  const newObjectType = await postToPostgrest<
+    Omit<IObjectType, 'owner_sub' | 'uuid' | 'created_at' | 'updated_at'>,
+    IObjectType
+  >({
+    table: OBJECT_TYPES_TABLE,
+    body: object_type,
+    token,
+    signal,
+  })
+  return newObjectType
 }
 
 export const patchObjectType = async ({
-    uuid,
-    object_type,
-    token,
-    signal
-
+  uuid,
+  object_type,
+  token,
+  signal,
 }: {
-    uuid: string,
-    object_type: IObjectType,
-    token: string,
-    signal?: AbortSignal
+  uuid: string
+  object_type: IObjectType
+  token: string
+  signal?: AbortSignal
 }): Promise<IObjectType> => {
-    const newObjectType = await patchToPostgrest<IObjectType>({
-        uuid,
-        table: OBJECT_TYPES_TABLE,
-        body: object_type,
-        token,
-        signal
-    });
-    return newObjectType;
+  const newObjectType = await patchToPostgrest<IObjectType>({
+    uuid,
+    table: OBJECT_TYPES_TABLE,
+    body: object_type,
+    token,
+    signal,
+  })
+  return newObjectType
 }
 
 export const deleteObjectType = async ({
+  uuid,
+  token,
+  signal,
+}: {
+  uuid: string
+  token: string
+  signal?: AbortSignal
+}): Promise<void> => {
+  await deleteFromPostgrest({
+    table: OBJECT_TYPES_TABLE,
     uuid,
     token,
-    signal
-}: {
-    uuid: string,
-    token: string,
-    signal?: AbortSignal
-}): Promise<void> => {
-    await deleteFromPostgrest({
-        table: OBJECT_TYPES_TABLE,
-        params:{
-            limit: 1,
-            filters:[
-                {
-                    column: 'uuid',
-                    operator: 'eq',
-                    value: uuid
-                }
-            ]
-
-        },
-        token,
-        signal
-    });
+    signal,
+  })
 }

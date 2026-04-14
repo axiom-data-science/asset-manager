@@ -203,17 +203,34 @@ export const uploadFileToPostgrest = async ({
 
 export const deleteFromPostgrest = async ({
   table,
+  uuid,
+  uuidColumn = 'uuid',
   params,
   token,
   signal,
 }: {
   table: string
+  uuid: string
+  uuidColumn?: string
   params?: IPostgrestParams
   token: string
   signal?: AbortSignal
 }): Promise<void> => {
   try {
-    const url = postgrestUrl({ table, params })
+    const paramsToUse: IPostgrestParams = {
+      ...params,
+      ...{
+        limit: 1,
+        filters: [
+          {
+            column: uuidColumn,
+            operator: 'eq',
+            value: uuid,
+          },
+        ],
+      },
+    }
+    const url = postgrestUrl({ table, params: paramsToUse })
     const response = await fetch(url, {
       method: 'DELETE',
       headers: {
@@ -228,6 +245,59 @@ export const deleteFromPostgrest = async ({
     console.error('Error deleting from Postgrest:', error)
     throw new Error(
       `Error deleting from Postgrest: ${error instanceof Error ? error.message : String(error)}`
+    )
+  }
+}
+
+export const upsertToPostgrest = async <T, R = T>({
+  uuid,
+  uuidColumn = 'uuid',
+  table,
+  params,
+  token,
+  signal,
+  body,
+}: {
+  uuid: string
+  uuidColumn?: string
+  table: string
+  params?: IPostgrestParams
+  token: string
+  signal?: AbortSignal
+  body: Partial<T>
+}): Promise<R> => {
+  try {
+    const p = {
+      ...params,
+      filters: [
+        {
+          column: uuidColumn,
+          operator: 'eq' as const,
+          value: uuid,
+        },
+        ...(params?.filters ?? []),
+      ],
+    }
+    const url = postgrestUrl({ table, params: p })
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates,return=representation',
+      },
+      signal,
+      body: JSON.stringify(body),
+    })
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    const result = await response.json()
+    return result as unknown as R
+  } catch (error) {
+    console.error('Error patching to Postgrest:', error)
+    throw new Error(
+      `Error patching to Postgrest: ${error instanceof Error ? error.message : String(error)}`
     )
   }
 }

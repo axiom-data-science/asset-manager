@@ -1,73 +1,32 @@
-import { documentListQueryKey, useDocumentListWithRollups } from '@/manage/document/useDocumentList'
-import { Button, SelectInput, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
-import { useState, type ReactElement } from 'react'
+import { useDocumentListWithRollups } from '@/manage/document/useDocumentList'
+import { SelectInput, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
+import type { ReactElement } from 'react'
 import { useObjectTypeList } from '../object_type/useObjectTypeList'
-import type { IDocument, IObjectType, IPostgrestParams, IRollup } from '@/types/types'
+import type { IObjectType, IRollup } from '@/types/types'
 import Table from '@/manage/components/table'
 import Link from '@/manage/components/link'
-import { useAuth } from '@/auth/useAuth'
-import { deleteDocument } from './services'
-import { useQueryClient } from '@tanstack/react-query'
-
-const DeleteButton = ({
-  document,
-  onDelete,
-}: {
-  document: IDocument
-  onDelete: () => void
-}): ReactElement => {
-  const [confirm, setConfirm] = useState(false)
-  const auth = useAuth()
-  const handleClick = (): void => {
-    if (!confirm) {
-      setConfirm(true)
-    } else {
-      handleDelete()
-    }
-  }
-  const handleDelete = (): void => {
-    deleteDocument({
-      uuid: document.uuid,
-      token: auth?.user?.access_token ?? '',
-    }).then(() => {
-      onDelete()
-    })
-  }
-  return (
-    <Button onClick={handleClick} size="xs" type="alert" className="text-white">
-      {confirm ? 'Confirm' : 'Delete'}
-    </Button>
-  )
-}
 
 const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
   const uuidsForDocuments = object_types
     .filter((ot) => ot.category === 'document')
     .map((ot) => ot.uuid)
-
-  const params: IPostgrestParams = {
-    filters: [
-      {
-        column: 'object_type_uuid',
-        value: uuidsForDocuments,
-        operator: 'in',
-      },
-    ],
-  }
-  const rollups = ['owner_sub', 'object_type_uuid']
   const {
     data: documents,
     isLoading,
     error,
   } = useDocumentListWithRollups({
-    params,
-    rollups,
+    params: {
+      filters: [
+        {
+          column: 'object_type_uuid',
+          value: uuidsForDocuments,
+          operator: 'in',
+        },
+      ],
+    },
+    rollups: ['owner_sub', 'object_type_uuid'],
   })
   const object_types_map = Object.fromEntries(object_types.map((ot) => [ot.uuid, ot]))
-  const queryClient = useQueryClient()
-  const onDeleteItem = (): void => {
-    queryClient.invalidateQueries({ queryKey: documentListQueryKey({}) })
-  }
 
   return (
     <ViewWithLoader isLoading={isLoading} error={error} data={documents}>
@@ -138,11 +97,6 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
               label: 'Created',
               id: 'created_at',
               accessor: (r) => new Date(r.created_at).toLocaleString(),
-            },
-            {
-              label: 'Delete',
-              id: 'delete',
-              accessor: (r) => <DeleteButton document={r as IDocument} onDelete={onDeleteItem} />,
             },
           ]}
         />

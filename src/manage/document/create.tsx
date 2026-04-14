@@ -22,6 +22,7 @@ import { useObjectSchemaAndType, useObjectSchemaFull } from '@/manage/object_sch
 import { useFullForm } from '@/manage/form/useForm'
 import FileUpload from '@/manage/custom_inputs/file_upload'
 import { Book, BookPlus, Check, Network } from 'lucide-react'
+import StationSearch from '../custom_inputs/station_search'
 
 const CreateDocumentForm = ({
   type,
@@ -116,7 +117,8 @@ const CreateDocumentForm = ({
       await postDocument({
         document: {
           object_type_uuid: type.uuid,
-          label: formValues.label ?? formValues.title ?? 'Untitled Document',
+          label:
+            formValues.label ?? formValues.title ?? formValues.platform_name ?? 'Untitled Document',
           data: formValues,
         } as Omit<IDocument, 'uuid' | 'created_at' | 'updated_at'>,
         token: auth.user?.access_token ?? '',
@@ -177,6 +179,7 @@ const CreateDocumentForm = ({
         formValueState={[formValues, setFormValues]}
         inputOverrides={{
           'custom:file_upload': FileUpload,
+          'custom:station_search': StationSearch,
         }}
         SubmitButton={
           includeSaveButton && (

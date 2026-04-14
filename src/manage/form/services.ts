@@ -1,205 +1,204 @@
-import { fetchObjectSchema } from "@/manage/object_schema/services";
-import { fetchListFromPostgrest, fetchRollupFromPostgrest, fetchSingleFromPostgrest, patchToPostgrest, postToPostgrest } from "@/services/postgrest/services";
-import type { IAssetForm, IPostgrestParams } from "@/types/types";
+import { fetchObjectSchema } from ***REMOVED***@/manage/object_schema/services***REMOVED***
+import {
+  fetchListFromPostgrest,
+  fetchRollupFromPostgrest,
+  fetchSingleFromPostgrest,
+  postToPostgrest,
+  upsertToPostgrest,
+} from ***REMOVED***@/services/postgrest/services***REMOVED***
+import type { IAssetForm, IPostgrestParams } from ***REMOVED***@/types/types***REMOVED***
 
-export const FORMS_TABLE = ***REMOVED***form***REMOVED***;
+export const FORMS_TABLE = ***REMOVED***form***REMOVED***
 
-export const fetchForms = async({
-    params, 
-    token,
-    signal
-}: { 
-    params?: IPostgrestParams, 
-    token: string ,
-    signal?: AbortSignal
+export const fetchForms = async ({
+  params,
+  token,
+  signal,
+}: {
+  params?: IPostgrestParams
+  token: string
+  signal?: AbortSignal
 }): Promise<IAssetForm[]> => {
-
-    const documents = await fetchListFromPostgrest<IAssetForm>({
-        table: FORMS_TABLE,
-        params,
-        token,
-        signal
-    });
-    return documents;
-
+  const documents = await fetchListFromPostgrest<IAssetForm>({
+    table: FORMS_TABLE,
+    params,
+    token,
+    signal,
+  })
+  return documents
 }
 
 export const fetchForm = async ({
+  uuid,
+  params,
+  token,
+  signal,
+}: {
+  uuid: string
+  params?: IPostgrestParams
+  token: string
+  signal?: AbortSignal
+}): Promise<IAssetForm> => {
+  const document = await fetchSingleFromPostgrest<IAssetForm>({
+    table: FORMS_TABLE,
     uuid,
     params,
     token,
-    signal
-}:{
-    uuid: string,
-    params?: IPostgrestParams,
-    token: string,
-    signal?: AbortSignal
-}): Promise<IAssetForm> => {
-    const document = await fetchSingleFromPostgrest<IAssetForm>({
-        table: FORMS_TABLE,
-        uuid,
-        params,
-        token,
-        signal
-    })   
-    return document;
-
+    signal,
+  })
+  return document
 }
 
-export const fetchDefaultFormAtObjectType = async({
-    object_type_uuid,
-    token,
-    params,
-    signal
-}:{
-    object_type_uuid: string,
-    params?: IPostgrestParams,
-    token: string,
-    signal?: AbortSignal
+export const fetchDefaultFormAtObjectType = async ({
+  object_type_uuid,
+  token,
+  params,
+  signal,
+}: {
+  object_type_uuid: string
+  params?: IPostgrestParams
+  token: string
+  signal?: AbortSignal
 }): Promise<IAssetForm | null> => {
-    const form = await fetchSingleFromPostgrest<IAssetForm>({
-        table: `rpc/get_default_form_at_object_type_uuid?object_type_uuid=${object_type_uuid}`,
-        params,
-        token,
-        signal
-    })
-    if(form.uuid === null){
-        return null
-    }
-    return form
+  const form = await fetchSingleFromPostgrest<IAssetForm>({
+    table: `rpc/get_default_form_at_object_type_uuid?object_type_uuid=${object_type_uuid}`,
+    params,
+    token,
+    signal,
+  })
+  if (form.uuid === null) {
+    return null
+  }
+  return form
 }
 
 export const fetchFormRollup = async ({
-    rollup,
-    params, 
-    signal,
-    token
+  rollup,
+  params,
+  signal,
+  token,
 }: {
-    rollup: string 
-    params?: IPostgrestParams, 
-    token: string ,
-    signal?: AbortSignal
-}): Promise<{label: string, count: number}[]> => {
-    
-    const list = await fetchRollupFromPostgrest({
-        table: FORMS_TABLE,
-        rollupColumn: rollup,
-        params,
-        token,
-        signal
-    });
-    return list
-
-
+  rollup: string
+  params?: IPostgrestParams
+  token: string
+  signal?: AbortSignal
+}): Promise<{ label: string; count: number }[]> => {
+  const list = await fetchRollupFromPostgrest({
+    table: FORMS_TABLE,
+    rollupColumn: rollup,
+    params,
+    token,
+    signal,
+  })
+  return list
 }
 
 export const fetchFormsAtSchema = async ({
-    object_schema_uuid,
-    params,
+  object_schema_uuid,
+  params,
+  token,
+  signal,
+}: {
+  object_schema_uuid: string
+  params?: IPostgrestParams
+  token: string
+  signal?: AbortSignal
+}) => {
+  const schema = await fetchObjectSchema({
+    uuid: object_schema_uuid,
     token,
     signal,
-}: {
-    object_schema_uuid: string,
-    params?: IPostgrestParams,
-    token: string,
-    signal?: AbortSignal
-}) => {
-    const schema = await fetchObjectSchema({
-        uuid: object_schema_uuid,
-        token,
-        signal,
-    })
-    const forms = await fetchListFromPostgrest<IAssetForm>({
-        table: FORMS_TABLE,
-        params:{
-            ...params,
-            filters:[
-                {
-                    column: ***REMOVED***object_type_uuid***REMOVED***,
-                    operator: ***REMOVED***eq***REMOVED***,
-                    value: schema.object_type_uuid
-                },
-                {
-                    column: ***REMOVED***object_schema_version***REMOVED***,
-                    operator: ***REMOVED***eq***REMOVED***,
-                    value: schema.version
-                }
-            ]
+  })
+  const forms = await fetchListFromPostgrest<IAssetForm>({
+    table: FORMS_TABLE,
+    params: {
+      ...params,
+      filters: [
+        {
+          column: ***REMOVED***object_type_uuid***REMOVED***,
+          operator: ***REMOVED***eq***REMOVED***,
+          value: schema.object_type_uuid,
         },
-        token,
-        signal,
-    })
-    return forms;
+        {
+          column: ***REMOVED***object_schema_version***REMOVED***,
+          operator: ***REMOVED***eq***REMOVED***,
+          value: schema.version,
+        },
+      ],
+    },
+    token,
+    signal,
+  })
+  return forms
 }
 
 export const fetchFormsAtType = async ({
-    object_type_uuid,
-    params,
-    token,
-    signal
+  object_type_uuid,
+  params,
+  token,
+  signal,
 }: {
-    object_type_uuid: string,
-    params?: IPostgrestParams,
-    token: string,
-    signal?: AbortSignal
+  object_type_uuid: string
+  params?: IPostgrestParams
+  token: string
+  signal?: AbortSignal
 }) => {
-    const forms = await fetchListFromPostgrest<IAssetForm>({
-        table: FORMS_TABLE,
-        params:{
-            ...params,
-            filters:[
-                {
-                    column: ***REMOVED***object_type_uuid***REMOVED***,
-                    operator: ***REMOVED***eq***REMOVED***,
-                    value: object_type_uuid
-                }
-            ]
+  const forms = await fetchListFromPostgrest<IAssetForm>({
+    table: FORMS_TABLE,
+    params: {
+      ...params,
+      filters: [
+        {
+          column: ***REMOVED***object_type_uuid***REMOVED***,
+          operator: ***REMOVED***eq***REMOVED***,
+          value: object_type_uuid,
         },
-        token,
-        signal
-    })
-    return forms;
+      ],
+    },
+    token,
+    signal,
+  })
+  return forms
 }
 
 export const postForm = async ({
-    form,
-    token,
-    signal
-
+  form,
+  token,
+  signal,
 }: {
-    form: Omit<IAssetForm, ***REMOVED***owner_sub***REMOVED*** | ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
-    token: string,
-    signal?: AbortSignal
+  form: Omit<IAssetForm, ***REMOVED***owner_sub***REMOVED*** | ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>
+  token: string
+  signal?: AbortSignal
 }): Promise<IAssetForm> => {
-    const newForm = await postToPostgrest<Omit<IAssetForm, ***REMOVED***owner_sub***REMOVED*** | ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>, IAssetForm>({
-        table: FORMS_TABLE,
-        body: form,
-        token,
-        signal
-    });
-    return newForm;
+  const newForm = await postToPostgrest<
+    Omit<IAssetForm, ***REMOVED***owner_sub***REMOVED*** | ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
+    IAssetForm
+  >({
+    table: FORMS_TABLE,
+    body: form,
+    token,
+    signal,
+  })
+  return newForm
 }
 
-
-
 export const patchForm = async ({
-    uuid,
-    form,
-    token,
-    signal
-
+  uuid,
+  form,
+  token,
+  signal,
 }: {
-    uuid: string,
-    form: Omit<IAssetForm, ***REMOVED***owner_sub***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
-    token: string,
-    signal?: AbortSignal
+  uuid: string
+  form: IAssetForm
+  token: string
+  signal?: AbortSignal
 }): Promise<IAssetForm> => {
-    const newForm = await patchToPostgrest<Omit<IAssetForm, ***REMOVED***owner_sub***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>, IAssetForm>({
-        uuid,
-        table: FORMS_TABLE,
-        body: form,
-        token,
-        signal
-    });
-    return newForm;
+  const newForm = await upsertToPostgrest<IAssetForm>({
+    uuid,
+    table: FORMS_TABLE,
+    body: form,
+    token,
+    signal,
+  })
+  return newForm
 }

@@ -23,7 +23,7 @@ import EditFormLoader from ***REMOVED***./manage/form/edit***REMOVED***
 import EditDocument from ***REMOVED***./manage/document/edit***REMOVED***
 import EditObjectSchema from ***REMOVED***@/manage/object_schema/edit***REMOVED***
 import ListFieldConfigs from ***REMOVED***@/manage/field_config/list***REMOVED***
-import UploadFile from ***REMOVED***@/manage/document/upload_file***REMOVED***
+import UploadFile from ***REMOVED***@/manage/document_file/upload_file***REMOVED***
 import Link from ***REMOVED***./manage/components/link***REMOVED***
 import SimpleLayout from ***REMOVED***./layouts/simple***REMOVED***
 
@@ -307,7 +307,16 @@ function App(): ReactElement {
                 } /> */}
 
             <Route
-              path="/files/upload"
+              path="/file/upload"
+              element={
+                <SidebarLayout>
+                  <UploadFile />
+                </SidebarLayout>
+              }
+            />
+
+            <Route
+              path="/file/list"
               element={
                 <SidebarLayout>
                   <UploadFile />

@@ -203,17 +203,34 @@ export const uploadFileToPostgrest = async ({
 
 export const deleteFromPostgrest = async ({
   table,
+  uuid,
+  uuidColumn = ***REMOVED***uuid***REMOVED***,
   params,
   token,
   signal,
 }: {
   table: string
+  uuid: string
+  uuidColumn?: string
   params?: IPostgrestParams
   token: string
   signal?: AbortSignal
 }): Promise<void> => {
   try {
-    const url = postgrestUrl({ table, params })
+    const paramsToUse: IPostgrestParams = {
+      ...params,
+      ...{
+        limit: 1,
+        filters: [
+          {
+            column: uuidColumn,
+            operator: ***REMOVED***eq***REMOVED***,
+            value: uuid,
+          },
+        ],
+      },
+    }
+    const url = postgrestUrl({ table, params: paramsToUse })
     const response = await fetch(url, {
       method: ***REMOVED***DELETE***REMOVED***,
       headers: {
@@ -228,6 +245,59 @@ export const deleteFromPostgrest = async ({
     console.error(***REMOVED***Error deleting from Postgrest:***REMOVED***, error)
     throw new Error(
       `Error deleting from Postgrest: ${error instanceof Error ? error.message : String(error)}`
+    )
+  }
+}
+
+export const upsertToPostgrest = async <T, R = T>({
+  uuid,
+  uuidColumn = ***REMOVED***uuid***REMOVED***,
+  table,
+  params,
+  token,
+  signal,
+  body,
+}: {
+  uuid: string
+  uuidColumn?: string
+  table: string
+  params?: IPostgrestParams
+  token: string
+  signal?: AbortSignal
+  body: Partial<T>
+}): Promise<R> => {
+  try {
+    const p = {
+      ...params,
+      filters: [
+        {
+          column: uuidColumn,
+          operator: ***REMOVED***eq***REMOVED*** as const,
+          value: uuid,
+        },
+        ...(params?.filters ?? []),
+      ],
+    }
+    const url = postgrestUrl({ table, params: p })
+    const response = await fetch(url, {
+      method: ***REMOVED***POST***REMOVED***,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ***REMOVED***Content-Type***REMOVED***: ***REMOVED***application/json***REMOVED***,
+        Prefer: ***REMOVED***resolution=merge-duplicates,return=representation***REMOVED***,
+      },
+      signal,
+      body: JSON.stringify(body),
+    })
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    const result = await response.json()
+    return result as unknown as R
+  } catch (error) {
+    console.error(***REMOVED***Error patching to Postgrest:***REMOVED***, error)
+    throw new Error(
+      `Error patching to Postgrest: ${error instanceof Error ? error.message : String(error)}`
     )
   }
 }

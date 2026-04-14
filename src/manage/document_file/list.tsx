@@ -1,73 +1,32 @@
-import { documentListQueryKey, useDocumentListWithRollups } from ***REMOVED***@/manage/document/useDocumentList***REMOVED***
-import { Button, SelectInput, ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
-import { useState, type ReactElement } from ***REMOVED***react***REMOVED***
+import { useDocumentListWithRollups } from ***REMOVED***@/manage/document/useDocumentList***REMOVED***
+import { SelectInput, ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
+import type { ReactElement } from ***REMOVED***react***REMOVED***
 import { useObjectTypeList } from ***REMOVED***../object_type/useObjectTypeList***REMOVED***
-import type { IDocument, IObjectType, IPostgrestParams, IRollup } from ***REMOVED***@/types/types***REMOVED***
+import type { IObjectType, IRollup } from ***REMOVED***@/types/types***REMOVED***
 import Table from ***REMOVED***@/manage/components/table***REMOVED***
 import Link from ***REMOVED***@/manage/components/link***REMOVED***
-import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
-import { deleteDocument } from ***REMOVED***./services***REMOVED***
-import { useQueryClient } from ***REMOVED***@tanstack/react-query***REMOVED***
-
-const DeleteButton = ({
-  document,
-  onDelete,
-}: {
-  document: IDocument
-  onDelete: () => void
-}): ReactElement => {
-  const [confirm, setConfirm] = useState(false)
-  const auth = useAuth()
-  const handleClick = (): void => {
-    if (!confirm) {
-      setConfirm(true)
-    } else {
-      handleDelete()
-    }
-  }
-  const handleDelete = (): void => {
-    deleteDocument({
-      uuid: document.uuid,
-      token: auth?.user?.access_token ?? ***REMOVED******REMOVED***,
-    }).then(() => {
-      onDelete()
-    })
-  }
-  return (
-    <Button onClick={handleClick} size="xs" type="alert" className="text-white">
-      {confirm ? ***REMOVED***Confirm***REMOVED*** : ***REMOVED***Delete***REMOVED***}
-    </Button>
-  )
-}
 
 const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
   const uuidsForDocuments = object_types
     .filter((ot) => ot.category === ***REMOVED***document***REMOVED***)
     .map((ot) => ot.uuid)
-
-  const params: IPostgrestParams = {
-    filters: [
-      {
-        column: ***REMOVED***object_type_uuid***REMOVED***,
-        value: uuidsForDocuments,
-        operator: ***REMOVED***in***REMOVED***,
-      },
-    ],
-  }
-  const rollups = [***REMOVED***owner_sub***REMOVED***, ***REMOVED***object_type_uuid***REMOVED***]
   const {
     data: documents,
     isLoading,
     error,
   } = useDocumentListWithRollups({
-    params,
-    rollups,
+    params: {
+      filters: [
+        {
+          column: ***REMOVED***object_type_uuid***REMOVED***,
+          value: uuidsForDocuments,
+          operator: ***REMOVED***in***REMOVED***,
+        },
+      ],
+    },
+    rollups: [***REMOVED***owner_sub***REMOVED***, ***REMOVED***object_type_uuid***REMOVED***],
   })
   const object_types_map = Object.fromEntries(object_types.map((ot) => [ot.uuid, ot]))
-  const queryClient = useQueryClient()
-  const onDeleteItem = (): void => {
-    queryClient.invalidateQueries({ queryKey: documentListQueryKey({}) })
-  }
 
   return (
     <ViewWithLoader isLoading={isLoading} error={error} data={documents}>
@@ -138,11 +97,6 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
               label: ***REMOVED***Created***REMOVED***,
               id: ***REMOVED***created_at***REMOVED***,
               accessor: (r) => new Date(r.created_at).toLocaleString(),
-            },
-            {
-              label: ***REMOVED***Delete***REMOVED***,
-              id: ***REMOVED***delete***REMOVED***,
-              accessor: (r) => <DeleteButton document={r as IDocument} onDelete={onDeleteItem} />,
             },
           ]}
         />

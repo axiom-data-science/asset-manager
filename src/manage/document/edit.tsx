@@ -17,9 +17,10 @@ import { omit } from ***REMOVED***lodash-es***REMOVED***
 import { validate } from ***REMOVED***@/lib/utils***REMOVED***
 import Errors from ***REMOVED***@/manage/components/errors***REMOVED***
 import { documentQueryKey, useDocument } from ***REMOVED***./useDocument***REMOVED***
-import { useFullDefaultFormAtObjectType } from ***REMOVED***../form/useForm***REMOVED***
+import { useFullDefaultFormAtObjectType } from ***REMOVED***@/manage/form/useForm***REMOVED***
 import { useQueryClient } from ***REMOVED***@tanstack/react-query***REMOVED***
-import FileUpload from ***REMOVED***../custom_inputs/file_upload***REMOVED***
+import FileUpload from ***REMOVED***@/manage/custom_inputs/file_upload***REMOVED***
+import StationSearch from ***REMOVED***@/manage/custom_inputs/station_search***REMOVED***
 
 const EditDocumentForm = ({
   document,
@@ -104,7 +105,7 @@ const EditDocumentForm = ({
         behavior: ***REMOVED***smooth***REMOVED***, // Adds a gradual animation
       })
       queryClient.invalidateQueries({
-        queryKey: documentQueryKey(document.uuid),
+        queryKey: documentQueryKey({ uuid: document.uuid }),
       })
       return
     }
@@ -113,11 +114,13 @@ const EditDocumentForm = ({
       await patchDocument({
         uuid: document.uuid,
         document: {
-          uuid: document.uuid,
-          label: formValues.label ?? formValues.title ?? ***REMOVED***Untitled Document***REMOVED***,
-          description: formValues.description ?? ***REMOVED******REMOVED***,
-          data: formValues,
-        } as Omit<IDocument, ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
+          ...document,
+          ...{
+            label: formValues.label ?? formValues.title ?? ***REMOVED***Untitled Document***REMOVED***,
+            description: formValues.description ?? ***REMOVED******REMOVED***,
+            data: formValues,
+          },
+        } as IDocument,
         token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
       })
 
@@ -154,6 +157,7 @@ const EditDocumentForm = ({
         formValueState={[formValues, setFormValues]}
         inputOverrides={{
           ***REMOVED***custom:file_upload***REMOVED***: FileUpload,
+          ***REMOVED***custom:station_search***REMOVED***: StationSearch,
         }}
       />
       <div className="flex flex-row gap-4  p-4 sticky bottom-0 bg-white/80 z-10">

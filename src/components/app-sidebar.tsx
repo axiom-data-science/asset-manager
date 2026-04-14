@@ -23,7 +23,7 @@ export function AppSidebar() {
       icon: Book,
       actions: [
         {
-          name: ***REMOVED***Find document***REMOVED***,
+          name: ***REMOVED***List documents***REMOVED***,
           icon: List,
           url: ***REMOVED***/document***REMOVED***,
         },
@@ -35,7 +35,12 @@ export function AppSidebar() {
         {
           name: ***REMOVED***Upload a file***REMOVED***,
           icon: Plus,
-          url: ***REMOVED***/files/upload***REMOVED***,
+          url: ***REMOVED***/file/upload***REMOVED***,
+        },
+        {
+          name: ***REMOVED***List files***REMOVED***,
+          icon: List,
+          url: ***REMOVED***/file/list***REMOVED***,
         },
       ],
     },

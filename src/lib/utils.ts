@@ -94,3 +94,11 @@ export const useQueriesWithSignatures = (queryObject: ReturnType<typeof queryOpt
   })
   return r
 }
+
+export const removeUndefinedAndNullKeys = (
+  obj: Record<string, unknown>
+): Record<string, unknown> => {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, value]) => value !== undefined && value !== null)
+  )
+}

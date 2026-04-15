@@ -2,7 +2,7 @@ import { FieldLabel, type IFieldInputProps, type ITextField } from '@axdspub/axi
 import { Input, Loader, Tooltip, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
 import { Cross2Icon } from '@radix-ui/react-icons'
 import { useQuery } from '@tanstack/react-query'
-import React, { useState, type ReactElement } from 'react'
+import { useState, type ReactElement } from 'react'
 import type { ISensorStationRecord, ISensorStationSearchResponse } from './types'
 
 const SelectedStationDisplay = ({ uuid }: { uuid: string }) => {

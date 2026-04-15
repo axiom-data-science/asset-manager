@@ -25,6 +25,7 @@ const DeleteButton = ({
     if (!confirm) {
       setConfirm(true)
     } else {
+      setConfirm(false)
       handleDelete()
     }
   }

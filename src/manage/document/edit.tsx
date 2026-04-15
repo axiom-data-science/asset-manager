@@ -14,7 +14,7 @@ import { Button, Loader, ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-ut
 import { useState, type ReactElement } from ***REMOVED***react***REMOVED***
 import { useNavigate, useParams } from ***REMOVED***react-router-dom***REMOVED***
 import { omit } from ***REMOVED***lodash-es***REMOVED***
-import { validate } from ***REMOVED***@/lib/utils***REMOVED***
+import { removeUndefinedAndNullKeys, validate } from ***REMOVED***@/lib/utils***REMOVED***
 import Errors from ***REMOVED***@/manage/components/errors***REMOVED***
 import { documentQueryKey, useDocument } from ***REMOVED***./useDocument***REMOVED***
 import { useFullDefaultFormAtObjectType } from ***REMOVED***@/manage/form/useForm***REMOVED***
@@ -118,7 +118,10 @@ const EditDocumentForm = ({
           ...{
             label: formValues.label ?? formValues.title ?? ***REMOVED***Untitled Document***REMOVED***,
             description: formValues.description ?? ***REMOVED******REMOVED***,
-            data: formValues,
+            data: {
+              ...document.data,
+              ...removeUndefinedAndNullKeys(formValues),
+            },
           },
         } as IDocument,
         token: auth.user?.access_token ?? ***REMOVED******REMOVED***,

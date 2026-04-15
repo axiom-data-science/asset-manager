@@ -69,7 +69,7 @@ const StationSearch = ({ field, onChange, value, disabled }: IFieldInputProps): 
   return (
     <div className="relative">
       <FieldLabel.FieldLabel field={field} disabled={disabled} />
-      {selectedRecord !== undefined ? (
+      {selectedRecord !== undefined && selectedRecord !== null ? (
         <div className="p-2 bg-gray-100 flex flex-row align-middle gap-4">
           <Tooltip content={***REMOVED***Clear selection***REMOVED***} contentClassName="max-w-[200px]">
             <Cross2Icon
@@ -93,7 +93,7 @@ const StationSearch = ({ field, onChange, value, disabled }: IFieldInputProps): 
               onChange={(e) => {
                 setSearchValue(e)
               }}
-              disabled={disabled}
+              disabled={!!disabled}
             />
             {!disabled && (
               <Cross2Icon
@@ -105,7 +105,7 @@ const StationSearch = ({ field, onChange, value, disabled }: IFieldInputProps): 
               />
             )}
           </div>
-          {(isLoading || data !== undefined) && (
+          {(isLoading || data !== undefined) && !disabled && (
             <div className="absolute left-0 right-0 top-full z-40 bg-white border border-gray-300 shadow-lg h-60 overflow-y-auto">
               {isLoading && <Loader className="absolute top-10" />}
               {error !== null && <p className="p-4 text-red-600">Error: {error.message}</p>}

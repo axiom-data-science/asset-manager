@@ -1,5 +1,6 @@
 import { fetchObjectSchema } from ***REMOVED***@/manage/object_schema/services***REMOVED***
 import {
+  deleteFromPostgrest,
   fetchListFromPostgrest,
   fetchRollupFromPostgrest,
   fetchSingleFromPostgrest,
@@ -201,4 +202,21 @@ export const patchForm = async ({
     signal,
   })
   return newForm
+}
+
+export const deleteForm = async ({
+  uuid,
+  token,
+  signal,
+}: {
+  uuid: string
+  token: string
+  signal?: AbortSignal
+}): Promise<void> => {
+  await deleteFromPostgrest({
+    table: FORMS_TABLE,
+    uuid,
+    token,
+    signal,
+  })
 }

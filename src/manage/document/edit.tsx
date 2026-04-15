@@ -14,7 +14,7 @@ import { Button, Loader, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
 import { useState, type ReactElement } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { omit } from 'lodash-es'
-import { validate } from '@/lib/utils'
+import { removeUndefinedAndNullKeys, validate } from '@/lib/utils'
 import Errors from '@/manage/components/errors'
 import { documentQueryKey, useDocument } from './useDocument'
 import { useFullDefaultFormAtObjectType } from '@/manage/form/useForm'
@@ -118,7 +118,10 @@ const EditDocumentForm = ({
           ...{
             label: formValues.label ?? formValues.title ?? 'Untitled Document',
             description: formValues.description ?? '',
-            data: formValues,
+            data: {
+              ...document.data,
+              ...removeUndefinedAndNullKeys(formValues),
+            },
           },
         } as IDocument,
         token: auth.user?.access_token ?? '',

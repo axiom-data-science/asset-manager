@@ -6,6 +6,7 @@ export const useSlug = (form: IForm, initialFormValues?: IFormValues, presentati
         'auto_slug': true,
         ...initialFormValues
     });
+    
 
     useMemo(() => {
         const updateSlug = () => {

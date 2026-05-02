@@ -23,6 +23,7 @@ import { useFullForm } from '@/manage/form/useForm'
 import FileUpload from '@/manage/custom_inputs/file_upload'
 import { Book, BookPlus, Check, Network } from 'lucide-react'
 import StationSearch from '../custom_inputs/station_search'
+import { useSlug } from '@/manage/components/useSlug'
 
 const CreateDocumentForm = ({
   type,
@@ -43,7 +44,7 @@ const CreateDocumentForm = ({
     undefined
   const navigate = useNavigate()
   const [saving, setSaving] = useState(false)
-  const [formValues, setFormValues] = useState<IFormValues>({})
+  //const [formValues, setFormValues] = useState<IFormValues>({})
   const [errors, setErrors] = useState<IValidationError[]>([])
   const auth = useAuth()
   const defaultForm: IForm = {
@@ -76,33 +77,38 @@ const CreateDocumentForm = ({
     []
   const dataForm = (
     assetForm?.use_form_config === true &&
-    assetForm?.form_config !== undefined &&
-    assetForm?.form_config !== null
+      assetForm?.form_config !== undefined &&
+      assetForm?.form_config !== null
       ? assetForm.form_config
       : assetForm?.schema_override_config !== undefined || fieldConfigJSON !== undefined
         ? omit(
-            schemaToFormUtils.overridesAndSchemaToFormObject({
-              schema: schema.json_schema,
-              formOverrides: assetForm?.schema_override_config
-                ? [assetForm?.schema_override_config as IFormOverride]
-                : undefined,
-              formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
-            }),
-            'label'
-          )
+          schemaToFormUtils.overridesAndSchemaToFormObject({
+            schema: schema.json_schema,
+            formOverrides: assetForm?.schema_override_config
+              ? [assetForm?.schema_override_config as IFormOverride]
+              : undefined,
+            formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
+          }),
+          'label'
+        )
         : schemaToFormUtils.schemaToFormObject(schema.json_schema)
   ) as IForm
-  const form =
+  const formJSON =
     dataForm.fields?.length ||
-    dataForm.pages?.length ||
-    dataForm.wizard_steps?.length ||
-    dataForm.tabs?.length
+      dataForm.pages?.length ||
+      dataForm.wizard_steps?.length ||
+      dataForm.tabs?.length
       ? dataForm
       : defaultForm
 
+  const { form, formState: [formValues, setFormValues], filterForSave } = useSlug(
+    formJSON
+  );
+
   const onSave = async () => {
     setSaving(true)
-    const valid = await validate({ form, formValues, schema: schema.json_schema })
+    const valuesToSave = filterForSave(formValues);
+    const valid = await validate({ form, formValues: valuesToSave, schema: schema.json_schema })
     if (!valid.valid && valid.errors.length > 0) {
       setErrors(valid.errors)
       setSaving(false)
@@ -114,12 +120,14 @@ const CreateDocumentForm = ({
     }
     setErrors([])
     try {
+      const label = formValues.label ?? formValues.title ?? formValues.platform_name ?? 'Untitled Document'
+      const slug = formValues.slug ?? String(label).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '')
       await postDocument({
         document: {
           object_type_uuid: type.uuid,
-          label:
-            formValues.label ?? formValues.title ?? formValues.platform_name ?? 'Untitled Document',
-          data: formValues,
+          label,
+          slug,
+          data: valuesToSave,
         } as Omit<IDocument, 'uuid' | 'created_at' | 'updated_at'>,
         token: auth.user?.access_token ?? '',
       })

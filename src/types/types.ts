@@ -28,6 +28,7 @@ export type IDefaultDocumentType = Record<string, string | number | boolean | nu
 
 export type IDocument<T = IDefaultDocumentType, A = IDefaultDocumentType> = {
   uuid: string,
+  slug: string,
   owner_sub: string
   lock_sub: string | null
   locked_at: string | null

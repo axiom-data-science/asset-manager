@@ -21,7 +21,7 @@ ENV NODE_ENV=staging
 RUN npm run build
 
 # Production image, copy all the files and run vite
-FROM nginx:1.29.3 AS nginx
+FROM nginx:1.31.0-alpine AS nginx
 WORKDIR /app
 
 COPY --from=builder /app/dist/ /usr/share/nginx/html

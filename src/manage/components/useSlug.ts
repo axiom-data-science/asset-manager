@@ -10,8 +10,8 @@ export const useSlug = (form: IForm, initialFormValues?: IFormValues, presentati
 
     useMemo(() => {
         const updateSlug = () => {
-            const autoSlug = Boolean(formValues['auto_slug']);
-            const label = formValues['label'] as string | undefined;
+            const autoSlug = Boolean(formValues.auto_slug);
+            const label = formValues.label as string | undefined;
             if (autoSlug && label !== undefined) {
                 const slug = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
                 setFormValues(prev => ({ ...prev, slug }));

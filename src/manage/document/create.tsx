@@ -29,7 +29,7 @@ const CreateDocumentForm = ({
   assetForm,
   fieldConfigs,
   schema,
-  returnToOnSuccess,
+  returnToOnSuccess
 }: {
   type: IObjectType
   assetForm?: IAssetForm

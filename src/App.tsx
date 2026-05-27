@@ -26,6 +26,7 @@ import ListFieldConfigs from '@/manage/field_config/list'
 import UploadFile from '@/manage/document_file/upload_file'
 import Link from './manage/components/link'
 import SimpleLayout from './layouts/simple'
+import PipelineList from '@/manage/custom/pipeline/list'
 
 const Authed = (): ReactElement => {
   const navigate = useNavigate()
@@ -320,6 +321,15 @@ function App(): ReactElement {
               element={
                 <SidebarLayout>
                   <UploadFile />
+                </SidebarLayout>
+              }
+            />
+
+            <Route
+              path="/custom/pipelines"
+              element={
+                <SidebarLayout>
+                  <PipelineList />
                 </SidebarLayout>
               }
             />

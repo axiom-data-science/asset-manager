@@ -10,8 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@axdspub/axiom-ui-forms": "^0.3.38",
-    "@axdspub/axiom-ui-utilities": "^1.0.16",
+    "@axdspub/axiom-ui-forms": "^1.0.0-alpha.5",
+    "@axdspub/axiom-ui-utilities": "^1.0.18",
     "@tailwindcss/vite": "^4.2.1",
     "@tanstack/react-query": "^5.90.21",
     "@tanstack/react-table": "^8.21.3",

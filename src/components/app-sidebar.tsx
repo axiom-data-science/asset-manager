@@ -112,6 +112,17 @@ export function AppSidebar() {
         },
       ],
     },
+    {
+      label: ***REMOVED***Custom NINJA API***REMOVED***,
+      icon: Network,
+      actions: [
+        {
+          name: ***REMOVED***List pipelines***REMOVED***,
+          icon: List,
+          url: ***REMOVED***/custom/pipelines***REMOVED***,
+        }
+      ]
+    }
   ]
 
   return (

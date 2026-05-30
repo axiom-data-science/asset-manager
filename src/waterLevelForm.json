@@ -9,109 +9,109 @@
         {
           "id": "overview-intro",
           "type": "object",
-          "skip_path": true,
-          "layout": "grid2",
           "fields": [
             {
               "id": "prepared-by",
+              "type": "text",
               "label": "Prepared by",
-              "description": "Person completing form",
               "required": false,
-              "type": "text"
+              "description": "Person completing form"
             },
             {
               "id": "date-prepared",
+              "type": "date",
               "label": "Date prepared",
-              "description": "Date of form completion",
               "required": false,
-              "type": "date"
+              "description": "Date of form completion"
             }
-          ]
+          ],
+          "layout": "grid2",
+          "skip_path": true
         },
         {
           "id": "update-or-new-station",
-          "label": "Update or new station? ",
-          "description": "Is this an update to an existing station or an entirely new station? ",
-          "required": false,
           "type": "select",
-          "defaultValue": "New",
+          "label": "Update or new station? ",
           "options": [
             {
-              "value": "Update",
-              "label": "Update"
+              "label": "Update",
+              "value": "Update"
             },
             {
-              "value": "New",
-              "label": "New"
+              "label": "New",
+              "value": "New"
             }
-          ]
+          ],
+          "required": false,
+          "description": "Is this an update to an existing station or an entirely new station? ",
+          "defaultValue": "New"
         },
         {
           "id": "modified-station-information",
-          "label": "Describe station modifications",
           "type": "object",
+          "label": "Describe station modifications",
+          "fields": [
+            {
+              "id": "previous-site-log",
+              "type": "text",
+              "label": "Previous site log",
+              "required": false,
+              "settings": {
+                "descriptionPresentation": "tooltip"
+              },
+              "description": "If this is an update to an existing station, please attach the previous site log if you have access"
+            },
+            {
+              "id": "modified-added-section",
+              "type": "text",
+              "label": "Modified/added section",
+              "required": false
+            },
+            {
+              "id": "reason-for-update",
+              "type": "long_text",
+              "label": "Reason for update",
+              "required": false,
+              "settings": {
+                "descriptionPresentation": "tooltip"
+              },
+              "description": "If this is an update to an existing station, please provide a brief (1-3 sentences) explaining why this update occurred. "
+            }
+          ],
           "skip_path": true,
           "conditions": {
             "field": "update-or-new-station",
             "value": "Update",
             "result": "include"
-          },
-          "fields": [
-            {
-              "id": "previous-site-log",
-              "label": "Previous site log",
-              "description": "If this is an update to an existing station, please attach the previous site log if you have access",
-              "settings": {
-                "descriptionPresentation": "tooltip"
-              },
-              "required": false,
-              "type": "text"
-            },
-            {
-              "id": "modified-added-section",
-              "label": "Modified/added section",
-              "required": false,
-              "type": "text"
-            },
-            {
-              "id": "reason-for-update",
-              "label": "Reason for update",
-              "description": "If this is an update to an existing station, please provide a brief (1-3 sentences) explaining why this update occurred. ",
-              "settings": {
-                "descriptionPresentation": "tooltip"
-              },
-              "required": false,
-              "type": "long_text"
-            }
-          ]
+          }
         },
         {
           "id": "funding",
-          "label": "Funding",
           "type": "object",
-          "skip_path": true,
+          "label": "Funding",
           "fields": [
             {
               "id": "funding-source",
+              "type": "text",
               "label": "Funding source",
-              "description": "If known, please provide the funding source",
               "required": false,
-              "type": "text"
+              "description": "If known, please provide the funding source"
             },
             {
               "id": "funding-grant",
+              "type": "text",
               "label": "Funding grant",
-              "description": "If known, please provide the grant",
               "required": false,
-              "type": "text"
+              "description": "If known, please provide the grant"
             }
-          ]
+          ],
+          "skip_path": true
         },
         {
           "id": "deployment-year-of-proposal",
+          "type": "number",
           "label": "Deployment year of proposal",
-          "required": false,
-          "type": "number"
+          "required": false
         }
       ]
     },
@@ -121,94 +121,94 @@
       "fields": [
         {
           "id": "creator_name",
+          "type": "text",
           "label": "Creator Name",
-          "description": "Name of the person or organization that collected the data.   Follow the guidance described in the creator_type attribute for how to populate this field depending on whether a person, institution, group, or position.",
           "required": false,
-          "type": "text"
+          "description": "Name of the person or organization that collected the data.   Follow the guidance described in the creator_type attribute for how to populate this field depending on whether a person, institution, group, or position."
         },
         {
           "id": "creator_address",
+          "type": "text",
           "label": "Creator address",
-          "description": "Street address of the person or organization that collected the data.",
           "required": false,
-          "type": "text"
+          "description": "Street address of the person or organization that collected the data."
         },
         {
           "id": "creator_city",
+          "type": "text",
           "label": "Creator city",
-          "description": "City of the person or organization that collected the data.",
           "required": false,
-          "type": "text"
+          "description": "City of the person or organization that collected the data."
         },
         {
           "id": "creator_postalcode",
+          "type": "text",
           "label": "Creator postal code",
-          "description": "The postal code of the person or organization that collected the data.",
           "required": false,
-          "type": "text"
+          "description": "The postal code of the person or organization that collected the data."
         },
         {
           "id": "creator_country",
+          "type": "text",
           "label": "Creator country",
-          "description": "Country of the person or organization that operates a platform or network, which collected the observation data.",
           "required": false,
-          "type": "text"
+          "description": "Country of the person or organization that operates a platform or network, which collected the observation data."
         },
         {
           "id": "creator_email",
+          "type": "text",
           "label": "Creator email",
-          "description": "Email address of the person or institution that collected the data.",
           "required": false,
-          "type": "text"
+          "description": "Email address of the person or institution that collected the data."
         },
         {
           "id": "creator_institution",
+          "type": "text",
           "label": "Creator institution",
-          "description": "Institution that collected the data. This should be specified even if it matches the value of publisher_institution, institution or if creator_type is institution.",
           "required": false,
-          "type": "text"
+          "description": "Institution that collected the data. This should be specified even if it matches the value of publisher_institution, institution or if creator_type is institution."
         },
         {
           "id": "creator_institution_url",
+          "type": "text",
           "label": "Creator institution url",
-          "description": "URL for the institution that collected the data. For clarity, it is recommended that this field is specified even if the creator_type is institution and a creator_url is provided.",
           "required": false,
-          "type": "text"
+          "description": "URL for the institution that collected the data. For clarity, it is recommended that this field is specified even if the creator_type is institution and a creator_url is provided."
         },
         {
           "id": "creator_phone",
+          "type": "text",
           "label": "Creator phone",
-          "description": "The phone number of the person or group that collected the data.   Example:creator_phone = \"(240) 533-9444\" creator_phone = \"+1-240-533-9444\"",
           "required": false,
-          "type": "text"
+          "description": "The phone number of the person or group that collected the data.   Example:creator_phone = \"(240) 533-9444\" creator_phone = \"+1-240-533-9444\""
         },
         {
           "id": "creator_sector",
+          "type": "text",
           "label": "Creator sector",
-          "description": "IOOS classifier that best describes the platform (network) operator’s societal sector.   Example:creator_sector = \"academic\"",
           "required": false,
-          "type": "text"
+          "description": "IOOS classifier that best describes the platform (network) operator’s societal sector.   Example:creator_sector = \"academic\""
         },
         {
           "id": "creator_state",
+          "type": "text",
           "label": "Creator state",
-          "description": "State of the person or organization that collected the data.",
           "required": false,
-          "type": "text"
+          "description": "State of the person or organization that collected the data."
         },
         {
           "id": "creator_type",
+          "type": "text",
           "label": "Creator type",
-          "description": "Specifies type of creator with one of the following: ‘person’, ‘group’, ‘institution’, or ‘position’. If this attribute is not specified, the creator is assumed to be a person.",
           "required": false,
-          "type": "text"
+          "description": "Specifies type of creator with one of the following: ‘person’, ‘group’, ‘institution’, or ‘position’. If this attribute is not specified, the creator is assumed to be a person."
         },
         {
           "id": "creator_url",
+          "type": "text",
           "label": "Creator url",
-          "description": "URL of the person or organization that collected the data.",
           "required": false,
-          "type": "text"
+          "description": "URL of the person or organization that collected the data."
         }
       ]
     },
@@ -218,27 +218,27 @@
       "fields": [
         {
           "id": "community-poc-name",
+          "type": "text",
           "label": "Community POC name",
-          "required": false,
-          "type": "text"
+          "required": false
         },
         {
           "id": "community-poc-telephone",
+          "type": "text",
           "label": "Community POC telephone",
-          "required": false,
-          "type": "text"
+          "required": false
         },
         {
           "id": "community-poc-email",
+          "type": "text",
           "label": "Community POC email",
-          "required": false,
-          "type": "text"
+          "required": false
         },
         {
           "id": "community-poc-affiliation",
+          "type": "text",
           "label": "Community POC Affiliation",
-          "required": false,
-          "type": "text"
+          "required": false
         }
       ]
     },
@@ -248,75 +248,75 @@
       "fields": [
         {
           "id": "entity",
+          "type": "text",
           "label": "Entity",
-          "required": false,
-          "type": "text"
+          "required": false
         },
         {
           "id": "poc",
+          "type": "text",
           "label": "Point of Contact",
-          "required": false,
-          "type": "text"
+          "required": false
         },
         {
           "id": "affiliation",
+          "type": "text",
           "label": "Affiliation",
-          "required": false,
-          "type": "text"
+          "required": false
         },
         {
           "id": "telephone-primary",
+          "type": "text",
           "label": "Telephone (primary)",
-          "required": false,
-          "type": "text"
+          "required": false
         },
         {
           "id": "email",
+          "type": "text",
           "label": "Email",
-          "required": false,
-          "type": "text"
+          "required": false
         },
         {
           "id": "erddap-link",
+          "type": "text",
           "label": "ERDDAP link",
-          "description": "Link to ERDDAP station",
           "required": false,
-          "type": "text"
+          "description": "Link to ERDDAP station"
         },
         {
           "id": "portal-link",
+          "type": "text",
           "label": "Portal link",
-          "description": "Link to RA-specific station",
           "required": false,
-          "type": "text"
+          "description": "Link to RA-specific station"
         },
         {
           "id": "data-provider",
+          "type": "text",
           "label": "Data provider",
-          "description": "Name of data provider, such as ***REMOVED***Hohonu***REMOVED*** or other company. Not a link",
           "required": false,
-          "type": "text"
+          "description": "Name of data provider, such as ***REMOVED***Hohonu***REMOVED*** or other company. Not a link"
         },
         {
           "id": "data-provider-additional",
+          "type": "text",
           "label": "Data provider   additional",
-          "description": "Link to outside data sources, such as company***REMOVED***s website (ex. Hohonu)",
           "required": false,
-          "type": "text"
+          "description": "Link to outside data sources, such as company***REMOVED***s website (ex. Hohonu)"
         },
         {
           "id": "api-link",
+          "type": "text",
           "label": "API link",
-          "description": "Optional",
           "required": false,
-          "type": "text"
+          "description": "Optional"
         },
         {
           "id": "additional-information",
+          "type": "text",
           "label": "Additional information",
-          "description": "Add link to collocated dataset (ERDDAP link, portal link, if available)",
           "required": false,
-          "type": "text"
+          "description": "Add link to collocated dataset (ERDDAP link, portal link, if available)"
         }
       ]
     },
@@ -326,69 +326,69 @@
       "fields": [
         {
           "id": "contributors",
-          "label": "Contributors",
-          "multiple": true,
-          "required": false,
           "type": "object",
+          "label": "Contributors",
           "fields": [
             {
               "id": "contributor_type",
-              "label": "Contributor type",
-              "required": false,
               "type": "select",
+              "label": "Contributor type",
               "options": [
                 {
-                  "value": "owner",
-                  "label": "owner"
+                  "label": "owner",
+                  "value": "owner"
                 },
                 {
-                  "value": "data_publisher",
-                  "label": "data_publisher"
+                  "label": "data_publisher",
+                  "value": "data_publisher"
                 },
                 {
-                  "value": "data_processor",
-                  "label": "data_processor"
+                  "label": "data_processor",
+                  "value": "data_processor"
                 },
                 {
-                  "value": "funder",
-                  "label": "funder"
+                  "label": "funder",
+                  "value": "funder"
                 }
-              ]
+              ],
+              "required": false
             },
             {
               "id": "contributor_role:custodian",
+              "type": "text",
               "label": "Custodian name",
-              "description": "The name of any individuals or institutions that contributed to the creation of this data. Custodian is party that accepts accountability and responsibility for the data, and ensures appropriate care and maintenance of the resource",
               "required": false,
-              "type": "text"
+              "description": "The name of any individuals or institutions that contributed to the creation of this data. Custodian is party that accepts accountability and responsibility for the data, and ensures appropriate care and maintenance of the resource"
             },
             {
               "id": "custodian-telephone-primary",
+              "type": "text",
               "label": "Telephone (primary)",
-              "description": "Custodian (operator) phone number",
               "required": false,
-              "type": "text"
+              "description": "Custodian (operator) phone number"
             },
             {
               "id": "contributor_email",
+              "type": "text",
               "label": "Email",
-              "required": false,
-              "type": "text"
+              "required": false
             },
             {
               "id": "contributor_url",
+              "type": "text",
               "label": "URL",
-              "required": false,
-              "type": "text"
+              "required": false
             },
             {
               "id": "custodian-affliation-or-organization",
+              "type": "text",
               "label": "Custodian affliation or organization",
-              "description": "Custodian (operator)  affiliation/organization",
               "required": false,
-              "type": "text"
+              "description": "Custodian (operator)  affiliation/organization"
             }
-          ]
+          ],
+          "multiple": true,
+          "required": false
         }
       ]
     },
@@ -400,66 +400,59 @@
           "id": "station-information-intro",
           "type": "object",
           "label": "Station overview",
-          "layout": "grid2",
-          "skip_path": true,
           "fields": [
             {
               "id": "platform_name",
+              "type": "text",
               "label": "Station Name",
-              "required": true,
-              "type": "text"
+              "required": true
             },
             {
               "id": "station-id",
+              "type": "text",
               "label": "Station ID",
-              "description": "Conditional based on location (RA specific?)",
+              "required": false,
               "settings": {
                 "descriptionPresentation": "tooltip"
               },
-              "required": false,
-              "type": "text"
+              "description": "Conditional based on location (RA specific?)"
             },
             {
               "id": "water-body-setting",
-              "label": "Water body setting",
-              "description": "Ex: Next to coast, Lake coastline, etc",
-              "required": false,
               "type": "select",
+              "label": "Water body setting",
+              "options": [
+                {
+                  "label": "Inlet",
+                  "value": "Inlet"
+                },
+                {
+                  "label": "River",
+                  "value": "River"
+                },
+                {
+                  "label": "Ocean coastline",
+                  "value": "Ocean coastline"
+                },
+                {
+                  "label": "Lake",
+                  "value": "Lake"
+                },
+                {
+                  "label": "Other",
+                  "value": "Other"
+                }
+              ],
+              "required": false,
               "settings": {
                 "descriptionPresentation": "tooltip"
               },
-              "options": [
-                {
-                  "value": "Inlet",
-                  "label": "Inlet"
-                },
-                {
-                  "value": "River",
-                  "label": "River"
-                },
-                {
-                  "value": "Ocean coastline",
-                  "label": "Ocean coastline"
-                },
-                {
-                  "value": "Lake",
-                  "label": "Lake"
-                },
-                {
-                  "value": "Other",
-                  "label": "Other"
-                }
-              ]
+              "description": "Ex: Next to coast, Lake coastline, etc"
             },
             {
               "id": "state",
-              "label": "State",
-              "description": "State in which the asset is located",
-              "required": false,
               "type": "select",
-              "settings": {
-                "descriptionPresentation": "tooltip"
-              },
+              "label": "State",
               "options": [
                 {
                   "label": "Alabama",
@@ -661,35 +654,38 @@
                   "label": "Wyoming",
                   "value": " WY "
                 }
-              ]
+              ],
+              "required": false,
+              "settings": {
+                "descriptionPresentation": "tooltip"
+              },
+              "description": "State in which the asset is located"
             }
-          ]
+          ],
+          "layout": "grid2",
+          "skip_path": true
         },
         {
           "id": "station-id-information",
-          "skip_path": true,
           "type": "object",
           "label": "Station identification",
           "fields": [
             {
               "id": "is-this-a-co-ops-station",
-              "label": "Is this a CO-OPS Station?",
               "type": "boolean",
-              "description": "Filterable question to determine type of station being installed.",
-              "required": false
+              "label": "Is this a CO-OPS Station?",
+              "required": false,
+              "description": "Filterable question to determine type of station being installed."
             },
             {
               "id": "station-id-fields",
               "type": "object",
-              "skip_path": true,
-              "layout": "grid2",
               "fields": [
                 {
                   "id": "wmo_platform_code",
-                  "label": "CO-OPS ID",
-                  "description": "Provided by CO-OPS. Only provide if known/established. Do not create. ",
-                  "required": false,
                   "type": "text",
+                  "label": "CO-OPS ID",
+                  "required": false,
                   "settings": {
                     "descriptionPresentation": "tooltip"
                   },
@@ -697,90 +693,92 @@
                     "field": "is-this-a-co-ops-station",
                     "value": false,
                     "result": "disable"
-                  }
+                  },
+                  "description": "Provided by CO-OPS. Only provide if known/established. Do not create. "
                 },
                 {
                   "id": "other-id",
+                  "type": "text",
                   "label": "Other ID",
-                  "description": "ID provided by data provider (Greenstream/Hohonu)",
                   "required": false,
-                  "type": "text"
+                  "description": "ID provided by data provider (Greenstream/Hohonu)"
                 }
-              ]
+              ],
+              "layout": "grid2",
+              "skip_path": true
             }
-          ]
+          ],
+          "skip_path": true
         },
-
         {
           "id": "approximate-position",
+          "type": "text",
           "label": "Approximate position",
-          "description": "Ex: On building mounted on scaffolding",
           "required": false,
-          "type": "text"
+          "description": "Ex: On building mounted on scaffolding"
         },
         {
           "id": "location",
-          "label": "Location",
           "type": "object",
-          "skip_path": true,
-
+          "label": "Location",
           "fields": [
             {
               "id": "use-map-location-entry",
-              "label": "Select location on a map?",
               "type": "boolean",
+              "label": "Select location on a map?",
               "description": "If no, will provide a text box for manual lat/lon entry. If yes, will provide map interface to select location and auto-populate lat/lon fields."
             },
             {
               "id": "manual-location-entry",
               "type": "object",
-              "skip_path": "true",
+              "fields": [
+                {
+                  "id": "latitude",
+                  "type": "text",
+                  "label": "Latitude (DD, N is +)",
+                  "required": false
+                },
+                {
+                  "id": "longitude",
+                  "type": "text",
+                  "label": "Longitude (DD, E is +)",
+                  "required": false
+                },
+                {
+                  "id": "horizontal-datum-projection-",
+                  "type": "text",
+                  "label": "Horizontal datum projection ",
+                  "required": false,
+                  "settings": {
+                    "descriptionPresentation": "tooltip"
+                  },
+                  "description": "Horizontal datum for the lat/lon (eg: NAD83) / projection"
+                }
+              ],
               "layout": "grid3",
+              "skip_path": "true",
               "conditions": {
                 "field": "use-map-location-entry",
                 "value": false,
                 "result": "include"
-              },
-              "fields": [
-                {
-                  "id": "latitude",
-                  "label": "Latitude (DD, N is +)",
-                  "required": false,
-                  "type": "text"
-                },
-                {
-                  "id": "longitude",
-                  "label": "Longitude (DD, E is +)",
-                  "required": false,
-                  "type": "text"
-                },
-                {
-                  "id": "horizontal-datum-projection-",
-                  "label": "Horizontal datum projection ",
-                  "description": "Horizontal datum for the lat/lon (eg: NAD83) / projection",
-                  "required": false,
-                  "type": "text",
-                  "settings": {
-                    "descriptionPresentation": "tooltip"
-                  }
-                }
-              ]
+              }
             },
             {
               "id": "station-geometry",
-              "label": "Click on map to select location",
               "type": "geometry",
+              "label": "Click on map to select location",
+              "settings": {
+                "drawEnabled": true,
+                "drawPointEnabled": true
+              },
               "conditions": {
                 "field": "use-map-location-entry",
                 "value": true,
                 "result": "include"
-              },
-              "settings": {
-                "drawPointEnabled": true,
-                "drawEnabled": true
               }
             }
-          ]
+          ],
+          "skip_path": true
         }
       ]
     },
@@ -790,59 +788,57 @@
       "fields": [
         {
           "id": "sensors",
-          "label": "Sensors",
-          "multiple": true,
-          "required": false,
           "type": "object",
+          "label": "Sensors",
           "fields": [
             {
               "id": "prior-wmo-id",
+              "type": "boolean",
               "label": "If CO-OPS, was there a prior location for this CO-OPS station?",
-              "required": false,
-              "type": "boolean"
+              "required": false
             },
             {
-              "type": "object",
-              "skip_path": true,
               "id": "co-ops-detals",
+              "type": "object",
               "label": "Prior CO-OPS station details",
               "fields": [
                 {
                   "id": "prior-wmo-coordinates",
+                  "type": "text",
                   "label": "What is lat/long of prior CO-OPS location? ",
-                  "description": "Work to be done pre- or post-field work",
                   "required": false,
-                  "type": "text"
+                  "description": "Work to be done pre- or post-field work"
                 },
                 {
                   "id": "type-of-co-ops-approved-station",
-                  "label": "Type of CO-OPS approved station",
-                  "required": false,
                   "type": "select",
+                  "label": "Type of CO-OPS approved station",
                   "options": [
                     {
-                      "value": "Aquatrak self-calibrating air acoustic sensor",
-                      "label": "Aquatrak self-calibrating air acoustic sensor"
+                      "label": "Aquatrak self-calibrating air acoustic sensor",
+                      "value": "Aquatrak self-calibrating air acoustic sensor"
                     },
                     {
-                      "value": "ParoScientific pressure sensor(s), connected to a single (or dual) orifice gas purged bubbler system",
-                      "label": "ParoScientific pressure sensor(s), connected to a single (or dual) orifice gas purged bubbler system"
+                      "label": "ParoScientific pressure sensor(s), connected to a single (or dual) orifice gas purged bubbler system",
+                      "value": "ParoScientific pressure sensor(s), connected to a single (or dual) orifice gas purged bubbler system"
                     },
                     {
-                      "value": "BEI Motion Systems absolute shaft angle encoder (SAE)",
-                      "label": "BEI Motion Systems absolute shaft angle encoder (SAE)"
+                      "label": "BEI Motion Systems absolute shaft angle encoder (SAE)",
+                      "value": "BEI Motion Systems absolute shaft angle encoder (SAE)"
                     },
                     {
-                      "value": "Xylem.YSI (Design Analysis Associates, Inc.) WaterLOG Microwave Water Level (MWWL) radar sensor",
-                      "label": "Xylem.YSI (Design Analysis Associates, Inc.) WaterLOG Microwave Water Level (MWWL) radar sensor"
+                      "label": "Xylem.YSI (Design Analysis Associates, Inc.) WaterLOG Microwave Water Level (MWWL) radar sensor",
+                      "value": "Xylem.YSI (Design Analysis Associates, Inc.) WaterLOG Microwave Water Level (MWWL) radar sensor"
                     },
                     {
-                      "value": "Xylem/YSI (Design Analysis Associates, Inc.) NILE MWWL radar sensor",
-                      "label": "Xylem/YSI (Design Analysis Associates, Inc.) NILE MWWL radar sensor"
+                      "label": "Xylem/YSI (Design Analysis Associates, Inc.) NILE MWWL radar sensor",
+                      "value": "Xylem/YSI (Design Analysis Associates, Inc.) NILE MWWL radar sensor"
                     }
-                  ]
+                  ],
+                  "required": false
                 }
               ],
+              "skip_path": true,
               "conditions": {
                 "field": "prior-wmo-id",
                 "value": true,
@@ -852,148 +848,145 @@
             {
               "id": "sensor-brand-details",
               "type": "object",
-              "skip_path": true,
               "label": "Instrument details",
-              "layout": "grid2",
               "fields": [
                 {
                   "id": "contributor_role:distributor",
-                  "label": "Brand of instrument/sensor/provider",
-                  "description": "Brand of the overall device that houses single or multiple instruments/components. For example, ***REMOVED***Hohonu***REMOVED*** is the brand of a sensor that can contain multiple instruments. ",
-                  "required": false,
                   "type": "select",
+                  "label": "Brand of instrument/sensor/provider",
+                  "options": [
+                    {
+                      "label": "Hohonu",
+                      "value": "Hohonu"
+                    },
+                    {
+                      "label": "Greenstream",
+                      "value": "Greenstream"
+                    },
+                    {
+                      "label": "Hobo",
+                      "value": "Hobo"
+                    },
+                    {
+                      "label": "Divirod",
+                      "value": "Divirod"
+                    },
+                    {
+                      "label": "Community Sensor",
+                      "value": "Community Sensor"
+                    }
+                  ],
+                  "required": false,
                   "settings": {
                     "descriptionPresentation": "tooltip"
                   },
-                  "options": [
-                    {
-                      "value": "Hohonu",
-                      "label": "Hohonu"
-                    },
-                    {
-                      "value": "Greenstream",
-                      "label": "Greenstream"
-                    },
-                    {
-                      "value": "Hobo",
-                      "label": "Hobo"
-                    },
-                    {
-                      "value": "Divirod",
-                      "label": "Divirod"
-                    },
-                    {
-                      "value": "Community Sensor",
-                      "label": "Community Sensor"
-                    }
-                  ]
+                  "description": "Brand of the overall device that houses single or multiple instruments/components. For example, ***REMOVED***Hohonu***REMOVED*** is the brand of a sensor that can contain multiple instruments. "
                 },
                 {
                   "id": "instrument",
-                  "label": "Instrument",
-                  "description": "Global, vocabulary-constrained attribute indicating the name of the contributing instrument(s) or sensor(s) used to create this dataset. Indicate controlled vocabulary used in the instrument_vocabulary attribute. Separate multiple instruments using commas.",
-                  "required": false,
                   "type": "select",
+                  "label": "Instrument",
+                  "options": [
+                    {
+                      "label": "Radar",
+                      "value": "Radar"
+                    },
+                    {
+                      "label": "Pressure (vented or non-vented)",
+                      "value": "Pressure (vented or non-vented)"
+                    },
+                    {
+                      "label": "Acoustic",
+                      "value": "Acoustic"
+                    },
+                    {
+                      "label": "GNSS-R",
+                      "value": "GNSS-R"
+                    },
+                    {
+                      "label": "GNSS Buoy",
+                      "value": "GNSS Buoy"
+                    },
+                    {
+                      "label": "Ultrasonic",
+                      "value": "Ultrasonic"
+                    }
+                  ],
+                  "required": false,
                   "settings": {
                     "descriptionPresentation": "tooltip"
                   },
-                  "options": [
-                    {
-                      "value": "Radar",
-                      "label": "Radar"
-                    },
-                    {
-                      "value": "Pressure (vented or non-vented)",
-                      "label": "Pressure (vented or non-vented)"
-                    },
-                    {
-                      "value": "Acoustic",
-                      "label": "Acoustic"
-                    },
-                    {
-                      "value": "GNSS-R",
-                      "label": "GNSS-R"
-                    },
-                    {
-                      "value": "GNSS Buoy",
-                      "label": "GNSS Buoy"
-                    },
-                    {
-                      "value": "Ultrasonic",
-                      "label": "Ultrasonic"
-                    }
-                  ]
+                  "description": "Global, vocabulary-constrained attribute indicating the name of the contributing instrument(s) or sensor(s) used to create this dataset. Indicate controlled vocabulary used in the instrument_vocabulary attribute. Separate multiple instruments using commas."
                 },
                 {
                   "id": "instrument_variable:component",
+                  "type": "select",
                   "label": "Instrument component",
-                  "description": "The value of a component applies to the like-named field in the IOOS SOS Asset Identifier URN; it is used to identify individual, distinct components, or sub-assets (for example, two different sensor types), on a single platform. The :component is mapped to the Asset Identifier as follows:   Asset Identifier = urn:ioos:asset_type:authority:label[:component][:discriminant][#functional_parameters]  See examples below.",
+                  "options": [
+                    {
+                      "label": "Senix",
+                      "value": "Senix"
+                    }
+                  ],
+                  "required": false,
                   "settings": {
                     "descriptionPresentation": "tooltip"
                   },
-                  "required": false,
-                  "type": "select",
-                  "options": [
-                    {
-                      "value": "Senix",
-                      "label": "Senix"
-                    }
-                  ]
+                  "description": "The value of a component applies to the like-named field in the IOOS SOS Asset Identifier URN; it is used to identify individual, distinct components, or sub-assets (for example, two different sensor types), on a single platform. The :component is mapped to the Asset Identifier as follows:   Asset Identifier = urn:ioos:asset_type:authority:label[:component][:discriminant][#functional_parameters]  See examples below."
                 },
                 {
                   "id": "instrument_variable:make_model",
-                  "label": "Instrument make/model",
-                  "description": "The make and model of the instrument.",
-                  "required": false,
                   "type": "select",
+                  "label": "Instrument make/model",
+                  "options": [
+                    {
+                      "label": "ToughSonic 50",
+                      "value": "ToughSonic 50"
+                    }
+                  ],
+                  "required": false,
                   "settings": {
                     "descriptionPresentation": "tooltip"
                   },
-                  "options": [
-                    {
-                      "value": "ToughSonic 50",
-                      "label": "ToughSonic 50"
-                    }
-                  ]
+                  "description": "The make and model of the instrument."
                 },
                 {
                   "id": "sensor-serial-number",
+                  "type": "text",
                   "label": "Sensor Serial number",
-                  "required": false,
-                  "type": "text"
+                  "required": false
                 }
-              ]
+              ],
+              "layout": "grid2",
+              "skip_path": true
             },
             {
               "id": "sensor-temporal",
               "type": "object",
               "label": "Temporal information",
-              "skip_path": true,
               "fields": [
                 {
                   "id": "is-real-time",
+                  "type": "boolean",
                   "label": "Real time?",
-                  "description": "Instrument reports in real time?",
                   "required": false,
-                  "type": "boolean"
+                  "description": "Instrument reports in real time?"
                 },
                 {
                   "id": "sensor-temporal-layout",
-                  "skip_path": true,
-                  "layout": "grid2",
                   "type": "object",
                   "fields": [
                     {
                       "id": "time_coverage_start",
+                      "type": "date",
                       "label": "Date installed",
-                      "required": false,
-                      "type": "date"
+                      "required": false
                     },
                     {
                       "id": "time_coverage_end",
+                      "type": "date",
                       "label": "Date removed, if applicable",
                       "required": false,
-                      "type": "date",
                       "conditions": {
                         "field": "is-real-time",
                         "value": true,
@@ -1002,353 +995,358 @@
                     },
                     {
                       "id": "sample-interval-min",
-                      "label": "Sample interval (min)",
-                      "required": false,
                       "type": "select",
+                      "label": "Sample interval (min)",
                       "options": [
                         {
-                          "value": "1 min",
-                          "label": "1 min"
+                          "label": "1 min",
+                          "value": "1 min"
                         },
                         {
-                          "value": "6 min",
-                          "label": "6 min"
+                          "label": "6 min",
+                          "value": "6 min"
                         },
                         {
-                          "value": "15 min",
-                          "label": "15 min"
+                          "label": "15 min",
+                          "value": "15 min"
                         },
                         {
-                          "value": "60 min",
-                          "label": "60 min"
+                          "label": "60 min",
+                          "value": "60 min"
                         },
                         {
-                          "value": "Other",
-                          "label": "Other"
+                          "label": "Other",
+                          "value": "Other"
                         }
-                      ]
+                      ],
+                      "required": false
                     },
                     {
                       "id": "sample-average-window-sec",
-                      "label": "Sample average window (sec)",
-                      "required": false,
                       "type": "select",
+                      "label": "Sample average window (sec)",
                       "options": [
                         {
-                          "value": "0 sec",
-                          "label": "0 sec"
+                          "label": "0 sec",
+                          "value": "0 sec"
                         },
                         {
-                          "value": "60 sec",
-                          "label": "60 sec"
+                          "label": "60 sec",
+                          "value": "60 sec"
                         },
                         {
-                          "value": "181 sec",
-                          "label": "181 sec"
+                          "label": "181 sec",
+                          "value": "181 sec"
                         },
                         {
-                          "value": "Other",
-                          "label": "Other"
+                          "label": "Other",
+                          "value": "Other"
                         }
-                      ]
+                      ],
+                      "required": false
                     }
-                  ]
+                  ],
+                  "layout": "grid2",
+                  "skip_path": true
                 }
-              ]
+              ],
+              "skip_path": true
             },
             {
               "id": "sensor-installation",
               "type": "object",
               "label": "Installation",
-              "skip_path": true,
               "fields": [
                 {
                   "id": "installation-layout",
                   "type": "object",
-                  "skip_path": true,
-                  "layout": "grid2",
                   "fields": [
                     {
                       "id": "mounting-structure",
-                      "label": "Mounting structure",
-                      "required": false,
                       "type": "select",
+                      "label": "Mounting structure",
                       "options": [
                         {
-                          "value": "Bridge",
-                          "label": "Bridge"
+                          "label": "Bridge",
+                          "value": "Bridge"
                         },
                         {
-                          "value": "Seawall",
-                          "label": "Seawall"
+                          "label": "Seawall",
+                          "value": "Seawall"
                         },
                         {
-                          "value": "Dock",
-                          "label": "Dock"
+                          "label": "Dock",
+                          "value": "Dock"
                         },
                         {
-                          "value": "Bedrock",
-                          "label": "Bedrock"
+                          "label": "Bedrock",
+                          "value": "Bedrock"
                         },
                         {
-                          "value": "Anchor",
-                          "label": "Anchor"
+                          "label": "Anchor",
+                          "value": "Anchor"
                         },
                         {
-                          "value": "Other",
-                          "label": "Other"
+                          "label": "Other",
+                          "value": "Other"
                         }
-                      ]
+                      ],
+                      "required": false
                     },
                     {
                       "id": "telemetry-method",
-                      "label": "Telemetry method",
-                      "required": false,
                       "type": "select",
+                      "label": "Telemetry method",
                       "options": [
                         {
-                          "value": "Cellular",
-                          "label": "Cellular"
+                          "label": "Cellular",
+                          "value": "Cellular"
                         },
                         {
-                          "value": "Satellite",
-                          "label": "Satellite"
+                          "label": "Satellite",
+                          "value": "Satellite"
                         },
                         {
-                          "value": "Iridium",
-                          "label": "Iridium"
+                          "label": "Iridium",
+                          "value": "Iridium"
                         },
                         {
-                          "value": "GOES",
-                          "label": "GOES"
+                          "label": "GOES",
+                          "value": "GOES"
                         },
                         {
-                          "value": "Wifi",
-                          "label": "Wifi"
+                          "label": "Wifi",
+                          "value": "Wifi"
                         }
-                      ]
+                      ],
+                      "required": false
                     },
                     {
                       "id": "geophysical_variable:accuracy",
+                      "type": "text",
                       "label": "Sensor accuracy",
-                      "required": false,
-                      "type": "text"
+                      "required": false
                     },
                     {
                       "id": "modem-communication-manufacturer-model",
+                      "type": "text",
                       "label": "Modem/communication   Manufacturer & model",
-                      "required": false,
-                      "type": "text"
+                      "required": false
                     }
-                  ]
+                  ],
+                  "layout": "grid2",
+                  "skip_path": true
                 },
-
                 {
                   "id": "serial-number-for-modem",
+                  "type": "text",
                   "label": "Serial number for modem",
-                  "required": false,
-                  "type": "text"
+                  "required": false
                 }
-              ]
+              ],
+              "skip_path": true
             },
-
             {
               "id": "is-station-surveyed",
+              "type": "boolean",
               "label": "Is the station surveyed?",
-              "required": false,
-              "type": "boolean"
+              "required": false
             },
             {
               "id": "station-survey-information",
               "type": "object",
-              "skip_path": true,
               "label": "Station survey information",
-              "conditions": {
-                "field": "is-station-surveyed",
-                "value": true,
-                "result": "include"
-              },
               "fields": [
                 {
                   "id": "station-survey-layout1",
                   "type": "object",
-                  "skip_path": true,
-                  "layout": "grid2",
                   "fields": [
                     {
                       "id": "survey-method",
+                      "type": "select",
                       "label": "Survey method",
-                      "description": "Survey / measurement method. ",
+                      "options": [
+                        {
+                          "label": "Static GNSS",
+                          "value": "Static GNSS"
+                        },
+                        {
+                          "label": "RTK",
+                          "value": "RTK"
+                        },
+                        {
+                          "label": "Optical Level",
+                          "value": "Optical Level"
+                        },
+                        {
+                          "label": "Digital Level",
+                          "value": "Digital Level"
+                        }
+                      ],
                       "required": false,
                       "settings": {
                         "descriptionPresentation": "tooltip"
                       },
-                      "type": "select",
-                      "options": [
-                        {
-                          "value": "Static GNSS",
-                          "label": "Static GNSS"
-                        },
-                        {
-                          "value": "RTK",
-                          "label": "RTK"
-                        },
-                        {
-                          "value": "Optical Level",
-                          "label": "Optical Level"
-                        },
-                        {
-                          "value": "Digital Level",
-                          "label": "Digital Level"
-                        }
-                      ]
+                      "description": "Survey / measurement method. "
                     },
                     {
                       "id": "date-of-most-recent-survey",
+                      "type": "date",
                       "label": "Date (of most recent survey)",
-                      "required": false,
-                      "type": "date"
+                      "required": false
                     },
                     {
                       "id": "marker-stamping",
+                      "type": "text",
                       "label": "Marker stamping",
-                      "required": false,
-                      "type": "text"
+                      "required": false
                     },
                     {
                       "id": "marker-ngs-pid",
-                      "label": "Marker NGS PID",
-                      "description": "NGS = National Geodetic Survey; PID = Permanent Identifier Can be completed pre-field work during recon.",
-                      "required": false,
                       "type": "select",
+                      "label": "Marker NGS PID",
+                      "options": [
+                        {
+                          "label": "other",
+                          "value": "Other (enter PID)"
+                        },
+                        {
+                          "label": "none",
+                          "value": "Not available - this opens up the VM# field"
+                        }
+                      ],
+                      "required": false,
                       "settings": {
                         "descriptionPresentation": "tooltip"
                       },
-                      "options": [
-                        {
-                          "value": "Other (enter PID)",
-                          "label": "other"
-                        },
-                        {
-                          "value": "Not available - this opens up the VM# field",
-                          "label": "none"
-                        }
-                      ]
+                      "description": "NGS = National Geodetic Survey; PID = Permanent Identifier Can be completed pre-field work during recon."
                     },
                     {
                       "id": "marker-co-ops-vm",
+                      "type": "text",
                       "label": "Marker CO-OPS VM#",
-                      "description": "Only if PID is not available",
+                      "required": false,
                       "settings": {
                         "descriptionPresentation": "tooltip"
                       },
-                      "required": false,
-                      "type": "text"
+                      "description": "Only if PID is not available"
                     },
                     {
                       "id": "marker-other-identifier",
+                      "type": "text",
                       "label": "Marker other identifier",
-                      "required": false,
-                      "type": "text"
+                      "required": false
                     },
                     {
                       "id": "measurement-by-at-most-recent-survey",
+                      "type": "text",
                       "label": "Measurement by (at most recent survey)",
-                      "required": false,
-                      "type": "text"
+                      "required": false
                     },
                     {
                       "id": "ortho-height-navd88-m",
+                      "type": "text",
                       "label": "Ortho height (NAVD88 m)",
-                      "description": "Height of the sensor in NAVD88 ",
-                      "settings": { "descriptionPresentation": "tooltip" },
                       "required": false,
-                      "type": "text"
-                    },
-                    {
-                      "id": "station-datum-height-m",
-                      "label": "Station datum height (m)",
-                      "required": false,
-                      "type": "text"
-                    },
-                    {
-                      "id": "ellipsoidal-height-m",
-                      "label": "Ellipsoidal height (m)",
-                      "description": "Height of the sensor in ellipsoidal height (m)",
                       "settings": {
                         "descriptionPresentation": "tooltip"
                       },
+                      "description": "Height of the sensor in NAVD88 "
+                    },
+                    {
+                      "id": "station-datum-height-m",
+                      "type": "text",
+                      "label": "Station datum height (m)",
+                      "required": false
+                    },
+                    {
+                      "id": "ellipsoidal-height-m",
+                      "type": "text",
+                      "label": "Ellipsoidal height (m)",
                       "required": false,
-                      "type": "text"
+                      "settings": {
+                        "descriptionPresentation": "tooltip"
+                      },
+                      "description": "Height of the sensor in ellipsoidal height (m)"
                     },
                     {
                       "id": "sensor-offset-m",
+                      "type": "text",
                       "label": "Sensor offset (m)",
-                      "required": false,
-                      "type": "text"
+                      "required": false
                     },
                     {
                       "id": "gnss-rtk-unit",
+                      "type": "text",
                       "label": "GNSS/RTK Unit ",
-                      "required": false,
-                      "type": "text"
+                      "required": false
                     }
-                  ]
+                  ],
+                  "layout": "grid2",
+                  "skip_path": true
                 },
                 {
                   "id": "processing-software",
+                  "type": "text",
                   "label": "Processing software",
-                  "required": false,
-                  "type": "text"
+                  "required": false
                 },
                 {
                   "id": "movement-since-last-survey",
+                  "type": "boolean",
                   "label": "Has there been movement since last survey? ",
-                  "required": false,
-                  "type": "boolean"
+                  "required": false
                 },
                 {
                   "id": "movement-description",
                   "type": "object",
-                  "skip_path": true,
                   "fields": [
                     {
                       "id": "difference-since-last-survey",
+                      "type": "text",
                       "label": "If so, what is the difference?",
-                      "required": false,
-                      "type": "text"
+                      "required": false
                     },
                     {
                       "id": "difference-within-5-cm",
+                      "type": "boolean",
                       "label": "Is the difference within 5 cm?",
-                      "required": false,
-                      "type": "boolean"
+                      "required": false
                     }
-                  ]
+                  ],
+                  "skip_path": true
                 },
                 {
                   "id": "additional-survey-information",
+                  "type": "long_text",
                   "label": "Additional information about most recent survey",
-                  "required": false,
-                  "type": "long_text"
+                  "required": false
                 }
-              ]
+              ],
+              "skip_path": true,
+              "conditions": {
+                "field": "is-station-surveyed",
+                "value": true,
+                "result": "include"
+              }
             },
             {
               "id": "additional-sensor-information-wrap",
               "type": "object",
-              "skip_path": true,
               "label": "Additional sensor information",
               "fields": [
                 {
                   "id": "additional-sensor-information",
+                  "type": "long_text",
                   "label": "Enter any details missing from the above fields",
-                  "required": false,
-                  "type": "long_text"
+                  "required": false
                 }
-              ]
+              ],
+              "skip_path": true
             }
-          ]
+          ],
+          "multiple": true,
+          "required": false
         }
       ]
     },
@@ -1358,47 +1356,47 @@
       "fields": [
         {
           "id": "error-analysis-description",
-          "label": "Error analysis description",
-          "required": false,
-          "skip_path": true,
           "type": "object",
-          "layout": "grid2",
+          "label": "Error analysis description",
           "fields": [
             {
               "id": "total-water-level-error-cm",
+              "type": "number",
               "label": "Total Water level Error (cm):",
-              "required": false,
-              "type": "number"
+              "required": false
             },
             {
               "id": "sensor-error-cm",
+              "type": "number",
               "label": "Sensor Error (cm):",
-              "required": false,
-              "type": "number"
+              "required": false
             },
             {
               "id": "survey-error-cm",
+              "type": "number",
               "label": "Survey Error (cm):",
-              "description": "AKA leveling error",
               "required": false,
               "settings": {
                 "descriptionPresentation": "tooltip"
               },
-              "type": "number"
+              "description": "AKA leveling error"
             },
             {
               "id": "data-processing-error-cm",
+              "type": "number",
               "label": "Data Processing Error (cm):",
-              "required": false,
-              "type": "number"
+              "required": false
             },
             {
               "id": "datum-error-cm",
+              "type": "number",
               "label": "Datum Error (cm):",
-              "required": false,
-              "type": "number"
+              "required": false
             }
-          ]
+          ],
+          "layout": "grid2",
+          "required": false,
+          "skip_path": true
         }
       ]
     },
@@ -1408,117 +1406,117 @@
       "fields": [
         {
           "id": "record-start-date",
+          "type": "date",
           "label": "Record Start Date:",
-          "required": false,
-          "type": "date"
+          "required": false
         },
         {
           "id": "record-end-date",
+          "type": "date",
           "label": "Record End Date:",
-          "required": false,
-          "type": "date"
+          "required": false
         },
         {
           "id": "computational-tool",
-          "label": "Computational Tool:",
-          "required": false,
           "type": "select",
+          "label": "Computational Tool:",
           "options": [
             {
-              "value": "WALI",
-              "label": "WALI"
+              "label": "WALI",
+              "value": "WALI"
             },
             {
-              "value": "CO-OPS Tidal Datum Analysis Calculator",
-              "label": "CO-OPS Tidal Datum Analysis Calculator"
+              "label": "CO-OPS Tidal Datum Analysis Calculator",
+              "value": "CO-OPS Tidal Datum Analysis Calculator"
             },
             {
-              "value": "Tidelab",
-              "label": "Tidelab"
+              "label": "Tidelab",
+              "value": "Tidelab"
             },
             {
-              "value": "Manual",
-              "label": "Manual"
+              "label": "Manual",
+              "value": "Manual"
             },
             {
-              "value": "Other",
-              "label": "Other"
+              "label": "Other",
+              "value": "Other"
             }
-          ]
+          ],
+          "required": false
         },
         {
           "id": "computation-method",
-          "label": "Computation method",
-          "required": false,
           "type": "select",
+          "label": "Computation method",
           "options": [
             {
-              "value": "TBYT",
-              "label": "TBYT"
+              "label": "TBYT",
+              "value": "TBYT"
             },
             {
-              "value": "MMSC",
-              "label": "MMSC"
+              "label": "MMSC",
+              "value": "MMSC"
             },
             {
-              "value": "FRED",
-              "label": "FRED"
+              "label": "FRED",
+              "value": "FRED"
             }
-          ]
+          ],
+          "required": false
         },
         {
           "id": "nwlon-control-station",
+          "type": "text",
           "label": "NWLON Control Station:",
-          "required": false,
-          "type": "text"
+          "required": false
         },
         {
           "id": "control-station-epoch",
-          "label": "Control Station Epoch:",
-          "required": false,
           "type": "select",
+          "label": "Control Station Epoch:",
           "options": [
             {
-              "value": "Present: 1983-2001",
-              "label": "Present: 1983-2001"
+              "label": "Present: 1983-2001",
+              "value": "Present: 1983-2001"
             },
             {
-              "value": "Superceded: 1960-1978",
-              "label": "Superceded: 1960-1978"
+              "label": "Superceded: 1960-1978",
+              "value": "Superceded: 1960-1978"
             }
-          ]
+          ],
+          "required": false
         },
         {
           "id": "datum-type",
-          "label": "Datum Type:",
-          "required": false,
           "type": "select",
+          "label": "Datum Type:",
           "options": [
             {
-              "value": "Standard NTDE",
-              "label": "Standard NTDE"
+              "label": "Standard NTDE",
+              "value": "Standard NTDE"
             },
             {
-              "value": "Modified Procedure",
-              "label": "Modified Procedure"
+              "label": "Modified Procedure",
+              "value": "Modified Procedure"
             },
             {
-              "value": "Direct",
-              "label": "Direct"
+              "label": "Direct",
+              "value": "Direct"
             }
-          ]
+          ],
+          "required": false
         },
         {
           "id": "computation-date",
+          "type": "date",
           "label": "Computation Date:",
-          "required": false,
-          "type": "date"
+          "required": false
         },
         {
           "id": "computed-by",
+          "type": "text",
           "label": "Computed by",
-          "required": false,
-          "type": "text"
+          "required": false
         }
       ]
     },
@@ -1529,161 +1527,161 @@
         {
           "id": "tidal-datum-wrap",
           "type": "object",
-          "skip_path": true,
-          "layout": "grid3",
           "label": "Enter known tidal datum offsets relative to the station datum.",
           "fields": [
             {
               "id": "mhhw-m",
-              "label": "MHHW (m):",
-              "description": "Offset between station datum and MHHW in meters",
-              "required": false,
               "type": "number",
+              "label": "MHHW (m):",
+              "required": false,
               "settings": {
                 "descriptionPresentation": "tooltip"
-              }
+              },
+              "description": "Offset between station datum and MHHW in meters"
             },
             {
               "id": "mhw-m",
-              "label": "MHW (m):",
-              "description": "Offset between station datum and MHW in meters",
-              "required": false,
               "type": "number",
+              "label": "MHW (m):",
+              "required": false,
               "settings": {
                 "descriptionPresentation": "tooltip"
-              }
+              },
+              "description": "Offset between station datum and MHW in meters"
             },
             {
               "id": "dtl-m",
-              "label": "DTL (m):",
-              "description": "The arithmetic mean of mean higher high water and mean lower low water.",
-              "required": false,
               "type": "number",
+              "label": "DTL (m):",
+              "required": false,
               "settings": {
                 "descriptionPresentation": "tooltip"
-              }
+              },
+              "description": "The arithmetic mean of mean higher high water and mean lower low water."
             },
             {
               "id": "mtl-m",
-              "label": "MTL (m):",
-              "description": "The arithmetic mean of mean high water and mean low water.",
-              "required": false,
               "type": "number",
+              "label": "MTL (m):",
+              "required": false,
               "settings": {
                 "descriptionPresentation": "tooltip"
-              }
+              },
+              "description": "The arithmetic mean of mean high water and mean low water."
             },
             {
               "id": "msl-m",
-              "label": "MSL (m):",
-              "description": "The arithmetic mean of hourly heights observed over the National Tidal Datum Epoch. Shorter series are specified in the name; e.g. monthly mean sea level and yearly mean sea level.",
-              "required": false,
               "type": "number",
+              "label": "MSL (m):",
+              "required": false,
               "settings": {
                 "descriptionPresentation": "tooltip"
-              }
+              },
+              "description": "The arithmetic mean of hourly heights observed over the National Tidal Datum Epoch. Shorter series are specified in the name; e.g. monthly mean sea level and yearly mean sea level."
             },
             {
               "id": "mlw-m",
-              "label": "MLW (m):",
-              "description": "Offset between station datum and MLW in meters.",
-              "required": false,
               "type": "number",
+              "label": "MLW (m):",
+              "required": false,
               "settings": {
                 "descriptionPresentation": "tooltip"
-              }
+              },
+              "description": "Offset between station datum and MLW in meters."
             },
             {
               "id": "mllw-m",
-              "label": "MLLW (m):",
-              "description": "Offset between station datum and MLLW in meters",
-              "required": false,
               "type": "number",
+              "label": "MLLW (m):",
+              "required": false,
               "settings": {
                 "descriptionPresentation": "tooltip"
-              }
+              },
+              "description": "Offset between station datum and MLLW in meters"
             },
             {
               "id": "gt-m",
-              "label": "GT (m)",
-              "description": "The difference in height between mean higher high water and mean lower low water.",
-              "required": false,
               "type": "number",
+              "label": "GT (m)",
+              "required": false,
               "settings": {
                 "descriptionPresentation": "tooltip"
-              }
+              },
+              "description": "The difference in height between mean higher high water and mean lower low water."
             },
             {
               "id": "mn-m",
-              "label": "MN (m)",
-              "description": "The difference in height between mean high water and mean low water.",
-              "required": false,
               "type": "number",
+              "label": "MN (m)",
+              "required": false,
               "settings": {
                 "descriptionPresentation": "tooltip"
-              }
+              },
+              "description": "The difference in height between mean high water and mean low water."
             },
             {
               "id": "dhq-m",
-              "label": "DHQ (m)",
-              "description": "One-half the average difference between the two high waters of each tidal day observed over the National Tidal Datum Epoch. It is obtained by subtracting the mean of all the high waters from the mean of the higher high waters.",
-              "required": false,
               "type": "number",
+              "label": "DHQ (m)",
+              "required": false,
               "settings": {
                 "descriptionPresentation": "tooltip"
-              }
+              },
+              "description": "One-half the average difference between the two high waters of each tidal day observed over the National Tidal Datum Epoch. It is obtained by subtracting the mean of all the high waters from the mean of the higher high waters."
             },
             {
               "id": "dlq-m",
-              "label": "DLQ (m)",
-              "description": "One-half the average difference between the two low waters of each tidal day observed over the National Tidal Datum Epoch. It is obtained by subtracting the mean of the lower low waters from the mean of all the low waters.",
-              "required": false,
               "type": "number",
+              "label": "DLQ (m)",
+              "required": false,
               "settings": {
                 "descriptionPresentation": "tooltip"
-              }
+              },
+              "description": "One-half the average difference between the two low waters of each tidal day observed over the National Tidal Datum Epoch. It is obtained by subtracting the mean of the lower low waters from the mean of all the low waters."
             },
             {
               "id": "hwi-hr",
-              "label": "HWI (hr)",
-              "description": "The average interval (in hours) between the moon***REMOVED***s transit over the Greenwich meridian and the following high water at a location.",
-              "required": false,
               "type": "number",
+              "label": "HWI (hr)",
+              "required": false,
               "settings": {
                 "descriptionPresentation": "tooltip"
-              }
+              },
+              "description": "The average interval (in hours) between the moon***REMOVED***s transit over the Greenwich meridian and the following high water at a location."
             },
             {
               "id": "lwi-hr",
-              "label": "LWI (hr)",
-              "description": "The average interval (in hours) between the moon***REMOVED***s transit over the Greenwich meridian and the following low water at a location.",
-              "required": false,
               "type": "number",
+              "label": "LWI (hr)",
+              "required": false,
               "settings": {
                 "descriptionPresentation": "tooltip"
-              }
+              },
+              "description": "The average interval (in hours) between the moon***REMOVED***s transit over the Greenwich meridian and the following low water at a location."
             },
             {
               "id": "igld",
-              "label": "IGLD",
-              "description": "International Great Lakes Datum",
-              "required": false,
               "type": "number",
+              "label": "IGLD",
+              "required": false,
               "settings": {
                 "descriptionPresentation": "tooltip"
-              }
+              },
+              "description": "International Great Lakes Datum"
             },
             {
               "id": "lwd",
-              "label": "LWD",
-              "description": "Low water datum",
-              "required": false,
               "type": "number",
+              "label": "LWD",
+              "required": false,
               "settings": {
                 "descriptionPresentation": "tooltip"
-              }
+              },
+              "description": "Low water datum"
             }
-          ]
+          ],
+          "layout": "grid3",
+          "skip_path": true
         }
       ]
     },
@@ -1693,15 +1691,15 @@
       "fields": [
         {
           "id": "is-collocation",
+          "type": "boolean",
           "label": "Is this a collocation?",
-          "required": false,
-          "type": "boolean"
+          "required": false
         },
         {
           "id": "additional-collocation-information",
+          "type": "long_text",
           "label": "Additional collocation information",
-          "required": false,
-          "type": "long_text"
+          "required": false
         }
       ]
     },
@@ -1711,21 +1709,21 @@
       "fields": [
         {
           "id": "ecc-url",
+          "type": "text",
           "label": "ECC URL",
-          "required": false,
-          "type": "text"
+          "required": false
         },
         {
           "id": "was-nepa-completed",
+          "type": "boolean",
           "label": "Was Nepa Completed?",
-          "required": false,
-          "type": "boolean"
+          "required": false
         },
         {
           "id": "ecc-notes",
+          "type": "long_text",
           "label": "Notes:",
-          "required": false,
-          "type": "long_text"
+          "required": false
         }
       ]
     },
@@ -1735,53 +1733,53 @@
       "fields": [
         {
           "id": "station-photo",
+          "type": "custom:file_upload",
           "label": "Station",
-          "required": false,
-          "type": "custom:file_upload"
+          "required": false
         },
         {
           "id": "sensor-photo",
+          "type": "custom:file_upload",
           "label": "Sensor",
-          "required": false,
-          "type": "custom:file_upload"
+          "required": false
         },
         {
           "id": "sensor-management",
+          "type": "custom:file_upload",
           "label": "Sensor management",
-          "required": false,
-          "type": "custom:file_upload"
+          "required": false
         },
         {
           "id": "sensor-survey-reference-point",
+          "type": "custom:file_upload",
           "label": "Sensor survey reference point",
-          "required": false,
-          "type": "custom:file_upload"
+          "required": false
         },
         {
           "id": "benchmarks-photo",
+          "type": "custom:file_upload",
           "label": "Photo of the two surveyed benchmark***REMOVED***s face stamping",
-          "description": "Suggested: 4 specific views are face (up close showing the stamping of the mark), setting (generally taken from chest height) and 2 directional photos. Ideally, you***REMOVED***d want all 4 directions to help find the mark on future visits and/or to help validate suitability for things such as GPS/GNSS (things that could obstruct a signal: tree, fence, building...etc)",
           "required": false,
-          "type": "custom:file_upload"
+          "description": "Suggested: 4 specific views are face (up close showing the stamping of the mark), setting (generally taken from chest height) and 2 directional photos. Ideally, you***REMOVED***d want all 4 directions to help find the mark on future visits and/or to help validate suitability for things such as GPS/GNSS (things that could obstruct a signal: tree, fence, building...etc)"
         },
         {
           "id": "dcp",
+          "type": "custom:file_upload",
           "label": "DCP",
-          "description": "data collection platform // data logger",
           "required": false,
-          "type": "custom:file_upload"
+          "description": "data collection platform // data logger"
         },
         {
           "id": "underwater-components",
+          "type": "custom:file_upload",
           "label": "Underwater components",
-          "required": false,
-          "type": "custom:file_upload"
+          "required": false
         },
         {
           "id": "vicinity",
+          "type": "custom:file_upload",
           "label": "Vicinity",
-          "required": false,
-          "type": "custom:file_upload"
+          "required": false
         }
       ]
     },
@@ -1791,47 +1789,47 @@
       "fields": [
         {
           "id": "bench-mark-diagram",
+          "type": "custom:file_upload",
           "label": "Bench mark diagram",
-          "required": false,
-          "type": "custom:file_upload"
+          "required": false
         },
         {
           "id": "sensor-test-worksheet",
+          "type": "custom:file_upload",
           "label": "Sensor test worksheet",
-          "required": false,
-          "type": "custom:file_upload"
+          "required": false
         },
         {
           "id": "sensor-elevation-drawing",
+          "type": "custom:file_upload",
           "label": "Sensor elevation drawing",
-          "required": false,
-          "type": "custom:file_upload"
+          "required": false
         },
         {
           "id": "bench-mark-descriptions",
+          "type": "long_text",
           "label": "Bench mark descriptions",
-          "required": false,
-          "type": "long_text"
+          "required": false
         },
         {
           "id": "station-to-reach-statement",
+          "type": "long_text",
           "label": "Station ***REMOVED***to reach***REMOVED*** statement",
-          "required": false,
-          "type": "long_text"
+          "required": false
         },
         {
           "id": "license",
+          "type": "long_text",
           "label": "Disclaimer ",
-          "description": "NOAA specific req for NWS ingestion. specify uncertainty and limitations of use",
           "required": false,
-          "type": "long_text"
+          "description": "NOAA specific req for NWS ingestion. specify uncertainty and limitations of use"
         },
         {
           "id": "dissemination-flag",
+          "type": "long_text",
           "label": "Dissemination flag",
-          "description": "NOAA specific req for NWS ingestion",
           "required": false,
-          "type": "long_text"
+          "description": "NOAA specific req for NWS ingestion"
         }
       ]
     },
@@ -1841,33 +1839,33 @@
       "fields": [
         {
           "id": "gross-range",
+          "type": "text",
           "label": "Gross range",
-          "required": false,
-          "type": "text"
+          "required": false
         },
         {
           "id": "spike",
+          "type": "text",
           "label": "Spike",
-          "required": false,
-          "type": "text"
+          "required": false
         },
         {
           "id": "flatline",
+          "type": "text",
           "label": "Flatline",
-          "required": false,
-          "type": "text"
+          "required": false
         },
         {
           "id": "rate-of-change",
+          "type": "text",
           "label": "Rate of change",
-          "required": false,
-          "type": "text"
+          "required": false
         },
         {
           "id": "aggregate",
+          "type": "text",
           "label": "Aggregate",
-          "required": false,
-          "type": "text"
+          "required": false
         }
       ]
     },
@@ -1877,44 +1875,66 @@
       "fields": [
         {
           "id": "sample_file",
-          "label": "Sample file",
-          "required": false,
           "type": "object",
+          "label": "Sample file",
           "fields": [
             {
               "id": "file_uri",
+              "type": "custom:file_upload",
               "label": "Sample CSV or NETCDF file",
-              "required": false,
-              "type": "custom:file_upload"
+              "required": false
             },
             {
               "id": "headers",
-              "label": "Headers",
-              "multiple": true,
-              "required": false,
               "type": "object",
+              "label": "Headers",
               "fields": [
                 {
                   "id": "cell_header",
+                  "type": "text",
                   "label": "Cell header",
-                  "required": false,
-                  "type": "text"
+                  "required": false
                 },
                 {
                   "id": "cell_parameter",
+                  "type": "text",
                   "label": "Cell parameter",
-                  "required": false,
-                  "type": "text"
+                  "required": false
                 },
                 {
                   "id": "cell_units",
+                  "type": "text",
                   "label": "Cell units",
-                  "required": false,
-                  "type": "text"
+                  "required": false
+                },
+                {
+                  "id": "data_type",
+                  "type": "select",
+                  "label": "Data type",
+                  "options": [
+                    {
+                      "label": "Number",
+                      "value": "double"
+                    },
+                    {
+                      "label": "String",
+                      "value": "String"
+                    }
+                  ],
+                  "required": false
+                },
+                {
+                  "id": "time_format",
+                  "type": "text",
+                  "label": "Time format (if column is ***REMOVED***time***REMOVED***)",
+                  "required": false
                 }
-              ]
+              ],
+              "multiple": true,
+              "required": false
             }
-          ]
+          ],
+          "required": false
         }
       ]
     }

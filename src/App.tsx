@@ -24,9 +24,10 @@ import EditDocument from './manage/document/edit'
 import EditObjectSchema from '@/manage/object_schema/edit'
 import ListFieldConfigs from '@/manage/field_config/list'
 import UploadFile from '@/manage/document_file/upload_file'
-import Link from './manage/components/link'
 import SimpleLayout from './layouts/simple'
 import PipelineList from '@/manage/custom/pipeline/list'
+import CreateDocumentSuccess from './manage/document/create_success'
+import PersonsList from './manage/person/list'
 
 const Authed = (): ReactElement => {
   const navigate = useNavigate()
@@ -149,9 +150,7 @@ function App(): ReactElement {
               path="/create-document-success"
               element={
                 <SimpleLayout>
-                  <div className="p-20 text-center">
-                    Document created successfully! <Link to="/create-document">Create another</Link>
-                  </div>
+                  <CreateDocumentSuccess />
                 </SimpleLayout>
               }
             />
@@ -321,6 +320,15 @@ function App(): ReactElement {
               element={
                 <SidebarLayout>
                   <UploadFile />
+                </SidebarLayout>
+              }
+            />
+
+            <Route
+              path="/persons"
+              element={
+                <SidebarLayout>
+                  <PersonsList />
                 </SidebarLayout>
               }
             />

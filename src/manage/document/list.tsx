@@ -55,6 +55,17 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
       },
     ],
   }
+
+  const targetedParams: Record<string, IPostgrestParams> = {
+    document: {
+      order: [
+        {
+          column: ***REMOVED***created_at***REMOVED***,
+          dir: ***REMOVED***desc***REMOVED***,
+        },
+      ],
+    },
+  }
   const rollups = [***REMOVED***owner_sub***REMOVED***, ***REMOVED***object_type_uuid***REMOVED***]
   const {
     data: documents,
@@ -62,6 +73,7 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
     error,
   } = useDocumentListWithRollups({
     params,
+    targetedParams,
     rollups,
   })
   const object_types_map = Object.fromEntries(object_types.map((ot) => [ot.uuid, ot]))

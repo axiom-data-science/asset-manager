@@ -1,0 +1,347 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Makara Data Schema",
+  "description": "Schema for marine bioacoustic data including deployments, recordings, analyses, and detections",
+  "type": "object",
+  "properties": {
+    "deployments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "organization_code": { "type": "string" },
+          "deployment_code": { "type": "string" },
+          "project_code": { "type": "string" },
+          "site_code": { "type": "string" },
+          "deployment_device_codes": { "type": "array", "items": { "type": "string" } },
+          "deployment_platform_type_code": { "type": "string" },
+          "deployment_water_depth_m": { "type": "number" },
+          "deployment_datetime": { "type": "string", "format": "date-time" },
+          "deployment_latitude": { "type": "number" },
+          "deployment_longitude": { "type": "number" },
+          "deployment_vessel": { "type": "string" },
+          "deployment_cruise": { "type": "string" },
+          "deployment_alias": { "type": "string" },
+          "deployment_json": { "type": "object" },
+          "deployment_comments": { "type": "string" },
+          "recovery_datetime": { "type": "string", "format": "date-time" },
+          "recovery_latitude": { "type": "number" },
+          "recovery_longitude": { "type": "number" },
+          "recovery_vessel": { "type": "string" },
+          "recovery_cruise": { "type": "string" },
+          "recovery_surface_datetime": { "type": "string", "format": "date-time" },
+          "recovery_burn_datetime": { "type": "string", "format": "date-time" },
+          "recovery_json": { "type": "object" },
+          "recovery_comments": { "type": "string" },
+          "parent_deployment_code": { "type": "string" }
+        },
+        "required": [
+          "organization_code",
+          "deployment_code",
+          "deployment_platform_type_code",
+          "deployment_datetime",
+          "deployment_latitude",
+          "deployment_longitude"
+        ]
+      }
+    },
+    "recordings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "organization_code": { "type": "string" },
+          "deployment_code": { "type": "string" },
+          "recording_code": { "type": "string" },
+          "recording_device_codes": { "type": "array", "items": { "type": "string" } },
+          "recording_start_datetime": { "type": "string", "format": "date-time" },
+          "recording_end_datetime": { "type": "string", "format": "date-time" },
+          "recording_duration_secs": { "type": "number" },
+          "recording_interval_secs": { "type": "number" },
+          "recording_sample_rate_khz": { "type": "number" },
+          "recording_bit_depth": { "type": "integer" },
+          "recording_channel": { "type": "integer" },
+          "recording_n_channels": { "type": "integer" },
+          "recording_filetypes": { "type": "array", "items": { "type": "string" } },
+          "recording_timezone": { "type": "string" },
+          "recording_usable_start_datetime": { "type": "string", "format": "date-time" },
+          "recording_usable_end_datetime": { "type": "string", "format": "date-time" },
+          "recording_usable_min_frequency_khz": { "type": "number" },
+          "recording_usable_max_frequency_khz": { "type": "number" },
+          "recording_quality_code": { "type": "string" },
+          "recording_device_lost": { "type": "boolean" },
+          "recording_device_depth_m": { "type": "number" },
+          "recording_redacted": { "type": "boolean" },
+          "recording_json": { "type": "object" },
+          "recording_uri": { "type": "string", "format": "uri" },
+          "recording_comments": { "type": "string" }
+        },
+        "required": [
+          "organization_code",
+          "deployment_code",
+          "recording_code",
+          "recording_device_codes",
+          "recording_n_channels",
+          "recording_timezone"
+        ]
+      }
+    },
+    "analyses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "deployment_organization_code": { "type": "string" },
+          "deployment_code": { "type": "string" },
+          "recording_codes": { "type": "array", "items": { "type": "string" } },
+          "analysis_organization_code": { "type": "string" },
+          "analysis_code": { "type": "string" },
+          "analysis_sound_source_codes": { "type": "array", "items": { "type": "string" } },
+          "analysis_granularity_code": { "type": "string" },
+          "analysis_start_datetime": { "type": "string", "format": "date-time" },
+          "analysis_end_datetime": { "type": "string", "format": "date-time" },
+          "analysis_sample_rate_khz": { "type": "number" },
+          "analysis_min_frequency_khz": { "type": "number" },
+          "analysis_max_frequency_khz": { "type": "number" },
+          "analysis_processing_code": { "type": "string" },
+          "analysis_quality_code": { "type": "string" },
+          "analysis_protocol_reference": { "type": "string" },
+          "analysis_dataset_url": { "type": "string", "format": "uri" },
+          "analysis_release_data": { "type": "boolean" },
+          "analysis_release_pacm": { "type": "boolean" },
+          "detector_codes": { "type": "array", "items": { "type": "string" } },
+          "detector_version": { "type": "string" },
+          "detector_json": { "type": "object" },
+          "detector_output_filename": { "type": "string" },
+          "detector_output_uri": { "type": "string", "format": "uri" },
+          "analysis_analysts": { "type": "array", "items": { "type": "string" } },
+          "analysis_json": { "type": "object" },
+          "analysis_comments": { "type": "string" }
+        },
+        "required": [
+          "deployment_organization_code",
+          "deployment_code",
+          "recording_codes",
+          "analysis_organization_code",
+          "analysis_code",
+          "analysis_sound_source_codes",
+          "analysis_granularity_code",
+          "analysis_sample_rate_khz",
+          "analysis_processing_code",
+          "analysis_quality_code",
+          "analysis_protocol_reference",
+          "analysis_release_data",
+          "analysis_release_pacm",
+          "detector_codes"
+        ]
+      }
+    },
+    "detections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "deployment_organization_code": { "type": "string" },
+          "deployment_code": { "type": "string" },
+          "analysis_organization_code": { "type": "string" },
+          "analysis_code": { "type": "string" },
+          "detection_start_datetime": { "type": "string", "format": "date-time" },
+          "detection_end_datetime": { "type": "string", "format": "date-time" },
+          "detection_effort_secs": { "type": "number" },
+          "detection_sound_source_code": { "type": "string" },
+          "detection_call_type_code": { "type": "string" },
+          "detection_behavior_code": { "type": "string" },
+          "detection_demographic_code": { "type": "string" },
+          "detection_n_validated": { "type": "integer" },
+          "detection_n_total": { "type": "integer" },
+          "detection_result_code": { "type": "string" },
+          "detection_event_type": { "type": "string" },
+          "detection_event_id": { "type": "string" },
+          "detection_latitude": { "type": "number" },
+          "detection_longitude": { "type": "number" },
+          "detection_received_level_db": { "type": "number" },
+          "detection_quality_code": { "type": "string" },
+          "detection_n_animals": { "type": "integer" },
+          "detection_n_animals_min": { "type": "integer" },
+          "detection_n_animals_max": { "type": "integer" },
+          "detection_json": { "type": "object" },
+          "detection_comments": { "type": "string" },
+          "localization_method_code": { "type": "string" },
+          "localization_latitude": { "type": "number" },
+          "localization_latitude_min": { "type": "number" },
+          "localization_latitude_max": { "type": "number" },
+          "localization_longitude": { "type": "number" },
+          "localization_longitude_min": { "type": "number" },
+          "localization_longitude_max": { "type": "number" },
+          "localization_distance_m": { "type": "number" },
+          "localization_distance_m_min": { "type": "number" },
+          "localization_distance_m_max": { "type": "number" },
+          "localization_bearing": { "type": "number" },
+          "localization_bearing_min": { "type": "number" },
+          "localization_bearing_max": { "type": "number" },
+          "localization_depth_method_code": { "type": "string" },
+          "localization_depth_n_signals": { "type": "integer" },
+          "localization_depth_m": { "type": "number" },
+          "localization_depth_m_min": { "type": "number" },
+          "localization_depth_m_max": { "type": "number" },
+          "localization_json": { "type": "object" },
+          "localization_comments": { "type": "string" }
+        },
+        "required": [
+          "deployment_organization_code",
+          "deployment_code",
+          "analysis_organization_code",
+          "analysis_code",
+          "detection_start_datetime",
+          "detection_end_datetime",
+          "detection_effort_secs",
+          "detection_sound_source_code",
+          "detection_call_type_code",
+          "detection_result_code"
+        ]
+      }
+    },
+    "support": {
+      "type": "object",
+      "properties": {
+        "devices": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "organization_code": { "type": "string" },
+              "device_code": { "type": "string" },
+              "device_type_code": { "type": "string" },
+              "device_manufacturer": { "type": "string" },
+              "device_model_name": { "type": "string" },
+              "device_model_number": { "type": "string" },
+              "device_serial_number": { "type": "string" },
+              "device_description": { "type": "string" },
+              "device_start_date": { "type": "string", "format": "date" },
+              "device_end_date": { "type": "string", "format": "date" },
+              "device_alias": { "type": "string" },
+              "device_json": { "type": "object" },
+              "device_comments": { "type": "string" },
+              "child_device_codes": { "type": "array", "items": { "type": "string" } }
+            },
+            "required": ["organization_code", "device_code", "device_type_code"]
+          }
+        },
+        "projects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "organization_code": { "type": "string" },
+              "project_code": { "type": "string" },
+              "project_name": { "type": "string" },
+              "project_description": { "type": "string" },
+              "project_alias": { "type": "string" },
+              "project_contacts": { "type": "array", "items": { "type": "string" } },
+              "project_funding": { "type": "array", "items": { "type": "string" } },
+              "project_collaborator_organization_codes": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "project_comments": { "type": "string" }
+            },
+            "required": ["organization_code", "project_code", "project_contacts"]
+          }
+        },
+        "sites": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "organization_code": { "type": "string" },
+              "site_code": { "type": "string" },
+              "site_name": { "type": "string" },
+              "site_description": { "type": "string" },
+              "site_latitude": { "type": "number" },
+              "site_longitude": { "type": "number" },
+              "site_alias": { "type": "string" },
+              "site_comments": { "type": "string" }
+            },
+            "required": ["organization_code", "site_code"]
+          }
+        }
+      }
+    },
+    "qaqc": {
+      "type": "object",
+      "properties": {
+        "recording_intervals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "organization_code": { "type": "string" },
+              "deployment_code": { "type": "string" },
+              "recording_code": { "type": "string" },
+              "recording_interval_channel": { "type": "integer" },
+              "recording_interval_start_datetime": { "type": "string", "format": "date-time" },
+              "recording_interval_end_datetime": { "type": "string", "format": "date-time" },
+              "recording_interval_min_frequency_khz": { "type": "number" },
+              "recording_interval_max_frequency_khz": { "type": "number" },
+              "recording_interval_quality_code": { "type": "string" },
+              "recording_interval_json": { "type": "object" },
+              "recording_interval_comments": { "type": "string" }
+            },
+            "required": [
+              "organization_code",
+              "deployment_code",
+              "recording_code",
+              "recording_interval_quality_code"
+            ]
+          }
+        }
+      }
+    },
+    "tracks": {
+      "type": "object",
+      "properties": {
+        "tracks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "organization_code": { "type": "string" },
+              "deployment_code": { "type": "string" },
+              "track_code": { "type": "string" },
+              "track_uri": { "type": "string", "format": "uri" },
+              "track_json": { "type": "object" },
+              "track_comments": { "type": "string" }
+            },
+            "required": ["organization_code", "deployment_code", "track_code"]
+          }
+        },
+        "track_positions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "organization_code": { "type": "string" },
+              "deployment_code": { "type": "string" },
+              "track_code": { "type": "string" },
+              "track_position_datetime": { "type": "string", "format": "date-time" },
+              "track_position_latitude": { "type": "number" },
+              "track_position_longitude": { "type": "number" },
+              "track_position_speed_knots": { "type": "number" },
+              "track_position_depth_m": { "type": "number" },
+              "track_position_json": { "type": "object" },
+              "track_position_comments": { "type": "string" }
+            },
+            "required": [
+              "organization_code",
+              "deployment_code",
+              "track_code",
+              "track_position_datetime",
+              "track_position_latitude",
+              "track_position_longitude"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

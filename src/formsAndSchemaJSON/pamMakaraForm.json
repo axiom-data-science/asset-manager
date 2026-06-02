@@ -1,0 +1,990 @@
+{
+  "id": "pam-form",
+  "label": "PAM Data Submission",
+  "description": "Marine bioacoustic data submission form based on makara schema",
+  "pages": [
+    {
+      "id": "deployments",
+      "label": "Deployments",
+      "description": "Define deployment information",
+      "fields": [
+        {
+          "prop": "organization_code",
+          "label": "Organization Code",
+          "required": true
+        },
+        {
+          "prop": "deployment_code",
+          "label": "Deployment Code",
+          "required": true
+        },
+        {
+          "prop": "project_code",
+          "label": "Project Code"
+        },
+        {
+          "prop": "site_code",
+          "label": "Site Code"
+        },
+        {
+          "prop": "deployment_device_codes",
+          "label": "Deployment Device Codes",
+          "multiple": true
+        },
+        {
+          "prop": "deployment_platform_type_code",
+          "label": "Platform Type Code",
+          "required": true
+        },
+        {
+          "prop": "deployment_water_depth_m",
+          "label": "Water Depth (m)",
+          "type": "number"
+        },
+        {
+          "prop": "deployment_datetime",
+          "label": "Deployment Date/Time",
+          "type": "datetime",
+          "required": true
+        },
+        {
+          "prop": "deployment_latitude",
+          "label": "Deployment Latitude",
+          "type": "number",
+          "required": true
+        },
+        {
+          "prop": "deployment_longitude",
+          "label": "Deployment Longitude",
+          "type": "number",
+          "required": true
+        },
+        {
+          "prop": "deployment_vessel",
+          "label": "Deployment Vessel"
+        },
+        {
+          "prop": "deployment_cruise",
+          "label": "Deployment Cruise"
+        },
+        {
+          "prop": "deployment_alias",
+          "label": "Deployment Alias"
+        },
+        {
+          "prop": "deployment_json",
+          "label": "Deployment JSON",
+          "type": "json"
+        },
+        {
+          "prop": "deployment_comments",
+          "label": "Deployment Comments",
+          "type": "long_text"
+        },
+        {
+          "prop": "recovery_datetime",
+          "label": "Recovery Date/Time",
+          "type": "datetime"
+        },
+        {
+          "prop": "recovery_latitude",
+          "label": "Recovery Latitude",
+          "type": "number"
+        },
+        {
+          "prop": "recovery_longitude",
+          "label": "Recovery Longitude",
+          "type": "number"
+        },
+        {
+          "prop": "recovery_vessel",
+          "label": "Recovery Vessel"
+        },
+        {
+          "prop": "recovery_cruise",
+          "label": "Recovery Cruise"
+        },
+        {
+          "prop": "recovery_surface_datetime",
+          "label": "Recovery Surface Date/Time",
+          "type": "datetime"
+        },
+        {
+          "prop": "recovery_burn_datetime",
+          "label": "Recovery Burn Date/Time",
+          "type": "datetime"
+        },
+        {
+          "prop": "recovery_json",
+          "label": "Recovery JSON",
+          "type": "json"
+        },
+        {
+          "prop": "recovery_comments",
+          "label": "Recovery Comments",
+          "type": "long_text"
+        },
+        {
+          "prop": "parent_deployment_code",
+          "label": "Parent Deployment Code"
+        }
+      ]
+    },
+    {
+      "id": "recordings",
+      "label": "Recordings",
+      "description": "Define recording information",
+      "fields": [
+        {
+          "prop": "organization_code",
+          "label": "Organization Code",
+          "required": true
+        },
+        {
+          "prop": "deployment_code",
+          "label": "Deployment Code",
+          "required": true
+        },
+        {
+          "prop": "recording_code",
+          "label": "Recording Code",
+          "required": true
+        },
+        {
+          "prop": "recording_device_codes",
+          "label": "Recording Device Codes",
+          "required": true,
+          "multiple": true
+        },
+        {
+          "prop": "recording_start_datetime",
+          "label": "Recording Start Date/Time",
+          "type": "datetime"
+        },
+        {
+          "prop": "recording_end_datetime",
+          "label": "Recording End Date/Time",
+          "type": "datetime"
+        },
+        {
+          "prop": "recording_duration_secs",
+          "label": "Recording Duration (seconds)",
+          "type": "number"
+        },
+        {
+          "prop": "recording_interval_secs",
+          "label": "Recording Interval (seconds)",
+          "type": "number"
+        },
+        {
+          "prop": "recording_sample_rate_khz",
+          "label": "Sample Rate (kHz)",
+          "type": "number"
+        },
+        {
+          "prop": "recording_bit_depth",
+          "label": "Bit Depth",
+          "type": "number"
+        },
+        {
+          "prop": "recording_channel",
+          "label": "Recording Channel",
+          "type": "number"
+        },
+        {
+          "prop": "recording_n_channels",
+          "label": "Number of Channels",
+          "type": "number",
+          "required": true
+        },
+        {
+          "prop": "recording_filetypes",
+          "label": "File Types",
+          "multiple": true
+        },
+        {
+          "prop": "recording_timezone",
+          "label": "Timezone",
+          "type": "text",
+          "required": true
+        },
+        {
+          "prop": "recording_usable_start_datetime",
+          "label": "Usable Start Date/Time",
+          "type": "datetime"
+        },
+        {
+          "prop": "recording_usable_end_datetime",
+          "label": "Usable End Date/Time",
+          "type": "datetime"
+        },
+        {
+          "prop": "recording_usable_min_frequency_khz",
+          "label": "Usable Min Frequency (kHz)",
+          "type": "number"
+        },
+        {
+          "prop": "recording_usable_max_frequency_khz",
+          "label": "Usable Max Frequency (kHz)",
+          "type": "number"
+        },
+        {
+          "prop": "recording_quality_code",
+          "label": "Quality Code",
+          "type": "radio",
+          "options": [
+            { "value": "pass", "label": "Pass" },
+            { "value": "fail", "label": "Fail" },
+            { "value": "suspect", "label": "Suspect" },
+            { "value": "not_evaluated", "label": "Not Evaluated" }
+          ]
+        },
+        {
+          "prop": "recording_device_lost",
+          "label": "Device Lost",
+          "type": "boolean"
+        },
+        {
+          "prop": "recording_device_depth_m",
+          "label": "Device Depth (m)",
+          "type": "number"
+        },
+        {
+          "prop": "recording_redacted",
+          "label": "Redacted",
+          "type": "boolean"
+        },
+        {
+          "prop": "recording_json",
+          "label": "Recording JSON",
+          "description": "Recording-specific calibration required for NCEI",
+          "type": "json"
+        },
+        {
+          "prop": "recording_uri",
+          "label": "Recording URI",
+          "type": "text"
+        },
+        {
+          "prop": "recording_comments",
+          "label": "Recording Comments",
+          "type": "long_text"
+        }
+      ]
+    },
+    {
+      "id": "analyses",
+      "label": "Analyses",
+      "description": "Define analysis information",
+      "fields": [
+        {
+          "prop": "deployment_organization_code",
+          "label": "Deployment Organization Code",
+          "required": true
+        },
+        {
+          "prop": "deployment_code",
+          "label": "Deployment Code",
+          "required": true
+        },
+        {
+          "prop": "recording_codes",
+          "label": "Recording Codes",
+          "required": true,
+          "multiple": true
+        },
+        {
+          "prop": "analysis_organization_code",
+          "label": "Analysis Organization Code",
+          "required": true
+        },
+        {
+          "prop": "analysis_code",
+          "label": "Analysis Code",
+          "required": true
+        },
+        {
+          "prop": "analysis_sound_source_codes",
+          "label": "Sound Source Codes",
+          "required": true,
+          "multiple": true
+        },
+        {
+          "prop": "analysis_granularity_code",
+          "label": "Granularity Code",
+          "required": true
+        },
+        {
+          "prop": "analysis_start_datetime",
+          "label": "Analysis Start Date/Time",
+          "type": "datetime"
+        },
+        {
+          "prop": "analysis_end_datetime",
+          "label": "Analysis End Date/Time",
+          "type": "datetime"
+        },
+        {
+          "prop": "analysis_sample_rate_khz",
+          "label": "Sample Rate (kHz)",
+          "type": "number",
+          "required": true
+        },
+        {
+          "prop": "analysis_min_frequency_khz",
+          "label": "Min Frequency (kHz)",
+          "type": "number"
+        },
+        {
+          "prop": "analysis_max_frequency_khz",
+          "label": "Max Frequency (kHz)",
+          "type": "number"
+        },
+        {
+          "prop": "analysis_processing_code",
+          "label": "Processing Code",
+          "required": true,
+          "type": "radio",
+          "options": [
+            { "value": "manual", "label": "Manual" },
+            { "value": "automated", "label": "Automated" },
+            { "value": "semi_automated", "label": "Semi-Automated" }
+          ]
+        },
+        {
+          "prop": "analysis_quality_code",
+          "label": "Quality Code",
+          "required": true,
+          "type": "radio",
+          "options": [
+            { "value": "pass", "label": "Pass" },
+            { "value": "fail", "label": "Fail" },
+            { "value": "suspect", "label": "Suspect" },
+            { "value": "not_evaluated", "label": "Not Evaluated" }
+          ]
+        },
+        {
+          "prop": "analysis_protocol_reference",
+          "label": "Protocol Reference",
+          "required": true
+        },
+        {
+          "prop": "analysis_dataset_url",
+          "label": "Dataset URL",
+          "type": "text"
+        },
+        {
+          "prop": "analysis_release_data",
+          "label": "Release Data",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "prop": "analysis_release_pacm",
+          "label": "Release PACM",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "prop": "detector_codes",
+          "label": "Detector Codes",
+          "required": true,
+          "multiple": true
+        },
+        {
+          "prop": "detector_version",
+          "label": "Detector Version"
+        },
+        {
+          "prop": "detector_json",
+          "label": "Detector JSON",
+          "type": "json"
+        },
+        {
+          "prop": "detector_output_filename",
+          "label": "Detector Output Filename"
+        },
+        {
+          "prop": "detector_output_uri",
+          "label": "Detector Output URI",
+          "type": "text"
+        },
+        {
+          "prop": "analysis_analysts",
+          "label": "Analysts",
+          "multiple": true
+        },
+        {
+          "prop": "analysis_json",
+          "label": "Analysis JSON",
+          "type": "json"
+        },
+        {
+          "prop": "analysis_comments",
+          "label": "Analysis Comments",
+          "type": "long_text"
+        }
+      ]
+    },
+    {
+      "id": "detections",
+      "label": "Detections",
+      "description": "Define detection information",
+      "fields": [
+        {
+          "prop": "deployment_organization_code",
+          "label": "Deployment Organization Code",
+          "required": true
+        },
+        {
+          "prop": "deployment_code",
+          "label": "Deployment Code",
+          "required": true
+        },
+        {
+          "prop": "analysis_organization_code",
+          "label": "Analysis Organization Code",
+          "required": true
+        },
+        {
+          "prop": "analysis_code",
+          "label": "Analysis Code",
+          "required": true
+        },
+        {
+          "prop": "detection_start_datetime",
+          "label": "Detection Start Date/Time",
+          "type": "datetime",
+          "required": true
+        },
+        {
+          "prop": "detection_end_datetime",
+          "label": "Detection End Date/Time",
+          "type": "datetime",
+          "required": true
+        },
+        {
+          "prop": "detection_effort_secs",
+          "label": "Detection Effort (seconds)",
+          "type": "number",
+          "required": true
+        },
+        {
+          "prop": "detection_sound_source_code",
+          "label": "Sound Source Code",
+          "required": true
+        },
+        {
+          "prop": "detection_call_type_code",
+          "label": "Call Type Code",
+          "required": true
+        },
+        {
+          "prop": "detection_behavior_code",
+          "label": "Behavior Code"
+        },
+        {
+          "prop": "detection_demographic_code",
+          "label": "Demographic Code"
+        },
+        {
+          "prop": "detection_n_validated",
+          "label": "Number Validated",
+          "type": "number"
+        },
+        {
+          "prop": "detection_n_total",
+          "label": "Number Total",
+          "type": "number"
+        },
+        {
+          "prop": "detection_result_code",
+          "label": "Result Code",
+          "required": true,
+          "type": "radio",
+          "options": [
+            { "value": "true_positive", "label": "True Positive" },
+            { "value": "false_positive", "label": "False Positive" },
+            { "value": "uncertain", "label": "Uncertain" }
+          ]
+        },
+        {
+          "prop": "detection_event_type",
+          "label": "Event Type"
+        },
+        {
+          "prop": "detection_event_id",
+          "label": "Event ID"
+        },
+        {
+          "prop": "detection_latitude",
+          "label": "Latitude",
+          "type": "number"
+        },
+        {
+          "prop": "detection_longitude",
+          "label": "Longitude",
+          "type": "number"
+        },
+        {
+          "prop": "detection_received_level_db",
+          "label": "Received Level (dB)",
+          "type": "number"
+        },
+        {
+          "prop": "detection_quality_code",
+          "label": "Quality Code",
+          "type": "radio",
+          "options": [
+            { "value": "high", "label": "High" },
+            { "value": "medium", "label": "Medium" },
+            { "value": "low", "label": "Low" }
+          ]
+        },
+        {
+          "prop": "detection_n_animals",
+          "label": "Number of Animals",
+          "type": "number"
+        },
+        {
+          "prop": "detection_n_animals_min",
+          "label": "Number of Animals (Min)",
+          "type": "number"
+        },
+        {
+          "prop": "detection_n_animals_max",
+          "label": "Number of Animals (Max)",
+          "type": "number"
+        },
+        {
+          "prop": "detection_json",
+          "label": "Detection JSON",
+          "type": "json"
+        },
+        {
+          "prop": "detection_comments",
+          "label": "Detection Comments",
+          "type": "long_text"
+        },
+        {
+          "prop": "localization_method_code",
+          "label": "Localization Method Code"
+        },
+        {
+          "prop": "localization_latitude",
+          "label": "Localization Latitude",
+          "type": "number"
+        },
+        {
+          "prop": "localization_latitude_min",
+          "label": "Localization Latitude (Min)",
+          "type": "number"
+        },
+        {
+          "prop": "localization_latitude_max",
+          "label": "Localization Latitude (Max)",
+          "type": "number"
+        },
+        {
+          "prop": "localization_longitude",
+          "label": "Localization Longitude",
+          "type": "number"
+        },
+        {
+          "prop": "localization_longitude_min",
+          "label": "Localization Longitude (Min)",
+          "type": "number"
+        },
+        {
+          "prop": "localization_longitude_max",
+          "label": "Localization Longitude (Max)",
+          "type": "number"
+        },
+        {
+          "prop": "localization_distance_m",
+          "label": "Localization Distance (m)",
+          "type": "number"
+        },
+        {
+          "prop": "localization_distance_m_min",
+          "label": "Localization Distance (Min, m)",
+          "type": "number"
+        },
+        {
+          "prop": "localization_distance_m_max",
+          "label": "Localization Distance (Max, m)",
+          "type": "number"
+        },
+        {
+          "prop": "localization_bearing",
+          "label": "Localization Bearing",
+          "type": "number"
+        },
+        {
+          "prop": "localization_bearing_min",
+          "label": "Localization Bearing (Min)",
+          "type": "number"
+        },
+        {
+          "prop": "localization_bearing_max",
+          "label": "Localization Bearing (Max)",
+          "type": "number"
+        },
+        {
+          "prop": "localization_depth_method_code",
+          "label": "Depth Method Code"
+        },
+        {
+          "prop": "localization_depth_n_signals",
+          "label": "Depth Number of Signals",
+          "type": "number"
+        },
+        {
+          "prop": "localization_depth_m",
+          "label": "Localization Depth (m)",
+          "type": "number"
+        },
+        {
+          "prop": "localization_depth_m_min",
+          "label": "Localization Depth (Min, m)",
+          "type": "number"
+        },
+        {
+          "prop": "localization_depth_m_max",
+          "label": "Localization Depth (Max, m)",
+          "type": "number"
+        },
+        {
+          "prop": "localization_json",
+          "label": "Localization JSON",
+          "type": "json"
+        },
+        {
+          "prop": "localization_comments",
+          "label": "Localization Comments",
+          "type": "long_text"
+        }
+      ]
+    },
+    {
+      "id": "support",
+      "label": "Support Data",
+      "description": "Devices, projects, and sites",
+      "fields": [
+        {
+          "prop": "devices",
+          "label": "Devices",
+          "type": "object",
+          "fields": [
+            {
+              "prop": "organization_code",
+              "label": "Organization Code",
+              "required": true
+            },
+            {
+              "prop": "device_code",
+              "label": "Device Code",
+              "required": true
+            },
+            {
+              "prop": "device_type_code",
+              "label": "Device Type Code",
+              "required": true
+            },
+            {
+              "prop": "device_manufacturer",
+              "label": "Manufacturer"
+            },
+            {
+              "prop": "device_model_name",
+              "label": "Model Name"
+            },
+            {
+              "prop": "device_model_number",
+              "label": "Model Number"
+            },
+            {
+              "prop": "device_serial_number",
+              "label": "Serial Number"
+            },
+            {
+              "prop": "device_description",
+              "label": "Description"
+            },
+            {
+              "prop": "device_start_date",
+              "label": "Start Date",
+              "type": "date"
+            },
+            {
+              "prop": "device_end_date",
+              "label": "End Date",
+              "type": "date"
+            },
+            {
+              "prop": "device_alias",
+              "label": "Alias"
+            },
+            {
+              "prop": "device_json",
+              "label": "Device JSON",
+              "type": "json"
+            },
+            {
+              "prop": "device_comments",
+              "label": "Comments",
+              "type": "long_text"
+            },
+            {
+              "prop": "child_device_codes",
+              "label": "Child Device Codes",
+              "multiple": true
+            }
+          ]
+        },
+        {
+          "prop": "projects",
+          "label": "Projects",
+          "type": "object",
+          "fields": [
+            {
+              "prop": "organization_code",
+              "label": "Organization Code",
+              "required": true
+            },
+            {
+              "prop": "project_code",
+              "label": "Project Code",
+              "required": true
+            },
+            {
+              "prop": "project_name",
+              "label": "Project Name"
+            },
+            {
+              "prop": "project_description",
+              "label": "Project Description",
+              "type": "long_text"
+            },
+            {
+              "prop": "project_alias",
+              "label": "Alias"
+            },
+            {
+              "prop": "project_contacts",
+              "label": "Contacts",
+              "required": true,
+              "multiple": true
+            },
+            {
+              "prop": "project_funding",
+              "label": "Funding",
+              "multiple": true
+            },
+            {
+              "prop": "project_collaborator_organization_codes",
+              "label": "Collaborator Organizations",
+              "multiple": true
+            },
+            {
+              "prop": "project_comments",
+              "label": "Comments",
+              "type": "long_text"
+            }
+          ]
+        },
+        {
+          "prop": "sites",
+          "label": "Sites",
+          "type": "object",
+          "fields": [
+            {
+              "prop": "organization_code",
+              "label": "Organization Code",
+              "required": true
+            },
+            {
+              "prop": "site_code",
+              "label": "Site Code",
+              "required": true
+            },
+            {
+              "prop": "site_name",
+              "label": "Site Name"
+            },
+            {
+              "prop": "site_description",
+              "label": "Site Description",
+              "type": "long_text"
+            },
+            {
+              "prop": "site_latitude",
+              "label": "Latitude",
+              "type": "number"
+            },
+            {
+              "prop": "site_longitude",
+              "label": "Longitude",
+              "type": "number"
+            },
+            {
+              "prop": "site_alias",
+              "label": "Alias"
+            },
+            {
+              "prop": "site_comments",
+              "label": "Comments",
+              "type": "long_text"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "qaqc",
+      "label": "Quality Assurance",
+      "description": "Recording interval QA/QC data",
+      "fields": [
+        {
+          "prop": "organization_code",
+          "label": "Organization Code",
+          "required": true
+        },
+        {
+          "prop": "deployment_code",
+          "label": "Deployment Code",
+          "required": true
+        },
+        {
+          "prop": "recording_code",
+          "label": "Recording Code",
+          "required": true
+        },
+        {
+          "prop": "recording_interval_channel",
+          "label": "Channel"
+        },
+        {
+          "prop": "recording_interval_start_datetime",
+          "label": "Start Date/Time",
+          "type": "datetime"
+        },
+        {
+          "prop": "recording_interval_end_datetime",
+          "label": "End Date/Time",
+          "type": "datetime"
+        },
+        {
+          "prop": "recording_interval_min_frequency_khz",
+          "label": "Min Frequency (kHz)",
+          "type": "number"
+        },
+        {
+          "prop": "recording_interval_max_frequency_khz",
+          "label": "Max Frequency (kHz)",
+          "type": "number"
+        },
+        {
+          "prop": "recording_interval_quality_code",
+          "label": "Quality Code",
+          "required": true,
+          "type": "radio",
+          "options": [
+            { "value": "pass", "label": "Pass" },
+            { "value": "fail", "label": "Fail" },
+            { "value": "suspect", "label": "Suspect" },
+            { "value": "not_evaluated", "label": "Not Evaluated" }
+          ]
+        },
+        {
+          "prop": "recording_interval_json",
+          "label": "Interval JSON",
+          "type": "json"
+        },
+        {
+          "prop": "recording_interval_comments",
+          "label": "Comments",
+          "type": "long_text"
+        }
+      ]
+    },
+    {
+      "id": "tracks",
+      "label": "Tracks",
+      "description": "Animal track and position data",
+      "fields": [
+        {
+          "prop": "organization_code",
+          "label": "Organization Code",
+          "required": true
+        },
+        {
+          "prop": "deployment_code",
+          "label": "Deployment Code",
+          "required": true
+        },
+        {
+          "prop": "track_code",
+          "label": "Track Code",
+          "required": true
+        },
+        {
+          "prop": "track_uri",
+          "label": "Track URI",
+          "type": "text"
+        },
+        {
+          "prop": "track_json",
+          "label": "Track JSON",
+          "type": "json"
+        },
+        {
+          "prop": "track_comments",
+          "label": "Comments",
+          "type": "long_text"
+        },
+        {
+          "prop": "track_position_datetime",
+          "label": "Position Date/Time",
+          "type": "datetime",
+          "required": true
+        },
+        {
+          "prop": "track_position_latitude",
+          "label": "Position Latitude",
+          "type": "number",
+          "required": true
+        },
+        {
+          "prop": "track_position_longitude",
+          "label": "Position Longitude",
+          "type": "number",
+          "required": true
+        },
+        {
+          "prop": "track_position_speed_knots",
+          "label": "Speed (knots)",
+          "type": "number"
+        },
+        {
+          "prop": "track_position_depth_m",
+          "label": "Depth (m)",
+          "type": "number"
+        },
+        {
+          "prop": "track_position_json",
+          "label": "Position JSON",
+          "type": "json"
+        },
+        {
+          "prop": "track_position_comments",
+          "label": "Position Comments",
+          "type": "long_text"
+        }
+      ]
+    }
+  ],
+  "settings": {
+    "show_progress": true
+  }
+}

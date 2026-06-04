@@ -8,6 +8,7 @@ import { fetchSchemaAtForm } from ***REMOVED***@/manage/object_schema/services**
 import { postgrestArgs } from ***REMOVED***@/services/postgrest/endpoints***REMOVED***
 import type { IPostgrestParams } from ***REMOVED***@/types/types***REMOVED***
 import { getObjectSchemaAndObjectTypeQuery } from ***REMOVED***../object_schema/useObjectSchema***REMOVED***
+import { getFormListForObjectTypeQueryOptions } from ***REMOVED***./useFormList***REMOVED***
 
 export const formQueryKey = (uuid?: string, params?: IPostgrestParams) => [
   ***REMOVED***form***REMOVED***,
@@ -164,35 +165,40 @@ export const useFullDefaultFormAtObjectType = ({
   object_type_uuid?: string
 }) => {
   const auth = useAuth()
-  const form = useQuery(
-    getFormAtObjectTypeQuery({
+  const forms = useQuery(
+    getFormListForObjectTypeQueryOptions({
       object_type_uuid,
       token: auth.user?.access_token,
-      params: {
-        select: [***REMOVED***uuid***REMOVED***],
-      },
     })
   )
+
+  const form =
+    forms?.data?.find((f) => f.is_schema_and_version_default) ?? forms?.data?.[0] ?? undefined
+
   const queryObjects = {
     //form: getFormAtObjectTypeQuery({object_type_uuid, token: auth.user?.access_token}),
-    form: getFormAtObjectTypeQuery({ object_type_uuid, token: auth.user?.access_token }),
+    //form: getFormAtObjectTypeQuery({ object_type_uuid, token: auth.user?.access_token }),
+    forms: getFormListForObjectTypeQueryOptions({
+      object_type_uuid,
+      token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
+    }),
     object_types: {
       ...getObjectTypeListQuery({ token: auth.user?.access_token }),
-      enabled: !!form.data && !!auth.user?.access_token && object_type_uuid !== ***REMOVED******REMOVED***,
+      enabled: !!forms.data && !!auth.user?.access_token && object_type_uuid !== ***REMOVED******REMOVED***,
     },
     field_configs: {
       ...getFieldConfigListAtFormQuery({
-        form_uuid: form?.data?.uuid ?? ***REMOVED***NA***REMOVED***,
+        form_uuid: form?.uuid ?? ***REMOVED***NA***REMOVED***,
         token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
       }),
-      enabled: !!form.data && !!auth.user?.access_token && object_type_uuid !== ***REMOVED******REMOVED***,
+      enabled: !!forms.data && !!auth.user?.access_token && object_type_uuid !== ***REMOVED******REMOVED***,
     },
     object_schema: {
       ...getSchemaAtFormQuery({
-        form_uuid: form?.data?.uuid ?? ***REMOVED***NA***REMOVED***,
+        form_uuid: form?.uuid ?? ***REMOVED***NA***REMOVED***,
         token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
       }),
-      enabled: !!form.data && !!auth.user?.access_token && object_type_uuid !== ***REMOVED******REMOVED***,
+      enabled: !!form && !!auth.user?.access_token && object_type_uuid !== ***REMOVED******REMOVED***,
     },
   }
 

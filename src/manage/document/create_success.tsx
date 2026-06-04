@@ -102,6 +102,9 @@ const SubmitToERDDAPButton = ({
               View in ERDDAP
             </ButtonLink>
           )}
+          <ButtonLink to="https://erddapper-demo-erddap.srv.axds.co/erddap/tabledap/index.html?page=1&itemsPerPage=1000">
+            All ERDDAP datasets
+          </ButtonLink>
           <ButtonLink to={getACDDUrl(document.uuid, true)} target="_blank">
             View ACDD output
           </ButtonLink>

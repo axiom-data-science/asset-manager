@@ -8,6 +8,7 @@ import { fetchSchemaAtForm } from '@/manage/object_schema/services'
 import { postgrestArgs } from '@/services/postgrest/endpoints'
 import type { IPostgrestParams } from '@/types/types'
 import { getObjectSchemaAndObjectTypeQuery } from '../object_schema/useObjectSchema'
+import { getFormListForObjectTypeQueryOptions } from './useFormList'
 
 export const formQueryKey = (uuid?: string, params?: IPostgrestParams) => [
   'form',
@@ -164,35 +165,40 @@ export const useFullDefaultFormAtObjectType = ({
   object_type_uuid?: string
 }) => {
   const auth = useAuth()
-  const form = useQuery(
-    getFormAtObjectTypeQuery({
+  const forms = useQuery(
+    getFormListForObjectTypeQueryOptions({
       object_type_uuid,
       token: auth.user?.access_token,
-      params: {
-        select: ['uuid'],
-      },
     })
   )
+
+  const form =
+    forms?.data?.find((f) => f.is_schema_and_version_default) ?? forms?.data?.[0] ?? undefined
+
   const queryObjects = {
     //form: getFormAtObjectTypeQuery({object_type_uuid, token: auth.user?.access_token}),
-    form: getFormAtObjectTypeQuery({ object_type_uuid, token: auth.user?.access_token }),
+    //form: getFormAtObjectTypeQuery({ object_type_uuid, token: auth.user?.access_token }),
+    forms: getFormListForObjectTypeQueryOptions({
+      object_type_uuid,
+      token: auth.user?.access_token ?? '',
+    }),
     object_types: {
       ...getObjectTypeListQuery({ token: auth.user?.access_token }),
-      enabled: !!form.data && !!auth.user?.access_token && object_type_uuid !== '',
+      enabled: !!forms.data && !!auth.user?.access_token && object_type_uuid !== '',
     },
     field_configs: {
       ...getFieldConfigListAtFormQuery({
-        form_uuid: form?.data?.uuid ?? 'NA',
+        form_uuid: form?.uuid ?? 'NA',
         token: auth.user?.access_token ?? '',
       }),
-      enabled: !!form.data && !!auth.user?.access_token && object_type_uuid !== '',
+      enabled: !!forms.data && !!auth.user?.access_token && object_type_uuid !== '',
     },
     object_schema: {
       ...getSchemaAtFormQuery({
-        form_uuid: form?.data?.uuid ?? 'NA',
+        form_uuid: form?.uuid ?? 'NA',
         token: auth.user?.access_token ?? '',
       }),
-      enabled: !!form.data && !!auth.user?.access_token && object_type_uuid !== '',
+      enabled: !!form && !!auth.user?.access_token && object_type_uuid !== '',
     },
   }
 

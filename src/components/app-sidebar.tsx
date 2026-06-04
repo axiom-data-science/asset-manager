@@ -97,18 +97,18 @@ export function AppSidebar() {
       ],
     },
     {
-      label: 'Users',
+      label: 'Persons',
       icon: User,
       actions: [
         {
-          name: 'List users',
+          name: 'List persons',
           icon: List,
-          url: '/users',
+          url: '/persons',
         },
         {
-          name: 'Create user',
+          name: 'Create person',
           icon: Plus,
-          url: '/users/create',
+          url: '/persons/create',
         },
       ],
     },
@@ -120,9 +120,9 @@ export function AppSidebar() {
           name: 'List pipelines',
           icon: List,
           url: '/custom/pipelines',
-        }
-      ]
-    }
+        },
+      ],
+    },
   ]
 
   return (

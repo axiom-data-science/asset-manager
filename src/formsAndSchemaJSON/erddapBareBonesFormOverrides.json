@@ -1,0 +1,82 @@
+{
+  "id": "cfecefbd-fad5-4789-a8fc-ce119e4a1b49",
+  "label": "Basic ERDDAP Metadata",
+  "pages": [
+    {
+      "id": "station-information",
+      "label": "Station Information",
+      "fields": [
+        {
+          "prop": "station-overview",
+          "type": "objectWrapper",
+          "layout": "grid2",
+          "fields": [
+            {
+              "prop": "station-id"
+            },
+            {
+              "prop": "station_label"
+            },
+            {
+              "prop": "feature_type",
+              "type": "select",
+              "options": [{ "label": "Time Series", "value": "TimeSeries" }],
+              "defaultValue": "TimeSeries"
+            }
+          ]
+        },
+        {
+          "prop": "geometry",
+          "type": "geometry",
+          "label": "Station Location",
+          "settings": {
+            "drawPointEnabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "contact-information",
+      "label": "Contact Information",
+      "tabs": [
+        {
+          "id": "creator-information",
+          "label": "Creator Information",
+          "layout": "grid2",
+          "fields": [
+            { "prop": "creator_institution" },
+            { "prop": "creator_country" },
+
+            { "prop": "creator_name" },
+            { "prop": "creator_email" },
+            { "prop": "creator_type" },
+            { "prop": "creator_sector" },
+            { "prop": "source_url" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "file",
+      "label": "Sample File",
+      "fields": [
+        {
+          "prop": "sample_file",
+          "type": "object",
+          "fields": [
+            { "prop": "sample_file.file_uri", "type": "custom:csv_upload_for_sample_file" },
+            {
+              "prop": "sample_file.headers",
+              "conditions": {
+                "field": "sample_file.file_uri"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "settings": {
+    "url_navigable": false
+  }
+}

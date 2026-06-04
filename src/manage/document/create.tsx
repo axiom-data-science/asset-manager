@@ -7,7 +7,7 @@ import {
   schemaToFormUtils,
   type IForm,
   type IFormFieldOverride,
-  type IFormOverride
+  type IFormOverride,
 } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
 import { Button, Loader, utils, ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
 import { useState, type ReactElement } from ***REMOVED***react***REMOVED***
@@ -23,13 +23,15 @@ import FileUpload from ***REMOVED***@/manage/custom_inputs/file_upload***REMOVED
 import { Book, BookPlus, Check, Network } from ***REMOVED***lucide-react***REMOVED***
 import StationSearch from ***REMOVED***../custom_inputs/station_search***REMOVED***
 import { useSlug } from ***REMOVED***@/manage/components/useSlug***REMOVED***
+import SampleFileObject from ***REMOVED***../custom_inputs/sample_file_object***REMOVED***
+import CSVUploadForSampleFile from ***REMOVED***../custom_inputs/csv_upload_for_sample_file***REMOVED***
 
 const CreateDocumentForm = ({
   type,
   assetForm,
   fieldConfigs,
   schema,
-  returnToOnSuccess
+  returnToOnSuccess,
 }: {
   type: IObjectType
   assetForm?: IAssetForm
@@ -76,37 +78,40 @@ const CreateDocumentForm = ({
     []
   const dataForm = (
     assetForm?.use_form_config === true &&
-      assetForm?.form_config !== undefined &&
-      assetForm?.form_config !== null
+    assetForm?.form_config !== undefined &&
+    assetForm?.form_config !== null
       ? assetForm.form_config
       : assetForm?.schema_override_config !== undefined || fieldConfigJSON !== undefined
         ? omit(
-          schemaToFormUtils.overridesAndSchemaToFormObject({
-            schema: schema.json_schema,
-            formOverrides: assetForm?.schema_override_config
-              ? [assetForm?.schema_override_config as IFormOverride]
-              : undefined,
-            formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
-          }),
-          ***REMOVED***label***REMOVED***
-        )
+            schemaToFormUtils.overridesAndSchemaToFormObject({
+              schema: schema.json_schema,
+              formOverrides: assetForm?.schema_override_config
+                ? [assetForm?.schema_override_config as IFormOverride]
+                : undefined,
+              formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
+            }),
+            ***REMOVED***label***REMOVED***
+          )
         : schemaToFormUtils.schemaToFormObject(schema.json_schema)
   ) as IForm
+
   const formJSON =
     dataForm.fields?.length ||
-      dataForm.pages?.length ||
-      dataForm.wizard_steps?.length ||
-      dataForm.tabs?.length
+    dataForm.pages?.length ||
+    dataForm.wizard_steps?.length ||
+    dataForm.tabs?.length
       ? dataForm
       : defaultForm
 
-  const { form, formState: [formValues, setFormValues], filterForSave } = useSlug(
-    formJSON
-  );
+  const {
+    form,
+    formState: [formValues, setFormValues],
+    filterForSave,
+  } = useSlug(formJSON)
 
   const onSave = async () => {
     setSaving(true)
-    const valuesToSave = filterForSave(formValues);
+    const valuesToSave = filterForSave(formValues)
     const valid = await validate({ form, formValues: valuesToSave, schema: schema.json_schema })
     if (!valid.valid && valid.errors.length > 0) {
       setErrors(valid.errors)
@@ -119,9 +124,19 @@ const CreateDocumentForm = ({
     }
     setErrors([])
     try {
-      const label = formValues.label ?? formValues.title ?? formValues.platform_name ?? ***REMOVED***Untitled Document***REMOVED***
-      const slug = formValues.slug ?? String(label).toLowerCase().replace(/\s+/g, ***REMOVED***-***REMOVED***).replace(/[^a-z0-9\-]/g, ***REMOVED******REMOVED***)
-      await postDocument({
+      const label =
+        formValues.label ??
+        formValues.title ??
+        formValues.platform_name ??
+        formValues.station_label ??
+        ***REMOVED***Untitled Document***REMOVED***
+      const slug =
+        formValues.slug ??
+        String(label)
+          .toLowerCase()
+          .replace(/\s+/g, ***REMOVED***-***REMOVED***)
+          .replace(/[^a-z0-9-]/g, ***REMOVED******REMOVED***)
+      const newDoc = await postDocument({
         document: {
           object_type_uuid: type.uuid,
           label,
@@ -132,7 +147,7 @@ const CreateDocumentForm = ({
       })
 
       setSaving(false)
-      navigate(navPath ?? ***REMOVED***/document***REMOVED***)
+      navigate(`${navPath ?? ***REMOVED***/document***REMOVED***}?uuid=${newDoc.uuid}`)
     } catch (e: unknown) {
       setSaving(false)
       setErrors([
@@ -186,6 +201,8 @@ const CreateDocumentForm = ({
         formValueState={[formValues, setFormValues]}
         inputOverrides={{
           ***REMOVED***custom:file_upload***REMOVED***: FileUpload,
+          ***REMOVED***custom:sample_file_object***REMOVED***: SampleFileObject,
+          ***REMOVED***custom:csv_upload_for_sample_file***REMOVED***: CSVUploadForSampleFile,
           ***REMOVED***custom:station_search***REMOVED***: StationSearch,
         }}
         SubmitButton={
@@ -196,6 +213,7 @@ const CreateDocumentForm = ({
           )
         }
       />
+      <pre>{JSON.stringify(formValues, null, 2)}</pre>
       {!includeSaveButton && (
         <div className="flex flex-row gap-4  p-4 sticky bottom-0 bg-white/80 z-10 -mx-1 justify-end">
           <Button onClick={onSave} type="primary" disabled={saving}>

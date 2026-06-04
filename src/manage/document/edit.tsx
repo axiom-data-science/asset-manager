@@ -21,6 +21,8 @@ import { useFullDefaultFormAtObjectType } from ***REMOVED***@/manage/form/useFor
 import { useQueryClient } from ***REMOVED***@tanstack/react-query***REMOVED***
 import FileUpload from ***REMOVED***@/manage/custom_inputs/file_upload***REMOVED***
 import StationSearch from ***REMOVED***@/manage/custom_inputs/station_search***REMOVED***
+import SampleFileObject from ***REMOVED***../custom_inputs/sample_file_object***REMOVED***
+import CSVUploadForSampleFile from ***REMOVED***../custom_inputs/csv_upload_for_sample_file***REMOVED***
 
 const EditDocumentForm = ({
   document,
@@ -116,7 +118,12 @@ const EditDocumentForm = ({
         document: {
           ...document,
           ...{
-            label: formValues.label ?? formValues.title ?? ***REMOVED***Untitled Document***REMOVED***,
+            label:
+              formValues.label ??
+              formValues.title ??
+              formValues.platform_name ??
+              formValues.station_label ??
+              ***REMOVED***Untitled Document***REMOVED***,
             description: formValues.description ?? ***REMOVED******REMOVED***,
             data: {
               ...document.data,
@@ -160,6 +167,8 @@ const EditDocumentForm = ({
         formValueState={[formValues, setFormValues]}
         inputOverrides={{
           ***REMOVED***custom:file_upload***REMOVED***: FileUpload,
+          ***REMOVED***custom:sample_file_object***REMOVED***: SampleFileObject,
+          ***REMOVED***custom:csv_upload_for_sample_file***REMOVED***: CSVUploadForSampleFile,
           ***REMOVED***custom:station_search***REMOVED***: StationSearch,
         }}
       />
@@ -179,7 +188,11 @@ const LoadSchemaAndCreateDocumentForm = ({ document }: { document: IDocument }):
   return (
     <ViewWithLoader isLoading={isLoading} error={error} data={data}>
       {data && (
-        <EditDocumentForm document={document} schema={data.object_schema} assetForm={data.form} />
+        <EditDocumentForm
+          document={document}
+          schema={data.object_schema}
+          assetForm={data.forms.find((f) => f.is_schema_and_version_default) ?? data.forms[0]}
+        />
       )}
     </ViewWithLoader>
   )

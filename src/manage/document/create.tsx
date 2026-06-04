@@ -213,7 +213,6 @@ const CreateDocumentForm = ({
           )
         }
       />
-      <pre>{JSON.stringify(formValues, null, 2)}</pre>
       {!includeSaveButton && (
         <div className="flex flex-row gap-4  p-4 sticky bottom-0 bg-white/80 z-10 -mx-1 justify-end">
           <Button onClick={onSave} type="primary" disabled={saving}>

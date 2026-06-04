@@ -21,6 +21,8 @@ import { useFullDefaultFormAtObjectType } from '@/manage/form/useForm'
 import { useQueryClient } from '@tanstack/react-query'
 import FileUpload from '@/manage/custom_inputs/file_upload'
 import StationSearch from '@/manage/custom_inputs/station_search'
+import SampleFileObject from '../custom_inputs/sample_file_object'
+import CSVUploadForSampleFile from '../custom_inputs/csv_upload_for_sample_file'
 
 const EditDocumentForm = ({
   document,
@@ -116,7 +118,12 @@ const EditDocumentForm = ({
         document: {
           ...document,
           ...{
-            label: formValues.label ?? formValues.title ?? 'Untitled Document',
+            label:
+              formValues.label ??
+              formValues.title ??
+              formValues.platform_name ??
+              formValues.station_label ??
+              'Untitled Document',
             description: formValues.description ?? '',
             data: {
               ...document.data,
@@ -160,6 +167,8 @@ const EditDocumentForm = ({
         formValueState={[formValues, setFormValues]}
         inputOverrides={{
           'custom:file_upload': FileUpload,
+          'custom:sample_file_object': SampleFileObject,
+          'custom:csv_upload_for_sample_file': CSVUploadForSampleFile,
           'custom:station_search': StationSearch,
         }}
       />
@@ -179,7 +188,11 @@ const LoadSchemaAndCreateDocumentForm = ({ document }: { document: IDocument }):
   return (
     <ViewWithLoader isLoading={isLoading} error={error} data={data}>
       {data && (
-        <EditDocumentForm document={document} schema={data.object_schema} assetForm={data.form} />
+        <EditDocumentForm
+          document={document}
+          schema={data.object_schema}
+          assetForm={data.forms.find((f) => f.is_schema_and_version_default) ?? data.forms[0]}
+        />
       )}
     </ViewWithLoader>
   )

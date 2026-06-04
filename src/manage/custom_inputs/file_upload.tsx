@@ -1,8 +1,9 @@
 import { APPS_API_BASE_URL } from '@/config/config'
+import { parseCSV, type ParsedCSV } from '@/lib/csv'
 import { uploadFileToPostgrest } from '@/services/postgrest/services'
 import type { IFieldInputProps } from '@axdspub/axiom-ui-forms'
 import { CloudUpload, File, X } from 'lucide-react'
-import { useState, type ReactElement } from 'react'
+import { useState, useRef, type ReactElement } from 'react'
 import { useAuth } from 'react-oidc-context'
 import { useDocument } from '../document/useDocument'
 import { utils, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
@@ -45,7 +46,19 @@ const FileDisplay = ({ fileRef }: { fileRef: string }): ReactElement => {
   )
 }
 
-const FileUpload = ({ field, value, onChange }: IFieldInputProps): ReactElement => {
+const FileUpload = ({
+  field,
+  value,
+  onChange,
+  acceptFileTypes,
+  onFileUploaded,
+}: IFieldInputProps & {
+  acceptFileTypes?: string[]
+  onFileUploaded?: (
+    fileData: string | ArrayBuffer | undefined | null,
+    csvData: ParsedCSV | null
+  ) => void
+}): ReactElement => {
   const [file, setFile] = useState<File | null>(null)
   const [fileRef, setFileRef] = useState<string | null>(
     value !== null && value !== undefined ? String(value) : null
@@ -53,12 +66,30 @@ const FileUpload = ({ field, value, onChange }: IFieldInputProps): ReactElement 
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const auth = useAuth()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const onUpload = async (f?: File | null) => {
     const _file = f ?? file
     if (!_file) return
     setUploading(true)
     try {
+      const reader = new FileReader()
+
+      // This event fires when the file reading is complete
+      reader.onload = function (event) {
+        const text = event.target?.result
+        if (typeof text === 'string') {
+          const data = parseCSV(text)
+          if (onFileUploaded) {
+            onFileUploaded(text, data)
+          }
+        } else if (onFileUploaded) {
+          onFileUploaded(event.target?.result, null)
+        }
+      }
+
+      // Read the file object as a plain text string
+      reader.readAsText(_file)
       const fileUuid = await uploadFileToPostgrest({
         file: _file,
         token: auth.user?.access_token || '',
@@ -66,6 +97,10 @@ const FileUpload = ({ field, value, onChange }: IFieldInputProps): ReactElement 
       const url = `${APPS_API_BASE_URL}/rpc/get_document_file?uuid=${fileUuid}`
       setFileRef(url)
       onChange(url)
+      // Clear the input value so the same file can be selected again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     } catch (error) {
       console.error('File upload failed:', error)
       setError(`File upload failed. ${(error as Error)?.message ?? ''}`)
@@ -89,9 +124,11 @@ const FileUpload = ({ field, value, onChange }: IFieldInputProps): ReactElement 
         <input
           type="file"
           id="file_input"
+          ref={fileInputRef}
           className="sr-only"
           disabled={file !== null}
           onChange={handleFileChange}
+          accept={acceptFileTypes ? acceptFileTypes.join(', ') : undefined}
         />
         {!fileRef && (
           <div
@@ -126,12 +163,34 @@ const FileUpload = ({ field, value, onChange }: IFieldInputProps): ReactElement 
                 setFile(null)
                 setFileRef(null)
                 onChange(null)
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = ''
+                }
               }}
             />
           </span>
         )}
       </label>
-      {fileRef && <FileDisplay fileRef={fileRef} />}
+      {fileRef && (
+        <div className="flex flex-row gap-2">
+          <FileDisplay fileRef={fileRef} />
+          {!file && (
+            <X
+              className="inline-block ml-1 cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                setFile(null)
+                setFileRef(null)
+                onChange(null)
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = ''
+                }
+              }}
+            />
+          )}
+        </div>
+      )}
     </div>
   )
 }

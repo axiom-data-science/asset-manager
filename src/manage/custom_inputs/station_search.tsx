@@ -37,7 +37,7 @@ const StationSearch = ({ field, onChange, value, disabled }: IFieldInputProps): 
   const [selectedRecord, setSelectedRecord] = useState<string | undefined>(
     value as string | undefined
   )
-  const extraSearchString = field.settings?.extraSearchString
+  const extraSearchString = ***REMOVED******REMOVED*** //field.settings?.extraSearchString
 
   const { data, isLoading, error } = useQuery<ISensorStationSearchResponse>({
     queryKey: [searchValue],

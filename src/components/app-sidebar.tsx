@@ -97,18 +97,18 @@ export function AppSidebar() {
       ],
     },
     {
-      label: ***REMOVED***Users***REMOVED***,
+      label: ***REMOVED***Persons***REMOVED***,
       icon: User,
       actions: [
         {
-          name: ***REMOVED***List users***REMOVED***,
+          name: ***REMOVED***List persons***REMOVED***,
           icon: List,
-          url: ***REMOVED***/users***REMOVED***,
+          url: ***REMOVED***/persons***REMOVED***,
         },
         {
-          name: ***REMOVED***Create user***REMOVED***,
+          name: ***REMOVED***Create person***REMOVED***,
           icon: Plus,
-          url: ***REMOVED***/users/create***REMOVED***,
+          url: ***REMOVED***/persons/create***REMOVED***,
         },
       ],
     },
@@ -120,9 +120,9 @@ export function AppSidebar() {
           name: ***REMOVED***List pipelines***REMOVED***,
           icon: List,
           url: ***REMOVED***/custom/pipelines***REMOVED***,
-        }
-      ]
-    }
+        },
+      ],
+    },
   ]
 
   return (

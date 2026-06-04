@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "station-id": { "type": "string" },
+    "conventions": { "type": "string" },
+    "cdm_data_type": { "type": "string" },
+    "contributor_email": { "type": "string", "format": "email" },
+    "contributor_url": { "type": "string", "format": "uri" },
+    "contributor_role": { "type": "string" },
+    "contributor_role_vocabulary": { "type": "string" },
+    "creator_institution": { "type": "string" },
+    "creator_country": { "type": "string" },
+    "creator_email": { "type": "string", "format": "email" },
+    "creator_name": { "type": "string" },
+    "creator_sector": { "type": "string" },
+    "creator_type": { "type": "string" },
+    "creator_url": { "type": "string", "format": "uri" },
+    "geometry": { "type": "object" },
+    "source_url": { "type": "string", "format": "uri" },
+    "feature_type": { "type": "string" },
+    "time_coverage_end": { "type": "string", "format": "date-time" },
+    "time_coverage_start": { "type": "string", "format": "date-time" },
+    "station_label": { "type": "string" },
+    "sample_file": {
+      "type": "object",
+      "properties": {
+        "file_uri": {
+          "type": "string"
+        },
+        "headers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "data_type": {
+                "type": "string"
+              },
+              "cell_units": {
+                "type": "string"
+              },
+              "cell_header": {
+                "type": "string"
+              },
+              "time_format": {
+                "type": "string"
+              },
+              "cell_parameter": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

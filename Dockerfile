@@ -1,36 +1,34 @@
 # Install dependencies only when needed
-FROM node:24-alpine AS deps
+FROM oven/bun:1 AS deps
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json bun.lockb ./
+RUN bun install
 
 # Rebuild the source code only when needed
-FROM node:24-alpine AS builder
-
-# RUN apk --no-cache add curl
+FROM oven/bun:1 AS builder
+# Include any necessary build tokens
+ARG NEXT_PUBLIC_RWANTHRO_BACKEND_BASE_URL
+ARG NEXT_PUBLIC_RWANTHRO_WORDPRESS_BASE_URL
+ARG NEXT_PUBLIC_RWANTHRO_CALVING_DATA_CSV_URL
+ARG NEXT_PUBLIC_RWANTHRO_INJURY_DATA_CSV_URL
+ARG NEXT_PUBLIC_RWANTHRO_MORTALITY_DATA_CSV_URL
+ARG NEXT_PUBLIC_RWANTHRO_POULATION_DATA_CSV_URL
 WORKDIR /app
-COPY package.json package-lock.json ./
+COPY package.json bun.lockb ./
 COPY public  public
-COPY index.html index.html
 COPY src  src
-COPY eslint.config.js vite.config.ts tsconfig.json tsconfig.app.json tsconfig.node.json ./
+COPY .eslintrc.json tailwind.config.ts next.config.ts postcss.config.mjs tsconfig.json ./
 COPY --from=deps /app/node_modules ./node_modules
+RUN bun run build
 
-ENV NODE_ENV=staging
-
-RUN npm run build
-
-# Production image, copy all the files and run vite
+# Production image, copy all the files and run nginx
 FROM nginx:1.31.0-alpine AS nginx
 WORKDIR /app
 
-COPY --from=builder /app/dist/ /usr/share/nginx/html
+ENV NODE_ENV=production
 
-COPY ./docker/nginx/conf.d/*.template /etc/nginx/templates/
+COPY --from=builder /app/out/ /usr/share/nginx/html
 
-# Adds the runtime envsubstr on /usr/share/nginx/html to update env vars
-# passed to the container (instead of building them into the image)
-COPY ./docker/nginx/env.sh /docker-entrypoint.d/env.sh
-RUN chmod ug=rwx,o=rx /docker-entrypoint.d/env.sh
+COPY ./docker/nginx/conf.d/* /etc/nginx/conf.d/
 
 EXPOSE 80

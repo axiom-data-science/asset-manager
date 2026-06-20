@@ -53,10 +53,6 @@ const SubmitToERDDAPButton = ({
   )
   const onSubmit = async () => {
     setLoading(true)
-    //await new Promise((resolve) => setTimeout(resolve, 2000))
-    //lon:data-%3Egeometry-%3Ecoordinates-%3E0
-    //lat:data-%3Egeometry-%3Ecoordinates-%3E1
-    // id:data-%3E%3Estation-id,infoUrl:data-%3E%3Einfo_url,Conventions:data-%3E%3Econventions,creator_institution:data-%3E%3Ecreator_institution,cdm_data_type:data-%3E%3Ecdm_data_type,contributor_email:data-%3E%3Econtributor_email,contributor_url:data-%3E%3Econtributor_url,contributor_role:data-%3E%3Econtributor_role,contributor_role_vocabulary:data-%3E%3Econtributor_role_vocabulary,creator_country:data-%3E%3Ecreator_country,creator_email:data-%3E%3Ecreator_email,creator_institution:data-%3E%3Ecreator_institution,creator_name:data-%3E%3Ecreator_name,creator_sector:data-%3E%3Ecreator_sector,creator_type:data-%3E%3Ecreator_type,creator_url:data-%3E%3Ecreator_url,Easternmost_Easting:data->geometry->coordinates->0,Westernmost_Easting:data->geometry->coordinates->0,Northernmost_Northing:data->geometry->coordinates->1,Southernmost_Northing:data->geometry->coordinates->1,sourceUrl:data-%3E%3Esource_url,featureType:data-%3E%3Efeature_type,time_coverage_end:data-%3E%3Etime_coverage_end,time_coverage_start:data-%3E%3Etime_coverage_start,geospatial_lat_max:data->geometry->coordinates->1,geospatial_lat_min:data->geometry->coordinates->1,geospatial_lon_max:data->geometry->coordinates->0,geospatial_lon_min:data->geometry->coordinates->0
     const o = {
       acdd: getACDDUrl(uuid, false),
       sample_file: `https://stage-asset-docs-postgrest.srv.axds.co/document?uuid=eq.${uuid}&select=file_uri:data-%3Esample_file-%3E%3Efile_uri,headers:data-%3Esample_file-%3Eheaders`,

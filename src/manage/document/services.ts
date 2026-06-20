@@ -28,6 +28,24 @@ export const fetchDocuments = async <T>({
   return documents
 }
 
+export const fetchDocumentWithPermissions = async <T>({
+  params,
+  token,
+  signal,
+}: {
+  params?: IPostgrestParams
+  token: string
+  signal?: AbortSignal
+}): Promise<(IDocument<T> & { can_modify: boolean })[]> => {
+  const documents = await fetchListFromPostgrest<IDocument<T> & { can_modify: boolean }>({
+    table: ***REMOVED***document_with_permissions***REMOVED***,
+    params,
+    token,
+    signal,
+  })
+  return documents
+}
+
 export const fetchDocument = async <T>({
   uuid,
   params,
@@ -61,7 +79,7 @@ export const fetchDocumentRollup = async ({
   signal?: AbortSignal
 }): Promise<{ label: string; count: number }[]> => {
   const list = await fetchRollupFromPostgrest({
-    table: DOCUMENTS_TABLE,
+    table: ***REMOVED***document_with_permissions***REMOVED***,
     rollupColumn: rollup,
     params,
     token,

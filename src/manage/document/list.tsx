@@ -8,6 +8,7 @@ import Link from '@/manage/components/link'
 import { useAuth } from '@/auth/useAuth'
 import { deleteDocument } from './services'
 import { useQueryClient } from '@tanstack/react-query'
+import { X, CheckIcon } from 'lucide-react'
 
 const DeleteButton = ({
   document,
@@ -127,7 +128,20 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
             {
               label: 'Label',
               id: 'label',
-              accessor: (r) => <Link to={`/document/edit/${r.uuid}`}>{r.label}</Link>,
+              accessor: (r) => (
+                <>
+                  {r.can_modify === true ? (
+                    <Link to={`/document/edit/${r.uuid}`}>{r.label}</Link>
+                  ) : (
+                    r.label
+                  )}
+                </>
+              ),
+            },
+            {
+              id: 'public',
+              label: 'Is public',
+              accessor: (r) => (r.public ? <CheckIcon color="green" /> : <X color="red" />),
             },
             {
               label: 'Type',

@@ -1,5 +1,9 @@
 import { useAuth } from '@/auth/useAuth'
-import { fetchDocumentRollup, fetchDocuments } from '@/manage/document/services'
+import {
+  fetchDocumentRollup,
+  fetchDocuments,
+  fetchDocumentWithPermissions,
+} from '@/manage/document/services'
 import { getObjectTypeListQuery } from '@/manage/object_type/useObjectTypeList'
 import { postgrestRollupArgs } from '@/services/postgrest/endpoints'
 import type { IPostgrestParams } from '@/types/types'
@@ -70,7 +74,7 @@ export const getDocumentListWithRollupsQuery = ({
         )
       )
 
-      const items = await fetchDocuments({
+      const items = await fetchDocumentWithPermissions({
         params: {
           ...params,
           limit: 100,

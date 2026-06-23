@@ -174,6 +174,7 @@ export const useFullDefaultFormAtObjectType = ({
 
   const form =
     forms?.data?.find((f) => f.is_schema_and_version_default) ?? forms?.data?.[0] ?? undefined
+  
 
   const queryObjects = {
     //form: getFormAtObjectTypeQuery({object_type_uuid, token: auth.user?.access_token}),
@@ -191,7 +192,7 @@ export const useFullDefaultFormAtObjectType = ({
         form_uuid: form?.uuid ?? 'NA',
         token: auth.user?.access_token ?? '',
       }),
-      enabled: !!forms.data && !!auth.user?.access_token && object_type_uuid !== '',
+      enabled: !!form && !!auth.user?.access_token && object_type_uuid !== '',
     },
     object_schema: {
       ...getSchemaAtFormQuery({

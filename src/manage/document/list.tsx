@@ -8,7 +8,7 @@ import Link from '@/manage/components/link'
 import { useAuth } from '@/auth/useAuth'
 import { deleteDocument } from './services'
 import { useQueryClient } from '@tanstack/react-query'
-import { X, CheckIcon } from 'lucide-react'
+import { X, CheckIcon, Lock, Unlock } from 'lucide-react'
 
 const DeleteButton = ({
   document,
@@ -77,6 +77,7 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
     targetedParams,
     rollups,
   })
+  const auth = useAuth()
   const object_types_map = Object.fromEntries(object_types.map((ot) => [ot.uuid, ot]))
   const queryClient = useQueryClient()
   const onDeleteItem = (): void => {
@@ -144,6 +145,11 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
               accessor: (r) => (r.public ? <CheckIcon color="green" /> : <X color="red" />),
             },
             {
+              id: 'locked',
+              label: 'Is locked',
+              accessor: (r) => (r.lock_sub ? <Lock color={`${r.lock_sub === auth?.user?.profile?.sub ? 'green' : 'red'}`} /> : <Unlock color='green' />)
+            },
+            {
               label: 'Type',
               id: 'object_type_uuid',
               accessor: (r) => (
@@ -169,8 +175,10 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
             {
               label: 'Delete',
               id: 'delete',
-              accessor: (r) => <DeleteButton document={r as IDocument} onDelete={onDeleteItem} />,
-            },
+              accessor: (r) => {
+                return r.can_modify ? <DeleteButton document={r as IDocument} onDelete={onDeleteItem} /> : null
+              }
+            }
           ]}
         />
       )}

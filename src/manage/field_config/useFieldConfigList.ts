@@ -64,6 +64,9 @@ export const getFieldConfigListAtFormQuery = ({form_uuid, params, token}: {form_
     return queryOptions({
         queryKey: fieldConfigAtFormListQueryKey({params, form_uuid}),
         queryFn: async ({ signal }) => {
+            if(form_uuid === ***REMOVED******REMOVED***){
+                return []
+            }
             const items = await fetchFieldConfigsAtForm({
                 form_uuid,
                 params,

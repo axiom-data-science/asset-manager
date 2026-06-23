@@ -8,7 +8,7 @@ import Link from ***REMOVED***@/manage/components/link***REMOVED***
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
 import { deleteDocument } from ***REMOVED***./services***REMOVED***
 import { useQueryClient } from ***REMOVED***@tanstack/react-query***REMOVED***
-import { X, CheckIcon } from ***REMOVED***lucide-react***REMOVED***
+import { X, CheckIcon, Lock, Unlock } from ***REMOVED***lucide-react***REMOVED***
 
 const DeleteButton = ({
   document,
@@ -77,6 +77,7 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
     targetedParams,
     rollups,
   })
+  const auth = useAuth()
   const object_types_map = Object.fromEntries(object_types.map((ot) => [ot.uuid, ot]))
   const queryClient = useQueryClient()
   const onDeleteItem = (): void => {
@@ -144,6 +145,11 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
               accessor: (r) => (r.public ? <CheckIcon color="green" /> : <X color="red" />),
             },
             {
+              id: ***REMOVED***locked***REMOVED***,
+              label: ***REMOVED***Is locked***REMOVED***,
+              accessor: (r) => (r.lock_sub ? <Lock color={`${r.lock_sub === auth?.user?.profile?.sub ? ***REMOVED***green***REMOVED*** : ***REMOVED***red***REMOVED***}`} /> : <Unlock color=***REMOVED***green***REMOVED*** />)
+            },
+            {
               label: ***REMOVED***Type***REMOVED***,
               id: ***REMOVED***object_type_uuid***REMOVED***,
               accessor: (r) => (
@@ -169,8 +175,10 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
             {
               label: ***REMOVED***Delete***REMOVED***,
               id: ***REMOVED***delete***REMOVED***,
-              accessor: (r) => <DeleteButton document={r as IDocument} onDelete={onDeleteItem} />,
-            },
+              accessor: (r) => {
+                return r.can_modify ? <DeleteButton document={r as IDocument} onDelete={onDeleteItem} /> : null
+              }
+            }
           ]}
         />
       )}

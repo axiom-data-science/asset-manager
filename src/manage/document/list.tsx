@@ -140,14 +140,37 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
               ),
             },
             {
-              id: 'public',
-              label: 'Is public',
-              accessor: (r) => (r.public ? <CheckIcon color="green" /> : <X color="red" />),
+              id: 'published',
+              label: 'Published',
+              accessor: (r) =>
+                r.published ? (
+                  <>
+                    <CheckIcon color="green" className="mx-auto" />
+                    <p className="text-[10px] text-slate-400 text-center">
+                      {r.published_at ? new Date(r.published_at).toLocaleString() : ''}
+                    </p>
+                  </>
+                ) : (
+                  <X color="red" className="mx-auto" />
+                ),
             },
             {
               id: 'locked',
-              label: 'Is locked',
-              accessor: (r) => (r.lock_sub ? <Lock color={`${r.lock_sub === auth?.user?.profile?.sub ? 'green' : 'red'}`} /> : <Unlock color='green' />)
+              label: 'Locked',
+              accessor: (r) =>
+                r.lock_sub ? (
+                  <>
+                    <Lock
+                      color={`${r.lock_sub === auth?.user?.profile?.sub ? 'green' : 'red'}`}
+                      className="mx-auto"
+                    />
+                    <p className="text-[10px] text-slate-400 text-center">
+                      {r.locked_at ? new Date(r.locked_at).toLocaleString() : ''}
+                    </p>
+                  </>
+                ) : (
+                  <Unlock color="green" className="mx-auto" />
+                ),
             },
             {
               label: 'Type',
@@ -176,9 +199,11 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
               label: 'Delete',
               id: 'delete',
               accessor: (r) => {
-                return r.can_modify ? <DeleteButton document={r as IDocument} onDelete={onDeleteItem} /> : null
-              }
-            }
+                return r.can_modify ? (
+                  <DeleteButton document={r as IDocument} onDelete={onDeleteItem} />
+                ) : null
+              },
+            },
           ]}
         />
       )}

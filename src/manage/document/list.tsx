@@ -140,14 +140,37 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
               ),
             },
             {
-              id: ***REMOVED***public***REMOVED***,
-              label: ***REMOVED***Is public***REMOVED***,
-              accessor: (r) => (r.public ? <CheckIcon color="green" /> : <X color="red" />),
+              id: ***REMOVED***published***REMOVED***,
+              label: ***REMOVED***Published***REMOVED***,
+              accessor: (r) =>
+                r.published ? (
+                  <>
+                    <CheckIcon color="green" className="mx-auto" />
+                    <p className="text-[10px] text-slate-400 text-center">
+                      {r.published_at ? new Date(r.published_at).toLocaleString() : ***REMOVED******REMOVED***}
+                    </p>
+                  </>
+                ) : (
+                  <X color="red" className="mx-auto" />
+                ),
             },
             {
               id: ***REMOVED***locked***REMOVED***,
-              label: ***REMOVED***Is locked***REMOVED***,
-              accessor: (r) => (r.lock_sub ? <Lock color={`${r.lock_sub === auth?.user?.profile?.sub ? ***REMOVED***green***REMOVED*** : ***REMOVED***red***REMOVED***}`} /> : <Unlock color=***REMOVED***green***REMOVED*** />)
+              label: ***REMOVED***Locked***REMOVED***,
+              accessor: (r) =>
+                r.lock_sub ? (
+                  <>
+                    <Lock
+                      color={`${r.lock_sub === auth?.user?.profile?.sub ? ***REMOVED***green***REMOVED*** : ***REMOVED***red***REMOVED***}`}
+                      className="mx-auto"
+                    />
+                    <p className="text-[10px] text-slate-400 text-center">
+                      {r.locked_at ? new Date(r.locked_at).toLocaleString() : ***REMOVED******REMOVED***}
+                    </p>
+                  </>
+                ) : (
+                  <Unlock color="green" className="mx-auto" />
+                ),
             },
             {
               label: ***REMOVED***Type***REMOVED***,
@@ -176,9 +199,11 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
               label: ***REMOVED***Delete***REMOVED***,
               id: ***REMOVED***delete***REMOVED***,
               accessor: (r) => {
-                return r.can_modify ? <DeleteButton document={r as IDocument} onDelete={onDeleteItem} /> : null
-              }
-            }
+                return r.can_modify ? (
+                  <DeleteButton document={r as IDocument} onDelete={onDeleteItem} />
+                ) : null
+              },
+            },
           ]}
         />
       )}

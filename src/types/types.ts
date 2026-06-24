@@ -49,7 +49,8 @@ export type IDefaultDocumentAttributes = Record<string, string | number | boolea
 export type IDocument<T = IDefaultDocumentType, A = IDefaultDocumentAttributes> = {
   uuid: string
   slug: string
-  public: boolean
+  published: boolean
+  published_at: string | null
   owner_sub: string
   lock_sub: string | null
   locked_at: string | null

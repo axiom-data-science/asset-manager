@@ -1,14 +1,19 @@
 import { useAuth } from '@/auth/useAuth'
 import { queryOptions, useQuery } from '@tanstack/react-query'
-import { fetchDefaultFormAtObjectType, fetchForm } from './services'
+import { fetchDefaultFormAtObjectType, fetchForm, fetchForms } from './services'
 import { useCombinedQueries } from '@/hooks/use-combined-queries'
 import { getObjectTypeListQuery } from '@/manage/object_type/useObjectTypeList'
 import { getFieldConfigListAtFormQuery } from '../field_config/useFieldConfigList'
-import { fetchSchemaAtForm } from '@/manage/object_schema/services'
+import {
+  fetchObjectSchema,
+  fetchObjectSchemaAndObjectTypeAtObjectType,
+  fetchSchemaAtForm,
+} from '@/manage/object_schema/services'
 import { postgrestArgs } from '@/services/postgrest/endpoints'
 import type { IPostgrestParams } from '@/types/types'
 import { getObjectSchemaAndObjectTypeQuery } from '../object_schema/useObjectSchema'
 import { getFormListForObjectTypeQueryOptions } from './useFormList'
+import { fetchFieldConfigsAtForm } from '../field_config/services'
 
 export const formQueryKey = (uuid?: string, params?: IPostgrestParams) => [
   'form',
@@ -174,7 +179,6 @@ export const useFullDefaultFormAtObjectType = ({
 
   const form =
     forms?.data?.find((f) => f.is_schema_and_version_default) ?? forms?.data?.[0] ?? undefined
-  
 
   const queryObjects = {
     //form: getFormAtObjectTypeQuery({object_type_uuid, token: auth.user?.access_token}),
@@ -204,4 +208,62 @@ export const useFullDefaultFormAtObjectType = ({
   }
 
   return useCombinedQueries(queryObjects)
+}
+
+export const useFormAndSchemaAtObjectType = ({
+  object_type_uuid,
+}: {
+  object_type_uuid: string
+}) => {
+  const auth = useAuth()
+  const token = auth.user?.access_token
+
+  return useQuery({
+    enabled: token !== undefined,
+    queryKey: ['form', 'schema', object_type_uuid],
+    queryFn: async ({ signal }) => {
+      const forms = await fetchForms({
+        params: {
+          filters: [
+            {
+              column: 'object_type_uuid',
+              value: object_type_uuid,
+              operator: 'eq',
+            },
+          ],
+          limit: 100,
+        },
+        token: token ?? '',
+        signal,
+      })
+
+      const object_schema = await fetchObjectSchemaAndObjectTypeAtObjectType({
+        object_type_uuid,
+        token: token ?? '',
+        signal,
+      })
+
+      const defaultForm =
+        forms.length > 0
+          ? (forms.find((f) => f.is_schema_and_version_default) ??
+            forms.sort((a, b) => a.created_at.localeCompare(b.created_at))[0])
+          : undefined
+
+      const field_configs =
+        defaultForm !== undefined
+          ? await fetchFieldConfigsAtForm({
+              form_uuid: defaultForm?.uuid ?? 'NA',
+              token: token ?? '',
+              signal,
+            })
+          : []
+
+      return {
+        forms,
+        form: defaultForm,
+        object_schema,
+        field_configs,
+      }
+    },
+  })
 }

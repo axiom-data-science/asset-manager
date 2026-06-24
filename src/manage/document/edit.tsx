@@ -17,7 +17,7 @@ import { omit } from 'lodash-es'
 import { removeUndefinedAndNullKeys, validate } from '@/lib/utils'
 import Errors from '@/manage/components/errors'
 import { documentQueryKey, useDocument } from './useDocument'
-import { useFullDefaultFormAtObjectType } from '@/manage/form/useForm'
+import { useFormAndSchemaAtObjectType } from '@/manage/form/useForm'
 import { useQueryClient } from '@tanstack/react-query'
 import FileUpload from '@/manage/custom_inputs/file_upload'
 import StationSearch from '@/manage/custom_inputs/station_search'
@@ -37,7 +37,6 @@ const EditDocumentForm = ({
 }): ReactElement => {
   const navigate = useNavigate()
   const [saving, setSaving] = useState(false)
-  const [formValues, setFormValues] = useState<IFormValues>(document.data as unknown as IFormValues)
   const [errors, setErrors] = useState<IValidationError[]>([])
   const auth = useAuth()
   const queryClient = useQueryClient()
@@ -88,13 +87,18 @@ const EditDocumentForm = ({
           )
         : schemaToFormUtils.schemaToFormObject(schema.json_schema)
   ) as IForm
-  const form =
+
+  const useDataForm =
     dataForm.fields?.length ||
     dataForm.pages?.length ||
     dataForm.wizard_steps?.length ||
     dataForm.tabs?.length
-      ? dataForm
-      : defaultForm
+
+  const form = useDataForm ? dataForm : defaultForm
+
+  const [formValues, setFormValues] = useState<IFormValues>({
+    ...(useDataForm ? document.data : document),
+  } as unknown as IFormValues)
 
   const onSave = async () => {
     setSaving(true)
@@ -182,7 +186,7 @@ const EditDocumentForm = ({
 }
 
 const LoadSchemaAndCreateDocumentForm = ({ document }: { document: IDocument }): ReactElement => {
-  const { data, isLoading, error } = useFullDefaultFormAtObjectType({
+  const { data, isLoading, error } = useFormAndSchemaAtObjectType({
     object_type_uuid: document.object_type_uuid,
   })
   return (

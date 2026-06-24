@@ -1,14 +1,19 @@
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
 import { queryOptions, useQuery } from ***REMOVED***@tanstack/react-query***REMOVED***
-import { fetchDefaultFormAtObjectType, fetchForm } from ***REMOVED***./services***REMOVED***
+import { fetchDefaultFormAtObjectType, fetchForm, fetchForms } from ***REMOVED***./services***REMOVED***
 import { useCombinedQueries } from ***REMOVED***@/hooks/use-combined-queries***REMOVED***
 import { getObjectTypeListQuery } from ***REMOVED***@/manage/object_type/useObjectTypeList***REMOVED***
 import { getFieldConfigListAtFormQuery } from ***REMOVED***../field_config/useFieldConfigList***REMOVED***
-import { fetchSchemaAtForm } from ***REMOVED***@/manage/object_schema/services***REMOVED***
+import {
+  fetchObjectSchema,
+  fetchObjectSchemaAndObjectTypeAtObjectType,
+  fetchSchemaAtForm,
+} from ***REMOVED***@/manage/object_schema/services***REMOVED***
 import { postgrestArgs } from ***REMOVED***@/services/postgrest/endpoints***REMOVED***
 import type { IPostgrestParams } from ***REMOVED***@/types/types***REMOVED***
 import { getObjectSchemaAndObjectTypeQuery } from ***REMOVED***../object_schema/useObjectSchema***REMOVED***
 import { getFormListForObjectTypeQueryOptions } from ***REMOVED***./useFormList***REMOVED***
+import { fetchFieldConfigsAtForm } from ***REMOVED***../field_config/services***REMOVED***
 
 export const formQueryKey = (uuid?: string, params?: IPostgrestParams) => [
   ***REMOVED***form***REMOVED***,
@@ -174,7 +179,6 @@ export const useFullDefaultFormAtObjectType = ({
 
   const form =
     forms?.data?.find((f) => f.is_schema_and_version_default) ?? forms?.data?.[0] ?? undefined
-  
 
   const queryObjects = {
     //form: getFormAtObjectTypeQuery({object_type_uuid, token: auth.user?.access_token}),
@@ -204,4 +208,62 @@ export const useFullDefaultFormAtObjectType = ({
   }
 
   return useCombinedQueries(queryObjects)
+}
+
+export const useFormAndSchemaAtObjectType = ({
+  object_type_uuid,
+}: {
+  object_type_uuid: string
+}) => {
+  const auth = useAuth()
+  const token = auth.user?.access_token
+
+  return useQuery({
+    enabled: token !== undefined,
+    queryKey: [***REMOVED***form***REMOVED***, ***REMOVED***schema***REMOVED***, object_type_uuid],
+    queryFn: async ({ signal }) => {
+      const forms = await fetchForms({
+        params: {
+          filters: [
+            {
+              column: ***REMOVED***object_type_uuid***REMOVED***,
+              value: object_type_uuid,
+              operator: ***REMOVED***eq***REMOVED***,
+            },
+          ],
+          limit: 100,
+        },
+        token: token ?? ***REMOVED******REMOVED***,
+        signal,
+      })
+
+      const object_schema = await fetchObjectSchemaAndObjectTypeAtObjectType({
+        object_type_uuid,
+        token: token ?? ***REMOVED******REMOVED***,
+        signal,
+      })
+
+      const defaultForm =
+        forms.length > 0
+          ? (forms.find((f) => f.is_schema_and_version_default) ??
+            forms.sort((a, b) => a.created_at.localeCompare(b.created_at))[0])
+          : undefined
+
+      const field_configs =
+        defaultForm !== undefined
+          ? await fetchFieldConfigsAtForm({
+              form_uuid: defaultForm?.uuid ?? ***REMOVED***NA***REMOVED***,
+              token: token ?? ***REMOVED******REMOVED***,
+              signal,
+            })
+          : []
+
+      return {
+        forms,
+        form: defaultForm,
+        object_schema,
+        field_configs,
+      }
+    },
+  })
 }

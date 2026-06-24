@@ -17,7 +17,7 @@ import { omit } from ***REMOVED***lodash-es***REMOVED***
 import { removeUndefinedAndNullKeys, validate } from ***REMOVED***@/lib/utils***REMOVED***
 import Errors from ***REMOVED***@/manage/components/errors***REMOVED***
 import { documentQueryKey, useDocument } from ***REMOVED***./useDocument***REMOVED***
-import { useFullDefaultFormAtObjectType } from ***REMOVED***@/manage/form/useForm***REMOVED***
+import { useFormAndSchemaAtObjectType } from ***REMOVED***@/manage/form/useForm***REMOVED***
 import { useQueryClient } from ***REMOVED***@tanstack/react-query***REMOVED***
 import FileUpload from ***REMOVED***@/manage/custom_inputs/file_upload***REMOVED***
 import StationSearch from ***REMOVED***@/manage/custom_inputs/station_search***REMOVED***
@@ -37,7 +37,6 @@ const EditDocumentForm = ({
 }): ReactElement => {
   const navigate = useNavigate()
   const [saving, setSaving] = useState(false)
-  const [formValues, setFormValues] = useState<IFormValues>(document.data as unknown as IFormValues)
   const [errors, setErrors] = useState<IValidationError[]>([])
   const auth = useAuth()
   const queryClient = useQueryClient()
@@ -88,13 +87,18 @@ const EditDocumentForm = ({
           )
         : schemaToFormUtils.schemaToFormObject(schema.json_schema)
   ) as IForm
-  const form =
+
+  const useDataForm =
     dataForm.fields?.length ||
     dataForm.pages?.length ||
     dataForm.wizard_steps?.length ||
     dataForm.tabs?.length
-      ? dataForm
-      : defaultForm
+
+  const form = useDataForm ? dataForm : defaultForm
+
+  const [formValues, setFormValues] = useState<IFormValues>({
+    ...(useDataForm ? document.data : document),
+  } as unknown as IFormValues)
 
   const onSave = async () => {
     setSaving(true)
@@ -182,7 +186,7 @@ const EditDocumentForm = ({
 }
 
 const LoadSchemaAndCreateDocumentForm = ({ document }: { document: IDocument }): ReactElement => {
-  const { data, isLoading, error } = useFullDefaultFormAtObjectType({
+  const { data, isLoading, error } = useFormAndSchemaAtObjectType({
     object_type_uuid: document.object_type_uuid,
   })
   return (

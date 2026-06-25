@@ -41,12 +41,13 @@ export type IPostgrestParams<T = Record<string, string>> = {
       }
   )[]
   filters?: IPostgrestFilter[]
+  orFilters?: IPostgrestFilter[]
 }
 
 export type IDefaultDocumentType = Record<string, string | number | boolean | null>
 export type IDefaultDocumentAttributes = Record<string, string | number | boolean | null>
 
-export type IDocument<T = IDefaultDocumentType, A = IDefaultDocumentAttributes> = {
+export type IDocument<T = unknown, A = unknown> = {
   uuid: string
   slug: string
   published: boolean

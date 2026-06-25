@@ -10,7 +10,7 @@ import {
 } from ***REMOVED***@/components/ui/sidebar***REMOVED***
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from ***REMOVED***@/components/ui/collapsible***REMOVED***
-import { Book, BookPlus, ChevronDown, List, Network, Plus, User } from ***REMOVED***lucide-react***REMOVED***
+import { Book, BookPlus, ChevronDown, FilePen, List, Lock, Network, PersonStanding, Plus, Share, User } from ***REMOVED***lucide-react***REMOVED***
 import { SidebarGroupContent, SidebarGroupLabel } from ***REMOVED***@/components/ui/sidebar***REMOVED***
 import { Link } from ***REMOVED***react-router-dom***REMOVED***
 
@@ -113,14 +113,29 @@ export function AppSidebar() {
       ],
     },
     {
-      label: ***REMOVED***Custom NINJA API***REMOVED***,
-      icon: Network,
+      label: ***REMOVED***Examples***REMOVED***,
+      icon: FilePen,
       actions: [
         {
-          name: ***REMOVED***List pipelines***REMOVED***,
+          name: ***REMOVED***List NINJA pipelines***REMOVED***,
           icon: List,
           url: ***REMOVED***/custom/pipelines***REMOVED***,
         },
+        {
+          name: ***REMOVED***Lock/unlock document***REMOVED***,
+          icon: Lock,
+          url: ***REMOVED***/examples/lock-unlock-documents***REMOVED***,
+        },
+        {
+          name: ***REMOVED***Share document***REMOVED***,
+          icon: Share,
+          url: ***REMOVED***/examples/share-document***REMOVED***,
+        },
+        {
+          name: ***REMOVED***List Authentik users***REMOVED***,
+          icon: PersonStanding,
+          url: ***REMOVED***/examples/authentik-users***REMOVED***,
+        }
       ],
     },
   ]

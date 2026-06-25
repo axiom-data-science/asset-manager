@@ -2,12 +2,20 @@ import { OIDC_POST_LOGOUT_REDIRECT_URI } from ***REMOVED***@/config/config***REM
 import type { IAuth } from ***REMOVED***@/types/types***REMOVED***
 import { useAuth as useOIDCAuth } from ***REMOVED***react-oidc-context***REMOVED***
 import { useNavigate } from ***REMOVED***react-router-dom***REMOVED***
+
+export const useIsAdmin = (roles: string[] | undefined): boolean => {
+  if (!roles) return false
+  return roles.find(r => r.match(/admin/)) !== undefined
+}
+
 export const useAuth = (): IAuth => {
   const auth = useOIDCAuth()
   const [firstName, lastName] = auth.user?.profile?.given_name
     ? auth.user.profile.given_name.split(***REMOVED*** ***REMOVED***)
     : [null, null]
   const navigate = useNavigate()
+  const roles: string[] = auth.user?.profile?.roles as string[] ?? []
+  const isAdmin = useIsAdmin(roles)
   return {
     ...auth,
     logout: async () => {
@@ -41,6 +49,7 @@ export const useAuth = (): IAuth => {
             email: auth.user.profile?.email,
             firstName,
             lastName,
+            isAdmin,
             ...Object.fromEntries(
               Object.entries(auth.user.profile || {}).filter(
                 ([key]) => ![***REMOVED***sub***REMOVED***, ***REMOVED***name***REMOVED***, ***REMOVED***email***REMOVED***].includes(key)

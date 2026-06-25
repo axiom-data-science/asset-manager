@@ -71,20 +71,20 @@ const EditDocumentForm = ({
     []
   const dataForm = (
     assetForm?.use_form_config === true &&
-    assetForm?.form_config !== undefined &&
-    assetForm?.form_config !== null
+      assetForm?.form_config !== undefined &&
+      assetForm?.form_config !== null
       ? assetForm.form_config
       : assetForm?.schema_override_config !== undefined || fieldConfigJSON !== undefined
         ? omit(
-            schemaToFormUtils.overridesAndSchemaToFormObject({
-              schema: schema.json_schema,
-              formOverrides: assetForm?.schema_override_config
-                ? [assetForm?.schema_override_config as IFormOverride]
-                : undefined,
-              formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
-            }),
-            ***REMOVED***label***REMOVED***
-          )
+          schemaToFormUtils.overridesAndSchemaToFormObject({
+            schema: schema.json_schema,
+            formOverrides: assetForm?.schema_override_config
+              ? [assetForm?.schema_override_config as IFormOverride]
+              : undefined,
+            formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
+          }),
+          ***REMOVED***label***REMOVED***
+        )
         : schemaToFormUtils.schemaToFormObject(schema.json_schema)
   ) as IForm
 
@@ -97,7 +97,7 @@ const EditDocumentForm = ({
   const form = useDataForm ? dataForm : defaultForm
 
   const [formValues, setFormValues] = useState<IFormValues>({
-    ...(useDataForm ? document.data : document),
+    ...(useDataForm ? document.data as JSON : document),
   } as unknown as IFormValues)
 
   const onSave = async () => {
@@ -117,24 +117,27 @@ const EditDocumentForm = ({
     }
     setErrors([])
     try {
+      const cleanValues = removeUndefinedAndNullKeys(formValues)
+      const mergedData = {
+        ...document.data as JSON,
+        ...(useDataForm ? cleanValues : cleanValues.data as JSON),
+      }
+      const mergedDocument = {
+        ...document,
+        ...{
+          label:
+            formValues.label ??
+            formValues.title ??
+            formValues.platform_name ??
+            formValues.station_label ??
+            ***REMOVED***Untitled Document***REMOVED***,
+          description: formValues.description ?? ***REMOVED******REMOVED***,
+          data: mergedData,
+        },
+      } as IDocument
       await patchDocument({
         uuid: document.uuid,
-        document: {
-          ...document,
-          ...{
-            label:
-              formValues.label ??
-              formValues.title ??
-              formValues.platform_name ??
-              formValues.station_label ??
-              ***REMOVED***Untitled Document***REMOVED***,
-            description: formValues.description ?? ***REMOVED******REMOVED***,
-            data: {
-              ...document.data,
-              ...removeUndefinedAndNullKeys(formValues),
-            },
-          },
-        } as IDocument,
+        document: mergedDocument,
         token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
       })
 

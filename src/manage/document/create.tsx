@@ -78,30 +78,31 @@ const CreateDocumentForm = ({
     []
   const dataForm = (
     assetForm?.use_form_config === true &&
-    assetForm?.form_config !== undefined &&
-    assetForm?.form_config !== null
+      assetForm?.form_config !== undefined &&
+      assetForm?.form_config !== null
       ? assetForm.form_config
       : assetForm?.schema_override_config !== undefined || fieldConfigJSON !== undefined
         ? omit(
-            schemaToFormUtils.overridesAndSchemaToFormObject({
-              schema: schema.json_schema,
-              formOverrides: assetForm?.schema_override_config
-                ? [assetForm?.schema_override_config as IFormOverride]
-                : undefined,
-              formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
-            }),
-            ***REMOVED***label***REMOVED***
-          )
+          schemaToFormUtils.overridesAndSchemaToFormObject({
+            schema: schema.json_schema,
+            formOverrides: assetForm?.schema_override_config
+              ? [assetForm?.schema_override_config as IFormOverride]
+              : undefined,
+            formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
+          }),
+          ***REMOVED***label***REMOVED***
+        )
         : schemaToFormUtils.schemaToFormObject(schema.json_schema)
   ) as IForm
 
-  const formJSON =
-    dataForm.fields?.length ||
+  const useDataForm = !!(dataForm.fields?.length ||
     dataForm.pages?.length ||
     dataForm.wizard_steps?.length ||
-    dataForm.tabs?.length
-      ? dataForm
-      : defaultForm
+    dataForm.tabs?.length)
+
+  const formJSON = useDataForm
+    ? dataForm
+    : defaultForm
 
   const {
     form,
@@ -130,19 +131,23 @@ const CreateDocumentForm = ({
         formValues.platform_name ??
         formValues.station_label ??
         ***REMOVED***Untitled Document***REMOVED***
+
       const slug =
         formValues.slug ??
         String(label)
           .toLowerCase()
           .replace(/\s+/g, ***REMOVED***-***REMOVED***)
           .replace(/[^a-z0-9-]/g, ***REMOVED******REMOVED***)
+      const description = formValues.description ?? ***REMOVED******REMOVED***
+      const docToSave = {
+        object_type_uuid: type.uuid,
+        label,
+        description,
+        slug,
+        data: useDataForm ? valuesToSave : valuesToSave.data as JSON,
+      } as Omit<IDocument, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>
       const newDoc = await postDocument({
-        document: {
-          object_type_uuid: type.uuid,
-          label,
-          slug,
-          data: valuesToSave,
-        } as Omit<IDocument, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
+        document: docToSave,
         token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
       })
 

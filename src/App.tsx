@@ -28,6 +28,10 @@ import SimpleLayout from './layouts/simple'
 import PipelineList from '@/manage/custom/pipeline/list'
 import CreateDocumentSuccess from './manage/document/create_success'
 import PersonsList from './manage/person/list'
+import LockDocuments from '@/examples/lock-document'
+import ShareDocuments from '@/examples/share-document'
+import PopoverTest from '@/examples/popover-test'
+import AuthentikUsers from '@/examples/authentik-users'
 
 const Authed = (): ReactElement => {
   const navigate = useNavigate()
@@ -341,6 +345,12 @@ function App(): ReactElement {
                 </SidebarLayout>
               }
             />
+            <Route path="examples">
+              <Route path="lock-unlock-documents" element={<SidebarLayout><LockDocuments /></SidebarLayout>} />
+              <Route path="share-document" element={<SidebarLayout><ShareDocuments /></SidebarLayout>} />
+              <Route path="popover" element={<PopoverTest />} />
+              <Route path="authentik-users" element={<SidebarLayout><AuthentikUsers /></SidebarLayout>} />
+            </Route>
           </Routes>
         )}
       </QueryClientProvider>

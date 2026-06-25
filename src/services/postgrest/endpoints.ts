@@ -1,21 +1,32 @@
 import { APPS_API_BASE_URL } from '@/config/config'
-import type { IPostgrestParams } from '@/types/types'
+import type { IPostgrestFilter, IPostgrestParams } from '@/types/types'
 
-export const postgrestArgs = <T>(
-  params: IPostgrestParams<T>,
-  existingArgs?: URLSearchParams
-): URLSearchParams => {
-  const args = existingArgs ?? new URLSearchParams()
 
-  ;(params.filters ?? []).forEach((f) => {
-    const operator = f.operator ?? 'eq'
+const postgrestFilterArg = (f:IPostgrestFilter) => {
+  const operator = f.operator ?? 'eq'
     const valForOperator =
       operator === 'in'
         ? `(${Array.isArray(f.value) ? f.value.join(',') : String(f.value)})`
         : String(f.value)
 
-    args.append(String(f.column), `${f.not ? 'not.' : ''}${operator}.${valForOperator}`)
-  })
+    return `${f.not ? 'not.' : ''}${operator}.${valForOperator}`
+  
+
+}
+
+export const postgrestArgs = <T>(
+  params: IPostgrestParams<T>,
+  existingArgs?: URLSearchParams
+): URLSearchParams => {
+  const args = existingArgs || new URLSearchParams();
+
+  (params.filters ?? []).forEach((f) => {
+    args.append(String(f.column),postgrestFilterArg(f))
+  });
+  if(params.orFilters !== undefined && params.orFilters.length > 0) {
+    const orFilters = params.orFilters.map((f) => `${String(f.column)}.${postgrestFilterArg(f)}`).join(',')
+    args.append('or', `(${orFilters})`)
+  }
   if (params.limit !== undefined) {
     args.append('limit', params.limit.toString())
   }

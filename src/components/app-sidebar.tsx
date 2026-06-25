@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/sidebar'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { Book, BookPlus, ChevronDown, List, Network, Plus, User } from 'lucide-react'
+import { Book, BookPlus, ChevronDown, FilePen, List, Lock, Network, PersonStanding, Plus, Share, User } from 'lucide-react'
 import { SidebarGroupContent, SidebarGroupLabel } from '@/components/ui/sidebar'
 import { Link } from 'react-router-dom'
 
@@ -113,14 +113,29 @@ export function AppSidebar() {
       ],
     },
     {
-      label: 'Custom NINJA API',
-      icon: Network,
+      label: 'Examples',
+      icon: FilePen,
       actions: [
         {
-          name: 'List pipelines',
+          name: 'List NINJA pipelines',
           icon: List,
           url: '/custom/pipelines',
         },
+        {
+          name: 'Lock/unlock document',
+          icon: Lock,
+          url: '/examples/lock-unlock-documents',
+        },
+        {
+          name: 'Share document',
+          icon: Share,
+          url: '/examples/share-document',
+        },
+        {
+          name: 'List Authentik users',
+          icon: PersonStanding,
+          url: '/examples/authentik-users',
+        }
       ],
     },
   ]

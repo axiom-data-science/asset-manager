@@ -396,7 +396,12 @@ export const updateDocumentLock = async ({
       }),
     })
   ).json()
-  return !!((request && request?.length) > 0)
+  const doc = request && request?.length > 0 ? request[0] : null
+  return doc
+    ? lock
+      ? doc.lock_sub === user_sub
+      : doc.lock_sub === null
+    : false
 }
 
 export const lockDocument = async (params: {

@@ -44,10 +44,6 @@ const PersonsList = (): ReactElement => {
                     id: 'label',
                   },
                   {
-                    label: 'Admin?',
-                    id: 'admin',
-                  },
-                  {
                     label: 'Owner',
                     id: 'owner_sub',
                   },

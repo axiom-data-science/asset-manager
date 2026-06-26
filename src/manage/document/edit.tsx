@@ -25,9 +25,13 @@ import CSVUploadForSampleFile from ***REMOVED***../custom_inputs/csv_upload_for_
 import { lockDocument, unlockDocument } from ***REMOVED***@/services/postgrest/services***REMOVED***
 import { Lock, Unlock } from ***REMOVED***lucide-react***REMOVED***
 
-
-
-const DocumentLockStatus = ({ document, className }: { document: IDocument, className?: string }): ReactElement => {
+const DocumentLockStatus = ({
+  document,
+  className,
+}: {
+  document: IDocument
+  className?: string
+}): ReactElement => {
   const auth = useAuth()
   const [locked, setLocked] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
@@ -70,30 +74,33 @@ const DocumentLockStatus = ({ document, className }: { document: IDocument, clas
     updateLockStatus(false)
   }
 
-
-  if (auth === undefined) {
-    return <>!</>
-  }
-
   useEffect(() => {
     lock()
     return () => {
       unlock()
     }
-  }, [])
+  })
+
+  if (auth === undefined) {
+    return <>!</>
+  }
 
   return (
-    <span className={cn(***REMOVED***w-8 h-8 flex flex-row items-center justify-center rounded-sm shadow-md bg-slate-200***REMOVED***, className)}>
-      {
-        isUpdating ?
-          <Loader size=***REMOVED***sm***REMOVED*** /> :
-          locked ?
-            <Lock className="w-4 h-4 text-slate-800" /> :
-            <Unlock className="w-4 h-4 text-red-800" />
-      }
+    <span
+      className={cn(
+        ***REMOVED***w-8 h-8 flex flex-row items-center justify-center rounded-sm shadow-md bg-slate-200***REMOVED***,
+        className
+      )}
+    >
+      {isUpdating ? (
+        <Loader size="sm" />
+      ) : locked ? (
+        <Lock className="w-4 h-4 text-slate-800" />
+      ) : (
+        <Unlock className="w-4 h-4 text-red-800" />
+      )}
     </span>
   )
-
 }
 
 const EditDocumentForm = ({
@@ -142,20 +149,20 @@ const EditDocumentForm = ({
     []
   const dataForm = (
     assetForm?.use_form_config === true &&
-      assetForm?.form_config !== undefined &&
-      assetForm?.form_config !== null
+    assetForm?.form_config !== undefined &&
+    assetForm?.form_config !== null
       ? assetForm.form_config
       : assetForm?.schema_override_config !== undefined || fieldConfigJSON !== undefined
         ? omit(
-          schemaToFormUtils.overridesAndSchemaToFormObject({
-            schema: schema.json_schema,
-            formOverrides: assetForm?.schema_override_config
-              ? [assetForm?.schema_override_config as IFormOverride]
-              : undefined,
-            formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
-          }),
-          ***REMOVED***label***REMOVED***
-        )
+            schemaToFormUtils.overridesAndSchemaToFormObject({
+              schema: schema.json_schema,
+              formOverrides: assetForm?.schema_override_config
+                ? [assetForm?.schema_override_config as IFormOverride]
+                : undefined,
+              formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
+            }),
+            ***REMOVED***label***REMOVED***
+          )
         : schemaToFormUtils.schemaToFormObject(schema.json_schema)
   ) as IForm
 
@@ -168,7 +175,7 @@ const EditDocumentForm = ({
   const form = useDataForm ? dataForm : defaultForm
 
   const [formValues, setFormValues] = useState<IFormValues>({
-    ...(useDataForm ? document.data as JSON : document),
+    ...(useDataForm ? (document.data as JSON) : document),
   } as unknown as IFormValues)
 
   const onSave = async () => {
@@ -188,8 +195,8 @@ const EditDocumentForm = ({
     try {
       const cleanValues = removeUndefinedAndNullKeys(formValues)
       const mergedData = {
-        ...document.data as JSON,
-        ...(useDataForm ? cleanValues : cleanValues.data as JSON),
+        ...(document.data as JSON),
+        ...(useDataForm ? cleanValues : (cleanValues.data as JSON)),
       }
       const mergedDocument = {
         ...document,
@@ -227,10 +234,12 @@ const EditDocumentForm = ({
     }
   }
 
-
   return (
     <div className="flex flex-col gap-4 relative">
-      <h1 className="text-2xl font-bold flex flex-row justify-between items-center"><span>Edit document</span><DocumentLockStatus document={document} /></h1>
+      <h1 className="text-2xl font-bold flex flex-row justify-between items-center">
+        <span>Edit document</span>
+        <DocumentLockStatus document={document} />
+      </h1>
       <Errors errors={errors} />
       <FormCreator
         form={{

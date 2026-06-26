@@ -3,7 +3,6 @@ import { fetchDocument } from ***REMOVED***@/manage/document/services***REMOVED*
 import type { IDocument, IPostgrestParams } from ***REMOVED***@/types/types***REMOVED***
 import { queryOptions, useQuery, useQueryClient, type UseQueryResult } from ***REMOVED***@tanstack/react-query***REMOVED***
 
-
 export const documentQueryKey = ({
   uuid,
   params,
@@ -47,7 +46,6 @@ export const useDocument = <T>(
   )
   return queryResult
 }
-
 
 export const useClearDocumentQueryCache = (uuid: string | null, params?: IPostgrestParams) => {
   const queryClient = useQueryClient()

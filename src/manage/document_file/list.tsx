@@ -6,7 +6,7 @@ import type { IObjectType, IRollup } from ***REMOVED***@/types/types***REMOVED**
 import Table from ***REMOVED***@/manage/components/table***REMOVED***
 import Link from ***REMOVED***@/manage/components/link***REMOVED***
 
-const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
+const ListFiles = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
   const uuidsForDocuments = object_types
     .filter((ot) => ot.category === ***REMOVED***document***REMOVED***)
     .map((ot) => ot.uuid)
@@ -105,13 +105,13 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
   )
 }
 
-const ListDocumentsLoader = (): ReactElement => {
+const ListFilesLoader = (): ReactElement => {
   const { data: object_types, isLoading, error } = useObjectTypeList()
   return (
     <ViewWithLoader isLoading={isLoading} error={error} data={object_types}>
-      {object_types && <ListDocuments object_types={object_types} />}
+      {object_types && <ListFiles object_types={object_types} />}
     </ViewWithLoader>
   )
 }
 
-export default ListDocumentsLoader
+export default ListFilesLoader

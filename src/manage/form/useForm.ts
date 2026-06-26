@@ -5,7 +5,6 @@ import { useCombinedQueries } from ***REMOVED***@/hooks/use-combined-queries***R
 import { getObjectTypeListQuery } from ***REMOVED***@/manage/object_type/useObjectTypeList***REMOVED***
 import { getFieldConfigListAtFormQuery } from ***REMOVED***../field_config/useFieldConfigList***REMOVED***
 import {
-  fetchObjectSchema,
   fetchObjectSchemaAndObjectTypeAtObjectType,
   fetchSchemaAtForm,
 } from ***REMOVED***@/manage/object_schema/services***REMOVED***

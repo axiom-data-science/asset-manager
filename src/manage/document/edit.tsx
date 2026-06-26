@@ -11,18 +11,90 @@ import {
   type IFormValues,
 } from '@axdspub/axiom-ui-forms'
 import { Button, Loader, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
-import { useState, type ReactElement } from 'react'
+import { useEffect, useState, type ReactElement } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { omit } from 'lodash-es'
-import { removeUndefinedAndNullKeys, validate } from '@/lib/utils'
+import { cn, removeUndefinedAndNullKeys, validate } from '@/lib/utils'
 import Errors from '@/manage/components/errors'
-import { documentQueryKey, useDocument } from './useDocument'
+import { useClearDocumentQueryCache, useDocument } from './useDocument'
 import { useFormAndSchemaAtObjectType } from '@/manage/form/useForm'
-import { useQueryClient } from '@tanstack/react-query'
 import FileUpload from '@/manage/custom_inputs/file_upload'
 import StationSearch from '@/manage/custom_inputs/station_search'
 import SampleFileObject from '../custom_inputs/sample_file_object'
 import CSVUploadForSampleFile from '../custom_inputs/csv_upload_for_sample_file'
+import { lockDocument, unlockDocument } from '@/services/postgrest/services'
+import { Lock, Unlock } from 'lucide-react'
+
+
+
+const DocumentLockStatus = ({ document, className }: { document: IDocument, className?: string }): ReactElement => {
+  const auth = useAuth()
+  const [locked, setLocked] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
+
+  const updateLockStatus = async (lock: boolean) => {
+    setIsUpdating(true)
+    let worked = false
+    try {
+      if (lock) {
+        worked = await lockDocument({
+          document_uuid: document.uuid,
+          user_sub: auth?.user?.profile?.sub ?? '',
+          token: auth?.user?.access_token ?? '',
+        })
+        if (worked) {
+          setLocked(true)
+        }
+      } else {
+        worked = await unlockDocument({
+          document_uuid: document.uuid,
+          user_sub: auth?.user?.profile?.sub ?? '',
+          token: auth?.user?.access_token ?? '',
+        })
+        if (worked) {
+          setLocked(false)
+        }
+      }
+    } catch (error) {
+      console.error('Error updating lock status:', error)
+    }
+    setIsUpdating(false)
+    useClearDocumentQueryCache(document.uuid)
+    return worked
+  }
+
+  const lock = async () => {
+    updateLockStatus(true)
+  }
+  const unlock = async () => {
+    updateLockStatus(false)
+  }
+
+
+  if (auth === undefined) {
+    return <>!</>
+  }
+
+  useEffect(() => {
+    lock()
+    return () => {
+      unlock()
+    }
+  }, [])
+
+  return (
+    <span className={cn('w-8 h-8 flex flex-row items-center justify-center rounded-sm shadow-md bg-slate-200', className)}>
+      {
+        isUpdating ?
+          <Loader size='sm' /> :
+          locked ?
+            <Lock className="w-4 h-4 text-slate-800" /> :
+            <Unlock className="w-4 h-4 text-red-800" />
+      }
+    </span>
+  )
+
+}
 
 const EditDocumentForm = ({
   document,
@@ -39,7 +111,6 @@ const EditDocumentForm = ({
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<IValidationError[]>([])
   const auth = useAuth()
-  const queryClient = useQueryClient()
   const defaultForm: IForm = {
     id: 'create-document',
     settings: {
@@ -110,9 +181,7 @@ const EditDocumentForm = ({
         top: 0,
         behavior: 'smooth', // Adds a gradual animation
       })
-      queryClient.invalidateQueries({
-        queryKey: documentQueryKey({ uuid: document.uuid }),
-      })
+      useClearDocumentQueryCache(document.uuid)
       return
     }
     setErrors([])
@@ -158,9 +227,10 @@ const EditDocumentForm = ({
     }
   }
 
+
   return (
     <div className="flex flex-col gap-4 relative">
-      <h1 className="text-2xl font-bold">Edit document</h1>
+      <h1 className="text-2xl font-bold flex flex-row justify-between items-center"><span>Edit document</span><DocumentLockStatus document={document} /></h1>
       <Errors errors={errors} />
       <FormCreator
         form={{

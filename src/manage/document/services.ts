@@ -130,6 +130,30 @@ export const patchDocument = async ({
   return newFieldOverrideConfig
 }
 
+export const patchShare = async ({
+  uuid,
+  subs_for_update,
+  token,
+  signal,
+}: {
+  uuid: string
+  subs_for_update?: string[]
+  subs_for_select?: string[]
+  roles_for_update?: string[]
+  roles_for_select?: string[]
+  token: string
+  signal?: AbortSignal
+}): Promise<IDocument> => {
+  const newFieldOverrideConfig = await upsertToPostgrest<IDocument>({
+    uuid,
+    table: DOCUMENTS_TABLE,
+    body: { subs_for_update },
+    token,
+    signal,
+  })
+  return newFieldOverrideConfig
+}
+
 export const deleteDocument = async ({
   uuid,
   token,

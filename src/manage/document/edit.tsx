@@ -11,18 +11,90 @@ import {
   type IFormValues,
 } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
 import { Button, Loader, ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
-import { useState, type ReactElement } from ***REMOVED***react***REMOVED***
+import { useEffect, useState, type ReactElement } from ***REMOVED***react***REMOVED***
 import { useNavigate, useParams } from ***REMOVED***react-router-dom***REMOVED***
 import { omit } from ***REMOVED***lodash-es***REMOVED***
-import { removeUndefinedAndNullKeys, validate } from ***REMOVED***@/lib/utils***REMOVED***
+import { cn, removeUndefinedAndNullKeys, validate } from ***REMOVED***@/lib/utils***REMOVED***
 import Errors from ***REMOVED***@/manage/components/errors***REMOVED***
-import { documentQueryKey, useDocument } from ***REMOVED***./useDocument***REMOVED***
+import { useClearDocumentQueryCache, useDocument } from ***REMOVED***./useDocument***REMOVED***
 import { useFormAndSchemaAtObjectType } from ***REMOVED***@/manage/form/useForm***REMOVED***
-import { useQueryClient } from ***REMOVED***@tanstack/react-query***REMOVED***
 import FileUpload from ***REMOVED***@/manage/custom_inputs/file_upload***REMOVED***
 import StationSearch from ***REMOVED***@/manage/custom_inputs/station_search***REMOVED***
 import SampleFileObject from ***REMOVED***../custom_inputs/sample_file_object***REMOVED***
 import CSVUploadForSampleFile from ***REMOVED***../custom_inputs/csv_upload_for_sample_file***REMOVED***
+import { lockDocument, unlockDocument } from ***REMOVED***@/services/postgrest/services***REMOVED***
+import { Lock, Unlock } from ***REMOVED***lucide-react***REMOVED***
+
+
+
+const DocumentLockStatus = ({ document, className }: { document: IDocument, className?: string }): ReactElement => {
+  const auth = useAuth()
+  const [locked, setLocked] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
+
+  const updateLockStatus = async (lock: boolean) => {
+    setIsUpdating(true)
+    let worked = false
+    try {
+      if (lock) {
+        worked = await lockDocument({
+          document_uuid: document.uuid,
+          user_sub: auth?.user?.profile?.sub ?? ***REMOVED******REMOVED***,
+          token: auth?.user?.access_token ?? ***REMOVED******REMOVED***,
+        })
+        if (worked) {
+          setLocked(true)
+        }
+      } else {
+        worked = await unlockDocument({
+          document_uuid: document.uuid,
+          user_sub: auth?.user?.profile?.sub ?? ***REMOVED******REMOVED***,
+          token: auth?.user?.access_token ?? ***REMOVED******REMOVED***,
+        })
+        if (worked) {
+          setLocked(false)
+        }
+      }
+    } catch (error) {
+      console.error(***REMOVED***Error updating lock status:***REMOVED***, error)
+    }
+    setIsUpdating(false)
+    useClearDocumentQueryCache(document.uuid)
+    return worked
+  }
+
+  const lock = async () => {
+    updateLockStatus(true)
+  }
+  const unlock = async () => {
+    updateLockStatus(false)
+  }
+
+
+  if (auth === undefined) {
+    return <>!</>
+  }
+
+  useEffect(() => {
+    lock()
+    return () => {
+      unlock()
+    }
+  }, [])
+
+  return (
+    <span className={cn(***REMOVED***w-8 h-8 flex flex-row items-center justify-center rounded-sm shadow-md bg-slate-200***REMOVED***, className)}>
+      {
+        isUpdating ?
+          <Loader size=***REMOVED***sm***REMOVED*** /> :
+          locked ?
+            <Lock className="w-4 h-4 text-slate-800" /> :
+            <Unlock className="w-4 h-4 text-red-800" />
+      }
+    </span>
+  )
+
+}
 
 const EditDocumentForm = ({
   document,
@@ -39,7 +111,6 @@ const EditDocumentForm = ({
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<IValidationError[]>([])
   const auth = useAuth()
-  const queryClient = useQueryClient()
   const defaultForm: IForm = {
     id: ***REMOVED***create-document***REMOVED***,
     settings: {
@@ -110,9 +181,7 @@ const EditDocumentForm = ({
         top: 0,
         behavior: ***REMOVED***smooth***REMOVED***, // Adds a gradual animation
       })
-      queryClient.invalidateQueries({
-        queryKey: documentQueryKey({ uuid: document.uuid }),
-      })
+      useClearDocumentQueryCache(document.uuid)
       return
     }
     setErrors([])
@@ -158,9 +227,10 @@ const EditDocumentForm = ({
     }
   }
 
+
   return (
     <div className="flex flex-col gap-4 relative">
-      <h1 className="text-2xl font-bold">Edit document</h1>
+      <h1 className="text-2xl font-bold flex flex-row justify-between items-center"><span>Edit document</span><DocumentLockStatus document={document} /></h1>
       <Errors errors={errors} />
       <FormCreator
         form={{

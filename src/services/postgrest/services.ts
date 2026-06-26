@@ -384,6 +384,7 @@ export const updateDocumentLock = async ({
 
   const request = await (
     await fetch(url, {
+      keepalive: lock === false, // make sure unlocks complete even if page is closing,
       method: ***REMOVED***PATCH***REMOVED***,
       headers: {
         Authorization: `Bearer ${token}`,

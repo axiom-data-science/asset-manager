@@ -1,8 +1,8 @@
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
 import { fetchDocument } from ***REMOVED***@/manage/document/services***REMOVED***
 import type { IDocument, IPostgrestParams } from ***REMOVED***@/types/types***REMOVED***
-import { queryOptions, useQuery } from ***REMOVED***@tanstack/react-query***REMOVED***
-import type { UseQueryResult } from ***REMOVED***node_modules/@tanstack/react-query/build/modern/index.d.cts***REMOVED***
+import { queryOptions, useQuery, useQueryClient, type UseQueryResult } from ***REMOVED***@tanstack/react-query***REMOVED***
+
 
 export const documentQueryKey = ({
   uuid,
@@ -46,4 +46,12 @@ export const useDocument = <T>(
     getDocumentQuery<T>({ uuid, params, token: auth.user?.access_token })
   )
   return queryResult
+}
+
+
+export const useClearDocumentQueryCache = (uuid: string | null, params?: IPostgrestParams) => {
+  const queryClient = useQueryClient()
+  queryClient.invalidateQueries({
+    queryKey: documentQueryKey({ uuid, params }).concat(***REMOVED***documents-list***REMOVED***),
+  })
 }

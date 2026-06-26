@@ -5,7 +5,12 @@ import { useNavigate } from 'react-router-dom'
 
 export const useIsAdmin = (roles: string[] | undefined): boolean => {
   if (!roles) return false
-  return roles.find(r => r.match(/admin/)) !== undefined
+  return roles.find((r) => r.match(/admin/)) !== undefined
+}
+
+export const useIsSuperAdmin = (roles: string[] | undefined): boolean => {
+  if (!roles) return false
+  return roles.find((r) => r.match(/superadmin/)) !== undefined
 }
 
 export const useAuth = (): IAuth => {
@@ -14,10 +19,13 @@ export const useAuth = (): IAuth => {
     ? auth.user.profile.given_name.split(' ')
     : [null, null]
   const navigate = useNavigate()
-  const roles: string[] = auth.user?.profile?.roles as string[] ?? []
+  const roles: string[] = (auth.user?.profile?.roles as string[]) ?? []
   const isAdmin = useIsAdmin(roles)
+  const isSuperAdmin = useIsSuperAdmin(roles)
   return {
     ...auth,
+    isAdmin,
+    isSuperAdmin,
     logout: async () => {
       console.log('Session state:', auth.user?.session_state)
       if (auth.user !== undefined && auth.user !== null && !auth.user.expired) {
@@ -30,10 +38,10 @@ export const useAuth = (): IAuth => {
       }
     },
     login: async () => {
+      const path = window.location.pathname
+      const href = window.location.href
       const redirect_uri =
-        window.location.pathname === '/loggedout'
-          ? `${window.location.origin}/`
-          : window.location.href
+        path === '/loggedout' || path === '/' ? `${window.location.origin}/authed` : href
       auth.signinRedirect({
         redirect_uri,
       })

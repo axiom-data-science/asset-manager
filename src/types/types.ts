@@ -88,6 +88,8 @@ export type IRelationship = {
 export type IAuth = {
   isLoading: boolean
   isAuthenticated: boolean
+  isAdmin: boolean
+  isSuperAdmin: boolean
   logout: () => Promise<void>
   login: () => Promise<void>
   user?: {

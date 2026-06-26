@@ -32,13 +32,26 @@ import LockDocuments from '@/examples/lock-document'
 import ShareDocuments from '@/examples/share-document'
 import PopoverTest from '@/examples/popover-test'
 import AuthentikUsers from '@/examples/authentik-users'
+import { SITE_TITLE } from './config/config'
+import ListFilesLoader from './manage/document_file/list'
+
+const makeSiteTitle = (pageTitle?: string) => {
+  return `${SITE_TITLE}${pageTitle ? ` - ${pageTitle}` : ''}`
+}
 
 const Authed = (): ReactElement => {
   const navigate = useNavigate()
+  const auth = useAuth()
 
   useEffect(() => {
-    navigate('/')
-  }, [navigate])
+    if (!auth.isLoading && auth.isAuthenticated) {
+      if (auth.isAdmin) {
+        navigate('/manage')
+      } else {
+        navigate('/')
+      }
+    }
+  }, [navigate, auth.isLoading, auth.isAuthenticated, auth.isAdmin])
   return <></>
 }
 
@@ -98,17 +111,24 @@ function App(): ReactElement {
           </Routes>
         ) : (
           <Routes>
-            <Route path="/authed" element={<Authed />} />
+            <Route
+              path="/authed"
+              element={
+                <>
+                  <title>{makeSiteTitle('authorized')}</title>
+                  <Authed />
+                </>
+              }
+            />
             <Route
               path="/"
               element={
                 <SimpleLayout>
-                  <SimpleLayout>
-                    <SelectDocumentForm
-                      returnToOnSuccess="/create-document-success"
-                      documentCreatePath="/create-document"
-                    />
-                  </SimpleLayout>
+                  <title>{makeSiteTitle('create document')}</title>
+                  <SelectDocumentForm
+                    returnToOnSuccess="/create-document-success"
+                    documentCreatePath="/create-document"
+                  />
                 </SimpleLayout>
               }
             />
@@ -116,6 +136,7 @@ function App(): ReactElement {
               path="/manage"
               element={
                 <SidebarLayout>
+                  <title>{makeSiteTitle('manage')}</title>
                   <p>Main</p>
                 </SidebarLayout>
               }
@@ -125,6 +146,7 @@ function App(): ReactElement {
               path="/document"
               element={
                 <SidebarLayout>
+                  <title>{makeSiteTitle('documents')}</title>
                   <ListDocuments />
                 </SidebarLayout>
               }
@@ -133,6 +155,7 @@ function App(): ReactElement {
               path="/document/create"
               element={
                 <SidebarLayout>
+                  <title>{makeSiteTitle('create document')}</title>
                   <SelectDocumentForm />
                 </SidebarLayout>
               }
@@ -142,6 +165,7 @@ function App(): ReactElement {
               path="/create-document"
               element={
                 <SimpleLayout>
+                  <title>{makeSiteTitle('create document')}</title>
                   <SelectDocumentForm
                     returnToOnSuccess="/create-document-success"
                     documentCreatePath="/create-document"
@@ -154,6 +178,7 @@ function App(): ReactElement {
               path="/create-document-success"
               element={
                 <SimpleLayout>
+                  <title>{makeSiteTitle('document created')}</title>
                   <CreateDocumentSuccess />
                 </SimpleLayout>
               }
@@ -163,6 +188,7 @@ function App(): ReactElement {
               path="/document/create/:object_schema_uuid/object_schema"
               element={
                 <SidebarLayout>
+                  <title>{makeSiteTitle('create document from schema')}</title>
                   <CreateDocumentFromSchema />
                 </SidebarLayout>
               }
@@ -171,6 +197,7 @@ function App(): ReactElement {
               path="/create-document/:object_schema_uuid/object_schema"
               element={
                 <SimpleLayout>
+                  <title>{makeSiteTitle('create document from schema')}</title>
                   <CreateDocumentFromSchema returnToOnSuccess="/create-document-success" />
                 </SimpleLayout>
               }
@@ -180,6 +207,7 @@ function App(): ReactElement {
               path="/document/create/:object_type_uuid/object_type/:form_uuid/form"
               element={
                 <SidebarLayout>
+                  <title>{makeSiteTitle('create document from form')}</title>
                   <CreateDocumentFromForm />
                 </SidebarLayout>
               }
@@ -189,6 +217,7 @@ function App(): ReactElement {
               path="/create-document/:object_type_uuid/object_type/:form_uuid/form"
               element={
                 <SimpleLayout>
+                  <title>{makeSiteTitle('create document from form')}</title>
                   <CreateDocumentFromForm />
                 </SimpleLayout>
               }
@@ -198,6 +227,7 @@ function App(): ReactElement {
               path="/create-document/:object_schema_uuid/object_schema/:form_uuid/form"
               element={
                 <SimpleLayout>
+                  <title>{makeSiteTitle('create document from form')}</title>
                   <CreateDocumentFromForm returnToOnSuccess="/create-document-success" />
                 </SimpleLayout>
               }
@@ -207,6 +237,7 @@ function App(): ReactElement {
               path="/document/edit/:uuid"
               element={
                 <SidebarLayout>
+                  <title>{makeSiteTitle('edit document')}</title>
                   <EditDocument />
                 </SidebarLayout>
               }
@@ -216,6 +247,7 @@ function App(): ReactElement {
               path="/schema"
               element={
                 <SidebarLayout>
+                  <title>{makeSiteTitle('schemas')}</title>
                   <p>Schemas</p>
                 </SidebarLayout>
               }
@@ -225,6 +257,7 @@ function App(): ReactElement {
               path="/object_type"
               element={
                 <SidebarLayout>
+                  <title>{makeSiteTitle('object types')}</title>
                   <ListObjectTypes />
                 </SidebarLayout>
               }
@@ -233,6 +266,7 @@ function App(): ReactElement {
               path="/object_type/create"
               element={
                 <SidebarLayout>
+                  <title>{makeSiteTitle('create object type')}</title>
                   <CreateObjectType />
                 </SidebarLayout>
               }
@@ -241,6 +275,7 @@ function App(): ReactElement {
               path="/object_type/edit/:uuid"
               element={
                 <SidebarLayout>
+                  <title>{makeSiteTitle('edit object type')}</title>
                   <EditObjectType />
                 </SidebarLayout>
               }
@@ -250,6 +285,7 @@ function App(): ReactElement {
               path="/object_schema"
               element={
                 <SidebarLayout>
+                  <title>{makeSiteTitle('object schemas')}</title>
                   <ListObjectSchemas />
                 </SidebarLayout>
               }
@@ -258,6 +294,7 @@ function App(): ReactElement {
               path="/object_schema/create"
               element={
                 <SidebarLayout>
+                  <title>{makeSiteTitle('create object schema')}</title>
                   <CreateObjectSchema />
                 </SidebarLayout>
               }
@@ -266,6 +303,7 @@ function App(): ReactElement {
               path="/object_schema/edit/:uuid"
               element={
                 <SidebarLayout>
+                  <title>{makeSiteTitle('edit object schema')}</title>
                   <EditObjectSchema />
                 </SidebarLayout>
               }
@@ -275,6 +313,7 @@ function App(): ReactElement {
               path="/forms"
               element={
                 <SidebarLayout>
+                  <title>{makeSiteTitle('forms')}</title>
                   <ListForm />
                 </SidebarLayout>
               }
@@ -283,6 +322,7 @@ function App(): ReactElement {
               path="/forms/create"
               element={
                 <SidebarLayout>
+                  <title>{makeSiteTitle('create form')}</title>
                   <CreateFormLoader />
                 </SidebarLayout>
               }
@@ -292,6 +332,7 @@ function App(): ReactElement {
               path="/forms/edit/:uuid"
               element={
                 <SidebarLayout>
+                  <title>{makeSiteTitle('edit form')}</title>
                   <EditFormLoader />
                 </SidebarLayout>
               }
@@ -301,6 +342,7 @@ function App(): ReactElement {
               path="/field_configs"
               element={
                 <SidebarLayout>
+                  <title>{makeSiteTitle('field configs')}</title>
                   <ListFieldConfigs />
                 </SidebarLayout>
               }
@@ -314,6 +356,7 @@ function App(): ReactElement {
               path="/file/upload"
               element={
                 <SidebarLayout>
+                  <title>{makeSiteTitle('upload file')}</title>
                   <UploadFile />
                 </SidebarLayout>
               }
@@ -323,7 +366,8 @@ function App(): ReactElement {
               path="/file/list"
               element={
                 <SidebarLayout>
-                  <UploadFile />
+                  <title>{makeSiteTitle('list files')}</title>
+                  <ListFilesLoader />
                 </SidebarLayout>
               }
             />
@@ -332,6 +376,7 @@ function App(): ReactElement {
               path="/persons"
               element={
                 <SidebarLayout>
+                  <title>{makeSiteTitle('persons')}</title>
                   <PersonsList />
                 </SidebarLayout>
               }
@@ -341,15 +386,40 @@ function App(): ReactElement {
               path="/custom/pipelines"
               element={
                 <SidebarLayout>
+                  <title>{makeSiteTitle('list custom pipelines')}</title>
                   <PipelineList />
                 </SidebarLayout>
               }
             />
             <Route path="examples">
-              <Route path="lock-unlock-documents" element={<SidebarLayout><LockDocuments /></SidebarLayout>} />
-              <Route path="share-document" element={<SidebarLayout><ShareDocuments /></SidebarLayout>} />
+              <Route
+                path="lock-unlock-documents"
+                element={
+                  <SidebarLayout>
+                    <title>{makeSiteTitle('lock/unlock documents example')}</title>
+                    <LockDocuments />
+                  </SidebarLayout>
+                }
+              />
+              <Route
+                path="share-document"
+                element={
+                  <SidebarLayout>
+                    <title>{makeSiteTitle('share document example')}</title>
+                    <ShareDocuments />
+                  </SidebarLayout>
+                }
+              />
               <Route path="popover" element={<PopoverTest />} />
-              <Route path="authentik-users" element={<SidebarLayout><AuthentikUsers /></SidebarLayout>} />
+              <Route
+                path="authentik-users"
+                element={
+                  <SidebarLayout>
+                    <title>{makeSiteTitle('authentik users')}</title>
+                    <AuthentikUsers />
+                  </SidebarLayout>
+                }
+              />
             </Route>
           </Routes>
         )}

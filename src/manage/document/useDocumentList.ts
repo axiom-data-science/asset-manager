@@ -16,7 +16,7 @@ export const documentListQueryKey = ({
   params?: IPostgrestParams
   rollups?: string[]
 }) =>
-  [***REMOVED***documents-list***REMOVED***].concat(
+  [***REMOVED***document***REMOVED***,***REMOVED***documents-list***REMOVED***].concat(
     (rollups ?? []).map((r) => postgrestRollupArgs({ rollupColumn: r, params }).toString())
   )
 

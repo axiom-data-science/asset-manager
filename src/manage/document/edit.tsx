@@ -1,5 +1,4 @@
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
-import { patchDocument } from ***REMOVED***@/manage/document/services***REMOVED***
 import { type IValidationError, type IObjectSchema } from ***REMOVED***@/types/types***REMOVED***
 import type { IAssetForm, IDocument, IFormToFieldConfigWithDetails } from ***REMOVED***@/types/types***REMOVED***
 import {
@@ -11,19 +10,20 @@ import {
   type IFormValues,
 } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
 import { Button, Loader, ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
-import { useEffect, useState, type ReactElement } from ***REMOVED***react***REMOVED***
+import { useEffect, useRef, useState, type ReactElement } from ***REMOVED***react***REMOVED***
 import { useNavigate, useParams } from ***REMOVED***react-router-dom***REMOVED***
 import { omit } from ***REMOVED***lodash-es***REMOVED***
-import { cn, removeUndefinedAndNullKeys, validate } from ***REMOVED***@/lib/utils***REMOVED***
+import { cn, validate } from ***REMOVED***@/lib/utils***REMOVED***
 import Errors from ***REMOVED***@/manage/components/errors***REMOVED***
-import { useClearDocumentQueryCache, useDocument } from ***REMOVED***./useDocument***REMOVED***
+import { useDocument, useLockDocumentMutation, useSaveDocumentMutation } from ***REMOVED***./useDocument***REMOVED***
 import { useFormAndSchemaAtObjectType } from ***REMOVED***@/manage/form/useForm***REMOVED***
 import FileUpload from ***REMOVED***@/manage/custom_inputs/file_upload***REMOVED***
 import StationSearch from ***REMOVED***@/manage/custom_inputs/station_search***REMOVED***
 import SampleFileObject from ***REMOVED***../custom_inputs/sample_file_object***REMOVED***
 import CSVUploadForSampleFile from ***REMOVED***../custom_inputs/csv_upload_for_sample_file***REMOVED***
-import { lockDocument, unlockDocument } from ***REMOVED***@/services/postgrest/services***REMOVED***
-import { Lock, Unlock } from ***REMOVED***lucide-react***REMOVED***
+
+import { Circle, Lock, Unlock } from ***REMOVED***lucide-react***REMOVED***
+import ShareDocument from ***REMOVED***@/components/custom/share-document***REMOVED***
 
 const DocumentLockStatus = ({
   document,
@@ -34,52 +34,28 @@ const DocumentLockStatus = ({
 }): ReactElement => {
   const auth = useAuth()
   const [locked, setLocked] = useState(false)
-  const [isUpdating, setIsUpdating] = useState(false)
-
-  const updateLockStatus = async (lock: boolean) => {
-    setIsUpdating(true)
-    let worked = false
-    try {
-      if (lock) {
-        worked = await lockDocument({
-          document_uuid: document.uuid,
-          user_sub: auth?.user?.profile?.sub ?? ***REMOVED******REMOVED***,
-          token: auth?.user?.access_token ?? ***REMOVED******REMOVED***,
-        })
-        if (worked) {
-          setLocked(true)
-        }
-      } else {
-        worked = await unlockDocument({
-          document_uuid: document.uuid,
-          user_sub: auth?.user?.profile?.sub ?? ***REMOVED******REMOVED***,
-          token: auth?.user?.access_token ?? ***REMOVED******REMOVED***,
-        })
-        if (worked) {
-          setLocked(false)
-        }
-      }
-    } catch (error) {
-      console.error(***REMOVED***Error updating lock status:***REMOVED***, error)
-    }
-    setIsUpdating(false)
-    useClearDocumentQueryCache(document.uuid)
-    return worked
-  }
-
-  const lock = async () => {
-    updateLockStatus(true)
-  }
-  const unlock = async () => {
-    updateLockStatus(false)
-  }
+  const isInitialMountRef = useRef(true)
+  const abortControllerRef = useRef<AbortController | null>(null);
+  abortControllerRef.current = new AbortController();
+  const signal = abortControllerRef.current.signal;
+  const { mutate, isPending } = useLockDocumentMutation({
+    onSuccess: (lockStatus) => setLocked(lockStatus),
+    signal
+  })
 
   useEffect(() => {
-    lock()
+    // Always lock on effect run (first mount or remount after Strict Mode)
+    mutate({ document, lock: true })
+
     return () => {
-      unlock()
+      // Only unlock if we***REMOVED***re past the initial mount (skip Strict Mode cleanup)
+      if (!isInitialMountRef.current) {
+        mutate({ document, lock: false })
+      }
+      // Mark that we***REMOVED***re past the initial mount
+      isInitialMountRef.current = false
     }
-  })
+  }, [document.uuid, mutate])
 
   if (auth === undefined) {
     return <>!</>
@@ -92,7 +68,7 @@ const DocumentLockStatus = ({
         className
       )}
     >
-      {isUpdating ? (
+      {isPending ? (
         <Loader size="sm" />
       ) : locked ? (
         <Lock className="w-4 h-4 text-slate-800" />
@@ -102,6 +78,52 @@ const DocumentLockStatus = ({
     </span>
   )
 }
+
+const AutoSaveStatus = ({ lastUpdate, lastSave, isUpdating, onTriggerUpdate }: { lastUpdate: Date | null, lastSave: Date | null, isUpdating: boolean, onTriggerUpdate: () => void }): ReactElement => {
+  const isStale = lastUpdate === lastSave ? false : true
+  const [seconds, setSeconds] = useState(0);
+  const [intervalId, setIntervalId] = useState<number | null>(null);
+  const startInterval = () => {
+    if (intervalId === null) {
+      const newIntervalId = setInterval(() => {
+        setSeconds(prev => prev + 1);
+      }, 1000);
+      setIntervalId(newIntervalId);
+    }
+  }
+  const endInterval = () => {
+    if (intervalId !== null) {
+      clearInterval(intervalId);
+      setIntervalId(null);
+    }
+  }
+  useEffect(() => {
+    if (lastUpdate !== lastSave) {
+      if (intervalId === null) {
+        startInterval()
+      } else if (seconds >= 10) {
+        onTriggerUpdate()
+        setSeconds(0)
+        endInterval()
+      }
+    }
+
+    return () => {
+      endInterval();
+    };
+  }, [intervalId, lastUpdate, lastSave, seconds, isStale, onTriggerUpdate]);
+
+  return (
+    <span className=***REMOVED***w-8 h-8 flex flex-row items-center justify-center rounded-sm shadow-md bg-slate-200***REMOVED***>
+      {
+        isUpdating ? <Loader size="sm" /> : <Circle color=***REMOVED***white***REMOVED*** className={`w-4 h-4 ${isStale ? ***REMOVED***fill-red-500***REMOVED*** : ***REMOVED***fill-green-500***REMOVED***}`} />
+      }
+      <span className=***REMOVED***text-[10px]***REMOVED***>{seconds}</span>
+
+    </span>
+  )
+}
+
 
 const EditDocumentForm = ({
   document,
@@ -115,9 +137,9 @@ const EditDocumentForm = ({
   fieldConfigs?: IFormToFieldConfigWithDetails[]
 }): ReactElement => {
   const navigate = useNavigate()
-  const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<IValidationError[]>([])
-  const auth = useAuth()
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
+  const [lastSave, setLastSave] = useState<Date | null>(null)
   const defaultForm: IForm = {
     id: ***REMOVED***create-document***REMOVED***,
     settings: {
@@ -149,96 +171,70 @@ const EditDocumentForm = ({
     []
   const dataForm = (
     assetForm?.use_form_config === true &&
-    assetForm?.form_config !== undefined &&
-    assetForm?.form_config !== null
+      assetForm?.form_config !== undefined &&
+      assetForm?.form_config !== null
       ? assetForm.form_config
       : assetForm?.schema_override_config !== undefined || fieldConfigJSON !== undefined
         ? omit(
-            schemaToFormUtils.overridesAndSchemaToFormObject({
-              schema: schema.json_schema,
-              formOverrides: assetForm?.schema_override_config
-                ? [assetForm?.schema_override_config as IFormOverride]
-                : undefined,
-              formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
-            }),
-            ***REMOVED***label***REMOVED***
-          )
+          schemaToFormUtils.overridesAndSchemaToFormObject({
+            schema: schema.json_schema,
+            formOverrides: assetForm?.schema_override_config
+              ? [assetForm?.schema_override_config as IFormOverride]
+              : undefined,
+            formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
+          }),
+          ***REMOVED***label***REMOVED***
+        )
         : schemaToFormUtils.schemaToFormObject(schema.json_schema)
   ) as IForm
 
-  const useDataForm =
+  const isUsingDataForm = !!(
     dataForm.fields?.length ||
     dataForm.pages?.length ||
     dataForm.wizard_steps?.length ||
     dataForm.tabs?.length
+  )
 
-  const form = useDataForm ? dataForm : defaultForm
+  const form = isUsingDataForm ? dataForm : defaultForm
 
   const [formValues, setFormValues] = useState<IFormValues>({
-    ...(useDataForm ? (document.data as JSON) : document),
+    ...(isUsingDataForm ? (document.data as JSON) : document),
   } as unknown as IFormValues)
 
-  const onSave = async () => {
-    setSaving(true)
-    const valid = await validate({ form, formValues })
-    if (!valid.valid && valid.errors.length > 0) {
-      setErrors(valid.errors)
-      setSaving(false)
-      window.scrollTo({
-        top: 0,
-        behavior: ***REMOVED***smooth***REMOVED***, // Adds a gradual animation
-      })
-      useClearDocumentQueryCache(document.uuid)
-      return
-    }
-    setErrors([])
-    try {
-      const cleanValues = removeUndefinedAndNullKeys(formValues)
-      const mergedData = {
-        ...(document.data as JSON),
-        ...(useDataForm ? cleanValues : (cleanValues.data as JSON)),
-      }
-      const mergedDocument = {
-        ...document,
-        ...{
-          label:
-            formValues.label ??
-            formValues.title ??
-            formValues.platform_name ??
-            formValues.station_label ??
-            ***REMOVED***Untitled Document***REMOVED***,
-          description: formValues.description ?? ***REMOVED******REMOVED***,
-          data: mergedData,
-        },
-      } as IDocument
-      await patchDocument({
-        uuid: document.uuid,
-        document: mergedDocument,
-        token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
-      })
+  const { mutateAsync, isPending } = useSaveDocumentMutation()
 
-      setSaving(false)
-      navigate(***REMOVED***/document***REMOVED***)
-    } catch (e: unknown) {
-      setSaving(false)
-      setErrors([
-        {
-          field: ***REMOVED***form***REMOVED***,
-          message: (e as Error)?.message ?? ***REMOVED***An error occurred while saving. Please try again.***REMOVED***,
-        },
-      ])
-      window.scrollTo({
-        top: 0,
-        behavior: ***REMOVED***smooth***REMOVED***, // Adds a gradual animation
+  const onSave = async () => {
+    try {
+      await mutateAsync({
+        document,
+        form,
+        formValues,
+        isUsingDataForm,
+        validate,
       })
+      navigate(***REMOVED***/document***REMOVED***)
+    } catch (error) {
+      setErrors([{
+        field: ***REMOVED***form***REMOVED***,
+        message: (error as Error)?.message ?? ***REMOVED***Save failed***REMOVED***,
+      }])
     }
   }
+
 
   return (
     <div className="flex flex-col gap-4 relative">
       <h1 className="text-2xl font-bold flex flex-row justify-between items-center">
-        <span>Edit document</span>
-        <DocumentLockStatus document={document} />
+        <span>Edit document{isPending ? <Loader size="sm" /> : null}</span>
+        <div className="flex flex-row gap-2 items-center">
+          <ShareDocument document={document} />
+          <DocumentLockStatus document={document} />
+          <AutoSaveStatus lastUpdate={lastUpdate} lastSave={lastSave} isUpdating={isPending} onTriggerUpdate={() => {
+            const d = new Date()
+            setLastSave(d)
+            setLastUpdate(d)
+          }} />
+        </div>
       </h1>
       <Errors errors={errors} />
       <FormCreator
@@ -257,10 +253,13 @@ const EditDocumentForm = ({
           ***REMOVED***custom:csv_upload_for_sample_file***REMOVED***: CSVUploadForSampleFile,
           ***REMOVED***custom:station_search***REMOVED***: StationSearch,
         }}
+        onChange={() => {
+          setLastUpdate(new Date())
+        }}
       />
       <div className="flex flex-row gap-4  p-4 sticky bottom-0 bg-white/80 z-10">
-        <Button onClick={onSave} type="primary" disabled={saving}>
-          {saving ? <Loader className="animate-spin" /> : ***REMOVED***Save***REMOVED***}
+        <Button onClick={onSave} type="primary" disabled={isPending}>
+          {isPending ? <Loader className="animate-spin" /> : ***REMOVED***Save***REMOVED***}
         </Button>
       </div>
     </div>

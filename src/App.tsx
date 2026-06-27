@@ -29,7 +29,7 @@ import PipelineList from ***REMOVED***@/manage/custom/pipeline/list***REMOVED***
 import CreateDocumentSuccess from ***REMOVED***./manage/document/create_success***REMOVED***
 import PersonsList from ***REMOVED***./manage/person/list***REMOVED***
 import LockDocuments from ***REMOVED***@/examples/lock-document***REMOVED***
-import ShareDocuments from ***REMOVED***@/examples/share-document***REMOVED***
+import ShareDocuments from ***REMOVED***@/examples/share-documents***REMOVED***
 import PopoverTest from ***REMOVED***@/examples/popover-test***REMOVED***
 import AuthentikUsers from ***REMOVED***@/examples/authentik-users***REMOVED***
 import { SITE_TITLE } from ***REMOVED***./config/config***REMOVED***
@@ -59,6 +59,8 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
+      staleTime: 0 // set to fairly short
+
     },
   },
 })

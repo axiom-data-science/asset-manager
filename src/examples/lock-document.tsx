@@ -1,9 +1,10 @@
 import { useAuth } from "@/auth/useAuth"
+import Link from "@/manage/components/link"
 import { useDocumentList } from "@/manage/document/useDocumentList"
 import { lockDocument, unlockDocument } from "@/services/postgrest/services"
 import type { IDocument } from "@/types/types"
 import { Button, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
-import { Lock, Unlock } from "lucide-react"
+import { Check, Copy, Lock, Unlock } from "lucide-react"
 import { useState } from "react"
 
 
@@ -11,6 +12,7 @@ const ToggleDocumentLock = ({ document, className }: { document: IDocument, clas
     const auth = useAuth()
     const [isUpdating, setIsUpdating] = useState(false)
     const [locked, setLocked] = useState(document.lock_sub ? true : false)
+    const [copied, setCopied] = useState(false)
     const updateLockStatus = async () => {
         setIsUpdating(true)
         try {
@@ -44,7 +46,15 @@ const ToggleDocumentLock = ({ document, className }: { document: IDocument, clas
     }
 
     return <div className={`flex flex-row gap-4 justify-between items-center ${className}`}>
-        <p className=***REMOVED***font-bold***REMOVED***>{document.label}</p>
+        <p className=***REMOVED***flex flex-col gap-1***REMOVED***>
+            <Link className=***REMOVED***font-bold***REMOVED*** to={`/document/edit/${document.uuid}`}>{document.label}</Link>
+            <span className=***REMOVED***text-xs text-slate-400 flex flex-row items-center gap-2 cursor-pointer***REMOVED*** onClick={() => {
+                navigator.clipboard.writeText(document.uuid)
+                setCopied(true)
+                setTimeout(() => setCopied(false), 2000)
+            }}>{document.uuid} {copied ? <Check className=***REMOVED***w-5 h-5 text-white bg-green-600 rounded-2xl p-0.5 font-bold***REMOVED*** /> : <Copy className=***REMOVED***w-5 h-5 p-1***REMOVED*** />}</span>
+        </p>
+
         <div className="flex flex-row gap-4 items-center">
             <p className="text-sm text-gray-500">Locked: {document.lock_sub ? ***REMOVED***Yes***REMOVED*** : ***REMOVED***No***REMOVED***}</p>
 

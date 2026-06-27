@@ -1,5 +1,4 @@
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
-import { Avatar, AvatarFallback } from ***REMOVED***@/components/ui/avatar***REMOVED***
 import { Button } from ***REMOVED***@/components/ui/button***REMOVED***
 import {
   DropdownMenu,
@@ -11,8 +10,6 @@ import UserAvatar from ***REMOVED***@/manage/components/userAvatar***REMOVED***
 import { LogOut } from ***REMOVED***lucide-react***REMOVED***
 import type { ReactElement } from ***REMOVED***react***REMOVED***
 
-
-
 const User = (): ReactElement => {
   const auth = useAuth()
 
@@ -20,7 +17,9 @@ const User = (): ReactElement => {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="h-12 w-full justify-start gap-2 px-2">
-          <UserAvatar name={`${[auth.user?.profile?.firstName, auth.user?.profile?.lastName].filter(Boolean).join(***REMOVED*** ***REMOVED***)}`} />
+          <UserAvatar
+            name={`${[auth.user?.profile?.firstName, auth.user?.profile?.lastName].filter(Boolean).join(***REMOVED*** ***REMOVED***)}`}
+          />
           <div className="flex flex-col items-start text-left cursor-pointer">
             <span className="text-sm font-medium">
               {auth.user?.profile?.firstName

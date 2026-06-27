@@ -14,7 +14,7 @@ const DeleteButton = ({
   document,
   onDelete,
 }: {
-  document: IDocument
+  document: IDocument & { can_modify: boolean }
   onDelete: () => void
 }): ReactElement => {
   const [confirm, setConfirm] = useState(false)
@@ -36,7 +36,7 @@ const DeleteButton = ({
     })
   }
   return (
-    <Button onClick={handleClick} size="xs" type="alert" className="text-white">
+    <Button onClick={handleClick} disabled={document.can_modify === false || document.lock_sub !== null} size="xs" type="alert" className="text-white">
       {confirm ? 'Confirm' : 'Delete'}
     </Button>
   )
@@ -131,7 +131,7 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
               id: 'label',
               accessor: (r) => (
                 <>
-                  {r.can_modify === true ? (
+                  {r.can_modify === true && r.lock_sub === null ? (
                     <Link to={`/document/edit/${r.uuid}`}>{r.label}</Link>
                   ) : (
                     r.label
@@ -200,7 +200,7 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
               id: 'delete',
               accessor: (r) => {
                 return r.can_modify ? (
-                  <DeleteButton document={r as IDocument} onDelete={onDeleteItem} />
+                  <DeleteButton document={r as IDocument & { can_modify: boolean }} onDelete={onDeleteItem} />
                 ) : null
               },
             },

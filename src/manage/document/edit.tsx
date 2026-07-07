@@ -9,8 +9,10 @@ import {
   type IFormOverride,
   type IFormValues,
 } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
-import { Button, Loader, ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
-import { useEffect, useRef, useState, type ReactElement } from ***REMOVED***react***REMOVED***
+import { Button, Checkbox, Loader, ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
+import { Button as ShadCNButton } from ***REMOVED***@/components/ui/button***REMOVED***
+
+import { useEffect, useEffectEvent, useRef, useState, type ReactElement } from ***REMOVED***react***REMOVED***
 import { useNavigate, useParams } from ***REMOVED***react-router-dom***REMOVED***
 import { omit } from ***REMOVED***lodash-es***REMOVED***
 import { cn, validate } from ***REMOVED***@/lib/utils***REMOVED***
@@ -22,7 +24,7 @@ import StationSearch from ***REMOVED***@/manage/custom_inputs/station_search***R
 import SampleFileObject from ***REMOVED***../custom_inputs/sample_file_object***REMOVED***
 import CSVUploadForSampleFile from ***REMOVED***../custom_inputs/csv_upload_for_sample_file***REMOVED***
 
-import { Circle, Lock, Unlock } from ***REMOVED***lucide-react***REMOVED***
+import { ChevronDown, ChevronUp, Circle, Lock, Unlock } from ***REMOVED***lucide-react***REMOVED***
 import ShareDocument from ***REMOVED***@/components/custom/share-document***REMOVED***
 
 const DocumentLockStatus = ({
@@ -35,27 +37,33 @@ const DocumentLockStatus = ({
   const auth = useAuth()
   const [locked, setLocked] = useState(false)
   const isInitialMountRef = useRef(true)
-  const abortControllerRef = useRef<AbortController | null>(null);
-  abortControllerRef.current = new AbortController();
-  const signal = abortControllerRef.current.signal;
+  const abortControllerRef = useRef<AbortController | null>(null)
+
   const { mutate, isPending } = useLockDocumentMutation({
     onSuccess: (lockStatus) => setLocked(lockStatus),
-    signal
+  })
+
+  const lockDocument = useEffectEvent(() => {
+    abortControllerRef.current = new AbortController()
+    const signal = abortControllerRef.current.signal
+    // Always lock on effect run (first mount or remount after Strict Mode)
+    mutate({ document, lock: true, signal })
+  })
+
+  const unlockDocument = useEffectEvent(() => {
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false
+      return // Skip unlock on first cleanup
+    }
+    mutate({ document, lock: false })
   })
 
   useEffect(() => {
-    // Always lock on effect run (first mount or remount after Strict Mode)
-    mutate({ document, lock: true })
-
+    lockDocument()
     return () => {
-      // Only unlock if we***REMOVED***re past the initial mount (skip Strict Mode cleanup)
-      if (!isInitialMountRef.current) {
-        mutate({ document, lock: false })
-      }
-      // Mark that we***REMOVED***re past the initial mount
-      isInitialMountRef.current = false
+      unlockDocument()
     }
-  }, [document.uuid, mutate])
+  }, [])
 
   if (auth === undefined) {
     return <>!</>
@@ -79,51 +87,111 @@ const DocumentLockStatus = ({
   )
 }
 
-const AutoSaveStatus = ({ lastUpdate, lastSave, isUpdating, onTriggerUpdate }: { lastUpdate: Date | null, lastSave: Date | null, isUpdating: boolean, onTriggerUpdate: () => void }): ReactElement => {
+const AutoSaveStatus = ({
+  lastUpdate,
+  lastSave,
+  isUpdating,
+  onTriggerUpdate,
+}: {
+  lastUpdate: Date | null
+  lastSave: Date | null
+  isUpdating: boolean
+  onTriggerUpdate: () => void
+}): ReactElement => {
+  const maxSeconds = 5
   const isStale = lastUpdate === lastSave ? false : true
-  const [seconds, setSeconds] = useState(0);
-  const [intervalId, setIntervalId] = useState<number | null>(null);
+  const [autoSave, setAutoSave] = useState(true)
+  const [selectorExpanded, setSelectorExpanded] = useState(false)
+  const [seconds, setSeconds] = useState(0)
+  const [intervalId, setIntervalId] = useState<number | null>(null)
   const startInterval = () => {
     if (intervalId === null) {
       const newIntervalId = setInterval(() => {
-        setSeconds(prev => prev + 1);
-      }, 1000);
-      setIntervalId(newIntervalId);
+        setSeconds((prev) => prev + 1)
+      }, 1000)
+      setIntervalId(newIntervalId)
     }
   }
   const endInterval = () => {
     if (intervalId !== null) {
-      clearInterval(intervalId);
-      setIntervalId(null);
+      clearInterval(intervalId)
+      setIntervalId(null)
     }
   }
-  useEffect(() => {
-    if (lastUpdate !== lastSave) {
-      if (intervalId === null) {
-        startInterval()
-      } else if (seconds >= 10) {
-        onTriggerUpdate()
-        setSeconds(0)
-        endInterval()
-      }
-    }
 
-    return () => {
-      endInterval();
-    };
-  }, [intervalId, lastUpdate, lastSave, seconds, isStale, onTriggerUpdate]);
+  if (lastUpdate !== lastSave) {
+    if (intervalId === null) {
+      startInterval()
+    } else if (seconds >= maxSeconds) {
+      onTriggerUpdate()
+      setSeconds(0)
+      endInterval()
+    }
+  } else if (intervalId) {
+    endInterval()
+  }
+
+  const progressPercentage = (seconds / (maxSeconds - 1)) * 100
+  const CIRCLE_RADIUS = 8 // SVG circle radius for w-4 h-4
+  const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * CIRCLE_RADIUS
+  const strokeDashoffset = CIRCLE_CIRCUMFERENCE * (1 - progressPercentage / 100)
 
   return (
-    <span className=***REMOVED***w-8 h-8 flex flex-row items-center justify-center rounded-sm shadow-md bg-slate-200***REMOVED***>
-      {
-        isUpdating ? <Loader size="sm" /> : <Circle color=***REMOVED***white***REMOVED*** className={`w-4 h-4 ${isStale ? ***REMOVED***fill-red-500***REMOVED*** : ***REMOVED***fill-green-500***REMOVED***}`} />
-      }
-      <span className=***REMOVED***text-[10px]***REMOVED***>{seconds}</span>
-
-    </span>
+    <ShadCNButton
+      variant="outline"
+      onClick={() => {
+        setSelectorExpanded(!selectorExpanded)
+      }}
+    >
+      {isUpdating ? (
+        <Loader size="sm" />
+      ) : (
+        <>
+          <Circle
+            color="white"
+            className={`w-4 h-4 ${isStale ? ***REMOVED***fill-red-500***REMOVED*** : ***REMOVED***fill-green-500***REMOVED***}`}
+            style={
+              intervalId !== null
+                ? {
+                    strokeDasharray: `${CIRCLE_CIRCUMFERENCE} ${CIRCLE_CIRCUMFERENCE}`,
+                    strokeDashoffset: strokeDashoffset,
+                    stroke: ***REMOVED***#666***REMOVED***,
+                    strokeWidth: 2,
+                    transition: ***REMOVED***stroke-dashoffset 1.1s ease-in-out***REMOVED***,
+                  }
+                : {
+                    strokeDasharray: ***REMOVED***0 0***REMOVED***,
+                    strokeDashoffset: CIRCLE_CIRCUMFERENCE,
+                    stroke: ***REMOVED***#FFF***REMOVED***,
+                    strokeWidth: 2,
+                  }
+            }
+          />
+          <>
+            {selectorExpanded ? (
+              <>
+                <ChevronUp className="w-4 h-4 text-slate-800" />
+                <div className="absolute top-10 right-0 bg-white shadow-md w-100 min-h-10">
+                  <Checkbox
+                    value={autoSave}
+                    id="autosave-checkbox"
+                    testId="autosave-checkbox"
+                    onChange={(c) => {
+                      setAutoSave(c)
+                    }}
+                  />
+                </div>
+              </>
+            ) : (
+              <ChevronDown className="w-4 h-4 text-slate-800" />
+            )}
+          </>
+        </>
+      )}
+      <span className="text-[10px] hidden">{progressPercentage?.toFixed(1)}</span>
+    </ShadCNButton>
   )
 }
-
 
 const EditDocumentForm = ({
   document,
@@ -171,20 +239,20 @@ const EditDocumentForm = ({
     []
   const dataForm = (
     assetForm?.use_form_config === true &&
-      assetForm?.form_config !== undefined &&
-      assetForm?.form_config !== null
+    assetForm?.form_config !== undefined &&
+    assetForm?.form_config !== null
       ? assetForm.form_config
       : assetForm?.schema_override_config !== undefined || fieldConfigJSON !== undefined
         ? omit(
-          schemaToFormUtils.overridesAndSchemaToFormObject({
-            schema: schema.json_schema,
-            formOverrides: assetForm?.schema_override_config
-              ? [assetForm?.schema_override_config as IFormOverride]
-              : undefined,
-            formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
-          }),
-          ***REMOVED***label***REMOVED***
-        )
+            schemaToFormUtils.overridesAndSchemaToFormObject({
+              schema: schema.json_schema,
+              formOverrides: assetForm?.schema_override_config
+                ? [assetForm?.schema_override_config as IFormOverride]
+                : undefined,
+              formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
+            }),
+            ***REMOVED***label***REMOVED***
+          )
         : schemaToFormUtils.schemaToFormObject(schema.json_schema)
   ) as IForm
 
@@ -214,13 +282,14 @@ const EditDocumentForm = ({
       })
       navigate(***REMOVED***/document***REMOVED***)
     } catch (error) {
-      setErrors([{
-        field: ***REMOVED***form***REMOVED***,
-        message: (error as Error)?.message ?? ***REMOVED***Save failed***REMOVED***,
-      }])
+      setErrors([
+        {
+          field: ***REMOVED***form***REMOVED***,
+          message: (error as Error)?.message ?? ***REMOVED***Save failed***REMOVED***,
+        },
+      ])
     }
   }
-
 
   return (
     <div className="flex flex-col gap-4 relative">
@@ -229,11 +298,16 @@ const EditDocumentForm = ({
         <div className="flex flex-row gap-2 items-center">
           <ShareDocument document={document} />
           <DocumentLockStatus document={document} />
-          <AutoSaveStatus lastUpdate={lastUpdate} lastSave={lastSave} isUpdating={isPending} onTriggerUpdate={() => {
-            const d = new Date()
-            setLastSave(d)
-            setLastUpdate(d)
-          }} />
+          <AutoSaveStatus
+            lastUpdate={lastUpdate}
+            lastSave={lastSave}
+            isUpdating={isPending}
+            onTriggerUpdate={() => {
+              const d = new Date()
+              setLastSave(d)
+              setLastUpdate(d)
+            }}
+          />
         </div>
       </h1>
       <Errors errors={errors} />

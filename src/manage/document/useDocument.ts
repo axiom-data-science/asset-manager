@@ -5,7 +5,13 @@ import { documentListQueryKey } from ***REMOVED***@/manage/document/useDocumentL
 import { lockDocument, unlockDocument } from ***REMOVED***@/services/postgrest/services***REMOVED***
 import type { IDocument, IPostgrestParams, IValidationError } from ***REMOVED***@/types/types***REMOVED***
 import type { IForm, IFormValues } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
-import { queryOptions, useMutation, useQuery, useQueryClient, type UseQueryResult } from ***REMOVED***@tanstack/react-query***REMOVED***
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseQueryResult,
+} from ***REMOVED***@tanstack/react-query***REMOVED***
 
 export const documentQueryKey = ({
   uuid,
@@ -58,36 +64,51 @@ export const useClearDocumentQueryCache = (uuid: string | null, params?: IPostgr
   })
 }
 
-export const useLockDocumentMutation = ({onSuccess, signal}: {onSuccess?: (locked: boolean) => void, signal?: AbortSignal}) => {
+export const useLockDocumentMutation = ({
+  onSuccess,
+}: {
+  onSuccess?: (locked: boolean) => void
+}) => {
   const auth = useAuth()
   const queryClient = useQueryClient()
 
-
   return useMutation({
-    mutationFn: async ({ document, lock }: { document: IDocument; lock: boolean }) => {
+    mutationFn: async ({
+      document,
+      lock,
+      signal,
+    }: {
+      document: IDocument
+      lock: boolean
+      signal?: AbortSignal
+    }) => {
       if (!auth.user) throw new Error(***REMOVED***User is not authenticated***REMOVED***)
 
+      console.log(
+        lock ? ***REMOVED***LOCKING***REMOVED*** : ***REMOVED***UNLOCKING***REMOVED***,
+        document.uuid,
+        ***REMOVED***for user***REMOVED***,
+        auth.user.profile.sub ?? ***REMOVED******REMOVED***
+      )
 
-      console.log(lock ? ***REMOVED***LOCKING***REMOVED*** : ***REMOVED***UNLOCKING***REMOVED***, document.uuid, ***REMOVED***for user***REMOVED***, auth.user.profile.sub ?? ***REMOVED******REMOVED***)
-      
       return lock
         ? lockDocument({
             document_uuid: document.uuid,
             user_sub: auth.user.profile.sub ?? ***REMOVED******REMOVED***,
             token: auth.user.access_token,
-            signal
+            signal,
           })
         : unlockDocument({
             document_uuid: document.uuid,
             user_sub: auth.user.profile.sub ?? ***REMOVED******REMOVED***,
             token: auth.user.access_token,
-            signal
+            signal,
           })
     },
     onSuccess: (_, variables) => {
       // Call the callback to update local UI state
       if (onSuccess) onSuccess(variables.lock)
-      
+
       // Invalidate and refetch the document query to sync lock state
       queryClient.invalidateQueries({
         queryKey: [***REMOVED***document***REMOVED***],
@@ -95,7 +116,6 @@ export const useLockDocumentMutation = ({onSuccess, signal}: {onSuccess?: (locke
     },
   })
 }
-
 
 export const useSaveDocumentMutation = () => {
   const auth = useAuth()
@@ -113,7 +133,13 @@ export const useSaveDocumentMutation = () => {
       form: IForm
       formValues: IFormValues
       isUsingDataForm: boolean
-      validate: ({form, formValues}: {form: IForm; formValues: IFormValues}) => Promise<{ valid: boolean; errors: IValidationError[] }>
+      validate: ({
+        form,
+        formValues,
+      }: {
+        form: IForm
+        formValues: IFormValues
+      }) => Promise<{ valid: boolean; errors: IValidationError[] }>
     }) => {
       // Run validation first
       const result = await validate({ form, formValues })

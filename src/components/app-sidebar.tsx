@@ -10,7 +10,7 @@ import {
 } from ***REMOVED***@/components/ui/sidebar***REMOVED***
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from ***REMOVED***@/components/ui/collapsible***REMOVED***
-import { Book, BookPlus, ChevronDown, FilePen, List, Lock, Network, PersonStanding, Plus, Share, User } from ***REMOVED***lucide-react***REMOVED***
+import { Book, BookPlus, ChartBarBig, ChevronDown, FilePen, Grid2X2, Import, Layers2, List, Lock, Network, PersonStanding, Plus, Share, Ship, Thermometer, User } from ***REMOVED***lucide-react***REMOVED***
 import { SidebarGroupContent, SidebarGroupLabel } from ***REMOVED***@/components/ui/sidebar***REMOVED***
 import { Link } from ***REMOVED***react-router-dom***REMOVED***
 
@@ -138,6 +138,38 @@ export function AppSidebar() {
         }
       ],
     },
+    {
+      label: ***REMOVED***Imports***REMOVED***,
+      icon: Import,
+      actions: [
+        {
+          name: ***REMOVED***Import sensor stations***REMOVED***,
+          icon: Thermometer,
+          url: ***REMOVED***/import/sensor-stations***REMOVED***
+        },
+        {
+          name: ***REMOVED***Import moving platforms***REMOVED***,
+          icon: Ship,
+          url: ***REMOVED***/import/moving-platforms***REMOVED***
+        },
+        {
+          name: ***REMOVED***Import grid records***REMOVED***,
+          icon: Grid2X2,
+          url: ***REMOVED***/import/grid-records***REMOVED***
+        },
+        {
+          name: ***REMOVED***Import binner records***REMOVED***,
+          icon: ChartBarBig,
+          url: ***REMOVED***/import/binner-records***REMOVED***
+        },
+        {
+          name: ***REMOVED***Import layers (oikos - grids/binners excluded)***REMOVED***,
+          icon: Layers2,
+          url: ***REMOVED***/import/oikos-layers***REMOVED***
+        }
+
+      ]
+    }
   ]
 
   return (

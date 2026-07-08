@@ -1,3 +1,4 @@
+import { DOCUMENTS_TABLE } from ***REMOVED***@/manage/document/services***REMOVED***
 import { postgrestRollupArgs, postgrestUrl } from ***REMOVED***@/services/postgrest/endpoints***REMOVED***
 import type { IPostgrestParams } from ***REMOVED***@/types/types***REMOVED***
 
@@ -353,4 +354,116 @@ export const patchToPostgrest = async <T, R = T>({
       `Error patching to Postgrest: ${error instanceof Error ? error.message : String(error)}`
     )
   }
+}
+
+export const updateDocumentLock = async ({
+  document_uuid,
+  user_sub,
+  token,
+  signal,
+  lock = true,
+}: {
+  document_uuid: string
+  user_sub: string
+  token: string
+  signal?: AbortSignal
+  lock?: boolean
+}): Promise<boolean> => {
+  const url = postgrestUrl({
+    table: DOCUMENTS_TABLE,
+    params: {
+      filters: [
+        {
+          column: ***REMOVED***uuid***REMOVED***,
+          operator: ***REMOVED***eq***REMOVED***,
+          value: document_uuid,
+        },
+      ],
+    },
+  })
+
+  const request = await (
+    await fetch(url, {
+      keepalive: lock === false, // make sure unlocks complete even if page is closing,
+      method: ***REMOVED***PATCH***REMOVED***,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ***REMOVED***Content-Type***REMOVED***: ***REMOVED***application/json***REMOVED***,
+        Prefer: ***REMOVED***return=representation***REMOVED***,
+      },
+      signal,
+      body: JSON.stringify({
+        lock_sub: lock ? user_sub : null,
+      }),
+    })
+  ).json()
+  const doc = request && request?.length > 0 ? request[0] : null
+  return doc
+    ? lock
+      ? doc.lock_sub === user_sub
+      : doc.lock_sub === null
+    : false
+}
+
+export const lockDocument = async (params: {
+  document_uuid: string
+  user_sub: string
+  token: string
+  signal?: AbortSignal
+}): Promise<boolean> => {
+  const r = await updateDocumentLock({
+    ...params,
+    lock: true,
+  })
+
+  return r
+}
+
+export const unlockDocument = async (params: {
+  document_uuid: string
+  user_sub: string
+  token: string
+  signal?: AbortSignal
+}): Promise<boolean> => {
+  const r = await updateDocumentLock({
+    ...params,
+    lock: false,
+  })
+
+  return r
+}
+
+export const checkDocumentLock = async ({
+  document_uuid,
+  user_sub,
+  token,
+  signal,
+}: {
+  document_uuid: string
+  user_sub?: string
+  token: string
+  signal?: AbortSignal
+}): Promise<boolean> => {
+  const url = postgrestUrl({
+    table: DOCUMENTS_TABLE,
+    params: {
+      select: [***REMOVED***lock_sub***REMOVED***],
+      filters: [
+        {
+          column: ***REMOVED***uuid***REMOVED***,
+          operator: ***REMOVED***eq***REMOVED***,
+          value: document_uuid,
+        },
+      ],
+    },
+  })
+  const j = await (
+    await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      signal,
+    })
+  ).json()
+  return !!(j && j.length > 0 && (!user_sub || j[0].lock_sub === user_sub))
 }

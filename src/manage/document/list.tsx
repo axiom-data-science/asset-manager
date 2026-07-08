@@ -8,12 +8,13 @@ import Link from ***REMOVED***@/manage/components/link***REMOVED***
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
 import { deleteDocument } from ***REMOVED***./services***REMOVED***
 import { useQueryClient } from ***REMOVED***@tanstack/react-query***REMOVED***
+import { X, CheckIcon, Lock, Unlock } from ***REMOVED***lucide-react***REMOVED***
 
 const DeleteButton = ({
   document,
   onDelete,
 }: {
-  document: IDocument
+  document: IDocument & { can_modify: boolean }
   onDelete: () => void
 }): ReactElement => {
   const [confirm, setConfirm] = useState(false)
@@ -35,7 +36,7 @@ const DeleteButton = ({
     })
   }
   return (
-    <Button onClick={handleClick} size="xs" type="alert" className="text-white">
+    <Button onClick={handleClick} disabled={document.can_modify === false || document.lock_sub !== null} size="xs" type="alert" className="text-white">
       {confirm ? ***REMOVED***Confirm***REMOVED*** : ***REMOVED***Delete***REMOVED***}
     </Button>
   )
@@ -76,6 +77,7 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
     targetedParams,
     rollups,
   })
+  const auth = useAuth()
   const object_types_map = Object.fromEntries(object_types.map((ot) => [ot.uuid, ot]))
   const queryClient = useQueryClient()
   const onDeleteItem = (): void => {
@@ -127,7 +129,48 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
             {
               label: ***REMOVED***Label***REMOVED***,
               id: ***REMOVED***label***REMOVED***,
-              accessor: (r) => <Link to={`/document/edit/${r.uuid}`}>{r.label}</Link>,
+              accessor: (r) => (
+                <>
+                  {r.can_modify === true && r.lock_sub === null ? (
+                    <Link to={`/document/edit/${r.uuid}`}>{r.label}</Link>
+                  ) : (
+                    r.label
+                  )}
+                </>
+              ),
+            },
+            {
+              id: ***REMOVED***published***REMOVED***,
+              label: ***REMOVED***Published***REMOVED***,
+              accessor: (r) =>
+                r.published ? (
+                  <>
+                    <CheckIcon color="green" className="mx-auto" />
+                    <p className="text-[10px] text-slate-400 text-center">
+                      {r.published_at ? new Date(r.published_at).toLocaleString() : ***REMOVED******REMOVED***}
+                    </p>
+                  </>
+                ) : (
+                  <X color="red" className="mx-auto" />
+                ),
+            },
+            {
+              id: ***REMOVED***locked***REMOVED***,
+              label: ***REMOVED***Locked***REMOVED***,
+              accessor: (r) =>
+                r.lock_sub ? (
+                  <>
+                    <Lock
+                      color={`${r.lock_sub === auth?.user?.profile?.sub ? ***REMOVED***green***REMOVED*** : ***REMOVED***red***REMOVED***}`}
+                      className="mx-auto"
+                    />
+                    <p className="text-[10px] text-slate-400 text-center">
+                      {r.locked_at ? new Date(r.locked_at).toLocaleString() : ***REMOVED******REMOVED***}
+                    </p>
+                  </>
+                ) : (
+                  <Unlock color="green" className="mx-auto" />
+                ),
             },
             {
               label: ***REMOVED***Type***REMOVED***,
@@ -155,7 +198,11 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
             {
               label: ***REMOVED***Delete***REMOVED***,
               id: ***REMOVED***delete***REMOVED***,
-              accessor: (r) => <DeleteButton document={r as IDocument} onDelete={onDeleteItem} />,
+              accessor: (r) => {
+                return r.can_modify ? (
+                  <DeleteButton document={r as IDocument & { can_modify: boolean }} onDelete={onDeleteItem} />
+                ) : null
+              },
             },
           ]}
         />

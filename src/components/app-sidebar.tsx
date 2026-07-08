@@ -10,7 +10,7 @@ import {
 } from ***REMOVED***@/components/ui/sidebar***REMOVED***
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from ***REMOVED***@/components/ui/collapsible***REMOVED***
-import { Book, BookPlus, ChevronDown, List, Network, Plus, User } from ***REMOVED***lucide-react***REMOVED***
+import { Book, BookPlus, ChartBarBig, ChevronDown, FilePen, Grid2X2, Import, Layers2, List, Lock, Network, PersonStanding, Plus, Share, Ship, Thermometer, User } from ***REMOVED***lucide-react***REMOVED***
 import { SidebarGroupContent, SidebarGroupLabel } from ***REMOVED***@/components/ui/sidebar***REMOVED***
 import { Link } from ***REMOVED***react-router-dom***REMOVED***
 
@@ -113,16 +113,63 @@ export function AppSidebar() {
       ],
     },
     {
-      label: ***REMOVED***Custom NINJA API***REMOVED***,
-      icon: Network,
+      label: ***REMOVED***Examples***REMOVED***,
+      icon: FilePen,
       actions: [
         {
-          name: ***REMOVED***List pipelines***REMOVED***,
+          name: ***REMOVED***List NINJA pipelines***REMOVED***,
           icon: List,
           url: ***REMOVED***/custom/pipelines***REMOVED***,
         },
+        {
+          name: ***REMOVED***Lock/unlock document***REMOVED***,
+          icon: Lock,
+          url: ***REMOVED***/examples/lock-unlock-documents***REMOVED***,
+        },
+        {
+          name: ***REMOVED***Share document***REMOVED***,
+          icon: Share,
+          url: ***REMOVED***/examples/share-document***REMOVED***,
+        },
+        {
+          name: ***REMOVED***List Authentik users***REMOVED***,
+          icon: PersonStanding,
+          url: ***REMOVED***/examples/authentik-users***REMOVED***,
+        }
       ],
     },
+    {
+      label: ***REMOVED***Imports***REMOVED***,
+      icon: Import,
+      actions: [
+        {
+          name: ***REMOVED***Import sensor stations***REMOVED***,
+          icon: Thermometer,
+          url: ***REMOVED***/import/sensor-stations***REMOVED***
+        },
+        {
+          name: ***REMOVED***Import moving platforms***REMOVED***,
+          icon: Ship,
+          url: ***REMOVED***/import/moving-platforms***REMOVED***
+        },
+        {
+          name: ***REMOVED***Import grid records***REMOVED***,
+          icon: Grid2X2,
+          url: ***REMOVED***/import/grid-records***REMOVED***
+        },
+        {
+          name: ***REMOVED***Import binner records***REMOVED***,
+          icon: ChartBarBig,
+          url: ***REMOVED***/import/binner-records***REMOVED***
+        },
+        {
+          name: ***REMOVED***Import layers (oikos - grids/binners excluded)***REMOVED***,
+          icon: Layers2,
+          url: ***REMOVED***/import/oikos-layers***REMOVED***
+        }
+
+      ]
+    }
   ]
 
   return (

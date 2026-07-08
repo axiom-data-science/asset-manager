@@ -49,6 +49,11 @@ const CreateObjectTypeForm = ({
         type: ***REMOVED***long_text***REMOVED***,
       },
       {
+        id: ***REMOVED***data***REMOVED***,
+        label: ***REMOVED***Config***REMOVED***,
+        type: ***REMOVED***json***REMOVED***,
+      },
+      {
         id: ***REMOVED***create_default_schema***REMOVED***,
         label: ***REMOVED***Create default schema***REMOVED***,
         type: ***REMOVED***boolean***REMOVED***,

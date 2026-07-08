@@ -1,8 +1,7 @@
 import type { IValidationError } from ***REMOVED***@/types/types***REMOVED***
 import { getters, schemaToFormUtils, type IForm, type IFormValues } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
-import { useQueries } from ***REMOVED***@tanstack/react-query***REMOVED***
+import { queryOptions, useQueries } from ***REMOVED***@tanstack/react-query***REMOVED***
 import { clsx, type ClassValue } from ***REMOVED***clsx***REMOVED***
-import type { queryOptions } from ***REMOVED***node_modules/@tanstack/react-query/build/legacy/queryOptions***REMOVED***
 import { twMerge } from ***REMOVED***tailwind-merge***REMOVED***
 import { get, omit } from ***REMOVED***lodash-es***REMOVED***
 

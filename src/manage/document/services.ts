@@ -28,6 +28,24 @@ export const fetchDocuments = async <T>({
   return documents
 }
 
+export const fetchDocumentWithPermissions = async <T>({
+  params,
+  token,
+  signal,
+}: {
+  params?: IPostgrestParams
+  token: string
+  signal?: AbortSignal
+}): Promise<(IDocument<T> & { can_modify: boolean })[]> => {
+  const documents = await fetchListFromPostgrest<IDocument<T> & { can_modify: boolean }>({
+    table: ***REMOVED***document_with_permissions***REMOVED***,
+    params,
+    token,
+    signal,
+  })
+  return documents
+}
+
 export const fetchDocument = async <T>({
   uuid,
   params,
@@ -61,7 +79,7 @@ export const fetchDocumentRollup = async ({
   signal?: AbortSignal
 }): Promise<{ label: string; count: number }[]> => {
   const list = await fetchRollupFromPostgrest({
-    table: DOCUMENTS_TABLE,
+    table: ***REMOVED***document_with_permissions***REMOVED***,
     rollupColumn: rollup,
     params,
     token,
@@ -106,6 +124,30 @@ export const patchDocument = async ({
     uuid,
     table: DOCUMENTS_TABLE,
     body: document,
+    token,
+    signal,
+  })
+  return newFieldOverrideConfig
+}
+
+export const patchShare = async ({
+  uuid,
+  subs_for_update,
+  token,
+  signal,
+}: {
+  uuid: string
+  subs_for_update?: string[]
+  subs_for_select?: string[]
+  roles_for_update?: string[]
+  roles_for_select?: string[]
+  token: string
+  signal?: AbortSignal
+}): Promise<IDocument> => {
+  const newFieldOverrideConfig = await upsertToPostgrest<IDocument>({
+    uuid,
+    table: DOCUMENTS_TABLE,
+    body: { subs_for_update },
     token,
     signal,
   })

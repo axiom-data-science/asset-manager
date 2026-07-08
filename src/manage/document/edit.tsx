@@ -1,5 +1,4 @@
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
-import { patchDocument } from ***REMOVED***@/manage/document/services***REMOVED***
 import { type IValidationError, type IObjectSchema } from ***REMOVED***@/types/types***REMOVED***
 import type { IAssetForm, IDocument, IFormToFieldConfigWithDetails } from ***REMOVED***@/types/types***REMOVED***
 import {
@@ -10,19 +9,189 @@ import {
   type IFormOverride,
   type IFormValues,
 } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
-import { Button, Loader, ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
-import { useState, type ReactElement } from ***REMOVED***react***REMOVED***
+import { Button, Checkbox, Loader, ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
+import { Button as ShadCNButton } from ***REMOVED***@/components/ui/button***REMOVED***
+
+import { useEffect, useEffectEvent, useRef, useState, type ReactElement } from ***REMOVED***react***REMOVED***
 import { useNavigate, useParams } from ***REMOVED***react-router-dom***REMOVED***
 import { omit } from ***REMOVED***lodash-es***REMOVED***
-import { removeUndefinedAndNullKeys, validate } from ***REMOVED***@/lib/utils***REMOVED***
+import { cn, validate } from ***REMOVED***@/lib/utils***REMOVED***
 import Errors from ***REMOVED***@/manage/components/errors***REMOVED***
-import { documentQueryKey, useDocument } from ***REMOVED***./useDocument***REMOVED***
-import { useFullDefaultFormAtObjectType } from ***REMOVED***@/manage/form/useForm***REMOVED***
-import { useQueryClient } from ***REMOVED***@tanstack/react-query***REMOVED***
+import { useDocument, useLockDocumentMutation, useSaveDocumentMutation } from ***REMOVED***./useDocument***REMOVED***
+import { useFormAndSchemaAtObjectType } from ***REMOVED***@/manage/form/useForm***REMOVED***
 import FileUpload from ***REMOVED***@/manage/custom_inputs/file_upload***REMOVED***
 import StationSearch from ***REMOVED***@/manage/custom_inputs/station_search***REMOVED***
 import SampleFileObject from ***REMOVED***../custom_inputs/sample_file_object***REMOVED***
 import CSVUploadForSampleFile from ***REMOVED***../custom_inputs/csv_upload_for_sample_file***REMOVED***
+
+import { ChevronDown, ChevronUp, Circle, Lock, Unlock } from ***REMOVED***lucide-react***REMOVED***
+import ShareDocument from ***REMOVED***@/components/custom/share-document***REMOVED***
+
+const DocumentLockStatus = ({
+  document,
+  className,
+}: {
+  document: IDocument
+  className?: string
+}): ReactElement => {
+  const auth = useAuth()
+  const [locked, setLocked] = useState(false)
+  const isInitialMountRef = useRef(true)
+  const abortControllerRef = useRef<AbortController | null>(null)
+
+  const { mutate, isPending } = useLockDocumentMutation({
+    onSuccess: (lockStatus) => setLocked(lockStatus),
+  })
+
+  const lockDocument = useEffectEvent(() => {
+    abortControllerRef.current = new AbortController()
+    const signal = abortControllerRef.current.signal
+    // Always lock on effect run (first mount or remount after Strict Mode)
+    mutate({ document, lock: true, signal })
+  })
+
+  const unlockDocument = useEffectEvent(() => {
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false
+      return // Skip unlock on first cleanup
+    }
+    mutate({ document, lock: false })
+  })
+
+  useEffect(() => {
+    lockDocument()
+    return () => {
+      unlockDocument()
+    }
+  }, [])
+
+  if (auth === undefined) {
+    return <>!</>
+  }
+
+  return (
+    <span
+      className={cn(
+        ***REMOVED***w-8 h-8 flex flex-row items-center justify-center rounded-sm shadow-md bg-slate-200***REMOVED***,
+        className
+      )}
+    >
+      {isPending ? (
+        <Loader size="sm" />
+      ) : locked ? (
+        <Lock className="w-4 h-4 text-slate-800" />
+      ) : (
+        <Unlock className="w-4 h-4 text-red-800" />
+      )}
+    </span>
+  )
+}
+
+const AutoSaveStatus = ({
+  lastUpdate,
+  lastSave,
+  isUpdating,
+  onTriggerUpdate,
+}: {
+  lastUpdate: Date | null
+  lastSave: Date | null
+  isUpdating: boolean
+  onTriggerUpdate: () => void
+}): ReactElement => {
+  const maxSeconds = 5
+  const isStale = lastUpdate === lastSave ? false : true
+  const [autoSave, setAutoSave] = useState(true)
+  const [selectorExpanded, setSelectorExpanded] = useState(false)
+  const [seconds, setSeconds] = useState(0)
+  const [intervalId, setIntervalId] = useState<number | null>(null)
+  const startInterval = () => {
+    if (intervalId === null) {
+      const newIntervalId = setInterval(() => {
+        setSeconds((prev) => prev + 1)
+      }, 1000)
+      setIntervalId(newIntervalId)
+    }
+  }
+  const endInterval = () => {
+    if (intervalId !== null) {
+      clearInterval(intervalId)
+      setIntervalId(null)
+    }
+  }
+
+  if (lastUpdate !== lastSave) {
+    if (intervalId === null) {
+      startInterval()
+    } else if (seconds >= maxSeconds) {
+      onTriggerUpdate()
+      setSeconds(0)
+      endInterval()
+    }
+  } else if (intervalId) {
+    endInterval()
+  }
+
+  const progressPercentage = (seconds / (maxSeconds - 1)) * 100
+  const CIRCLE_RADIUS = 8 // SVG circle radius for w-4 h-4
+  const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * CIRCLE_RADIUS
+  const strokeDashoffset = CIRCLE_CIRCUMFERENCE * (1 - progressPercentage / 100)
+
+  return (
+    <ShadCNButton
+      variant="outline"
+      onClick={() => {
+        setSelectorExpanded(!selectorExpanded)
+      }}
+    >
+      {isUpdating ? (
+        <Loader size="sm" />
+      ) : (
+        <>
+          <Circle
+            color="white"
+            className={`w-4 h-4 ${isStale ? ***REMOVED***fill-red-500***REMOVED*** : ***REMOVED***fill-green-500***REMOVED***}`}
+            style={
+              intervalId !== null
+                ? {
+                    strokeDasharray: `${CIRCLE_CIRCUMFERENCE} ${CIRCLE_CIRCUMFERENCE}`,
+                    strokeDashoffset: strokeDashoffset,
+                    stroke: ***REMOVED***#666***REMOVED***,
+                    strokeWidth: 2,
+                    transition: ***REMOVED***stroke-dashoffset 1.1s ease-in-out***REMOVED***,
+                  }
+                : {
+                    strokeDasharray: ***REMOVED***0 0***REMOVED***,
+                    strokeDashoffset: CIRCLE_CIRCUMFERENCE,
+                    stroke: ***REMOVED***#FFF***REMOVED***,
+                    strokeWidth: 2,
+                  }
+            }
+          />
+          <>
+            {selectorExpanded ? (
+              <>
+                <ChevronUp className="w-4 h-4 text-slate-800" />
+                <div className="absolute top-10 right-0 bg-white shadow-md w-100 min-h-10">
+                  <Checkbox
+                    value={autoSave}
+                    id="autosave-checkbox"
+                    testId="autosave-checkbox"
+                    onChange={(c) => {
+                      setAutoSave(c)
+                    }}
+                  />
+                </div>
+              </>
+            ) : (
+              <ChevronDown className="w-4 h-4 text-slate-800" />
+            )}
+          </>
+        </>
+      )}
+      <span className="text-[10px] hidden">{progressPercentage?.toFixed(1)}</span>
+    </ShadCNButton>
+  )
+}
 
 const EditDocumentForm = ({
   document,
@@ -36,11 +205,9 @@ const EditDocumentForm = ({
   fieldConfigs?: IFormToFieldConfigWithDetails[]
 }): ReactElement => {
   const navigate = useNavigate()
-  const [saving, setSaving] = useState(false)
-  const [formValues, setFormValues] = useState<IFormValues>(document.data as unknown as IFormValues)
   const [errors, setErrors] = useState<IValidationError[]>([])
-  const auth = useAuth()
-  const queryClient = useQueryClient()
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
+  const [lastSave, setLastSave] = useState<Date | null>(null)
   const defaultForm: IForm = {
     id: ***REMOVED***create-document***REMOVED***,
     settings: {
@@ -88,72 +255,61 @@ const EditDocumentForm = ({
           )
         : schemaToFormUtils.schemaToFormObject(schema.json_schema)
   ) as IForm
-  const form =
+
+  const isUsingDataForm = !!(
     dataForm.fields?.length ||
     dataForm.pages?.length ||
     dataForm.wizard_steps?.length ||
     dataForm.tabs?.length
-      ? dataForm
-      : defaultForm
+  )
+
+  const form = isUsingDataForm ? dataForm : defaultForm
+
+  const [formValues, setFormValues] = useState<IFormValues>({
+    ...(isUsingDataForm ? (document.data as JSON) : document),
+  } as unknown as IFormValues)
+
+  const { mutateAsync, isPending } = useSaveDocumentMutation()
 
   const onSave = async () => {
-    setSaving(true)
-    const valid = await validate({ form, formValues })
-    if (!valid.valid && valid.errors.length > 0) {
-      setErrors(valid.errors)
-      setSaving(false)
-      window.scrollTo({
-        top: 0,
-        behavior: ***REMOVED***smooth***REMOVED***, // Adds a gradual animation
-      })
-      queryClient.invalidateQueries({
-        queryKey: documentQueryKey({ uuid: document.uuid }),
-      })
-      return
-    }
-    setErrors([])
     try {
-      await patchDocument({
-        uuid: document.uuid,
-        document: {
-          ...document,
-          ...{
-            label:
-              formValues.label ??
-              formValues.title ??
-              formValues.platform_name ??
-              formValues.station_label ??
-              ***REMOVED***Untitled Document***REMOVED***,
-            description: formValues.description ?? ***REMOVED******REMOVED***,
-            data: {
-              ...document.data,
-              ...removeUndefinedAndNullKeys(formValues),
-            },
-          },
-        } as IDocument,
-        token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
+      await mutateAsync({
+        document,
+        form,
+        formValues,
+        isUsingDataForm,
+        validate,
       })
-
-      setSaving(false)
       navigate(***REMOVED***/document***REMOVED***)
-    } catch (e: unknown) {
-      setSaving(false)
+    } catch (error) {
       setErrors([
         {
           field: ***REMOVED***form***REMOVED***,
-          message: (e as Error)?.message ?? ***REMOVED***An error occurred while saving. Please try again.***REMOVED***,
+          message: (error as Error)?.message ?? ***REMOVED***Save failed***REMOVED***,
         },
       ])
-      window.scrollTo({
-        top: 0,
-        behavior: ***REMOVED***smooth***REMOVED***, // Adds a gradual animation
-      })
     }
   }
 
   return (
     <div className="flex flex-col gap-4 relative">
-      <h1 className="text-2xl font-bold">Edit document</h1>
+      <h1 className="text-2xl font-bold flex flex-row justify-between items-center">
+        <span>Edit document{isPending ? <Loader size="sm" /> : null}</span>
+        <div className="flex flex-row gap-2 items-center">
+          <ShareDocument document={document} />
+          <DocumentLockStatus document={document} />
+          <AutoSaveStatus
+            lastUpdate={lastUpdate}
+            lastSave={lastSave}
+            isUpdating={isPending}
+            onTriggerUpdate={() => {
+              const d = new Date()
+              setLastSave(d)
+              setLastUpdate(d)
+            }}
+          />
+        </div>
+      </h1>
       <Errors errors={errors} />
       <FormCreator
         form={{
@@ -171,10 +327,13 @@ const EditDocumentForm = ({
           ***REMOVED***custom:csv_upload_for_sample_file***REMOVED***: CSVUploadForSampleFile,
           ***REMOVED***custom:station_search***REMOVED***: StationSearch,
         }}
+        onChange={() => {
+          setLastUpdate(new Date())
+        }}
       />
       <div className="flex flex-row gap-4  p-4 sticky bottom-0 bg-white/80 z-10">
-        <Button onClick={onSave} type="primary" disabled={saving}>
-          {saving ? <Loader className="animate-spin" /> : ***REMOVED***Save***REMOVED***}
+        <Button onClick={onSave} type="primary" disabled={isPending}>
+          {isPending ? <Loader className="animate-spin" /> : ***REMOVED***Save***REMOVED***}
         </Button>
       </div>
     </div>
@@ -182,7 +341,7 @@ const EditDocumentForm = ({
 }
 
 const LoadSchemaAndCreateDocumentForm = ({ document }: { document: IDocument }): ReactElement => {
-  const { data, isLoading, error } = useFullDefaultFormAtObjectType({
+  const { data, isLoading, error } = useFormAndSchemaAtObjectType({
     object_type_uuid: document.object_type_uuid,
   })
   return (

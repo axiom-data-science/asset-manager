@@ -1,24 +1,22 @@
-import { useAuth } from "@/auth/useAuth"
-import { fetchDocuments } from "@/manage/document/services"
-import type { IDocument, IPostgrestParams } from "@/types/types"
-import { useQuery } from "@tanstack/react-query"
-import type { UseQueryResult } from "node_modules/@tanstack/react-query/build/modern/index.d.cts"
+import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
+import { fetchDocuments } from ***REMOVED***@/manage/document/services***REMOVED***
+import type { IDocument, IPostgrestParams } from ***REMOVED***@/types/types***REMOVED***
+import { useQuery, type UseQueryResult } from ***REMOVED***@tanstack/react-query***REMOVED***
 
 export const useDocuments = <T>(params?: IPostgrestParams): UseQueryResult<IDocument<T>[]> => {
-    const auth = useAuth()
-    const queryResult = useQuery({
-        queryKey: [***REMOVED***documents***REMOVED***, JSON.stringify(params)],
-        queryFn: async ({ signal }): Promise<IDocument<T>[]> => {
-            const rawDocuments = await fetchDocuments<T>({
-                params: params ?? {},
-                token: auth.user?.access_token || ***REMOVED******REMOVED***,
-                signal
-            })
+  const auth = useAuth()
+  const queryResult = useQuery({
+    queryKey: [***REMOVED***documents***REMOVED***, JSON.stringify(params)],
+    queryFn: async ({ signal }): Promise<IDocument<T>[]> => {
+      const rawDocuments = await fetchDocuments<T>({
+        params: params ?? {},
+        token: auth.user?.access_token || ***REMOVED******REMOVED***,
+        signal,
+      })
 
-            return rawDocuments
-            
-        }
-    })
+      return rawDocuments
+    },
+  })
 
-    return queryResult
+  return queryResult
 }

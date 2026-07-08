@@ -6,7 +6,7 @@ const SimpleLayout = ({ children }: { children: React.ReactNode }) => {
       <main className="w-full">
         <div className="p-10 pt-4">{children}</div>
       </main>
-      <div className="fixed left-2 bottom-2 z-50">
+      <div className="fixed left-2 bottom-2 z-50 bg-white shadow-md">
         <User />
       </div>
     </div>

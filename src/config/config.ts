@@ -40,3 +40,5 @@ export const APPS_API_BASE_URL = twconfig(
   //'https://stage-asset-docs-postgrest.srv.axds.co'
   'http://localhost:3345'
 )
+
+export const SITE_TITLE = twconfig('$TWOWOLVES_SITE_TITLE', 'VITE_SITE_TITLE', 'Asset Manager')

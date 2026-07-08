@@ -49,6 +49,11 @@ const CreateObjectTypeForm = ({
         type: 'long_text',
       },
       {
+        id: 'data',
+        label: 'Config',
+        type: 'json',
+      },
+      {
         id: 'create_default_schema',
         label: 'Create default schema',
         type: 'boolean',

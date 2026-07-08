@@ -8,12 +8,13 @@ import Link from '@/manage/components/link'
 import { useAuth } from '@/auth/useAuth'
 import { deleteDocument } from './services'
 import { useQueryClient } from '@tanstack/react-query'
+import { X, CheckIcon, Lock, Unlock } from 'lucide-react'
 
 const DeleteButton = ({
   document,
   onDelete,
 }: {
-  document: IDocument
+  document: IDocument & { can_modify: boolean }
   onDelete: () => void
 }): ReactElement => {
   const [confirm, setConfirm] = useState(false)
@@ -35,7 +36,7 @@ const DeleteButton = ({
     })
   }
   return (
-    <Button onClick={handleClick} size="xs" type="alert" className="text-white">
+    <Button onClick={handleClick} disabled={document.can_modify === false || document.lock_sub !== null} size="xs" type="alert" className="text-white">
       {confirm ? 'Confirm' : 'Delete'}
     </Button>
   )
@@ -76,6 +77,7 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
     targetedParams,
     rollups,
   })
+  const auth = useAuth()
   const object_types_map = Object.fromEntries(object_types.map((ot) => [ot.uuid, ot]))
   const queryClient = useQueryClient()
   const onDeleteItem = (): void => {
@@ -127,7 +129,48 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
             {
               label: 'Label',
               id: 'label',
-              accessor: (r) => <Link to={`/document/edit/${r.uuid}`}>{r.label}</Link>,
+              accessor: (r) => (
+                <>
+                  {r.can_modify === true && r.lock_sub === null ? (
+                    <Link to={`/document/edit/${r.uuid}`}>{r.label}</Link>
+                  ) : (
+                    r.label
+                  )}
+                </>
+              ),
+            },
+            {
+              id: 'published',
+              label: 'Published',
+              accessor: (r) =>
+                r.published ? (
+                  <>
+                    <CheckIcon color="green" className="mx-auto" />
+                    <p className="text-[10px] text-slate-400 text-center">
+                      {r.published_at ? new Date(r.published_at).toLocaleString() : ''}
+                    </p>
+                  </>
+                ) : (
+                  <X color="red" className="mx-auto" />
+                ),
+            },
+            {
+              id: 'locked',
+              label: 'Locked',
+              accessor: (r) =>
+                r.lock_sub ? (
+                  <>
+                    <Lock
+                      color={`${r.lock_sub === auth?.user?.profile?.sub ? 'green' : 'red'}`}
+                      className="mx-auto"
+                    />
+                    <p className="text-[10px] text-slate-400 text-center">
+                      {r.locked_at ? new Date(r.locked_at).toLocaleString() : ''}
+                    </p>
+                  </>
+                ) : (
+                  <Unlock color="green" className="mx-auto" />
+                ),
             },
             {
               label: 'Type',
@@ -155,7 +198,11 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
             {
               label: 'Delete',
               id: 'delete',
-              accessor: (r) => <DeleteButton document={r as IDocument} onDelete={onDeleteItem} />,
+              accessor: (r) => {
+                return r.can_modify ? (
+                  <DeleteButton document={r as IDocument & { can_modify: boolean }} onDelete={onDeleteItem} />
+                ) : null
+              },
             },
           ]}
         />

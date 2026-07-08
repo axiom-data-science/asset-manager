@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/sidebar'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { Book, BookPlus, ChevronDown, List, Network, Plus, User } from 'lucide-react'
+import { Book, BookPlus, ChartBarBig, ChevronDown, FilePen, Grid2X2, Import, Layers2, List, Lock, Network, PersonStanding, Plus, Share, Ship, Thermometer, User } from 'lucide-react'
 import { SidebarGroupContent, SidebarGroupLabel } from '@/components/ui/sidebar'
 import { Link } from 'react-router-dom'
 
@@ -113,16 +113,63 @@ export function AppSidebar() {
       ],
     },
     {
-      label: 'Custom NINJA API',
-      icon: Network,
+      label: 'Examples',
+      icon: FilePen,
       actions: [
         {
-          name: 'List pipelines',
+          name: 'List NINJA pipelines',
           icon: List,
           url: '/custom/pipelines',
         },
+        {
+          name: 'Lock/unlock document',
+          icon: Lock,
+          url: '/examples/lock-unlock-documents',
+        },
+        {
+          name: 'Share document',
+          icon: Share,
+          url: '/examples/share-document',
+        },
+        {
+          name: 'List Authentik users',
+          icon: PersonStanding,
+          url: '/examples/authentik-users',
+        }
       ],
     },
+    {
+      label: 'Imports',
+      icon: Import,
+      actions: [
+        {
+          name: 'Import sensor stations',
+          icon: Thermometer,
+          url: '/import/sensor-stations'
+        },
+        {
+          name: 'Import moving platforms',
+          icon: Ship,
+          url: '/import/moving-platforms'
+        },
+        {
+          name: 'Import grid records',
+          icon: Grid2X2,
+          url: '/import/grid-records'
+        },
+        {
+          name: 'Import binner records',
+          icon: ChartBarBig,
+          url: '/import/binner-records'
+        },
+        {
+          name: 'Import layers (oikos - grids/binners excluded)',
+          icon: Layers2,
+          url: '/import/oikos-layers'
+        }
+
+      ]
+    }
   ]
 
   return (

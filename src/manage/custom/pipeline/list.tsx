@@ -1,6 +1,7 @@
 import { useAuth } from '@/auth/useAuth'
-import { ViewWithLoader } from '@axdspub/axiom-ui-utilities'
+import { Table, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
 import { useQuery } from '@tanstack/react-query'
+import { Check, X } from 'lucide-react'
 import type { ReactElement } from 'react'
 
 const PipelineList = (): ReactElement => {
@@ -22,17 +23,41 @@ const PipelineList = (): ReactElement => {
 
   return (
     <>
-      <h1 className="text-2xl font-bold mb-4">Custom pipelines</h1>
+      <h1 className="text-2xl font-bold mb-4 flex flex-row gap-2">Nina pipelines</h1>
       <ViewWithLoader isLoading={isLoading} error={error} data={data}>
         <div className="flex flex-col gap-4">
           {data &&
-            data.map((pipeline: { id: string; name: string; description: string }) => (
-              <div key={pipeline.id}>
-                <h3>{pipeline.name}</h3>
-                <p>{pipeline.description}</p>
-                <pre>{JSON.stringify(pipeline, null, 2)}</pre>
-              </div>
-            ))}
+            <Table
+              data={data}
+              columns={[
+                {
+                  label: 'Name',
+                  id: 'name',
+                  accessor: (r) => <p className='flex flex-col gap-1'><span>{r.name}</span><span className='text-xs text-slate-400'>{r.slug}</span></p>
+                },
+                {
+                  label: 'Active',
+                  id: 'active',
+                  accessor: (r) => (r.active ? <Check color='green' /> : <X color='red' />),
+                },
+                {
+                  label: 'Description',
+                  id: 'description',
+                },
+                {
+                  label: 'Created at',
+                  id: 'created',
+                  accessor: (r) => new Date(r.created).toLocaleString(),
+                },
+                {
+                  label: 'Updated at',
+                  id: 'edited',
+                  accessor: (r) => new Date(r.edited).toLocaleString(),
+                }
+              ]}
+            />
+          }
+
         </div>
       </ViewWithLoader>
     </>

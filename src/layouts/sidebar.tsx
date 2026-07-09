@@ -1,18 +1,16 @@
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
-import { AppSidebar } from "@/components/app-sidebar"
-import { Tooltip } from "@axdspub/axiom-ui-utilities"
+import { SidebarProvider, SidebarTrigger } from ***REMOVED***@/components/ui/sidebar***REMOVED***
+import { AppSidebar } from ***REMOVED***@/components/app-sidebar***REMOVED***
+import { Tooltip } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider>
+    <SidebarProvider className=***REMOVED***h-full***REMOVED***>
       <AppSidebar />
-      <main className=***REMOVED***w-full***REMOVED***>
+      <main className="w-full h-full">
         <Tooltip content="Toggle sidebar" side="right" dark={true} useSpan={true}>
-          <SidebarTrigger className=***REMOVED***sticky top-0 z-50 cursor-pointer***REMOVED*** />
+          <SidebarTrigger className="sticky top-0 z-50 cursor-pointer" />
         </Tooltip>
-        <div className=***REMOVED***p-10 pt-4***REMOVED***>
-          {children}
-        </div>
+        <div className="p-10 pt-4 h-full">{children}</div>
       </main>
     </SidebarProvider>
   )

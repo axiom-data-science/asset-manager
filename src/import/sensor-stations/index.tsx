@@ -3,7 +3,7 @@ import { Checkbox, Input, Loader, ViewWithLoader } from '@axdspub/axiom-ui-utili
 import { useQuery } from '@tanstack/react-query'
 
 import { TableVirtuoso, type TableComponents } from 'react-virtuoso'
-import { forwardRef, useCallback, useEffect, useState, type ReactElement } from 'react'
+import { forwardRef, useCallback, useState, type ReactElement } from 'react'
 import { Button } from '@/components/ui/button'
 import { Check } from 'lucide-react'
 import { useBatchImport } from '../hooks/useBatchImport'
@@ -167,6 +167,17 @@ const ImportSensorStations = ({ sensor_stations }: { sensor_stations: IDocument<
             setData(newData)
           }}
         />
+        <div className="flex flex-row gap-2 items-center text-xs">
+          <span>Batch Size:</span>
+          <Input
+            id="batch-size"
+            testId="batch-size"
+            className="w-10 text-center"
+            size="xs"
+            value={batchSize}
+            onChange={(e) => setBatchSize(Number(e))}
+          />
+        </div>
         <Button
           disabled={startImport}
           onClick={() => {
@@ -176,6 +187,17 @@ const ImportSensorStations = ({ sensor_stations }: { sensor_stations: IDocument<
         >
           {startImport ? <Loader size="sm" /> : 'Import selected'}
         </Button>
+        {isRunning && (
+          <>
+            <Button onClick={cancel} size="xs" variant="destructive">
+              Cancel
+            </Button>
+            <span className="text-xs">
+              {progress.done} of {progress.total}
+            </span>
+          </>
+        )}
+        {runError && <span className="text-red-500 text-xs">Error: {String(runError)}</span>}
       </div>
       <TableVirtuoso
         className="w-full bg-slate-100"
@@ -223,7 +245,7 @@ const LoadSensorStations = ({
       }
       const data = await response.json()
       onState('success')
-      return data.results.map((r) => ({
+      return data.results.map((r: { uuid: string; label: string; source: IDocument<unknown> }) => ({
         uuid: r.uuid,
         label: r.label,
         slug: r.uuid,

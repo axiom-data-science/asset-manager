@@ -33,7 +33,7 @@ export function useBatchImport<T>({
 }: UseBatchImportOptions<T>) {
   const [isRunning, setIsRunning] = useState(false)
   const [progress, setProgress] = useState<BatchProgress>({ total: 0, done: 0, failed: 0 })
-  const [runError, setRunError] = useState<unknown>(null)
+  const [runError, setRunError] = useState<Error | null>(null)
 
   const runIdRef = useRef(0)
   const importItemRef = useRef(importItem)
@@ -125,7 +125,7 @@ export function useBatchImport<T>({
 
     run().catch((e) => {
       if (!cancelled && runId === runIdRef.current) {
-        setRunError(e)
+        setRunError(e as Error)
         setIsRunning(false)
       }
     })

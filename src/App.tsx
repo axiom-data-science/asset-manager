@@ -34,6 +34,7 @@ import PopoverTest from '@/examples/popover-test'
 import AuthentikUsers from '@/examples/authentik-users'
 import { SITE_TITLE } from './config/config'
 import ListFilesLoader from './manage/document_file/list'
+import ImportSensorStationsPage from './import/sensor-stations'
 
 const makeSiteTitle = (pageTitle?: string) => {
   return `${SITE_TITLE}${pageTitle ? ` - ${pageTitle}` : ''}`
@@ -59,8 +60,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
-      staleTime: 0 // set to fairly short
-
+      staleTime: 0, // set to fairly short
     },
   },
 })
@@ -419,6 +419,16 @@ function App(): ReactElement {
                   <SidebarLayout>
                     <title>{makeSiteTitle('authentik users')}</title>
                     <AuthentikUsers />
+                  </SidebarLayout>
+                }
+              />
+            </Route>
+            <Route path="import">
+              <Route
+                path="sensor-stations"
+                element={
+                  <SidebarLayout>
+                    <ImportSensorStationsPage />
                   </SidebarLayout>
                 }
               />

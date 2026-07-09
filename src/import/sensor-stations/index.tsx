@@ -3,7 +3,7 @@ import { Checkbox, Input, Loader, ViewWithLoader } from ***REMOVED***@axdspub/ax
 import { useQuery } from ***REMOVED***@tanstack/react-query***REMOVED***
 
 import { TableVirtuoso, type TableComponents } from ***REMOVED***react-virtuoso***REMOVED***
-import { forwardRef, useCallback, useEffect, useState, type ReactElement } from ***REMOVED***react***REMOVED***
+import { forwardRef, useCallback, useState, type ReactElement } from ***REMOVED***react***REMOVED***
 import { Button } from ***REMOVED***@/components/ui/button***REMOVED***
 import { Check } from ***REMOVED***lucide-react***REMOVED***
 import { useBatchImport } from ***REMOVED***../hooks/useBatchImport***REMOVED***
@@ -167,6 +167,17 @@ const ImportSensorStations = ({ sensor_stations }: { sensor_stations: IDocument<
             setData(newData)
           }}
         />
+        <div className="flex flex-row gap-2 items-center text-xs">
+          <span>Batch Size:</span>
+          <Input
+            id="batch-size"
+            testId="batch-size"
+            className="w-10 text-center"
+            size="xs"
+            value={batchSize}
+            onChange={(e) => setBatchSize(Number(e))}
+          />
+        </div>
         <Button
           disabled={startImport}
           onClick={() => {
@@ -176,6 +187,17 @@ const ImportSensorStations = ({ sensor_stations }: { sensor_stations: IDocument<
         >
           {startImport ? <Loader size="sm" /> : ***REMOVED***Import selected***REMOVED***}
         </Button>
+        {isRunning && (
+          <>
+            <Button onClick={cancel} size="xs" variant="destructive">
+              Cancel
+            </Button>
+            <span className="text-xs">
+              {progress.done} of {progress.total}
+            </span>
+          </>
+        )}
+        {runError && <span className="text-red-500 text-xs">Error: {String(runError)}</span>}
       </div>
       <TableVirtuoso
         className="w-full bg-slate-100"
@@ -223,7 +245,7 @@ const LoadSensorStations = ({
       }
       const data = await response.json()
       onState(***REMOVED***success***REMOVED***)
-      return data.results.map((r) => ({
+      return data.results.map((r: { uuid: string; label: string; source: IDocument<unknown> }) => ({
         uuid: r.uuid,
         label: r.label,
         slug: r.uuid,

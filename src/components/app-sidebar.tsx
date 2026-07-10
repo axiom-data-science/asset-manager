@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/sidebar'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { Book, BookPlus, ChartBarBig, ChevronDown, FilePen, Grid2X2, Grid2X2Plus, Import, Layers, Layers2, Layers3, LayersPlus, List, Lock, Network, PersonStanding, Plus, Share, Ship, Thermometer, User } from 'lucide-react'
+import { Book, BookPlus, ChartBarBig, ChevronDown, FilePen, Grid2X2, Grid2X2Plus, Import, Layers2, Layers3, LayersPlus, List, Lock, Network, PersonStanding, Plus, Share, Ship, Thermometer, User } from 'lucide-react'
 import { SidebarGroupContent, SidebarGroupLabel } from '@/components/ui/sidebar'
 import { Link } from 'react-router-dom'
 

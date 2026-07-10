@@ -1,12 +1,12 @@
-import type { IDocument, IObjectType } from '@/types/types'
+import type { IObjectType } from '@/types/types'
 import { Checkbox, Input, Loader, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
 import { useQuery } from '@tanstack/react-query'
 
 import { TableVirtuoso, type TableComponents } from 'react-virtuoso'
-import { forwardRef, useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
+import { forwardRef, useCallback, useEffect, useState, type ReactElement } from 'react'
 import { Button } from '@/components/ui/button'
 import { Check } from 'lucide-react'
-import { useBatchImport } from '../hooks/useBatchImport'
+import { useBatchImport } from './hooks/useBatchImport'
 import type { IDocumentImport, IFullDocForImport } from '@/import/types'
 
 const TableComponentsOverride: TableComponents<IDocumentImport> = {
@@ -34,7 +34,6 @@ const TableComponentsOverride: TableComponents<IDocumentImport> = {
 
 const Row = ({
     index,
-    data,
     uuid,
     label,
     slug,
@@ -80,7 +79,7 @@ const Row = ({
     )
 }
 
-const ImportSensorStations = ({
+const ImportRecords = ({
     documents,
     getFullDoc,
     detailRoot
@@ -129,7 +128,7 @@ const ImportSensorStations = ({
     )
 
     const isSelected = useCallback((row: (typeof data)[number]) => row.selected, [])
-    const isAlreadyImported = useCallback((row: (typeof data)[number]) => false, []) // allow re-import
+    const isAlreadyImported = useCallback((/* row: (typeof data)[number] */) => false, []) // allow re-import
     const importBatchItem = useCallback(
         async (row: (typeof data)[number], { signal }: { signal: AbortSignal }) => {
             await importOneRecord(row, { signal })
@@ -256,14 +255,14 @@ type IImportPageProps = {
     objectType?: IObjectType
 }
 
-const ImportSensorStationsPage = ({
+const ImportRecordsPage = ({
     defaultImportUrl,
     defaultDetailRoot,
     label,
     pluralLabel,
     service,
     getFullDoc,
-    objectType
+    // objectType
 }: IImportPageProps): ReactElement => {
     pluralLabel = pluralLabel || `${label}s`
     const [draftUrl, setDraftUrl] = useState<string | undefined>(
@@ -289,9 +288,9 @@ const ImportSensorStationsPage = ({
     const {
         data: documents,
         error,
-        isError,
+        //isError,
         isFetching,
-        isSuccess,
+        //isSuccess,
         isPending,
     } = useQuery({
         queryKey: [label, activeUrl, loadCount],
@@ -313,13 +312,13 @@ const ImportSensorStationsPage = ({
         placeholderData: (previousData) => previousData,
     })
 
-    const state = useMemo<'idle' | 'loading' | 'success' | 'error'>(() => {
+    /* const state = useMemo<'idle' | 'loading' | 'success' | 'error'>(() => {
         if (!activeUrl) return 'idle'
         if (isError) return 'error'
         if (isPending || isFetching) return 'loading'
         if (isSuccess) return 'success'
         return 'idle'
-    }, [activeUrl, isError, isPending, isFetching, isSuccess])
+    }, [activeUrl, isError, isPending, isFetching, isSuccess]) */
 
     return (
         <div className="flex flex-col gap-4 h-full">
@@ -358,7 +357,7 @@ const ImportSensorStationsPage = ({
                 {
                     !activeUrl || (isPending && !isFetching) ? 'Click on the button' :
                         <ViewWithLoader isLoading={isFetching} error={error} data={documents}>
-                            {documents && <ImportSensorStations documents={documents} getFullDoc={getFullDoc} detailRoot={activeDetailUrl} />}
+                            {documents && <ImportRecords documents={documents} getFullDoc={getFullDoc} detailRoot={activeDetailUrl} />}
                         </ViewWithLoader>
                 }
             </div>
@@ -367,5 +366,5 @@ const ImportSensorStationsPage = ({
 }
 
 export default (props: IImportPageProps): ReactElement => {
-    return <ImportSensorStationsPage {...props} />
+    return <ImportRecordsPage {...props} />
 }

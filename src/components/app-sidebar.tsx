@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/sidebar'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { Book, BookPlus, ChartBarBig, ChevronDown, FilePen, Grid2X2, Import, Layers2, List, Lock, Network, PersonStanding, Plus, Share, Ship, Thermometer, User } from 'lucide-react'
+import { Book, BookPlus, ChartBarBig, ChevronDown, FilePen, Grid2X2, Grid2X2Plus, Import, Layers, Layers2, Layers3, LayersPlus, List, Lock, Network, PersonStanding, Plus, Share, Ship, Thermometer, User } from 'lucide-react'
 import { SidebarGroupContent, SidebarGroupLabel } from '@/components/ui/sidebar'
 import { Link } from 'react-router-dom'
 
@@ -143,29 +143,44 @@ export function AppSidebar() {
       icon: Import,
       actions: [
         {
-          name: 'Import sensor stations',
+          name: 'Sensor stations',
           icon: Thermometer,
           url: '/import/sensor-stations'
         },
         {
-          name: 'Import moving platforms',
+          name: 'Moving platforms',
           icon: Ship,
           url: '/import/moving-platforms'
         },
         {
-          name: 'Import grid records',
+          name: 'Model records (oikos)',
           icon: Grid2X2,
-          url: '/import/grid-records'
+          url: '/import/oikos-models'
         },
         {
-          name: 'Import binner records',
+          name: 'Model variable records (oikos)',
+          icon: Grid2X2Plus,
+          url: '/import/oikos-model-variables'
+        },
+        {
+          name: 'Binner records',
           icon: ChartBarBig,
           url: '/import/binner-records'
         },
         {
-          name: 'Import layers (oikos - grids/binners excluded)',
+          name: 'Vector layers (oikos)',
           icon: Layers2,
-          url: '/import/oikos-layers'
+          url: '/import/oikos-vector-layers'
+        },
+        {
+          name: 'Vector layer groups (oikos)',
+          icon: Layers3,
+          url: '/import/oikos-vector-layer-groups'
+        },
+        {
+          name: 'Vector modules (oikos)',
+          icon: LayersPlus,
+          url: '/import/oikos-vector-modules'
         }
 
       ]

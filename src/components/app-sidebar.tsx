@@ -10,7 +10,7 @@ import {
 } from ***REMOVED***@/components/ui/sidebar***REMOVED***
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from ***REMOVED***@/components/ui/collapsible***REMOVED***
-import { Book, BookPlus, ChartBarBig, ChevronDown, FilePen, Grid2X2, Import, Layers2, List, Lock, Network, PersonStanding, Plus, Share, Ship, Thermometer, User } from ***REMOVED***lucide-react***REMOVED***
+import { Book, BookPlus, ChartBarBig, ChevronDown, FilePen, Grid2X2, Grid2X2Plus, Import, Layers, Layers2, Layers3, LayersPlus, List, Lock, Network, PersonStanding, Plus, Share, Ship, Thermometer, User } from ***REMOVED***lucide-react***REMOVED***
 import { SidebarGroupContent, SidebarGroupLabel } from ***REMOVED***@/components/ui/sidebar***REMOVED***
 import { Link } from ***REMOVED***react-router-dom***REMOVED***
 
@@ -143,29 +143,44 @@ export function AppSidebar() {
       icon: Import,
       actions: [
         {
-          name: ***REMOVED***Import sensor stations***REMOVED***,
+          name: ***REMOVED***Sensor stations***REMOVED***,
           icon: Thermometer,
           url: ***REMOVED***/import/sensor-stations***REMOVED***
         },
         {
-          name: ***REMOVED***Import moving platforms***REMOVED***,
+          name: ***REMOVED***Moving platforms***REMOVED***,
           icon: Ship,
           url: ***REMOVED***/import/moving-platforms***REMOVED***
         },
         {
-          name: ***REMOVED***Import grid records***REMOVED***,
+          name: ***REMOVED***Model records (oikos)***REMOVED***,
           icon: Grid2X2,
-          url: ***REMOVED***/import/grid-records***REMOVED***
+          url: ***REMOVED***/import/oikos-models***REMOVED***
         },
         {
-          name: ***REMOVED***Import binner records***REMOVED***,
+          name: ***REMOVED***Model variable records (oikos)***REMOVED***,
+          icon: Grid2X2Plus,
+          url: ***REMOVED***/import/oikos-model-variables***REMOVED***
+        },
+        {
+          name: ***REMOVED***Binner records***REMOVED***,
           icon: ChartBarBig,
           url: ***REMOVED***/import/binner-records***REMOVED***
         },
         {
-          name: ***REMOVED***Import layers (oikos - grids/binners excluded)***REMOVED***,
+          name: ***REMOVED***Vector layers (oikos)***REMOVED***,
           icon: Layers2,
-          url: ***REMOVED***/import/oikos-layers***REMOVED***
+          url: ***REMOVED***/import/oikos-vector-layers***REMOVED***
+        },
+        {
+          name: ***REMOVED***Vector layer groups (oikos)***REMOVED***,
+          icon: Layers3,
+          url: ***REMOVED***/import/oikos-vector-layer-groups***REMOVED***
+        },
+        {
+          name: ***REMOVED***Vector modules (oikos)***REMOVED***,
+          icon: LayersPlus,
+          url: ***REMOVED***/import/oikos-vector-modules***REMOVED***
         }
 
       ]

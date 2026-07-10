@@ -35,6 +35,7 @@ import AuthentikUsers from ***REMOVED***@/examples/authentik-users***REMOVED***
 import { SITE_TITLE } from ***REMOVED***./config/config***REMOVED***
 import ListFilesLoader from ***REMOVED***./manage/document_file/list***REMOVED***
 import ImportSensorStationsPage from ***REMOVED***./import/sensor-stations***REMOVED***
+import { binninatorMetadata, binninatorRecords, binninatorRoot, defaultBinninatorRecordsURL, defaultOikosModelsURL, movingPlatform, OIKOS_URL_ROOT, oikosLayer, oikosLayerGroup, oikosModel, oikosModels, oikosModelVariable, oikosModelVariables, oikosModule, oikosVectorLayerGroups, oikosVectorLayers, oikosVectorModules, PLATFORM_ROOT, searchDocs, searchURL, SENSORS_ROOT, sensorStation } from ***REMOVED***@/import/services***REMOVED***
 
 const makeSiteTitle = (pageTitle?: string) => {
   return `${SITE_TITLE}${pageTitle ? ` - ${pageTitle}` : ***REMOVED******REMOVED***}`
@@ -428,7 +429,111 @@ function App(): ReactElement {
                 path="sensor-stations"
                 element={
                   <SidebarLayout>
-                    <ImportSensorStationsPage />
+                    <ImportSensorStationsPage
+                      defaultImportUrl={searchURL({ type: ***REMOVED***sensor_station***REMOVED***, count: 100, portal_id: 25 })}
+                      defaultDetailRoot={SENSORS_ROOT}
+                      service={searchDocs}
+                      getFullDoc={sensorStation}
+                      label=***REMOVED***Sensor Station***REMOVED***
+                    />
+                  </SidebarLayout>
+                }
+              />
+              <Route
+                path="moving-platforms"
+                element={
+                  <SidebarLayout>
+                    <ImportSensorStationsPage
+                      defaultImportUrl={searchURL({ type: ***REMOVED***platform2***REMOVED***, count: 100, portal_id: 25 })}
+                      service={searchDocs}
+                      defaultDetailRoot={PLATFORM_ROOT}
+                      getFullDoc={movingPlatform}
+                      label=***REMOVED***Moving Platform***REMOVED***
+                    />
+                  </SidebarLayout>
+                }
+              />
+              <Route
+                path="oikos-models"
+                element={
+                  <SidebarLayout>
+                    <ImportSensorStationsPage
+                      defaultImportUrl={defaultOikosModelsURL}
+                      service={oikosModels}
+                      defaultDetailRoot={***REMOVED***UNUSED***REMOVED***}
+                      getFullDoc={oikosModel}
+                      label=***REMOVED***Oikos Model***REMOVED***
+                    />
+                  </SidebarLayout>
+                }
+              />
+              <Route
+                path="oikos-model-variables"
+                element={
+                  <SidebarLayout>
+                    <ImportSensorStationsPage
+                      defaultImportUrl={defaultOikosModelsURL}
+                      service={oikosModelVariables}
+                      defaultDetailRoot={***REMOVED***UNUSED***REMOVED***}
+                      getFullDoc={oikosModelVariable}
+                      label=***REMOVED***Oikos Model Variable***REMOVED***
+                    />
+                  </SidebarLayout>
+                }
+              />
+              <Route
+                path="binner-records"
+                element={
+                  <SidebarLayout>
+                    <ImportSensorStationsPage
+                      defaultImportUrl={defaultBinninatorRecordsURL}
+                      service={binninatorRecords}
+                      defaultDetailRoot={binninatorRoot}
+                      getFullDoc={binninatorMetadata}
+                      label=***REMOVED***Binner Record***REMOVED***
+                    />
+                  </SidebarLayout>
+                }
+              />
+              <Route
+                path="oikos-vector-layers"
+                element={
+                  <SidebarLayout>
+                    <ImportSensorStationsPage
+                      defaultImportUrl={searchURL({ type: ***REMOVED***layer_group***REMOVED***, count: 100, portal_id: 25 })}
+                      service={oikosVectorLayers}
+                      defaultDetailRoot={OIKOS_URL_ROOT}
+                      getFullDoc={oikosLayer}
+                      label=***REMOVED***Oikos Vector Layer***REMOVED***
+                    />
+                  </SidebarLayout>
+                }
+              />
+              <Route
+                path="oikos-vector-layer-groups"
+                element={
+                  <SidebarLayout>
+                    <ImportSensorStationsPage
+                      defaultImportUrl={searchURL({ type: ***REMOVED***layer_group***REMOVED***, count: 100, portal_id: 25 })}
+                      service={oikosVectorLayerGroups}
+                      defaultDetailRoot={OIKOS_URL_ROOT}
+                      getFullDoc={oikosLayerGroup}
+                      label=***REMOVED***Oikos Vector Layer Group***REMOVED***
+                    />
+                  </SidebarLayout>
+                }
+              />
+              <Route
+                path="oikos-vector-modules"
+                element={
+                  <SidebarLayout>
+                    <ImportSensorStationsPage
+                      defaultImportUrl={searchURL({ type: ***REMOVED***layer_group***REMOVED***, count: 100, portal_id: 25 })}
+                      service={oikosVectorModules}
+                      defaultDetailRoot={OIKOS_URL_ROOT}
+                      getFullDoc={oikosModule}
+                      label=***REMOVED***Oikos  Module***REMOVED***
+                    />
                   </SidebarLayout>
                 }
               />

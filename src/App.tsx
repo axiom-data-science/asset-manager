@@ -34,7 +34,7 @@ import PopoverTest from ***REMOVED***@/examples/popover-test***REMOVED***
 import AuthentikUsers from ***REMOVED***@/examples/authentik-users***REMOVED***
 import { SITE_TITLE } from ***REMOVED***./config/config***REMOVED***
 import ListFilesLoader from ***REMOVED***./manage/document_file/list***REMOVED***
-import ImportSensorStationsPage from ***REMOVED***./import/sensor-stations***REMOVED***
+import ImportRecordsPage from ***REMOVED***./import***REMOVED***
 import { binninatorMetadata, binninatorRecords, binninatorRoot, defaultBinninatorRecordsURL, defaultOikosModelsURL, movingPlatform, OIKOS_URL_ROOT, oikosLayer, oikosLayerGroup, oikosModel, oikosModels, oikosModelVariable, oikosModelVariables, oikosModule, oikosVectorLayerGroups, oikosVectorLayers, oikosVectorModules, PLATFORM_ROOT, searchDocs, searchURL, SENSORS_ROOT, sensorStation } from ***REMOVED***@/import/services***REMOVED***
 
 const makeSiteTitle = (pageTitle?: string) => {
@@ -429,7 +429,7 @@ function App(): ReactElement {
                 path="sensor-stations"
                 element={
                   <SidebarLayout>
-                    <ImportSensorStationsPage
+                    <ImportRecordsPage
                       defaultImportUrl={searchURL({ type: ***REMOVED***sensor_station***REMOVED***, count: 100, portal_id: 25 })}
                       defaultDetailRoot={SENSORS_ROOT}
                       service={searchDocs}
@@ -443,7 +443,7 @@ function App(): ReactElement {
                 path="moving-platforms"
                 element={
                   <SidebarLayout>
-                    <ImportSensorStationsPage
+                    <ImportRecordsPage
                       defaultImportUrl={searchURL({ type: ***REMOVED***platform2***REMOVED***, count: 100, portal_id: 25 })}
                       service={searchDocs}
                       defaultDetailRoot={PLATFORM_ROOT}
@@ -457,7 +457,7 @@ function App(): ReactElement {
                 path="oikos-models"
                 element={
                   <SidebarLayout>
-                    <ImportSensorStationsPage
+                    <ImportRecordsPage
                       defaultImportUrl={defaultOikosModelsURL}
                       service={oikosModels}
                       defaultDetailRoot={***REMOVED***UNUSED***REMOVED***}
@@ -471,7 +471,7 @@ function App(): ReactElement {
                 path="oikos-model-variables"
                 element={
                   <SidebarLayout>
-                    <ImportSensorStationsPage
+                    <ImportRecordsPage
                       defaultImportUrl={defaultOikosModelsURL}
                       service={oikosModelVariables}
                       defaultDetailRoot={***REMOVED***UNUSED***REMOVED***}
@@ -485,7 +485,7 @@ function App(): ReactElement {
                 path="binner-records"
                 element={
                   <SidebarLayout>
-                    <ImportSensorStationsPage
+                    <ImportRecordsPage
                       defaultImportUrl={defaultBinninatorRecordsURL}
                       service={binninatorRecords}
                       defaultDetailRoot={binninatorRoot}
@@ -499,7 +499,7 @@ function App(): ReactElement {
                 path="oikos-vector-layers"
                 element={
                   <SidebarLayout>
-                    <ImportSensorStationsPage
+                    <ImportRecordsPage
                       defaultImportUrl={searchURL({ type: ***REMOVED***layer_group***REMOVED***, count: 100, portal_id: 25 })}
                       service={oikosVectorLayers}
                       defaultDetailRoot={OIKOS_URL_ROOT}
@@ -513,7 +513,7 @@ function App(): ReactElement {
                 path="oikos-vector-layer-groups"
                 element={
                   <SidebarLayout>
-                    <ImportSensorStationsPage
+                    <ImportRecordsPage
                       defaultImportUrl={searchURL({ type: ***REMOVED***layer_group***REMOVED***, count: 100, portal_id: 25 })}
                       service={oikosVectorLayerGroups}
                       defaultDetailRoot={OIKOS_URL_ROOT}
@@ -527,7 +527,7 @@ function App(): ReactElement {
                 path="oikos-vector-modules"
                 element={
                   <SidebarLayout>
-                    <ImportSensorStationsPage
+                    <ImportRecordsPage
                       defaultImportUrl={searchURL({ type: ***REMOVED***layer_group***REMOVED***, count: 100, portal_id: 25 })}
                       service={oikosVectorModules}
                       defaultDetailRoot={OIKOS_URL_ROOT}

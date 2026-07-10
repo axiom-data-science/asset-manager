@@ -19,7 +19,7 @@ const FileDisplay = ({ fileRef }: { fileRef: string }): ReactElement => {
       <ViewWithLoader isLoading={isLoading} error={error} data={data}>
         {data && (
           <>
-            {String(data?.attrs?.mime_type).startsWith(***REMOVED***image/***REMOVED***) ? (
+            {String((data?.attrs as { mime_type: string })?.mime_type).startsWith(***REMOVED***image/***REMOVED***) ? (
               <Link
                 to={fileRef}
                 target="_blank"

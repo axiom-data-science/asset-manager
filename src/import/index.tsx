@@ -1,12 +1,12 @@
-import type { IDocument, IObjectType } from ***REMOVED***@/types/types***REMOVED***
+import type { IObjectType } from ***REMOVED***@/types/types***REMOVED***
 import { Checkbox, Input, Loader, ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
 import { useQuery } from ***REMOVED***@tanstack/react-query***REMOVED***
 
 import { TableVirtuoso, type TableComponents } from ***REMOVED***react-virtuoso***REMOVED***
-import { forwardRef, useCallback, useEffect, useMemo, useState, type ReactElement } from ***REMOVED***react***REMOVED***
+import { forwardRef, useCallback, useEffect, useState, type ReactElement } from ***REMOVED***react***REMOVED***
 import { Button } from ***REMOVED***@/components/ui/button***REMOVED***
 import { Check } from ***REMOVED***lucide-react***REMOVED***
-import { useBatchImport } from ***REMOVED***../hooks/useBatchImport***REMOVED***
+import { useBatchImport } from ***REMOVED***./hooks/useBatchImport***REMOVED***
 import type { IDocumentImport, IFullDocForImport } from ***REMOVED***@/import/types***REMOVED***
 
 const TableComponentsOverride: TableComponents<IDocumentImport> = {
@@ -34,7 +34,6 @@ const TableComponentsOverride: TableComponents<IDocumentImport> = {
 
 const Row = ({
     index,
-    data,
     uuid,
     label,
     slug,
@@ -80,7 +79,7 @@ const Row = ({
     )
 }
 
-const ImportSensorStations = ({
+const ImportRecords = ({
     documents,
     getFullDoc,
     detailRoot
@@ -129,7 +128,7 @@ const ImportSensorStations = ({
     )
 
     const isSelected = useCallback((row: (typeof data)[number]) => row.selected, [])
-    const isAlreadyImported = useCallback((row: (typeof data)[number]) => false, []) // allow re-import
+    const isAlreadyImported = useCallback((/* row: (typeof data)[number] */) => false, []) // allow re-import
     const importBatchItem = useCallback(
         async (row: (typeof data)[number], { signal }: { signal: AbortSignal }) => {
             await importOneRecord(row, { signal })
@@ -256,14 +255,14 @@ type IImportPageProps = {
     objectType?: IObjectType
 }
 
-const ImportSensorStationsPage = ({
+const ImportRecordsPage = ({
     defaultImportUrl,
     defaultDetailRoot,
     label,
     pluralLabel,
     service,
     getFullDoc,
-    objectType
+    // objectType
 }: IImportPageProps): ReactElement => {
     pluralLabel = pluralLabel || `${label}s`
     const [draftUrl, setDraftUrl] = useState<string | undefined>(
@@ -289,9 +288,9 @@ const ImportSensorStationsPage = ({
     const {
         data: documents,
         error,
-        isError,
+        //isError,
         isFetching,
-        isSuccess,
+        //isSuccess,
         isPending,
     } = useQuery({
         queryKey: [label, activeUrl, loadCount],
@@ -313,13 +312,13 @@ const ImportSensorStationsPage = ({
         placeholderData: (previousData) => previousData,
     })
 
-    const state = useMemo<***REMOVED***idle***REMOVED*** | ***REMOVED***loading***REMOVED*** | ***REMOVED***success***REMOVED*** | ***REMOVED***error***REMOVED***>(() => {
+    /* const state = useMemo<***REMOVED***idle***REMOVED*** | ***REMOVED***loading***REMOVED*** | ***REMOVED***success***REMOVED*** | ***REMOVED***error***REMOVED***>(() => {
         if (!activeUrl) return ***REMOVED***idle***REMOVED***
         if (isError) return ***REMOVED***error***REMOVED***
         if (isPending || isFetching) return ***REMOVED***loading***REMOVED***
         if (isSuccess) return ***REMOVED***success***REMOVED***
         return ***REMOVED***idle***REMOVED***
-    }, [activeUrl, isError, isPending, isFetching, isSuccess])
+    }, [activeUrl, isError, isPending, isFetching, isSuccess]) */
 
     return (
         <div className="flex flex-col gap-4 h-full">
@@ -358,7 +357,7 @@ const ImportSensorStationsPage = ({
                 {
                     !activeUrl || (isPending && !isFetching) ? ***REMOVED***Click on the button***REMOVED*** :
                         <ViewWithLoader isLoading={isFetching} error={error} data={documents}>
-                            {documents && <ImportSensorStations documents={documents} getFullDoc={getFullDoc} detailRoot={activeDetailUrl} />}
+                            {documents && <ImportRecords documents={documents} getFullDoc={getFullDoc} detailRoot={activeDetailUrl} />}
                         </ViewWithLoader>
                 }
             </div>
@@ -367,5 +366,5 @@ const ImportSensorStationsPage = ({
 }
 
 export default (props: IImportPageProps): ReactElement => {
-    return <ImportSensorStationsPage {...props} />
+    return <ImportRecordsPage {...props} />
 }

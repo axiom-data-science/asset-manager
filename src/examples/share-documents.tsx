@@ -4,7 +4,6 @@ import ShareDocument from "@/components/custom/share-document"
 import { useState } from "react"
 import Link from "@/manage/components/link"
 import { Check, Copy } from "lucide-react"
-import { useDocument } from "@/manage/document/useDocument"
 import type { IDocument } from "@/types/types"
 
 

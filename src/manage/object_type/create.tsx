@@ -1,19 +1,22 @@
 import { Button, Loader, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
 import { useState, type ReactElement } from 'react'
-import { FormCreator, type IForm } from '@axdspub/axiom-ui-forms'
+import { FormCreator, schemaToFormUtils, type IForm, type IFormOverride } from '@axdspub/axiom-ui-forms'
 import { postObjectType } from '@/manage/object_type/services'
 import { useAuth } from '@/auth/useAuth'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { IObjectSchema, IObjectType } from '@/types/types'
 import { postObjectSchema } from '@/manage/object_schema/services'
 import { validate } from '@/lib/utils'
-import { useObjectCategories } from '@/manage/object_type/useObjectCategories'
 import { useSlug } from '@/manage/components/useSlug'
+import { useObjectTypeSchemaAndObjectCategories } from '@/manage/object_type/useObjectType'
+import type { JSONSchema6 } from 'json-schema'
 
 const CreateObjectTypeForm = ({
   object_categories,
+  schema
 }: {
-  object_categories: string[]
+  object_categories: string[],
+  schema: JSONSchema6
 }): ReactElement => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -21,43 +24,79 @@ const CreateObjectTypeForm = ({
   const [errorMessages, setErrorMessages] = useState<{ field: string; message: string }[]>([])
   const auth = useAuth()
 
+  const objectTypeConfigFormOverride: IFormOverride = {
+    fields: [
+      {
+        "prop": "data.field_mappings",
+        "description": "Provide a JSON path to field location",
+        "type": "object",
+        "layout": "grid2",
+        "fields": [
+          { "prop": "data.field_mappings.slug", "type": "text" },
+          { "prop": "data.field_mappings.label", "type": "text" },
+          { "prop": "data.field_mappings.description", "type": "text" },
+          { "prop": "data.field_mappings.asset_geom", "type": "text" },
+          { "prop": "data.field_mappings.dataset_extent_geom", "type": "text" },
+          { "prop": "data.field_mappings.dataset_start_time", "type": "text" },
+          { "prop": "data.field_mappings.dataset_end_time", "type": "text" }
+        ]
+      },
+      {
+        "prop": "data.api_overrides"
+      }
+    ]
+  }
+
+  const objectTypeConfigForm = schemaToFormUtils.overridesAndSchemaToFormObject({
+    schema,
+    formOverrides: [objectTypeConfigFormOverride],
+    formFieldOverrides: []
+  })
+
   const objectTypeFormWithoutSlug: IForm = {
     id: 'create-object-type',
     settings: {
       show_progress: false,
     },
-    fields: [
+    tabs: [
       {
-        id: 'category',
-        label: 'Category',
-        type: 'select',
-        options: object_categories.map((c) => {
-          return { label: c, value: c }
-        }),
-        required: true,
-        settings: {},
+        id: 'general',
+        label: 'General',
+        fields: [
+          {
+            id: 'category',
+            label: 'Category',
+            type: 'select',
+            options: object_categories.map((c) => {
+              return { label: c, value: c }
+            }),
+            required: true,
+            settings: {},
+          },
+          {
+            id: 'label',
+            label: 'Label',
+            type: 'text',
+            required: true,
+          },
+          {
+            id: 'description',
+            label: 'Description',
+            type: 'long_text',
+          },
+          {
+            id: 'create_default_schema',
+            label: 'Create default schema',
+            type: 'boolean',
+          },
+        ]
       },
       {
-        id: 'label',
-        label: 'Label',
-        type: 'text',
-        required: true,
-      },
-      {
-        id: 'description',
-        label: 'Description',
-        type: 'long_text',
-      },
-      {
-        id: 'data',
+        id: 'config',
         label: 'Config',
-        type: 'json',
-      },
-      {
-        id: 'create_default_schema',
-        label: 'Create default schema',
-        type: 'boolean',
-      },
+        fields: objectTypeConfigForm.fields
+      }
+
     ],
   }
 
@@ -115,11 +154,11 @@ const CreateObjectTypeForm = ({
       const typeValid = await validate({ form, formValues: formValue })
       const schemaValid = formValue['create_default_schema']
         ? await validate({
-            form: schemaForm,
-            formValues: schemaFormValue,
-            messagePrefix: 'Default schema',
-            schemaFields: ['json_schema'],
-          })
+          form: schemaForm,
+          formValues: schemaFormValue,
+          messagePrefix: 'Default schema',
+          schemaFields: ['json_schema'],
+        })
         : { valid: true, errors: [] }
       const valid = {
         valid: typeValid.valid && schemaValid.valid,
@@ -205,10 +244,10 @@ const CreateObjectTypeForm = ({
 }
 
 const CreateObjectType = (): ReactElement => {
-  const { data: object_categories, isLoading, error } = useObjectCategories()
+  const { data, isLoading, error } = useObjectTypeSchemaAndObjectCategories()
   return (
-    <ViewWithLoader isLoading={isLoading} error={error} data={object_categories}>
-      {object_categories && <CreateObjectTypeForm object_categories={object_categories} />}
+    <ViewWithLoader isLoading={isLoading} error={error} data={data}>
+      {data && <CreateObjectTypeForm object_categories={data.object_categories} schema={data.schema} />}
     </ViewWithLoader>
   )
 }

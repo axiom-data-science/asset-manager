@@ -1,22 +1,22 @@
 export type IPostgrestFilter = {
   column: string
   operator:
-    | 'eq'
-    | 'neq'
-    | 'gt'
-    | 'gte'
-    | 'lt'
-    | 'lte'
-    | 'like'
-    | 'ilike'
-    | 'in'
-    | 'is'
-    | 'cs'
-    | 'cd'
-    | 'sl'
-    | 'sr'
-    | 'nxl'
-    | 'nxr'
+  | 'eq'
+  | 'neq'
+  | 'gt'
+  | 'gte'
+  | 'lt'
+  | 'lte'
+  | 'like'
+  | 'ilike'
+  | 'in'
+  | 'is'
+  | 'cs'
+  | 'cd'
+  | 'sl'
+  | 'sr'
+  | 'nxl'
+  | 'nxr'
   value: string | number | (string | number)[]
   not?: boolean
 }
@@ -31,14 +31,14 @@ export type IPostgrestParams<T = Record<string, string>> = {
   select?: (
     | string
     | {
-        column: string | keyof T
-        fn?: 'count' | 'sum' | 'avg' | 'min' | 'max'
-        as?: string
-        join?: {
-          table: string
-          fields?: string[]
-        }
+      column: string | keyof T
+      fn?: 'count' | 'sum' | 'avg' | 'min' | 'max'
+      as?: string
+      join?: {
+        table: string
+        fields?: string[]
       }
+    }
   )[]
   filters?: IPostgrestFilter[]
   orFilters?: IPostgrestFilter[]
@@ -106,6 +106,37 @@ export type IAuth = {
     }
   } | null
 }
+
+
+
+type IObjectTypeRequestOverride = {
+  include_jwt?: boolean
+  location?: string
+  path?: string
+}
+
+type IObjectTypeFieldMapping = {
+  slug?: string
+  label?: string
+  description?: string
+  asset_geom?: string
+  dataset_extent_geom?: string
+  dataset_start_time?: string
+  dataset_end_time?: string
+}
+
+type IObjectTypeApiOverrides = {
+  schema_location?: IObjectTypeRequestOverride
+  get?: IObjectTypeRequestOverride
+  post?: IObjectTypeRequestOverride
+}
+
+export type IObjectTypeConfig = {
+  field_mappings?: IObjectTypeFieldMapping
+  api_overrides?: IObjectTypeApiOverrides
+}
+
+
 
 export interface IObjectType {
   uuid: string

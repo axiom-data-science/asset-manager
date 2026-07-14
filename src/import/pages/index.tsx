@@ -6,7 +6,7 @@ import { TableVirtuoso, type TableComponents } from ***REMOVED***react-virtuoso*
 import { forwardRef, useCallback, useEffect, useState, type ReactElement } from ***REMOVED***react***REMOVED***
 import { Button } from ***REMOVED***@/components/ui/button***REMOVED***
 import { Check } from ***REMOVED***lucide-react***REMOVED***
-import { useBatchImport } from ***REMOVED***./hooks/useBatchImport***REMOVED***
+import { useBatchImport } from ***REMOVED***../hooks/useBatchImport***REMOVED***
 import type { IDocumentImport, IFullDocForImport } from ***REMOVED***@/import/types***REMOVED***
 
 const TableComponentsOverride: TableComponents<IDocumentImport> = {

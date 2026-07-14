@@ -23,7 +23,7 @@ const PipelineList = (): ReactElement => {
 
   return (
     <>
-      <h1 className="text-2xl font-bold mb-4 flex flex-row gap-2">Nina pipelines</h1>
+      <h1 className="text-2xl font-bold mb-4 flex flex-row gap-2">Ninja pipelines</h1>
       <ViewWithLoader isLoading={isLoading} error={error} data={data}>
         <div className="flex flex-col gap-4">
           {data &&

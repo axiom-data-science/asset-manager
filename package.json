@@ -30,10 +30,12 @@
     "react-router-dom": "^7.13.1",
     "react-virtuoso": "^4.18.10",
     "tailwind-merge": "^3.6.0",
-    "tailwindcss": "^4.2.1"
+    "tailwindcss": "^4.2.1",
+    "to-json-schema": "^0.2.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@types/json-schema": "^7.0.15",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",

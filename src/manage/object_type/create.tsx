@@ -1,19 +1,22 @@
 import { Button, Loader, ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
 import { useState, type ReactElement } from ***REMOVED***react***REMOVED***
-import { FormCreator, type IForm } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
+import { FormCreator, schemaToFormUtils, type IForm, type IFormOverride } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
 import { postObjectType } from ***REMOVED***@/manage/object_type/services***REMOVED***
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
 import { useNavigate, useSearchParams } from ***REMOVED***react-router-dom***REMOVED***
 import type { IObjectSchema, IObjectType } from ***REMOVED***@/types/types***REMOVED***
 import { postObjectSchema } from ***REMOVED***@/manage/object_schema/services***REMOVED***
 import { validate } from ***REMOVED***@/lib/utils***REMOVED***
-import { useObjectCategories } from ***REMOVED***@/manage/object_type/useObjectCategories***REMOVED***
 import { useSlug } from ***REMOVED***@/manage/components/useSlug***REMOVED***
+import { useObjectTypeSchemaAndObjectCategories } from ***REMOVED***@/manage/object_type/useObjectType***REMOVED***
+import type { JSONSchema6 } from ***REMOVED***json-schema***REMOVED***
 
 const CreateObjectTypeForm = ({
   object_categories,
+  schema
 }: {
-  object_categories: string[]
+  object_categories: string[],
+  schema: JSONSchema6
 }): ReactElement => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -21,43 +24,79 @@ const CreateObjectTypeForm = ({
   const [errorMessages, setErrorMessages] = useState<{ field: string; message: string }[]>([])
   const auth = useAuth()
 
+  const objectTypeConfigFormOverride: IFormOverride = {
+    fields: [
+      {
+        "prop": "data.field_mappings",
+        "description": "Provide a JSON path to field location",
+        "type": "object",
+        "layout": "grid2",
+        "fields": [
+          { "prop": "data.field_mappings.slug", "type": "text" },
+          { "prop": "data.field_mappings.label", "type": "text" },
+          { "prop": "data.field_mappings.description", "type": "text" },
+          { "prop": "data.field_mappings.asset_geom", "type": "text" },
+          { "prop": "data.field_mappings.dataset_extent_geom", "type": "text" },
+          { "prop": "data.field_mappings.dataset_start_time", "type": "text" },
+          { "prop": "data.field_mappings.dataset_end_time", "type": "text" }
+        ]
+      },
+      {
+        "prop": "data.api_overrides"
+      }
+    ]
+  }
+
+  const objectTypeConfigForm = schemaToFormUtils.overridesAndSchemaToFormObject({
+    schema,
+    formOverrides: [objectTypeConfigFormOverride],
+    formFieldOverrides: []
+  })
+
   const objectTypeFormWithoutSlug: IForm = {
     id: ***REMOVED***create-object-type***REMOVED***,
     settings: {
       show_progress: false,
     },
-    fields: [
+    tabs: [
       {
-        id: ***REMOVED***category***REMOVED***,
-        label: ***REMOVED***Category***REMOVED***,
-        type: ***REMOVED***select***REMOVED***,
-        options: object_categories.map((c) => {
-          return { label: c, value: c }
-        }),
-        required: true,
-        settings: {},
+        id: ***REMOVED***general***REMOVED***,
+        label: ***REMOVED***General***REMOVED***,
+        fields: [
+          {
+            id: ***REMOVED***category***REMOVED***,
+            label: ***REMOVED***Category***REMOVED***,
+            type: ***REMOVED***select***REMOVED***,
+            options: object_categories.map((c) => {
+              return { label: c, value: c }
+            }),
+            required: true,
+            settings: {},
+          },
+          {
+            id: ***REMOVED***label***REMOVED***,
+            label: ***REMOVED***Label***REMOVED***,
+            type: ***REMOVED***text***REMOVED***,
+            required: true,
+          },
+          {
+            id: ***REMOVED***description***REMOVED***,
+            label: ***REMOVED***Description***REMOVED***,
+            type: ***REMOVED***long_text***REMOVED***,
+          },
+          {
+            id: ***REMOVED***create_default_schema***REMOVED***,
+            label: ***REMOVED***Create default schema***REMOVED***,
+            type: ***REMOVED***boolean***REMOVED***,
+          },
+        ]
       },
       {
-        id: ***REMOVED***label***REMOVED***,
-        label: ***REMOVED***Label***REMOVED***,
-        type: ***REMOVED***text***REMOVED***,
-        required: true,
-      },
-      {
-        id: ***REMOVED***description***REMOVED***,
-        label: ***REMOVED***Description***REMOVED***,
-        type: ***REMOVED***long_text***REMOVED***,
-      },
-      {
-        id: ***REMOVED***data***REMOVED***,
+        id: ***REMOVED***config***REMOVED***,
         label: ***REMOVED***Config***REMOVED***,
-        type: ***REMOVED***json***REMOVED***,
-      },
-      {
-        id: ***REMOVED***create_default_schema***REMOVED***,
-        label: ***REMOVED***Create default schema***REMOVED***,
-        type: ***REMOVED***boolean***REMOVED***,
-      },
+        fields: objectTypeConfigForm.fields
+      }
+
     ],
   }
 
@@ -115,11 +154,11 @@ const CreateObjectTypeForm = ({
       const typeValid = await validate({ form, formValues: formValue })
       const schemaValid = formValue[***REMOVED***create_default_schema***REMOVED***]
         ? await validate({
-            form: schemaForm,
-            formValues: schemaFormValue,
-            messagePrefix: ***REMOVED***Default schema***REMOVED***,
-            schemaFields: [***REMOVED***json_schema***REMOVED***],
-          })
+          form: schemaForm,
+          formValues: schemaFormValue,
+          messagePrefix: ***REMOVED***Default schema***REMOVED***,
+          schemaFields: [***REMOVED***json_schema***REMOVED***],
+        })
         : { valid: true, errors: [] }
       const valid = {
         valid: typeValid.valid && schemaValid.valid,
@@ -205,10 +244,10 @@ const CreateObjectTypeForm = ({
 }
 
 const CreateObjectType = (): ReactElement => {
-  const { data: object_categories, isLoading, error } = useObjectCategories()
+  const { data, isLoading, error } = useObjectTypeSchemaAndObjectCategories()
   return (
-    <ViewWithLoader isLoading={isLoading} error={error} data={object_categories}>
-      {object_categories && <CreateObjectTypeForm object_categories={object_categories} />}
+    <ViewWithLoader isLoading={isLoading} error={error} data={data}>
+      {data && <CreateObjectTypeForm object_categories={data.object_categories} schema={data.schema} />}
     </ViewWithLoader>
   )
 }

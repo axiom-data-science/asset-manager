@@ -1,22 +1,22 @@
 export type IPostgrestFilter = {
   column: string
   operator:
-    | ***REMOVED***eq***REMOVED***
-    | ***REMOVED***neq***REMOVED***
-    | ***REMOVED***gt***REMOVED***
-    | ***REMOVED***gte***REMOVED***
-    | ***REMOVED***lt***REMOVED***
-    | ***REMOVED***lte***REMOVED***
-    | ***REMOVED***like***REMOVED***
-    | ***REMOVED***ilike***REMOVED***
-    | ***REMOVED***in***REMOVED***
-    | ***REMOVED***is***REMOVED***
-    | ***REMOVED***cs***REMOVED***
-    | ***REMOVED***cd***REMOVED***
-    | ***REMOVED***sl***REMOVED***
-    | ***REMOVED***sr***REMOVED***
-    | ***REMOVED***nxl***REMOVED***
-    | ***REMOVED***nxr***REMOVED***
+  | ***REMOVED***eq***REMOVED***
+  | ***REMOVED***neq***REMOVED***
+  | ***REMOVED***gt***REMOVED***
+  | ***REMOVED***gte***REMOVED***
+  | ***REMOVED***lt***REMOVED***
+  | ***REMOVED***lte***REMOVED***
+  | ***REMOVED***like***REMOVED***
+  | ***REMOVED***ilike***REMOVED***
+  | ***REMOVED***in***REMOVED***
+  | ***REMOVED***is***REMOVED***
+  | ***REMOVED***cs***REMOVED***
+  | ***REMOVED***cd***REMOVED***
+  | ***REMOVED***sl***REMOVED***
+  | ***REMOVED***sr***REMOVED***
+  | ***REMOVED***nxl***REMOVED***
+  | ***REMOVED***nxr***REMOVED***
   value: string | number | (string | number)[]
   not?: boolean
 }
@@ -31,14 +31,14 @@ export type IPostgrestParams<T = Record<string, string>> = {
   select?: (
     | string
     | {
-        column: string | keyof T
-        fn?: ***REMOVED***count***REMOVED*** | ***REMOVED***sum***REMOVED*** | ***REMOVED***avg***REMOVED*** | ***REMOVED***min***REMOVED*** | ***REMOVED***max***REMOVED***
-        as?: string
-        join?: {
-          table: string
-          fields?: string[]
-        }
+      column: string | keyof T
+      fn?: ***REMOVED***count***REMOVED*** | ***REMOVED***sum***REMOVED*** | ***REMOVED***avg***REMOVED*** | ***REMOVED***min***REMOVED*** | ***REMOVED***max***REMOVED***
+      as?: string
+      join?: {
+        table: string
+        fields?: string[]
       }
+    }
   )[]
   filters?: IPostgrestFilter[]
   orFilters?: IPostgrestFilter[]
@@ -106,6 +106,37 @@ export type IAuth = {
     }
   } | null
 }
+
+
+
+type IObjectTypeRequestOverride = {
+  include_jwt?: boolean
+  location?: string
+  path?: string
+}
+
+type IObjectTypeFieldMapping = {
+  slug?: string
+  label?: string
+  description?: string
+  asset_geom?: string
+  dataset_extent_geom?: string
+  dataset_start_time?: string
+  dataset_end_time?: string
+}
+
+type IObjectTypeApiOverrides = {
+  schema_location?: IObjectTypeRequestOverride
+  get?: IObjectTypeRequestOverride
+  post?: IObjectTypeRequestOverride
+}
+
+export type IObjectTypeConfig = {
+  field_mappings?: IObjectTypeFieldMapping
+  api_overrides?: IObjectTypeApiOverrides
+}
+
+
 
 export interface IObjectType {
   uuid: string

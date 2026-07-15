@@ -16,6 +16,7 @@ import { Link } from 'react-router-dom'
 
 import UserView from '@/manage/components/user'
 import { useAuth } from '@/auth/useAuth'
+import { getBrand } from '@/lib/utils'
 
 export function AppSidebar() {
   const auth = useAuth()
@@ -196,7 +197,7 @@ export function AppSidebar() {
   ]
 
   return (
-    <Sidebar>
+    <Sidebar className={getBrand() === 'modl' ? 'top-24 h-[calc(100%-6rem)]' : ''}>
       <SidebarHeader />
       <SidebarContent>
         {navGroups.filter(group => {

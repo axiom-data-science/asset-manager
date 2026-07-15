@@ -36,6 +36,7 @@ import { SITE_TITLE } from './config/config'
 import ListFilesLoader from './manage/document_file/list'
 import ImportRecordsPage from './import/pages'
 import { binninatorMetadata, binninatorRecords, binninatorRoot, defaultBinninatorRecordsURL, defaultOikosModelsURL, movingPlatform, OIKOS_URL_ROOT, oikosLayer, oikosLayerGroup, oikosModel, oikosModels, oikosModelVariable, oikosModelVariables, oikosModule, oikosVectorLayerGroups, oikosVectorLayers, oikosVectorModules, PLATFORM_ROOT, searchDocs, searchURL, SENSORS_ROOT, sensorStation } from '@/import/services'
+import { getBrand } from '@/lib/utils'
 
 const makeSiteTitle = (pageTitle?: string) => {
   return `${SITE_TITLE}${pageTitle ? ` - ${pageTitle}` : ''}`
@@ -109,18 +110,7 @@ const headerBrands = {
   }
 }
 
-const getBrand = (): string | undefined => {
-  let brand
-  const origin = window.location.origin
-  const url = new URL(window.location.href)
-  if (origin.match(/modl-asset/)) {
-    brand = 'modl'
-  } else {
-    brand = url.searchParams.get('brand') ?? undefined
-  }
-  return brand
 
-}
 
 const Header = ({ brand }: { brand?: string }): ReactElement => {
   brand = brand ?? getBrand()

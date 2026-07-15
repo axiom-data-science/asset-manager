@@ -115,3 +115,16 @@ export const createFilterForSaveFn = (presentationFields?: string[]) => {
   }
 
 }
+
+export const getBrand = (): string | undefined => {
+  let brand
+  const origin = window.location.origin
+  const url = new URL(window.location.href)
+  if (origin.match(/modl-asset/)) {
+    brand = 'modl'
+  } else {
+    brand = url.searchParams.get('brand') ?? undefined
+  }
+  return brand
+
+}

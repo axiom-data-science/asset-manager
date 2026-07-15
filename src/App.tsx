@@ -36,6 +36,7 @@ import { SITE_TITLE } from ***REMOVED***./config/config***REMOVED***
 import ListFilesLoader from ***REMOVED***./manage/document_file/list***REMOVED***
 import ImportRecordsPage from ***REMOVED***./import/pages***REMOVED***
 import { binninatorMetadata, binninatorRecords, binninatorRoot, defaultBinninatorRecordsURL, defaultOikosModelsURL, movingPlatform, OIKOS_URL_ROOT, oikosLayer, oikosLayerGroup, oikosModel, oikosModels, oikosModelVariable, oikosModelVariables, oikosModule, oikosVectorLayerGroups, oikosVectorLayers, oikosVectorModules, PLATFORM_ROOT, searchDocs, searchURL, SENSORS_ROOT, sensorStation } from ***REMOVED***@/import/services***REMOVED***
+import { getBrand } from ***REMOVED***@/lib/utils***REMOVED***
 
 const makeSiteTitle = (pageTitle?: string) => {
   return `${SITE_TITLE}${pageTitle ? ` - ${pageTitle}` : ***REMOVED******REMOVED***}`
@@ -109,18 +110,7 @@ const headerBrands = {
   }
 }
 
-const getBrand = (): string | undefined => {
-  let brand
-  const origin = window.location.origin
-  const url = new URL(window.location.href)
-  if (origin.match(/modl-asset/)) {
-    brand = ***REMOVED***modl***REMOVED***
-  } else {
-    brand = url.searchParams.get(***REMOVED***brand***REMOVED***) ?? undefined
-  }
-  return brand
 
-}
 
 const Header = ({ brand }: { brand?: string }): ReactElement => {
   brand = brand ?? getBrand()

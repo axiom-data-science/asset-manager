@@ -16,6 +16,7 @@ import { Link } from ***REMOVED***react-router-dom***REMOVED***
 
 import UserView from ***REMOVED***@/manage/components/user***REMOVED***
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
+import { getBrand } from ***REMOVED***@/lib/utils***REMOVED***
 
 export function AppSidebar() {
   const auth = useAuth()
@@ -196,7 +197,7 @@ export function AppSidebar() {
   ]
 
   return (
-    <Sidebar>
+    <Sidebar className={getBrand() === ***REMOVED***modl***REMOVED*** ? ***REMOVED***top-24 h-[calc(100%-6rem)]***REMOVED*** : ***REMOVED******REMOVED***}>
       <SidebarHeader />
       <SidebarContent>
         {navGroups.filter(group => {

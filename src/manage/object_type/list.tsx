@@ -126,7 +126,7 @@ const ListObjectTypes = (): ReactElement => {
               <Table
                 className="w-full"
                 rowClassName="odd:bg-slate-100"
-                theadClassName="sticky top-26"
+                theadClassName="sticky top-20"
                 data={object_type?.items}
                 columns={[
                   {

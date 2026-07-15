@@ -15,38 +15,42 @@ import { SidebarGroupContent, SidebarGroupLabel } from ***REMOVED***@/components
 import { Link } from ***REMOVED***react-router-dom***REMOVED***
 
 import UserView from ***REMOVED***@/manage/components/user***REMOVED***
+import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
 
 export function AppSidebar() {
+  const auth = useAuth()
   const navGroups = [
     {
       label: ***REMOVED***Documents***REMOVED***,
       icon: Book,
+      requiresAdmin: false,
       actions: [
         {
           name: ***REMOVED***List documents***REMOVED***,
           icon: List,
-          url: ***REMOVED***/document***REMOVED***,
+          url: ***REMOVED***/document***REMOVED***
         },
         {
           name: ***REMOVED***Create document***REMOVED***,
           icon: Plus,
-          url: ***REMOVED***/document/create***REMOVED***,
+          url: ***REMOVED***/document/create***REMOVED***
         },
         {
           name: ***REMOVED***Upload a file***REMOVED***,
           icon: Plus,
-          url: ***REMOVED***/file/upload***REMOVED***,
+          url: ***REMOVED***/file/upload***REMOVED***
         },
         {
           name: ***REMOVED***List files***REMOVED***,
           icon: List,
-          url: ***REMOVED***/file/list***REMOVED***,
+          url: ***REMOVED***/file/list***REMOVED***
         },
       ],
     },
     {
       label: ***REMOVED***Schemas***REMOVED***,
       icon: Network,
+      requiresAdmin: true,
       actions: [
         {
           name: ***REMOVED***List schemas***REMOVED***,
@@ -73,6 +77,7 @@ export function AppSidebar() {
     {
       label: ***REMOVED***Forms***REMOVED***,
       icon: BookPlus,
+      requiresAdmin: true,
       actions: [
         {
           name: ***REMOVED***List forms***REMOVED***,
@@ -99,6 +104,7 @@ export function AppSidebar() {
     {
       label: ***REMOVED***Persons***REMOVED***,
       icon: User,
+      requiresAdmin: true,
       actions: [
         {
           name: ***REMOVED***List persons***REMOVED***,
@@ -115,6 +121,7 @@ export function AppSidebar() {
     {
       label: ***REMOVED***Examples***REMOVED***,
       icon: FilePen,
+      requiresAdmin: false,
       actions: [
         {
           name: ***REMOVED***List NINJA pipelines***REMOVED***,
@@ -141,6 +148,7 @@ export function AppSidebar() {
     {
       label: ***REMOVED***Imports***REMOVED***,
       icon: Import,
+      requiresAdmin: true,
       actions: [
         {
           name: ***REMOVED***Sensor stations***REMOVED***,
@@ -191,7 +199,12 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader />
       <SidebarContent>
-        {navGroups.map((group) => (
+        {navGroups.filter(group => {
+          if (group.requiresAdmin && !auth.isAdmin) {
+            return false
+          }
+          return true
+        }).map((group) => (
           <Collapsible key={group.label} defaultOpen className="group/collapsible">
             <SidebarGroup>
               <SidebarGroupLabel asChild className="font-bold text-lg cursor-pointer">

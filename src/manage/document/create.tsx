@@ -108,7 +108,9 @@ const CreateDocumentForm = ({
     form,
     formState: [formValues, setFormValues],
     filterForSave,
-  } = useSlug(formJSON)
+  } = useSlug({
+    form: formJSON
+  })
 
   const onSave = async () => {
     setSaving(true)

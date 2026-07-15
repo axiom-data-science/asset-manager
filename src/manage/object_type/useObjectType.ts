@@ -68,7 +68,8 @@ export const useObjectTypeFull = ({ uuid }: { uuid?: string }) => {
                 ]
             }
         }),
-        forms: getFormListForObjectTypeQueryOptions({ object_type_uuid: uuid ?? ***REMOVED******REMOVED***, token: auth.user?.access_token ?? ***REMOVED******REMOVED*** })
+        forms: getFormListForObjectTypeQueryOptions({ object_type_uuid: uuid ?? ***REMOVED******REMOVED***, token: auth.user?.access_token ?? ***REMOVED******REMOVED*** }),
+        object_type_schema: getObjectSchemaQuery({ token: auth.user?.access_token ?? ***REMOVED******REMOVED*** })
     })
 }
 

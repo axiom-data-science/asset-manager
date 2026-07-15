@@ -1,6 +1,6 @@
-import { Button, Loader, ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
+import { Button, Loader, ViewWithLoader, Tabs, Checkbox } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
 import { useState, type ReactElement } from ***REMOVED***react***REMOVED***
-import { FormCreator, schemaToFormUtils, type IForm, type IFormOverride } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
+import { FormCreator, type IForm } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
 import { postObjectType } from ***REMOVED***@/manage/object_type/services***REMOVED***
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
 import { useNavigate, useSearchParams } from ***REMOVED***react-router-dom***REMOVED***
@@ -10,6 +10,7 @@ import { validate } from ***REMOVED***@/lib/utils***REMOVED***
 import { useSlug } from ***REMOVED***@/manage/components/useSlug***REMOVED***
 import { useObjectTypeSchemaAndObjectCategories } from ***REMOVED***@/manage/object_type/useObjectType***REMOVED***
 import type { JSONSchema6 } from ***REMOVED***json-schema***REMOVED***
+import { useObjectTypeDataForm } from ***REMOVED***@/manage/object_type/useObjectTypeDataForm***REMOVED***
 
 const CreateObjectTypeForm = ({
   object_categories,
@@ -24,80 +25,36 @@ const CreateObjectTypeForm = ({
   const [errorMessages, setErrorMessages] = useState<{ field: string; message: string }[]>([])
   const auth = useAuth()
 
-  const objectTypeConfigFormOverride: IFormOverride = {
-    fields: [
-      {
-        "prop": "data.field_mappings",
-        "description": "Provide a JSON path to field location",
-        "type": "object",
-        "layout": "grid2",
-        "fields": [
-          { "prop": "data.field_mappings.slug", "type": "text" },
-          { "prop": "data.field_mappings.label", "type": "text" },
-          { "prop": "data.field_mappings.description", "type": "text" },
-          { "prop": "data.field_mappings.asset_geom", "type": "text" },
-          { "prop": "data.field_mappings.dataset_extent_geom", "type": "text" },
-          { "prop": "data.field_mappings.dataset_start_time", "type": "text" },
-          { "prop": "data.field_mappings.dataset_end_time", "type": "text" }
-        ]
-      },
-      {
-        "prop": "data.api_overrides"
-      }
-    ]
-  }
-
-  const objectTypeConfigForm = schemaToFormUtils.overridesAndSchemaToFormObject({
-    schema,
-    formOverrides: [objectTypeConfigFormOverride],
-    formFieldOverrides: []
-  })
-
   const objectTypeFormWithoutSlug: IForm = {
     id: ***REMOVED***create-object-type***REMOVED***,
     settings: {
       show_progress: false,
     },
-    tabs: [
+
+    fields: [
       {
-        id: ***REMOVED***general***REMOVED***,
-        label: ***REMOVED***General***REMOVED***,
-        fields: [
-          {
-            id: ***REMOVED***category***REMOVED***,
-            label: ***REMOVED***Category***REMOVED***,
-            type: ***REMOVED***select***REMOVED***,
-            options: object_categories.map((c) => {
-              return { label: c, value: c }
-            }),
-            required: true,
-            settings: {},
-          },
-          {
-            id: ***REMOVED***label***REMOVED***,
-            label: ***REMOVED***Label***REMOVED***,
-            type: ***REMOVED***text***REMOVED***,
-            required: true,
-          },
-          {
-            id: ***REMOVED***description***REMOVED***,
-            label: ***REMOVED***Description***REMOVED***,
-            type: ***REMOVED***long_text***REMOVED***,
-          },
-          {
-            id: ***REMOVED***create_default_schema***REMOVED***,
-            label: ***REMOVED***Create default schema***REMOVED***,
-            type: ***REMOVED***boolean***REMOVED***,
-          },
-        ]
+        id: ***REMOVED***category***REMOVED***,
+        label: ***REMOVED***Category***REMOVED***,
+        type: ***REMOVED***select***REMOVED***,
+        options: object_categories.map((c) => {
+          return { label: c, value: c }
+        }),
+        required: true,
+        settings: {},
       },
       {
-        id: ***REMOVED***config***REMOVED***,
-        label: ***REMOVED***Config***REMOVED***,
-        fields: objectTypeConfigForm.fields
+        id: ***REMOVED***label***REMOVED***,
+        label: ***REMOVED***Label***REMOVED***,
+        type: ***REMOVED***text***REMOVED***,
+        required: true,
+      },
+      {
+        id: ***REMOVED***description***REMOVED***,
+        label: ***REMOVED***Description***REMOVED***,
+        type: ***REMOVED***long_text***REMOVED***,
       }
+    ]
 
-    ],
   }
 
   const schemaFormWithoutSlug: IForm = {
@@ -130,29 +87,42 @@ const CreateObjectTypeForm = ({
     form,
     formState: [formValue, setFormValue],
     filterForSave,
-  } = useSlug(
-    objectTypeFormWithoutSlug,
-    {
+  } = useSlug({
+    form: objectTypeFormWithoutSlug,
+    initialFormValues: {
       category:
         object_categories.find((c) => c === searchParams.get(***REMOVED***category***REMOVED***)) ??
         object_categories.find((d) => d.toLowerCase() === ***REMOVED***document***REMOVED***) ??
-        object_categories[0],
-      create_default_schema: true,
-    },
-    [***REMOVED***create_default_schema***REMOVED***]
-  )
+        object_categories[0]
+    }
+  })
 
   const {
     form: schemaForm,
     formState: [schemaFormValue, setSchemaFormValue],
     filterForSave: schemaFilterForSave,
-  } = useSlug(schemaFormWithoutSlug)
+  } = useSlug({
+    form: schemaFormWithoutSlug
+  })
+
+
+  const {
+    form: objectTypeConfigForm,
+    formState: [objectTypeConfigFormValue, setObjectTypeConfigFormValue],
+    filterForSave: objectTypeConfigFilterForSave
+  } = useObjectTypeDataForm({
+    objectTypeSchema: schema
+  })
+
+  const [createDefaultSchema, setCreateDefaultSchema] = useState(false)
+
+
 
   const onSave = async () => {
     setSaving(true)
     try {
       const typeValid = await validate({ form, formValues: formValue })
-      const schemaValid = formValue[***REMOVED***create_default_schema***REMOVED***]
+      const schemaValid = createDefaultSchema
         ? await validate({
           form: schemaForm,
           formValues: schemaFormValue,
@@ -174,12 +144,17 @@ const CreateObjectTypeForm = ({
         return
       }
       setErrorMessages([])
-      const valuesToSave = filterForSave(formValue)
+      const valuesToSave = {
+        ...filterForSave(formValue),
+        data: objectTypeConfigFilterForSave(objectTypeConfigFormValue) as JSONSchema6 | undefined,
+      }
+
       const newObjectType = await postObjectType({
         object_type: valuesToSave as Omit<IObjectType, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
         token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
       })
-      if (formValue[***REMOVED***create_default_schema***REMOVED***]) {
+
+      if (createDefaultSchema) {
         const schemaValuesToSave = schemaFilterForSave(schemaFormValue)
         schemaValuesToSave[***REMOVED***object_type_uuid***REMOVED***] = newObjectType.uuid
         schemaValuesToSave[***REMOVED***is_type_default***REMOVED***] = true
@@ -225,15 +200,45 @@ const CreateObjectTypeForm = ({
           </ul>
         </div>
       )}
-      <FormCreator form={form} formValueState={[formValue, setFormValue]} />
-      {formValue[***REMOVED***create_default_schema***REMOVED***] && (
-        <>
-          <h5 className="text-slate-800 font-bold">Default schema details</h5>
-          <div className="flex flex-col gap-4 px-8 pb-8 bg-slate-100 border-2 shadow-md rounded">
-            <FormCreator form={schemaForm} formValueState={[schemaFormValue, setSchemaFormValue]} />
-          </div>
-        </>
-      )}
+      <Tabs
+        tabs={[
+          {
+            id: "object-type-details",
+            label: ***REMOVED***Object type details***REMOVED***,
+            content: (
+              <FormCreator form={form} formValueState={[formValue, setFormValue]} />
+            )
+          },
+          {
+            id: ***REMOVED***object-type-config***REMOVED***,
+            label: ***REMOVED***Object type config***REMOVED***,
+            content: (
+              <FormCreator form={objectTypeConfigForm} formValueState={[objectTypeConfigFormValue, setObjectTypeConfigFormValue]} />
+            )
+          },
+          {
+            id: "object-type-default-schema",
+            label: ***REMOVED***Default schema***REMOVED***,
+            content: (
+              <>
+                <Checkbox
+                  id="create_default_schema"
+                  testId=***REMOVED***create_default_schema***REMOVED***
+                  label="Create default schema"
+                  value={createDefaultSchema}
+                  onChange={(checked) => {
+                    setCreateDefaultSchema(checked)
+                    setFormValue((prev) => ({ ...prev, create_default_schema: checked }))
+                  }}
+                />
+                {createDefaultSchema && (
+                  <FormCreator form={schemaForm} formValueState={[schemaFormValue, setSchemaFormValue]} />
+                )}
+              </>
+            )
+          }
+        ]}
+      />
       <div className="flex flex-row gap-2 sticky bg-white/80 bottom-0 py-4">
         <Button onClick={onSave} type="primary" disabled={saving}>
           {saving ? <Loader className="animate-spin" /> : ***REMOVED***Save***REMOVED***}

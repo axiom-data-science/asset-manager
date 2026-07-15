@@ -48,7 +48,7 @@ const ListObjectSchemasTable = ({ object_types }: { object_types: IObjectType[] 
                     <Table
                         className=***REMOVED***w-full***REMOVED***
                         rowClassName="odd:bg-slate-100"
-                        theadClassName="sticky top-26"
+                        theadClassName="sticky top-20"
                         data={object_schemas?.items}
                         columns={[
                             {

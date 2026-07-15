@@ -116,13 +116,13 @@ const CreateObjectSchemaForm = ({ object_types, type }: { object_types: IObjectT
         ]
     }
 
-    const { form, formState: [formValue, setFormValue], filterForSave } = useSlug(
-        formWithoutSlug,
-        {
+    const { form, formState: [formValue, setFormValue], filterForSave } = useSlug({
+        form: formWithoutSlug,
+        initialFormValues: {
             object_type_uuid: type.uuid
         },
-        [***REMOVED***version***REMOVED***],
-    )
+        presentationFields: [***REMOVED***version***REMOVED***]
+    });
 
     if (!auth.isAuthenticated) {
         return (

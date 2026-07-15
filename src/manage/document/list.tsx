@@ -123,7 +123,7 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
         <Table
           className="w-full"
           rowClassName="odd:bg-slate-100"
-          theadClassName="sticky top-26"
+          theadClassName="sticky top-20"
           data={documents?.items}
           columns={[
             {

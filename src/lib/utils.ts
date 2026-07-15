@@ -85,8 +85,8 @@ export const useQueriesWithSignatures = (queryObject: ReturnType<typeof queryOpt
         error: results.find((r) => r.error)?.error ?? null,
         data: !isLoading
           ? Object.fromEntries(
-              results.map((r, index) => (r.data ? [Object.keys(queryObject)[index], r.data] : []))
-            )
+            results.map((r, index) => (r.data ? [Object.keys(queryObject)[index], r.data] : []))
+          )
           : null,
       }
     },
@@ -100,4 +100,18 @@ export const removeUndefinedAndNullKeys = (
   return Object.fromEntries(
     Object.entries(obj).filter(([, value]) => value !== undefined && value !== null)
   )
+}
+
+
+export const createFilterForSaveFn = (presentationFields?: string[]) => {
+  return (values: IFormValues): IFormValues => {
+    const valuesToSave = {} as IFormValues;
+    Object.keys(values).forEach(key => {
+      if (key === ***REMOVED***auto_slug***REMOVED***) return;
+      if (presentationFields && presentationFields.includes(key)) return;
+      valuesToSave[key] = values[key];
+    })
+    return valuesToSave;
+  }
+
 }

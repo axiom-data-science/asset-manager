@@ -1,4 +1,4 @@
-import { Button, Loader, utils, ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
+import { Button, Loader, utils, ViewWithLoader, Tabs } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
 import { useState, type ReactElement } from ***REMOVED***react***REMOVED***
 import { FormCreator, type IFormValues, type IForm } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
 import { patchObjectType } from ***REMOVED***@/manage/object_type/services***REMOVED***
@@ -10,28 +10,73 @@ import { useQueryClient } from ***REMOVED***@tanstack/react-query***REMOVED***
 import { CopyFields } from ***REMOVED***../components/copy_field***REMOVED***
 import Link from ***REMOVED***@/manage/components/link***REMOVED***
 import { BookPlus, Check, Network, Plus } from ***REMOVED***lucide-react***REMOVED***
+import type { JSONSchema6 } from ***REMOVED***json-schema***REMOVED***
+import { useObjectTypeDataForm } from ***REMOVED***@/manage/object_type/useObjectTypeDataForm***REMOVED***
+import { useFormAndFormState } from ***REMOVED***@/manage/components/useFormAndFormState***REMOVED***
 
 const EditObjectTypeForm = ({
   object_type,
   forms,
   schemas,
+  object_type_schema
 }: {
   object_type: IObjectType
   forms: IAssetForm[]
-  schemas: IObjectSchema[]
+  schemas: IObjectSchema[],
+  object_type_schema: JSONSchema6
 }): ReactElement => {
   const queryClient = useQueryClient()
 
   const [saving, setSaving] = useState(false)
-  const [formValue, setFormValue] = useState<IFormValues>(object_type as unknown as IFormValues)
   const auth = useAuth()
   const navigate = useNavigate()
 
+  const {
+    form,
+    formState: [formValue, setFormValue],
+    filterForSave
+  } = useFormAndFormState({
+    form: {
+      id: ***REMOVED***edit-object-type***REMOVED***,
+      settings: {
+        show_progress: false,
+      },
+      fields: [
+        {
+          id: ***REMOVED***label***REMOVED***,
+          label: ***REMOVED***Label***REMOVED***,
+          type: ***REMOVED***text***REMOVED***,
+          required: true,
+        },
+        {
+          id: ***REMOVED***description***REMOVED***,
+          label: ***REMOVED***Description***REMOVED***,
+          type: ***REMOVED***long_text***REMOVED***,
+        },
+      ],
+    },
+  })
+
+  const {
+    form: objectTypeConfigForm,
+    formState: [objectTypeConfigFormValue, setObjectTypeConfigFormValue],
+    filterForSave: objectTypeConfigFilterForSave
+  } = useObjectTypeDataForm({
+    objectTypeSchema: object_type_schema,
+    initialFormValues: object_type.data ? object_type.data as IFormValues : {},
+  })
+
   const onUpdate = () => {
     setSaving(true)
+    const filteredObjectTypeDataValue = objectTypeConfigFilterForSave(objectTypeConfigFormValue)
+    const hasDataValues = Object.values(filteredObjectTypeDataValue).some((value) => value !== undefined && value !== null && value !== ***REMOVED******REMOVED***)
+    const filteredValues = filterForSave(formValue)
     patchObjectType({
       uuid: object_type.uuid,
-      object_type: formValue as unknown as IObjectType,
+      object_type: {
+        ...filteredValues,
+        data: hasDataValues ? filteredObjectTypeDataValue as JSONSchema6 : undefined
+      } as unknown as IObjectType,
       token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
     }).then(() => {
       setSaving(false)
@@ -39,37 +84,6 @@ const EditObjectTypeForm = ({
       queryClient.invalidateQueries({ queryKey: [***REMOVED***object_type_list***REMOVED***] })
       navigate(***REMOVED***/object_type***REMOVED***)
     })
-  }
-
-  const form: IForm = {
-    id: ***REMOVED***edit-object-type***REMOVED***,
-    settings: {
-      show_progress: false,
-    },
-    fields: [
-      {
-        id: ***REMOVED***label***REMOVED***,
-        label: ***REMOVED***Label***REMOVED***,
-        type: ***REMOVED***text***REMOVED***,
-        required: true,
-      },
-      {
-        id: ***REMOVED***description***REMOVED***,
-        label: ***REMOVED***Description***REMOVED***,
-        type: ***REMOVED***long_text***REMOVED***,
-      },
-      {
-        id: ***REMOVED***data***REMOVED***,
-        label: ***REMOVED***Config***REMOVED***,
-        type: ***REMOVED***json***REMOVED***,
-      },
-      {
-        id: ***REMOVED***slug***REMOVED***,
-        label: ***REMOVED***Slug***REMOVED***,
-        type: ***REMOVED***constant***REMOVED***,
-        defaultValue: object_type.slug,
-      },
-    ],
   }
 
   if (!auth.isAuthenticated) {
@@ -89,6 +103,24 @@ const EditObjectTypeForm = ({
           { id: ***REMOVED***category***REMOVED***, label: ***REMOVED***Category***REMOVED***, value: object_type.category },
           { id: ***REMOVED***slug***REMOVED***, label: ***REMOVED***Slug***REMOVED***, value: object_type.slug },
           { id: ***REMOVED***uuid***REMOVED***, label: ***REMOVED***UUID***REMOVED***, value: object_type.uuid },
+        ]}
+      />
+      <Tabs
+        tabs={[
+          {
+            id: "object-type-details",
+            label: ***REMOVED***Object type details***REMOVED***,
+            content: (
+              <FormCreator form={form} formValueState={[formValue, setFormValue]} />
+            )
+          },
+          {
+            id: ***REMOVED***object-type-config***REMOVED***,
+            label: ***REMOVED***Object type config***REMOVED***,
+            content: (
+              <FormCreator form={objectTypeConfigForm} formValueState={[objectTypeConfigFormValue, setObjectTypeConfigFormValue]} />
+            )
+          },
         ]}
       />
       <FormCreator form={form} formValueState={[formValue, setFormValue]} className="-mt-6" />
@@ -237,6 +269,7 @@ const EditObjectType = (): ReactElement => {
           object_type={data.object_type}
           forms={data.forms}
           schemas={data.schemas}
+          object_type_schema={data.object_type_schema}
         />
       )}
     </ViewWithLoader>

@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button'
 import SidebarLayout from '@/layouts/sidebar'
 import { Loader } from 'lucide-react'
-import { useEffect, type ReactElement } from 'react'
+import { useEffect, useState, type ReactElement } from 'react'
 import { ErrorBoundary, type FallbackProps } from 'react-error-boundary'
 import { useAuth } from '@/auth/useAuth'
 import { Route, Routes, useNavigate } from 'react-router-dom'
@@ -66,6 +66,71 @@ const queryClient = new QueryClient({
   },
 })
 
+
+const headerBrands = {
+  modl: () => {
+
+    const [isScrolled, /* setIsScrolled */] = useState(true);
+
+    /*  useEffect(() => {
+       const handleScroll = () => {
+         console.log(window.scrollY)
+         const limit = isScrolled ? 15 : 50
+         if (window.scrollY > limit) { // Adjust 50px as your desired scroll threshold
+           setIsScrolled(true);
+         } else {
+           setIsScrolled(false);
+         }
+ 
+       };
+ 
+       window.addEventListener('scroll', handleScroll);
+ 
+       return () => {
+         window.removeEventListener('scroll', handleScroll);
+       };
+     }, []); */
+    return (
+      <>
+        <div className={`flex items-center justify-between space-x-2 bg-[#003087] sticky top-0 z-10 shadow-lg ${isScrolled ? 'p-4' : 'p-6'}`}>
+          <a href="https://ioos.us" target="_blank" rel="noopener noreferrer">
+            <img src="/ioos_logo_teal.png" alt="IOOS Logo" className={`transition-all duration-300 ${isScrolled ? 'h-12' : 'h-12'} w-auto`} />
+          </a>
+          <div className="text-white text-sm font-semibold flex flex-col items-center space-y-2 w-30">
+            <img src="/buoy-retriever.png" alt="Buoy Retriever Logo" className={`transition-all duration-300 ${isScrolled ? 'h-10' : 'h-12'} w-auto`} />
+            <p className={`transition-all duration-300 ${isScrolled ? 'text-xs' : ''}`}>
+              Buoy Retriever
+            </p>
+
+          </div>
+        </div>
+      </>
+    )
+  }
+}
+
+const getBrand = (): string | undefined => {
+  let brand
+  const origin = window.location.origin
+  const url = new URL(window.location.href)
+  if (origin.match(/modl-asset/)) {
+    brand = 'modl'
+  } else {
+    brand = url.searchParams.get('brand') ?? undefined
+  }
+  return brand
+
+}
+
+const Header = ({ brand }: { brand?: string }): ReactElement => {
+  brand = brand ?? getBrand()
+  const brandKey = brand as keyof typeof headerBrands
+  if (brand && headerBrands[brandKey]) {
+    return headerBrands[brandKey]()
+  }
+  return <></>
+}
+
 function App(): ReactElement {
   function fallbackRender(props: FallbackProps): ReactElement {
     // Call resetErrorBoundary() to reset the error boundary and retry the render.
@@ -85,6 +150,7 @@ function App(): ReactElement {
 
   return (
     <ErrorBoundary fallbackRender={fallbackRender}>
+      <Header />
       <QueryClientProvider client={queryClient}>
         {auth.isLoading ? (
           <div className="p-20">

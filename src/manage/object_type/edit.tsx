@@ -1,4 +1,4 @@
-import { Button, Loader, utils, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
+import { Button, Loader, utils, ViewWithLoader, Tabs } from '@axdspub/axiom-ui-utilities'
 import { useState, type ReactElement } from 'react'
 import { FormCreator, type IFormValues, type IForm } from '@axdspub/axiom-ui-forms'
 import { patchObjectType } from '@/manage/object_type/services'
@@ -10,28 +10,73 @@ import { useQueryClient } from '@tanstack/react-query'
 import { CopyFields } from '../components/copy_field'
 import Link from '@/manage/components/link'
 import { BookPlus, Check, Network, Plus } from 'lucide-react'
+import type { JSONSchema6 } from 'json-schema'
+import { useObjectTypeDataForm } from '@/manage/object_type/useObjectTypeDataForm'
+import { useFormAndFormState } from '@/manage/components/useFormAndFormState'
 
 const EditObjectTypeForm = ({
   object_type,
   forms,
   schemas,
+  object_type_schema
 }: {
   object_type: IObjectType
   forms: IAssetForm[]
-  schemas: IObjectSchema[]
+  schemas: IObjectSchema[],
+  object_type_schema: JSONSchema6
 }): ReactElement => {
   const queryClient = useQueryClient()
 
   const [saving, setSaving] = useState(false)
-  const [formValue, setFormValue] = useState<IFormValues>(object_type as unknown as IFormValues)
   const auth = useAuth()
   const navigate = useNavigate()
 
+  const {
+    form,
+    formState: [formValue, setFormValue],
+    filterForSave
+  } = useFormAndFormState({
+    form: {
+      id: 'edit-object-type',
+      settings: {
+        show_progress: false,
+      },
+      fields: [
+        {
+          id: 'label',
+          label: 'Label',
+          type: 'text',
+          required: true,
+        },
+        {
+          id: 'description',
+          label: 'Description',
+          type: 'long_text',
+        },
+      ],
+    },
+  })
+
+  const {
+    form: objectTypeConfigForm,
+    formState: [objectTypeConfigFormValue, setObjectTypeConfigFormValue],
+    filterForSave: objectTypeConfigFilterForSave
+  } = useObjectTypeDataForm({
+    objectTypeSchema: object_type_schema,
+    initialFormValues: object_type.data ? object_type.data as IFormValues : {},
+  })
+
   const onUpdate = () => {
     setSaving(true)
+    const filteredObjectTypeDataValue = objectTypeConfigFilterForSave(objectTypeConfigFormValue)
+    const hasDataValues = Object.values(filteredObjectTypeDataValue).some((value) => value !== undefined && value !== null && value !== '')
+    const filteredValues = filterForSave(formValue)
     patchObjectType({
       uuid: object_type.uuid,
-      object_type: formValue as unknown as IObjectType,
+      object_type: {
+        ...filteredValues,
+        data: hasDataValues ? filteredObjectTypeDataValue as JSONSchema6 : undefined
+      } as unknown as IObjectType,
       token: auth.user?.access_token ?? '',
     }).then(() => {
       setSaving(false)
@@ -39,37 +84,6 @@ const EditObjectTypeForm = ({
       queryClient.invalidateQueries({ queryKey: ['object_type_list'] })
       navigate('/object_type')
     })
-  }
-
-  const form: IForm = {
-    id: 'edit-object-type',
-    settings: {
-      show_progress: false,
-    },
-    fields: [
-      {
-        id: 'label',
-        label: 'Label',
-        type: 'text',
-        required: true,
-      },
-      {
-        id: 'description',
-        label: 'Description',
-        type: 'long_text',
-      },
-      {
-        id: 'data',
-        label: 'Config',
-        type: 'json',
-      },
-      {
-        id: 'slug',
-        label: 'Slug',
-        type: 'constant',
-        defaultValue: object_type.slug,
-      },
-    ],
   }
 
   if (!auth.isAuthenticated) {
@@ -89,6 +103,24 @@ const EditObjectTypeForm = ({
           { id: 'category', label: 'Category', value: object_type.category },
           { id: 'slug', label: 'Slug', value: object_type.slug },
           { id: 'uuid', label: 'UUID', value: object_type.uuid },
+        ]}
+      />
+      <Tabs
+        tabs={[
+          {
+            id: "object-type-details",
+            label: 'Object type details',
+            content: (
+              <FormCreator form={form} formValueState={[formValue, setFormValue]} />
+            )
+          },
+          {
+            id: 'object-type-config',
+            label: 'Object type config',
+            content: (
+              <FormCreator form={objectTypeConfigForm} formValueState={[objectTypeConfigFormValue, setObjectTypeConfigFormValue]} />
+            )
+          },
         ]}
       />
       <FormCreator form={form} formValueState={[formValue, setFormValue]} className="-mt-6" />
@@ -237,6 +269,7 @@ const EditObjectType = (): ReactElement => {
           object_type={data.object_type}
           forms={data.forms}
           schemas={data.schemas}
+          object_type_schema={data.object_type_schema}
         />
       )}
     </ViewWithLoader>

@@ -202,13 +202,13 @@ const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSche
         ]
     }
 
-    const { form, formState: [formValues, setFormValue], filterForSave } = useSlug(
-        formWithoutSlug,
-        {
+    const { form, formState: [formValues, setFormValue], filterForSave } = useSlug({
+        form: formWithoutSlug,
+        initialFormValues: {
             object_schema_version: schemas.find(s => s.is_type_default)?.version.toString() ?? schemas.sort((a, b) => b.version - a.version)[0]?.version.toString() ?? '',
         },
-        ['field_override_configs']
-    );
+        presentationFields: ['field_override_configs']
+    });
 
     if (!auth.isAuthenticated) {
         return (

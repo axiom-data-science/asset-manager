@@ -1,6 +1,6 @@
-import { Button, Loader, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
+import { Button, Loader, ViewWithLoader, Tabs, Checkbox } from '@axdspub/axiom-ui-utilities'
 import { useState, type ReactElement } from 'react'
-import { FormCreator, schemaToFormUtils, type IForm, type IFormOverride } from '@axdspub/axiom-ui-forms'
+import { FormCreator, type IForm } from '@axdspub/axiom-ui-forms'
 import { postObjectType } from '@/manage/object_type/services'
 import { useAuth } from '@/auth/useAuth'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -10,6 +10,7 @@ import { validate } from '@/lib/utils'
 import { useSlug } from '@/manage/components/useSlug'
 import { useObjectTypeSchemaAndObjectCategories } from '@/manage/object_type/useObjectType'
 import type { JSONSchema6 } from 'json-schema'
+import { useObjectTypeDataForm } from '@/manage/object_type/useObjectTypeDataForm'
 
 const CreateObjectTypeForm = ({
   object_categories,
@@ -24,80 +25,36 @@ const CreateObjectTypeForm = ({
   const [errorMessages, setErrorMessages] = useState<{ field: string; message: string }[]>([])
   const auth = useAuth()
 
-  const objectTypeConfigFormOverride: IFormOverride = {
-    fields: [
-      {
-        "prop": "data.field_mappings",
-        "description": "Provide a JSON path to field location",
-        "type": "object",
-        "layout": "grid2",
-        "fields": [
-          { "prop": "data.field_mappings.slug", "type": "text" },
-          { "prop": "data.field_mappings.label", "type": "text" },
-          { "prop": "data.field_mappings.description", "type": "text" },
-          { "prop": "data.field_mappings.asset_geom", "type": "text" },
-          { "prop": "data.field_mappings.dataset_extent_geom", "type": "text" },
-          { "prop": "data.field_mappings.dataset_start_time", "type": "text" },
-          { "prop": "data.field_mappings.dataset_end_time", "type": "text" }
-        ]
-      },
-      {
-        "prop": "data.api_overrides"
-      }
-    ]
-  }
-
-  const objectTypeConfigForm = schemaToFormUtils.overridesAndSchemaToFormObject({
-    schema,
-    formOverrides: [objectTypeConfigFormOverride],
-    formFieldOverrides: []
-  })
-
   const objectTypeFormWithoutSlug: IForm = {
     id: 'create-object-type',
     settings: {
       show_progress: false,
     },
-    tabs: [
+
+    fields: [
       {
-        id: 'general',
-        label: 'General',
-        fields: [
-          {
-            id: 'category',
-            label: 'Category',
-            type: 'select',
-            options: object_categories.map((c) => {
-              return { label: c, value: c }
-            }),
-            required: true,
-            settings: {},
-          },
-          {
-            id: 'label',
-            label: 'Label',
-            type: 'text',
-            required: true,
-          },
-          {
-            id: 'description',
-            label: 'Description',
-            type: 'long_text',
-          },
-          {
-            id: 'create_default_schema',
-            label: 'Create default schema',
-            type: 'boolean',
-          },
-        ]
+        id: 'category',
+        label: 'Category',
+        type: 'select',
+        options: object_categories.map((c) => {
+          return { label: c, value: c }
+        }),
+        required: true,
+        settings: {},
       },
       {
-        id: 'config',
-        label: 'Config',
-        fields: objectTypeConfigForm.fields
+        id: 'label',
+        label: 'Label',
+        type: 'text',
+        required: true,
+      },
+      {
+        id: 'description',
+        label: 'Description',
+        type: 'long_text',
       }
+    ]
 
-    ],
   }
 
   const schemaFormWithoutSlug: IForm = {
@@ -130,29 +87,42 @@ const CreateObjectTypeForm = ({
     form,
     formState: [formValue, setFormValue],
     filterForSave,
-  } = useSlug(
-    objectTypeFormWithoutSlug,
-    {
+  } = useSlug({
+    form: objectTypeFormWithoutSlug,
+    initialFormValues: {
       category:
         object_categories.find((c) => c === searchParams.get('category')) ??
         object_categories.find((d) => d.toLowerCase() === 'document') ??
-        object_categories[0],
-      create_default_schema: true,
-    },
-    ['create_default_schema']
-  )
+        object_categories[0]
+    }
+  })
 
   const {
     form: schemaForm,
     formState: [schemaFormValue, setSchemaFormValue],
     filterForSave: schemaFilterForSave,
-  } = useSlug(schemaFormWithoutSlug)
+  } = useSlug({
+    form: schemaFormWithoutSlug
+  })
+
+
+  const {
+    form: objectTypeConfigForm,
+    formState: [objectTypeConfigFormValue, setObjectTypeConfigFormValue],
+    filterForSave: objectTypeConfigFilterForSave
+  } = useObjectTypeDataForm({
+    objectTypeSchema: schema
+  })
+
+  const [createDefaultSchema, setCreateDefaultSchema] = useState(false)
+
+
 
   const onSave = async () => {
     setSaving(true)
     try {
       const typeValid = await validate({ form, formValues: formValue })
-      const schemaValid = formValue['create_default_schema']
+      const schemaValid = createDefaultSchema
         ? await validate({
           form: schemaForm,
           formValues: schemaFormValue,
@@ -174,12 +144,17 @@ const CreateObjectTypeForm = ({
         return
       }
       setErrorMessages([])
-      const valuesToSave = filterForSave(formValue)
+      const valuesToSave = {
+        ...filterForSave(formValue),
+        data: objectTypeConfigFilterForSave(objectTypeConfigFormValue) as JSONSchema6 | undefined,
+      }
+
       const newObjectType = await postObjectType({
         object_type: valuesToSave as Omit<IObjectType, 'uuid' | 'created_at' | 'updated_at'>,
         token: auth.user?.access_token ?? '',
       })
-      if (formValue['create_default_schema']) {
+
+      if (createDefaultSchema) {
         const schemaValuesToSave = schemaFilterForSave(schemaFormValue)
         schemaValuesToSave['object_type_uuid'] = newObjectType.uuid
         schemaValuesToSave['is_type_default'] = true
@@ -225,15 +200,45 @@ const CreateObjectTypeForm = ({
           </ul>
         </div>
       )}
-      <FormCreator form={form} formValueState={[formValue, setFormValue]} />
-      {formValue['create_default_schema'] && (
-        <>
-          <h5 className="text-slate-800 font-bold">Default schema details</h5>
-          <div className="flex flex-col gap-4 px-8 pb-8 bg-slate-100 border-2 shadow-md rounded">
-            <FormCreator form={schemaForm} formValueState={[schemaFormValue, setSchemaFormValue]} />
-          </div>
-        </>
-      )}
+      <Tabs
+        tabs={[
+          {
+            id: "object-type-details",
+            label: 'Object type details',
+            content: (
+              <FormCreator form={form} formValueState={[formValue, setFormValue]} />
+            )
+          },
+          {
+            id: 'object-type-config',
+            label: 'Object type config',
+            content: (
+              <FormCreator form={objectTypeConfigForm} formValueState={[objectTypeConfigFormValue, setObjectTypeConfigFormValue]} />
+            )
+          },
+          {
+            id: "object-type-default-schema",
+            label: 'Default schema',
+            content: (
+              <>
+                <Checkbox
+                  id="create_default_schema"
+                  testId='create_default_schema'
+                  label="Create default schema"
+                  value={createDefaultSchema}
+                  onChange={(checked) => {
+                    setCreateDefaultSchema(checked)
+                    setFormValue((prev) => ({ ...prev, create_default_schema: checked }))
+                  }}
+                />
+                {createDefaultSchema && (
+                  <FormCreator form={schemaForm} formValueState={[schemaFormValue, setSchemaFormValue]} />
+                )}
+              </>
+            )
+          }
+        ]}
+      />
       <div className="flex flex-row gap-2 sticky bg-white/80 bottom-0 py-4">
         <Button onClick={onSave} type="primary" disabled={saving}>
           {saving ? <Loader className="animate-spin" /> : 'Save'}

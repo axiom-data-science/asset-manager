@@ -1,3 +1,5 @@
+import type { JSONSchema6 } from "json-schema"
+
 export type IPostgrestFilter = {
   column: string
   operator:
@@ -147,6 +149,7 @@ export interface IObjectType {
   description?: string
   created_at: string
   updated_at: string
+  data?: JSONSchema6
 }
 
 export interface IObjectSchema {

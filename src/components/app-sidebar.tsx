@@ -15,38 +15,42 @@ import { SidebarGroupContent, SidebarGroupLabel } from '@/components/ui/sidebar'
 import { Link } from 'react-router-dom'
 
 import UserView from '@/manage/components/user'
+import { useAuth } from '@/auth/useAuth'
 
 export function AppSidebar() {
+  const auth = useAuth()
   const navGroups = [
     {
       label: 'Documents',
       icon: Book,
+      requiresAdmin: false,
       actions: [
         {
           name: 'List documents',
           icon: List,
-          url: '/document',
+          url: '/document'
         },
         {
           name: 'Create document',
           icon: Plus,
-          url: '/document/create',
+          url: '/document/create'
         },
         {
           name: 'Upload a file',
           icon: Plus,
-          url: '/file/upload',
+          url: '/file/upload'
         },
         {
           name: 'List files',
           icon: List,
-          url: '/file/list',
+          url: '/file/list'
         },
       ],
     },
     {
       label: 'Schemas',
       icon: Network,
+      requiresAdmin: true,
       actions: [
         {
           name: 'List schemas',
@@ -73,6 +77,7 @@ export function AppSidebar() {
     {
       label: 'Forms',
       icon: BookPlus,
+      requiresAdmin: true,
       actions: [
         {
           name: 'List forms',
@@ -99,6 +104,7 @@ export function AppSidebar() {
     {
       label: 'Persons',
       icon: User,
+      requiresAdmin: true,
       actions: [
         {
           name: 'List persons',
@@ -115,6 +121,7 @@ export function AppSidebar() {
     {
       label: 'Examples',
       icon: FilePen,
+      requiresAdmin: false,
       actions: [
         {
           name: 'List NINJA pipelines',
@@ -141,6 +148,7 @@ export function AppSidebar() {
     {
       label: 'Imports',
       icon: Import,
+      requiresAdmin: true,
       actions: [
         {
           name: 'Sensor stations',
@@ -191,7 +199,12 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader />
       <SidebarContent>
-        {navGroups.map((group) => (
+        {navGroups.filter(group => {
+          if (group.requiresAdmin && !auth.isAdmin) {
+            return false
+          }
+          return true
+        }).map((group) => (
           <Collapsible key={group.label} defaultOpen className="group/collapsible">
             <SidebarGroup>
               <SidebarGroupLabel asChild className="font-bold text-lg cursor-pointer">

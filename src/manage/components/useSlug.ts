@@ -1,12 +1,25 @@
+import { createFilterForSaveFn } from "@/lib/utils";
 import type { IForm, IFormValues, IObjectField } from "@axdspub/axiom-ui-forms";
 import { useMemo, useState } from "react";
 
-export const useSlug = (form: IForm, initialFormValues?: IFormValues, presentationFields?: string[]): {form: IForm, formState: [IFormValues, React.Dispatch<React.SetStateAction<IFormValues>>], filterForSave: (formValues: IFormValues) => IFormValues} => {
+export const useSlug = ({
+    form,
+    initialFormValues,
+    presentationFields
+}: {
+    form: IForm,
+    initialFormValues?: IFormValues,
+    presentationFields?: string[]
+}): {
+    form: IForm,
+    formState: [IFormValues, React.Dispatch<React.SetStateAction<IFormValues>>],
+    filterForSave: (formValues: IFormValues) => IFormValues
+} => {
     const [formValues, setFormValues] = useState<IFormValues>({
         'auto_slug': true,
         ...initialFormValues
     });
-    
+
 
     useMemo(() => {
         const updateSlug = () => {
@@ -30,18 +43,10 @@ export const useSlug = (form: IForm, initialFormValues?: IFormValues, presentati
     const labelField = fields[labelFieldIndex]
 
 
-    const filterForSave = (values: IFormValues): IFormValues => {
-        const valuesToSave = {} as IFormValues;
-        Object.keys(values).forEach(key => {
-            if(key === 'auto_slug') return;
-            if(presentationFields && presentationFields.includes(key)) return;
-            valuesToSave[key] = values[key];
-        })
-        return valuesToSave;
-    }
+    const filterForSave = createFilterForSaveFn(presentationFields);
 
 
-    if(labelFieldIndex === -1 || labelField === undefined) {
+    if (labelFieldIndex === -1 || labelField === undefined) {
         console.warn('useSlug hook requires a field with id "label" to generate slug');
         return {
             form: newForm,
@@ -86,5 +91,5 @@ export const useSlug = (form: IForm, initialFormValues?: IFormValues, presentati
         formState: [formValues, setFormValues],
         filterForSave
     };
-    
+
 }

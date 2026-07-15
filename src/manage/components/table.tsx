@@ -1,11 +1,11 @@
-import type {  ITableProps } from "@axdspub/axiom-ui-utilities";
+import type { ITableProps } from "@axdspub/axiom-ui-utilities";
 import type { ReactElement } from "react";
 import { Table as AxiomTable } from "@axdspub/axiom-ui-utilities";
 
 const Table = (props: ITableProps): ReactElement => {
     const modifiedProps = {
         ...props,
-        theadClassName: 'text-left'
+        theadClassName: `${props.theadClassName ? `${props.theadClassName} ` : ''}text-left`,
     }
     return (
         <AxiomTable

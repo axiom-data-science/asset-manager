@@ -1,6 +1,6 @@
 import { Button, Loader, utils, ViewWithLoader, Tabs } from '@axdspub/axiom-ui-utilities'
 import { useState, type ReactElement } from 'react'
-import { FormCreator, type IFormValues, type IForm } from '@axdspub/axiom-ui-forms'
+import { FormCreator, type IFormValues } from '@axdspub/axiom-ui-forms'
 import { patchObjectType } from '@/manage/object_type/services'
 import { useAuth } from '@/auth/useAuth'
 import type { IAssetForm, IObjectSchema, IObjectType } from '@/types/types'

@@ -1,5 +1,5 @@
 import { Button, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities";
-import {  useState, type ReactElement } from "react";
+import { useState, type ReactElement } from "react";
 import { FormCreator, type IForm } from '@axdspub/axiom-ui-forms'
 import { postObjectSchema } from "@/manage/object_schema/services";
 import { useAuth } from "@/auth/useAuth";
@@ -89,7 +89,9 @@ const CreateObjectSchemaForm = ({ object_types }: { object_types: IObjectType[] 
         ]
     }
 
-    const { form, formState: [formValue, setFormValue], filterForSave } = useSlug(formWithoutSlug);
+    const { form, formState: [formValue, setFormValue], filterForSave } = useSlug({
+        form: formWithoutSlug
+    });
 
     if (!auth.isAuthenticated) {
         return (

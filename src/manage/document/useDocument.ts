@@ -2,8 +2,9 @@ import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
 import { removeUndefinedAndNullKeys } from ***REMOVED***@/lib/utils***REMOVED***
 import { fetchDocument, patchDocument } from ***REMOVED***@/manage/document/services***REMOVED***
 import { documentListQueryKey } from ***REMOVED***@/manage/document/useDocumentList***REMOVED***
+import { fetchObjectType } from ***REMOVED***@/manage/object_type/services***REMOVED***
 import { lockDocument, unlockDocument } from ***REMOVED***@/services/postgrest/services***REMOVED***
-import type { IDocument, IPostgrestParams, IValidationError } from ***REMOVED***@/types/types***REMOVED***
+import type { IDocument, IObjectType, IPostgrestParams, IValidationError } from ***REMOVED***@/types/types***REMOVED***
 import type { IForm, IFormValues } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
 import {
   queryOptions,
@@ -46,6 +47,43 @@ export const getDocumentQuery = <T>({
   })
 }
 
+export const getDocumentAndObjectTypeAndObjectTypeConfigQuery = <T>({
+  uuid,
+  params,
+  token
+}: {
+  uuid: string | null
+  params?: IPostgrestParams
+  token?: string
+}) => {
+  return queryOptions({
+    queryKey: documentQueryKey({ uuid, params }),
+    enabled: uuid !== null,
+    queryFn: async ({ signal }) => {
+      const rawDocument = await fetchDocument<T>({
+        uuid: uuid ?? ***REMOVED******REMOVED***,
+        params: params ?? {},
+        token: token ?? ***REMOVED******REMOVED***,
+        signal,
+      })
+
+      const objectTypeUUID = rawDocument.object_type_uuid
+      const objectType = await fetchObjectType({
+        uuid: objectTypeUUID,
+        token: token ?? ***REMOVED******REMOVED***,
+        signal,
+      })
+
+      
+
+      return {
+        document: rawDocument,
+        objectType
+      }
+    },
+  })
+}
+
 export const useDocument = <T>(
   uuid: string | null,
   params?: IPostgrestParams
@@ -56,6 +94,19 @@ export const useDocument = <T>(
   )
   return queryResult
 }
+
+
+export const useDocumentAndObjectTypeAndObjectTypeConfig = <T>(
+  uuid: string | null,
+  params?: IPostgrestParams
+): UseQueryResult<{ document: IDocument<T>; objectType: IObjectType }> => {
+  const auth = useAuth()
+  const queryResult = useQuery(
+    getDocumentAndObjectTypeAndObjectTypeConfigQuery<T>({ uuid, params, token: auth.user?.access_token })
+  )
+  return queryResult
+}
+
 
 export const useClearDocumentQueryCache = (uuid: string | null, params?: IPostgrestParams) => {
   const queryClient = useQueryClient()
@@ -93,17 +144,17 @@ export const useLockDocumentMutation = ({
 
       return lock
         ? lockDocument({
-            document_uuid: document.uuid,
-            user_sub: auth.user.profile.sub ?? ***REMOVED******REMOVED***,
-            token: auth.user.access_token,
-            signal,
-          })
+          document_uuid: document.uuid,
+          user_sub: auth.user.profile.sub ?? ***REMOVED******REMOVED***,
+          token: auth.user.access_token,
+          signal,
+        })
         : unlockDocument({
-            document_uuid: document.uuid,
-            user_sub: auth.user.profile.sub ?? ***REMOVED******REMOVED***,
-            token: auth.user.access_token,
-            signal,
-          })
+          document_uuid: document.uuid,
+          user_sub: auth.user.profile.sub ?? ***REMOVED******REMOVED***,
+          token: auth.user.access_token,
+          signal,
+        })
     },
     onSuccess: (_, variables) => {
       // Call the callback to update local UI state

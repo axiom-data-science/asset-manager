@@ -117,14 +117,11 @@ export const createFilterForSaveFn = (presentationFields?: string[]) => {
 }
 
 export const getBrand = (): string | undefined => {
-  let brand
   const origin = window.location.origin
   const url = new URL(window.location.href)
-  if (origin.match(/modl-asset/)) {
-    brand = ***REMOVED***modl***REMOVED***
-  } else {
-    brand = url.searchParams.get(***REMOVED***brand***REMOVED***) ?? undefined
-  }
+  const brand = origin.match(/modl-asset/) || origin.match(/localhost/)
+    ? ***REMOVED***modl***REMOVED***
+    : url.searchParams.get(***REMOVED***brand***REMOVED***) ?? undefined
   return brand
 
 }

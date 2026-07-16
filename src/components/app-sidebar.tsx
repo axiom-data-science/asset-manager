@@ -16,10 +16,12 @@ import { Link } from ***REMOVED***react-router-dom***REMOVED***
 
 import UserView from ***REMOVED***@/manage/components/user***REMOVED***
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
-import { getBrand } from ***REMOVED***@/lib/utils***REMOVED***
+import headerStateAtom from ***REMOVED***@/state/headerStateAtom***REMOVED***
+import { useAtom } from ***REMOVED***jotai***REMOVED***
 
 export function AppSidebar() {
   const auth = useAuth()
+  const [headerState] = useAtom(headerStateAtom)
   const navGroups = [
     {
       label: ***REMOVED***Documents***REMOVED***,
@@ -196,8 +198,10 @@ export function AppSidebar() {
     }
   ]
 
+  const sideBarStyle = headerState.height !== ***REMOVED***0***REMOVED*** ? { top: headerState.height, height: `calc(100% - ${headerState.height})` } : {}
+
   return (
-    <Sidebar className={getBrand() === ***REMOVED***modl***REMOVED*** ? ***REMOVED***top-24 h-[calc(100%-6rem)]***REMOVED*** : ***REMOVED******REMOVED***}>
+    <Sidebar style={sideBarStyle}>
       <SidebarHeader />
       <SidebarContent>
         {navGroups.filter(group => {

@@ -1,7 +1,7 @@
 import { Link, useSearchParams } from ***REMOVED***react-router-dom***REMOVED***
-import { useDocument } from ***REMOVED***./useDocument***REMOVED***
+import { useDocument, useDocumentAndObjectTypeAndObjectTypeConfig } from ***REMOVED***./useDocument***REMOVED***
 import { useState, type ReactElement } from ***REMOVED***react***REMOVED***
-import { Button, Loader, utils, ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
+import { Button, Loader, utils, ViewWithLoader, SelectInput } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
 import type { IDocument } from ***REMOVED***@/types/types***REMOVED***
 import { useQuery } from ***REMOVED***@tanstack/react-query***REMOVED***
 import { ExternalLink } from ***REMOVED***lucide-react***REMOVED***
@@ -11,16 +11,18 @@ const ButtonLink = ({
   children,
   disabled,
   target,
+  className
 }: {
   to: string
   children: React.ReactNode
   disabled?: boolean
   target?: string
+  className?: string
 }): ReactElement => {
   return (
     <Link
       to={to}
-      className={`${utils.createButtonClass({ variant: ***REMOVED***link***REMOVED*** })}${disabled ? ***REMOVED*** opacity-50 cursor-not-allowed***REMOVED*** : ***REMOVED******REMOVED***}`}
+      className={`${utils.createButtonClass({ variant: ***REMOVED***link***REMOVED*** })}${disabled ? ***REMOVED*** opacity-50 cursor-not-allowed***REMOVED*** : ***REMOVED******REMOVED***}${className ? ` ${className}` : ***REMOVED******REMOVED***}`}
       target={target}
     >
       {children}
@@ -155,22 +157,49 @@ const CreateDocumentSuccess = ({
 }): ReactElement => {
   const [searchParams] = useSearchParams()
   const uuid = searchParams.get(***REMOVED***uuid***REMOVED***)
-  const { data: document, isLoading, error } = useDocument(uuid ?? ***REMOVED******REMOVED***)
+  const { data, isLoading, error } = useDocumentAndObjectTypeAndObjectTypeConfig(uuid ?? ***REMOVED******REMOVED***)
   const created = action === ***REMOVED***created***REMOVED***
 
   if (!uuid) {
     return <div>Invalid document ID</div>
   }
 
+  const [collectionMetadataLink, setCollectionMetadataLink] = useState<string | null>(null)
+
   return (
-    <ViewWithLoader isLoading={isLoading} error={error} data={document}>
-      {document && (
+    <ViewWithLoader isLoading={isLoading} error={error} data={data}>
+      {data && (
         <div className="flex flex-col p-10 gap-4 text-center">
           <h1 className="font-medium text-2xl">
             Document {created ? ***REMOVED***Created***REMOVED*** : ***REMOVED***Updated***REMOVED***} Successfully
           </h1>
+          <div className=***REMOVED***flex flex-row gap-4 justify-center items-center***REMOVED***>
+            Create collection metadata:
+            <SelectInput
+              id=***REMOVED***create-collection-metadata***REMOVED***
+              testId=***REMOVED***create-collection-metadata***REMOVED***
+              options={[
+                {
+                  value: ***REMOVED***/create-document/a6790e46-7fda-4640-baa9-6607d0f34589/object_schema***REMOVED***,
+                  label: ***REMOVED***Honohu***REMOVED***,
+                },
+                {
+                  label: ***REMOVED***S3 Timeseries***REMOVED***,
+                  value: ***REMOVED***/create-document/c561f911-4baa-41b6-96d0-d97fbb8ce72d/object_schema***REMOVED***
+                }
+              ]}
+              onChange={e => { setCollectionMetadataLink(e?.value !== undefined ? String(e.value) : null) }}
+            />
+            {
+              collectionMetadataLink !== null ? (
+                <ButtonLink to={collectionMetadataLink} className=***REMOVED***bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600***REMOVED***>
+                  Create collection metadata
+                </ButtonLink>
+              ) : null
+            }
+          </div>
           <div className="flex flex-row gap-4 justify-center">
-            <ERDDAPDatasetLoader document={document} />
+            <ERDDAPDatasetLoader document={data.document} />
           </div>
           <div className="flex flex-row gap-4 justify-center">
             <ButtonLink to={`/document`}>All documents</ButtonLink>

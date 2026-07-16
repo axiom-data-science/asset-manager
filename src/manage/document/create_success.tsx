@@ -1,7 +1,7 @@
 import { Link, useSearchParams } from 'react-router-dom'
-import { useDocument } from './useDocument'
+import { useDocument, useDocumentAndObjectTypeAndObjectTypeConfig } from './useDocument'
 import { useState, type ReactElement } from 'react'
-import { Button, Loader, utils, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
+import { Button, Loader, utils, ViewWithLoader, SelectInput } from '@axdspub/axiom-ui-utilities'
 import type { IDocument } from '@/types/types'
 import { useQuery } from '@tanstack/react-query'
 import { ExternalLink } from 'lucide-react'
@@ -11,16 +11,18 @@ const ButtonLink = ({
   children,
   disabled,
   target,
+  className
 }: {
   to: string
   children: React.ReactNode
   disabled?: boolean
   target?: string
+  className?: string
 }): ReactElement => {
   return (
     <Link
       to={to}
-      className={`${utils.createButtonClass({ variant: 'link' })}${disabled ? ' opacity-50 cursor-not-allowed' : ''}`}
+      className={`${utils.createButtonClass({ variant: 'link' })}${disabled ? ' opacity-50 cursor-not-allowed' : ''}${className ? ` ${className}` : ''}`}
       target={target}
     >
       {children}
@@ -155,22 +157,49 @@ const CreateDocumentSuccess = ({
 }): ReactElement => {
   const [searchParams] = useSearchParams()
   const uuid = searchParams.get('uuid')
-  const { data: document, isLoading, error } = useDocument(uuid ?? '')
+  const { data, isLoading, error } = useDocumentAndObjectTypeAndObjectTypeConfig(uuid ?? '')
   const created = action === 'created'
 
   if (!uuid) {
     return <div>Invalid document ID</div>
   }
 
+  const [collectionMetadataLink, setCollectionMetadataLink] = useState<string | null>(null)
+
   return (
-    <ViewWithLoader isLoading={isLoading} error={error} data={document}>
-      {document && (
+    <ViewWithLoader isLoading={isLoading} error={error} data={data}>
+      {data && (
         <div className="flex flex-col p-10 gap-4 text-center">
           <h1 className="font-medium text-2xl">
             Document {created ? 'Created' : 'Updated'} Successfully
           </h1>
+          <div className='flex flex-row gap-4 justify-center items-center'>
+            Create collection metadata:
+            <SelectInput
+              id='create-collection-metadata'
+              testId='create-collection-metadata'
+              options={[
+                {
+                  value: '/create-document/a6790e46-7fda-4640-baa9-6607d0f34589/object_schema',
+                  label: 'Honohu',
+                },
+                {
+                  label: 'S3 Timeseries',
+                  value: '/create-document/c561f911-4baa-41b6-96d0-d97fbb8ce72d/object_schema'
+                }
+              ]}
+              onChange={e => { setCollectionMetadataLink(e?.value !== undefined ? String(e.value) : null) }}
+            />
+            {
+              collectionMetadataLink !== null ? (
+                <ButtonLink to={collectionMetadataLink} className='bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600'>
+                  Create collection metadata
+                </ButtonLink>
+              ) : null
+            }
+          </div>
           <div className="flex flex-row gap-4 justify-center">
-            <ERDDAPDatasetLoader document={document} />
+            <ERDDAPDatasetLoader document={data.document} />
           </div>
           <div className="flex flex-row gap-4 justify-center">
             <ButtonLink to={`/document`}>All documents</ButtonLink>

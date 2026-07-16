@@ -37,6 +37,8 @@ import ListFilesLoader from './manage/document_file/list'
 import ImportRecordsPage from './import/pages'
 import { binninatorMetadata, binninatorRecords, binninatorRoot, defaultBinninatorRecordsURL, defaultOikosModelsURL, movingPlatform, OIKOS_URL_ROOT, oikosLayer, oikosLayerGroup, oikosModel, oikosModels, oikosModelVariable, oikosModelVariables, oikosModule, oikosVectorLayerGroups, oikosVectorLayers, oikosVectorModules, PLATFORM_ROOT, searchDocs, searchURL, SENSORS_ROOT, sensorStation } from '@/import/services'
 import { getBrand } from '@/lib/utils'
+import headerStateAtom from '@/state/headerStateAtom'
+import { useAtom } from 'jotai'
 
 const makeSiteTitle = (pageTitle?: string) => {
   return `${SITE_TITLE}${pageTitle ? ` - ${pageTitle}` : ''}`
@@ -71,35 +73,48 @@ const queryClient = new QueryClient({
 const headerBrands = {
   modl: () => {
 
-    const [isScrolled, /* setIsScrolled */] = useState(true);
+    const [isScrolled, setIsScrolled] = useState(true);
+    const [headerState, setHeaderState] = useAtom(headerStateAtom);
 
-    /*  useEffect(() => {
-       const handleScroll = () => {
-         console.log(window.scrollY)
-         const limit = isScrolled ? 15 : 50
-         if (window.scrollY > limit) { // Adjust 50px as your desired scroll threshold
-           setIsScrolled(true);
-         } else {
-           setIsScrolled(false);
-         }
- 
-       };
- 
-       window.addEventListener('scroll', handleScroll);
- 
-       return () => {
-         window.removeEventListener('scroll', handleScroll);
-       };
-     }, []); */
+    useEffect(() => {
+      setHeaderState((prevState) => ({
+        ...prevState,
+        height: '6em'
+      }));
+      const handleScroll = () => {
+        const limit = isScrolled ? 15 : 50
+        if (window.scrollY > limit) { // Adjust 50px as your desired scroll threshold
+          setHeaderState((prevState) => ({
+            ...prevState,
+            height: '4em'
+          }));
+          setIsScrolled(true);
+        } else {
+          setHeaderState((prevState) => ({
+            ...prevState,
+            height: '6em'
+          }));
+          setIsScrolled(false);
+        }
+
+      };
+
+      window.addEventListener('scroll', handleScroll);
+
+      return () => {
+        window.removeEventListener('scroll', handleScroll);
+      };
+    }, []);
+    const style = headerState.height !== '0' ? { height: isScrolled ? '3em' : '5em' } : {}
     return (
       <>
-        <div className={`flex items-center justify-between space-x-2 bg-[#003087] sticky top-0 z-10 shadow-lg ${isScrolled ? 'p-4' : 'p-6'}`}>
+        <div className={`fixed top-0 left-0 right-0 flex items-center justify-between space-x-2 bg-[#003087] z-50 shadow-lg ${isScrolled ? 'py-2 px-6' : 'py-3 px-6'}`} style={style}>
           <a href="https://ioos.us" target="_blank" rel="noopener noreferrer">
-            <img src="/ioos_logo_teal.png" alt="IOOS Logo" className={`transition-all duration-300 ${isScrolled ? 'h-12' : 'h-12'} w-auto`} />
+            <img src="/ioos_logo_teal.png" alt="IOOS Logo" className={`transition-all duration-300 ${isScrolled ? 'h-8' : 'h-12'} w-auto`} />
           </a>
-          <div className="text-white text-sm font-semibold flex flex-col items-center space-y-2 w-30">
-            <img src="/buoy-retriever.png" alt="Buoy Retriever Logo" className={`transition-all duration-300 ${isScrolled ? 'h-10' : 'h-12'} w-auto`} />
-            <p className={`transition-all duration-300 ${isScrolled ? 'text-xs' : ''}`}>
+          <div className="text-white text-sm font-semibold flex flex-col items-center space-y-1 w-30">
+            <img src="/buoy-retriever.png" alt="Buoy Retriever Logo" className={`transition-all duration-300 ${isScrolled ? 'h-8' : 'h-10'} w-auto`} />
+            <p className={`transition-all duration-300 ${isScrolled ? 'hidden' : ''}`}>
               Buoy Retriever
             </p>
 

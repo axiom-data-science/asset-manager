@@ -355,7 +355,7 @@ const ImportRecordsPage = ({
 
             <div className="relative flex-col h-full">
                 {
-                    !activeUrl || (isPending && !isFetching) ? 'Click on the button' :
+                    !activeUrl || (isPending && !isFetching) ? '' :
                         <ViewWithLoader isLoading={isFetching} error={error} data={documents}>
                             {documents && <ImportRecords documents={documents} getFullDoc={getFullDoc} detailRoot={activeDetailUrl} />}
                         </ViewWithLoader>

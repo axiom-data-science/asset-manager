@@ -16,10 +16,12 @@ import { Link } from 'react-router-dom'
 
 import UserView from '@/manage/components/user'
 import { useAuth } from '@/auth/useAuth'
-import { getBrand } from '@/lib/utils'
+import headerStateAtom from '@/state/headerStateAtom'
+import { useAtom } from 'jotai'
 
 export function AppSidebar() {
   const auth = useAuth()
+  const [headerState] = useAtom(headerStateAtom)
   const navGroups = [
     {
       label: 'Documents',
@@ -196,8 +198,10 @@ export function AppSidebar() {
     }
   ]
 
+  const sideBarStyle = headerState.height !== '0' ? { top: headerState.height, height: `calc(100% - ${headerState.height})` } : {}
+
   return (
-    <Sidebar className={getBrand() === 'modl' ? 'top-24 h-[calc(100%-6rem)]' : ''}>
+    <Sidebar style={sideBarStyle}>
       <SidebarHeader />
       <SidebarContent>
         {navGroups.filter(group => {

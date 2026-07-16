@@ -2,8 +2,9 @@ import { useAuth } from '@/auth/useAuth'
 import { removeUndefinedAndNullKeys } from '@/lib/utils'
 import { fetchDocument, patchDocument } from '@/manage/document/services'
 import { documentListQueryKey } from '@/manage/document/useDocumentList'
+import { fetchObjectType } from '@/manage/object_type/services'
 import { lockDocument, unlockDocument } from '@/services/postgrest/services'
-import type { IDocument, IPostgrestParams, IValidationError } from '@/types/types'
+import type { IDocument, IObjectType, IPostgrestParams, IValidationError } from '@/types/types'
 import type { IForm, IFormValues } from '@axdspub/axiom-ui-forms'
 import {
   queryOptions,
@@ -46,6 +47,43 @@ export const getDocumentQuery = <T>({
   })
 }
 
+export const getDocumentAndObjectTypeAndObjectTypeConfigQuery = <T>({
+  uuid,
+  params,
+  token
+}: {
+  uuid: string | null
+  params?: IPostgrestParams
+  token?: string
+}) => {
+  return queryOptions({
+    queryKey: documentQueryKey({ uuid, params }),
+    enabled: uuid !== null,
+    queryFn: async ({ signal }) => {
+      const rawDocument = await fetchDocument<T>({
+        uuid: uuid ?? '',
+        params: params ?? {},
+        token: token ?? '',
+        signal,
+      })
+
+      const objectTypeUUID = rawDocument.object_type_uuid
+      const objectType = await fetchObjectType({
+        uuid: objectTypeUUID,
+        token: token ?? '',
+        signal,
+      })
+
+      
+
+      return {
+        document: rawDocument,
+        objectType
+      }
+    },
+  })
+}
+
 export const useDocument = <T>(
   uuid: string | null,
   params?: IPostgrestParams
@@ -56,6 +94,19 @@ export const useDocument = <T>(
   )
   return queryResult
 }
+
+
+export const useDocumentAndObjectTypeAndObjectTypeConfig = <T>(
+  uuid: string | null,
+  params?: IPostgrestParams
+): UseQueryResult<{ document: IDocument<T>; objectType: IObjectType }> => {
+  const auth = useAuth()
+  const queryResult = useQuery(
+    getDocumentAndObjectTypeAndObjectTypeConfigQuery<T>({ uuid, params, token: auth.user?.access_token })
+  )
+  return queryResult
+}
+
 
 export const useClearDocumentQueryCache = (uuid: string | null, params?: IPostgrestParams) => {
   const queryClient = useQueryClient()
@@ -93,17 +144,17 @@ export const useLockDocumentMutation = ({
 
       return lock
         ? lockDocument({
-            document_uuid: document.uuid,
-            user_sub: auth.user.profile.sub ?? '',
-            token: auth.user.access_token,
-            signal,
-          })
+          document_uuid: document.uuid,
+          user_sub: auth.user.profile.sub ?? '',
+          token: auth.user.access_token,
+          signal,
+        })
         : unlockDocument({
-            document_uuid: document.uuid,
-            user_sub: auth.user.profile.sub ?? '',
-            token: auth.user.access_token,
-            signal,
-          })
+          document_uuid: document.uuid,
+          user_sub: auth.user.profile.sub ?? '',
+          token: auth.user.access_token,
+          signal,
+        })
     },
     onSuccess: (_, variables) => {
       // Call the callback to update local UI state

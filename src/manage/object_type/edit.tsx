@@ -55,6 +55,10 @@ const EditObjectTypeForm = ({
         },
       ],
     },
+    initialFormValues: {
+      label: object_type.label,
+      description: object_type.description
+    } as IFormValues,
   })
 
   const {
@@ -123,7 +127,6 @@ const EditObjectTypeForm = ({
           },
         ]}
       />
-      <FormCreator form={form} formValueState={[formValue, setFormValue]} className="-mt-6" />
       <h4 className="font-bold text-slate-600 flex flex-row gap-2 items-center">
         <BookPlus size={14} /> Associated Forms{***REMOVED*** ***REMOVED***}
         {forms.length > 0 && (

@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from 'react-router-dom'
-import { useDocument, useDocumentAndObjectTypeAndObjectTypeConfig } from './useDocument'
+import { useDocumentAndObjectTypeAndObjectTypeConfig } from './useDocument'
 import { useState, type ReactElement } from 'react'
 import { Button, Loader, utils, ViewWithLoader, SelectInput } from '@axdspub/axiom-ui-utilities'
 import type { IDocument } from '@/types/types'
@@ -168,7 +168,7 @@ const CreateDocumentSuccess = ({
 
   return (
     <ViewWithLoader isLoading={isLoading} error={error} data={data}>
-      {data && (
+      {data?.document && (
         <div className="flex flex-col p-10 gap-4 text-center">
           <h1 className="font-medium text-2xl">
             Document {created ? 'Created' : 'Updated'} Successfully
@@ -181,7 +181,7 @@ const CreateDocumentSuccess = ({
               options={[
                 {
                   value: '/create-document/a6790e46-7fda-4640-baa9-6607d0f34589/object_schema',
-                  label: 'Honohu',
+                  label: 'Hohonu',
                 },
                 {
                   label: 'S3 Timeseries',

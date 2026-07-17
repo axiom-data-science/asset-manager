@@ -1,11 +1,9 @@
-import MODLHeader from "@/brands/modl/Header"
-import { MODLEntry } from "@/brands/modl/entry"
-import { MODLCreateDocumentEntry } from "@/brands/modl/create_document_entry"
 import type { ReactElement } from "react"
 import type { ISelectDocumentFormProps } from "@/manage/document/create"
+import { MODLBrand } from "@/brands/modl"
 
 
-type IBrand = {
+export type IBrand = {
     EntryPage?: () => ReactElement
     CreateDocumentEntry?: (props: ISelectDocumentFormProps) => ReactElement
     Header?: () => ReactElement
@@ -13,11 +11,7 @@ type IBrand = {
 }
 
 const BrandComponents: Record<string, IBrand> = {
-    modl: {
-        Header: MODLHeader,
-        EntryPage: MODLEntry,
-        CreateDocumentEntry: MODLCreateDocumentEntry
-    }
+    modl: MODLBrand
 }
 
 export const getBrandComponent = (brand: string | undefined, component: keyof IBrand, props?: unknown): ReactElement | null => {

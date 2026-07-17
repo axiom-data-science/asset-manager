@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactElement } from "react"
 import { useAtom } from "jotai"
 import headerStateAtom from "@/state/headerStateAtom"
 
-const MODLHeader = (): ReactElement => {
+export const MODLHeader = (): ReactElement => {
     const [isScrolled, setIsScrolled] = useState(true);
     const [headerState, setHeaderState] = useAtom(headerStateAtom);
 
@@ -53,5 +53,3 @@ const MODLHeader = (): ReactElement => {
         </>
     )
 }
-
-export default MODLHeader

@@ -117,6 +117,14 @@ const CreateObjectSchemaForm = ({
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-bold">Edit schema details</h1>
       <Errors errors={errorMessages} />
+      <CopyFields
+        fields={[
+          { id: ***REMOVED***slug***REMOVED***, label: ***REMOVED***Slug***REMOVED***, value: object_schema.slug },
+          { id: ***REMOVED***uuid***REMOVED***, label: ***REMOVED***UUID***REMOVED***, value: object_schema.uuid },
+          { id: ***REMOVED***object_type_uuid***REMOVED***, label: ***REMOVED***Object type***REMOVED***, value: object_schema.object_type_uuid },
+          { id: ***REMOVED***object_type_slug***REMOVED***, label: ***REMOVED***Object type slug***REMOVED***, value: objectType.slug }
+        ]}
+      />
       <FormCreator form={form} formValueState={[formValues, setFormValues]} />
       <div className="p-4 bg-slate-100 flex flex-col gap-8 rounded">
         <div>

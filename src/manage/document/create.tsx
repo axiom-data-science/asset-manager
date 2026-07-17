@@ -1,7 +1,7 @@
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
 import { postDocument } from ***REMOVED***@/manage/document/services***REMOVED***
 import { type IValidationError, type IObjectSchema, type IObjectType } from ***REMOVED***@/types/types***REMOVED***
-import type { IAssetForm, IDocument, IFormToFieldConfigWithDetails } from ***REMOVED***@/types/types***REMOVED***
+import type { IAssetForm, IDocument, IFormToFieldConfigWithDetails, IPostgrestFilter } from ***REMOVED***@/types/types***REMOVED***
 import {
   FormCreator,
   schemaToFormUtils,
@@ -13,7 +13,7 @@ import { Button, Loader, utils, ViewWithLoader } from ***REMOVED***@axdspub/axio
 import { useState, type ReactElement } from ***REMOVED***react***REMOVED***
 import { useNavigate, useParams } from ***REMOVED***react-router-dom***REMOVED***
 import { omit } from ***REMOVED***lodash-es***REMOVED***
-import { validate } from ***REMOVED***@/lib/utils***REMOVED***
+import { getBrand, validate } from ***REMOVED***@/lib/utils***REMOVED***
 import Errors from ***REMOVED***@/manage/components/errors***REMOVED***
 import Link from ***REMOVED***@/manage/components/link***REMOVED***
 import { useObjectTypesAndFormsAndSchemas } from ***REMOVED***@/manage/object_type/useObjectTypeList***REMOVED***
@@ -25,6 +25,7 @@ import StationSearch from ***REMOVED***../custom_inputs/station_search***REMOVED
 import { useSlug } from ***REMOVED***@/manage/components/useSlug***REMOVED***
 import SampleFileObject from ***REMOVED***../custom_inputs/sample_file_object***REMOVED***
 import CSVUploadForSampleFile from ***REMOVED***../custom_inputs/csv_upload_for_sample_file***REMOVED***
+import { getBrandComponent } from ***REMOVED***@/BrandComponents***REMOVED***
 
 const CreateDocumentForm = ({
   type,
@@ -292,22 +293,55 @@ export const CreateDocumentFromForm = ({
   )
 }
 
+export type ISelectDocumentFormProps = {
+  returnToOnSuccess?: string
+  documentCreatePath?: string,
+  filters?: IPostgrestFilter[]
+}
+
 export const SelectDocumentForm = ({
   returnToOnSuccess,
+  documentCreatePath,
+  filters
+}: ISelectDocumentFormProps): ReactElement => {
+  const brand = getBrand()
+  const BrandCreateDocumentEntry = getBrandComponent(brand, ***REMOVED***CreateDocumentEntry***REMOVED***)
+  if (BrandCreateDocumentEntry) {
+    return BrandCreateDocumentEntry
+  }
+  return (<DefaultSelectDocumentForm
+    returnToOnSuccess={returnToOnSuccess}
+    documentCreatePath={documentCreatePath}
+    filters={filters}
+  />
+  )
+
+}
+
+export const DefaultSelectDocumentForm = ({
+  returnToOnSuccess,
   documentCreatePath = ***REMOVED***/document/create***REMOVED***,
+  filters
 }: {
   returnToOnSuccess?: string
-  documentCreatePath?: string
+  documentCreatePath?: string,
+  filters?: IPostgrestFilter[]
 }): ReactElement => {
+  const pgFilters: IPostgrestFilter[] = [
+    {
+      column: ***REMOVED***category***REMOVED***,
+      operator: ***REMOVED***eq***REMOVED***,
+      value: ***REMOVED***document***REMOVED***,
+    }
+  ]
+  if (filters !== undefined) {
+    pgFilters.forEach(f => {
+      pgFilters.push(f)
+    })
+  }
   const { data, isLoading, error } = useObjectTypesAndFormsAndSchemas({
     object_type_params: {
-      filters: [
-        {
-          column: ***REMOVED***category***REMOVED***,
-          operator: ***REMOVED***eq***REMOVED***,
-          value: ***REMOVED***document***REMOVED***,
-        },
-      ],
+      filters: pgFilters
     },
   })
   return (

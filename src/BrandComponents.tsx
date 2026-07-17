@@ -27,7 +27,7 @@ export const getBrandComponent = (brand: string | undefined, component: keyof IB
     const brandKey = brand as keyof typeof BrandComponents
     if (brand && BrandComponents[brandKey] && BrandComponents[brandKey][component]) {
         return component === 'CreateDocumentEntry'
-            ? BrandComponents[brandKey][component](props!)
+            ? BrandComponents[brandKey][component](props ?? {})
             : BrandComponents[brandKey][component]()
     }
     return null

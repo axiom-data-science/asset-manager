@@ -1,7 +1,7 @@
 import { useAuth } from '@/auth/useAuth'
 import { postDocument } from '@/manage/document/services'
 import { type IValidationError, type IObjectSchema, type IObjectType } from '@/types/types'
-import type { IAssetForm, IDocument, IFormToFieldConfigWithDetails } from '@/types/types'
+import type { IAssetForm, IDocument, IFormToFieldConfigWithDetails, IPostgrestFilter } from '@/types/types'
 import {
   FormCreator,
   schemaToFormUtils,
@@ -13,7 +13,7 @@ import { Button, Loader, utils, ViewWithLoader } from '@axdspub/axiom-ui-utiliti
 import { useState, type ReactElement } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { omit } from 'lodash-es'
-import { validate } from '@/lib/utils'
+import { getBrand, validate } from '@/lib/utils'
 import Errors from '@/manage/components/errors'
 import Link from '@/manage/components/link'
 import { useObjectTypesAndFormsAndSchemas } from '@/manage/object_type/useObjectTypeList'
@@ -25,6 +25,7 @@ import StationSearch from '../custom_inputs/station_search'
 import { useSlug } from '@/manage/components/useSlug'
 import SampleFileObject from '../custom_inputs/sample_file_object'
 import CSVUploadForSampleFile from '../custom_inputs/csv_upload_for_sample_file'
+import { getBrandComponent } from '@/BrandComponents'
 
 const CreateDocumentForm = ({
   type,
@@ -292,22 +293,55 @@ export const CreateDocumentFromForm = ({
   )
 }
 
+export type ISelectDocumentFormProps = {
+  returnToOnSuccess?: string
+  documentCreatePath?: string,
+  filters?: IPostgrestFilter[]
+}
+
 export const SelectDocumentForm = ({
   returnToOnSuccess,
+  documentCreatePath,
+  filters
+}: ISelectDocumentFormProps): ReactElement => {
+  const brand = getBrand()
+  const BrandCreateDocumentEntry = getBrandComponent(brand, 'CreateDocumentEntry')
+  if (BrandCreateDocumentEntry) {
+    return BrandCreateDocumentEntry
+  }
+  return (<DefaultSelectDocumentForm
+    returnToOnSuccess={returnToOnSuccess}
+    documentCreatePath={documentCreatePath}
+    filters={filters}
+  />
+  )
+
+}
+
+export const DefaultSelectDocumentForm = ({
+  returnToOnSuccess,
   documentCreatePath = '/document/create',
+  filters
 }: {
   returnToOnSuccess?: string
-  documentCreatePath?: string
+  documentCreatePath?: string,
+  filters?: IPostgrestFilter[]
 }): ReactElement => {
+  const pgFilters: IPostgrestFilter[] = [
+    {
+      column: 'category',
+      operator: 'eq',
+      value: 'document',
+    }
+  ]
+  if (filters !== undefined) {
+    pgFilters.forEach(f => {
+      pgFilters.push(f)
+    })
+  }
   const { data, isLoading, error } = useObjectTypesAndFormsAndSchemas({
     object_type_params: {
-      filters: [
-        {
-          column: 'category',
-          operator: 'eq',
-          value: 'document',
-        },
-      ],
+      filters: pgFilters
     },
   })
   return (

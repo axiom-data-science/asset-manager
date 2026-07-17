@@ -175,7 +175,7 @@ const EditForm = ({
         fields={[
           { id: 'slug', label: 'Slug', value: assetForm.slug },
           { id: 'uuid', label: 'UUID', value: assetForm.uuid },
-          { id: 'object_type_uuid', label: 'Object type', value: assetForm.object_type_uuid },
+          { id: 'object_type_uuid', label: 'Object type UUID', value: assetForm.object_type_uuid },
           {
             id: 'object_schema_version',
             label: 'Object schema version',

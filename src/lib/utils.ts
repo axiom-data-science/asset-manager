@@ -125,3 +125,8 @@ export const getBrand = (): string | undefined => {
   return brand
 
 }
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const isValidUUID = (str: string): boolean => {
+  return UUID_REGEX.test(str);
+}

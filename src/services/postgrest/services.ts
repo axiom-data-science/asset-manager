@@ -5,15 +5,17 @@ import type { IPostgrestParams } from ***REMOVED***@/types/types***REMOVED***
 export const fetchListFromPostgrest = async <T>({
   table,
   params,
+  queryString,
   token,
   signal,
 }: {
   table: string
   params?: IPostgrestParams
+  queryString?: string
   token: string
   signal?: AbortSignal
 }): Promise<T[]> => {
-  const url = postgrestUrl({ table, params })
+  const url = postgrestUrl({ table, params, queryString })
   const response = await fetch(url, {
     headers: {
       Authorization: `Bearer ${token}`,

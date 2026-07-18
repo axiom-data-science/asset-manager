@@ -1,4 +1,3 @@
-import type { JSONSchema6 } from "json-schema"
 
 export type IPostgrestFilter = {
   column: string
@@ -110,35 +109,49 @@ export type IAuth = {
 }
 
 
+export type IAPIRequest = {
+  include_jwt?: boolean;
+  location?: string;
+  path?: string;
+};
 
-type IObjectTypeRequestOverride = {
-  include_jwt?: boolean
-  location?: string
-  path?: string
+export type IObjectTypeFieldMappings = {
+  slug?: string;
+  label?: string;
+  description?: string;
+  asset_geom?: string;
+  dataset_extent_geom?: string;
+  dataset_start_time?: string;
+  dataset_end_time?: string;
+};
+
+export type IObjectTypeApiOverrides = {
+  schema_location?: IAPIRequest;
+  get?: IAPIRequest;
+  post?: IAPIRequest;
+};
+
+export type IObjectTypeExpectedChildTypes = {
+  single?: boolean;
+  object_type_query?: string;
+  object_type_slug?: string;
+  label?: string;
+  description?: string;
+  presidence?: number;
+  predicate?: string;
+  has_predicate?: string;
+};
+
+export type IHydratedExpectedChildType = IObjectTypeExpectedChildTypes & {
+  object_types?: IObjectType[]
 }
 
-type IObjectTypeFieldMapping = {
-  slug?: string
-  label?: string
-  description?: string
-  asset_geom?: string
-  dataset_extent_geom?: string
-  dataset_start_time?: string
-  dataset_end_time?: string
-}
 
-type IObjectTypeApiOverrides = {
-  schema_location?: IObjectTypeRequestOverride
-  get?: IObjectTypeRequestOverride
-  post?: IObjectTypeRequestOverride
-}
-
-export type IObjectTypeConfig = {
-  field_mappings?: IObjectTypeFieldMapping
-  api_overrides?: IObjectTypeApiOverrides
-}
-
-
+export type IObjectTypeData = {
+  field_mappings?: IObjectTypeFieldMappings;
+  api_overrides?: IObjectTypeApiOverrides;
+  expected_child_types?: IObjectTypeExpectedChildTypes[];
+};
 
 export interface IObjectType {
   uuid: string
@@ -149,7 +162,7 @@ export interface IObjectType {
   description?: string
   created_at: string
   updated_at: string
-  data?: JSONSchema6
+  data?: IObjectTypeData
 }
 
 export interface IObjectSchema {

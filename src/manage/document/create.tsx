@@ -25,7 +25,8 @@ import StationSearch from ***REMOVED***../custom_inputs/station_search***REMOVED
 import { useSlug } from ***REMOVED***@/manage/components/useSlug***REMOVED***
 import SampleFileObject from ***REMOVED***../custom_inputs/sample_file_object***REMOVED***
 import CSVUploadForSampleFile from ***REMOVED***../custom_inputs/csv_upload_for_sample_file***REMOVED***
-import { getBrandComponent } from ***REMOVED***@/BrandComponents***REMOVED***
+import { getBrandComponent, type BrandComponentProps } from ***REMOVED***@/BrandComponents***REMOVED***
+import { useObjectTypeFull } from ***REMOVED***@/manage/object_type/useObjectType***REMOVED***
 
 const CreateDocumentForm = ({
   type,
@@ -232,14 +233,25 @@ const CreateDocumentForm = ({
   )
 }
 
-export const CreateDocumentFromObjectType = (): ReactElement => {
+export const CreateDocumentFromObjectType = ({
+  returnToOnSuccess,
+}: {
+  returnToOnSuccess?: string
+}): ReactElement => {
   const params = useParams()
   const object_type_uuid = params.object_type_uuid as string
-  const { data, isLoading, error } = useObjectSchemaAndType({ object_type_uuid })
+  const { data, isLoading, error } = useObjectTypeFull({ uuid: object_type_uuid })
 
   return (
     <ViewWithLoader isLoading={isLoading} error={error} data={data}>
-      {data && <CreateDocumentForm schema={omit(data, ***REMOVED***object_type***REMOVED***)} type={data.object_type} />}
+      {data &&
+        <CreateDocumentForm
+          schema={data.schemas.find(s => s.is_type_default) ?? data.schemas.sort((a, b) => b.version - a.version)[0]}
+          type={data.object_type}
+          assetForm={data.forms.find(f => f.is_schema_and_version_default) ?? data.forms.sort((a, b) => b.object_schema_version - a.object_schema_version)[0] ?? undefined}
+          returnToOnSuccess={returnToOnSuccess}
+        />
+      }
     </ViewWithLoader>
   )
 }
@@ -305,7 +317,11 @@ export const SelectDocumentForm = ({
   filters
 }: ISelectDocumentFormProps): ReactElement => {
   const brand = getBrand()
-  const BrandCreateDocumentEntry = getBrandComponent(brand, ***REMOVED***CreateDocumentEntry***REMOVED***)
+  const createEntryProps: BrandComponentProps[***REMOVED***CreateDocumentEntry***REMOVED***] = {
+    returnToOnSuccess,
+    documentCreatePath,
+  }
+  const BrandCreateDocumentEntry = getBrandComponent(brand, ***REMOVED***CreateDocumentEntry***REMOVED***, createEntryProps)
   if (BrandCreateDocumentEntry) {
     return BrandCreateDocumentEntry
   }

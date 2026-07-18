@@ -6,12 +6,12 @@ import { getObjectTypeListQuery } from "@/manage/object_type/useObjectTypeList"
 import { queryOptions, useQuery } from "@tanstack/react-query"
 
 export const objectSchemaQueryKey = (uuid?: string) => [***REMOVED***object_schema***REMOVED***, uuid]
-export const getObjectSchemaQueryOptions = ({uuid, token}: {uuid?: string, token?: string}) => {
+export const getObjectSchemaQueryOptions = ({ uuid, token }: { uuid?: string, token?: string }) => {
     return queryOptions({
         queryKey: objectSchemaQueryKey(uuid),
         enabled: !!uuid && token !== undefined && uuid !== ***REMOVED******REMOVED***,
         queryFn: async ({ signal }) => {
-            
+
             const objectSchema = await fetchObjectSchema({
                 uuid: uuid ?? ***REMOVED***NA***REMOVED***,
                 signal,
@@ -19,13 +19,13 @@ export const getObjectSchemaQueryOptions = ({uuid, token}: {uuid?: string, token
             })
 
             return objectSchema
-            
+
         }
     })
 
 }
 
-export const getFormsAtSchemaQueryOptions = ({object_schema_uuid, token}: {object_schema_uuid?: string, token?: string}) => {
+export const getFormsAtSchemaQueryOptions = ({ object_schema_uuid, token }: { object_schema_uuid?: string, token?: string }) => {
     return queryOptions({
         queryKey: [***REMOVED***object_schema***REMOVED***, ***REMOVED***forms***REMOVED***, object_schema_uuid],
         enabled: !!object_schema_uuid && token !== undefined && object_schema_uuid !== ***REMOVED******REMOVED***,
@@ -40,12 +40,12 @@ export const getFormsAtSchemaQueryOptions = ({object_schema_uuid, token}: {objec
     })
 }
 
-export const getObjectSchemaAndObjectTypeQuery = ({object_type_uuid, token}: {object_type_uuid?: string, token?: string}) => {
+export const getObjectSchemaAndObjectTypeQuery = ({ object_type_uuid, token }: { object_type_uuid?: string, token?: string }) => {
     return queryOptions({
         queryKey: [***REMOVED***object_schema_and_type***REMOVED***, object_type_uuid],
         enabled: !!object_type_uuid && token !== undefined && object_type_uuid !== ***REMOVED******REMOVED***,
         queryFn: async ({ signal }) => {
-            const ob  = await fetchObjectSchemaAndObjectTypeAtObjectType({
+            const ob = await fetchObjectSchemaAndObjectTypeAtObjectType({
                 object_type_uuid: object_type_uuid ?? ***REMOVED***NA***REMOVED***,
                 signal,
                 token: token ?? ***REMOVED******REMOVED***
@@ -55,23 +55,25 @@ export const getObjectSchemaAndObjectTypeQuery = ({object_type_uuid, token}: {ob
     })
 }
 
-export const useObjectSchema = ({uuid}: {uuid?: string} = {}) => {
+export const useObjectSchema = ({ uuid }: { uuid?: string } = {}) => {
     const auth = useAuth()
-    const queryResult = useQuery(getObjectSchemaQueryOptions({uuid, token: auth.user?.access_token}))
+    const queryResult = useQuery(getObjectSchemaQueryOptions({ uuid, token: auth.user?.access_token }))
 
     return queryResult
 }
 
-export const useObjectSchemaAndType = ({object_type_uuid}: {object_type_uuid?: string} = {}) => {
+export const useObjectSchemaAndType = ({ object_type_uuid }: { object_type_uuid?: string } = {}) => {
     const auth = useAuth()
-    return useQuery(getObjectSchemaAndObjectTypeQuery({object_type_uuid, token: auth.user?.access_token}))
+    return useQuery(getObjectSchemaAndObjectTypeQuery({ object_type_uuid, token: auth.user?.access_token }))
 }
 
-export const useObjectSchemaFull = ({uuid}: {uuid?: string} = {}) => {
+export const useObjectSchemaFull = ({ uuid }: { uuid?: string } = {}) => {
     const auth = useAuth();
     return useCombinedQueries({
-        object_schema: getObjectSchemaQueryOptions({uuid, token: auth.user?.access_token}),
-        object_types: getObjectTypeListQuery({token: auth.user?.access_token}),
-        forms: getFormsAtSchemaQueryOptions({object_schema_uuid: uuid, token: auth.user?.access_token})
+        object_schema: getObjectSchemaQueryOptions({ uuid, token: auth.user?.access_token }),
+        object_types: getObjectTypeListQuery({ token: auth.user?.access_token }),
+        forms: getFormsAtSchemaQueryOptions({ object_schema_uuid: uuid, token: auth.user?.access_token })
     })
 }
+
+

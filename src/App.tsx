@@ -9,6 +9,7 @@ import ListDocuments from ***REMOVED***@/manage/document/list***REMOVED***
 import { QueryClient, QueryClientProvider } from ***REMOVED***@tanstack/react-query***REMOVED***
 import {
   CreateDocumentFromForm,
+  CreateDocumentFromObjectType,
   CreateDocumentFromSchema,
   SelectDocumentForm,
 } from ***REMOVED***@/manage/document/create***REMOVED***
@@ -37,7 +38,7 @@ import ListFilesLoader from ***REMOVED***./manage/document_file/list***REMOVED**
 import ImportRecordsPage from ***REMOVED***./import/pages***REMOVED***
 import { binninatorMetadata, binninatorRecords, binninatorRoot, defaultBinninatorRecordsURL, defaultOikosModelsURL, movingPlatform, OIKOS_URL_ROOT, oikosLayer, oikosLayerGroup, oikosModel, oikosModels, oikosModelVariable, oikosModelVariables, oikosModule, oikosVectorLayerGroups, oikosVectorLayers, oikosVectorModules, PLATFORM_ROOT, searchDocs, searchURL, SENSORS_ROOT, sensorStation } from ***REMOVED***@/import/services***REMOVED***
 import { getBrand } from ***REMOVED***@/lib/utils***REMOVED***
-import { getBrandComponent } from ***REMOVED***@/BrandComponents***REMOVED***
+import { getBrandComponent, type BrandComponentProps } from ***REMOVED***@/BrandComponents***REMOVED***
 
 const makeSiteTitle = (pageTitle?: string) => {
   return `${SITE_TITLE}${pageTitle ? ` - ${pageTitle}` : ***REMOVED******REMOVED***}`
@@ -82,7 +83,7 @@ const Header = ({ brand }: { brand?: string }): ReactElement => {
 
 const EntryPage = ({ brand }: { brand?: string }): ReactElement => {
   brand = brand ?? getBrand()
-  const props = {
+  const props: BrandComponentProps[***REMOVED***EntryPage***REMOVED***] = {
     returnToOnSuccess: "/create-document-success",
     documentCreatePath: "/create-document",
   }
@@ -97,6 +98,21 @@ const EntryPage = ({ brand }: { brand?: string }): ReactElement => {
       {...props}
     />
   </>
+}
+
+const LoginPage = ({ brand }: { brand?: string }): ReactElement => {
+  brand = brand ?? getBrand()
+  const auth = useAuth()
+  const BrandLoginPage = getBrandComponent(brand, ***REMOVED***LoginPage***REMOVED***)
+  if (BrandLoginPage) {
+    return BrandLoginPage
+  }
+
+  return (
+    <div className="p-20">
+      <Button onClick={() => void auth.login()}>Log in</Button>
+    </div>
+  )
 }
 
 function App(): ReactElement {
@@ -131,9 +147,7 @@ function App(): ReactElement {
             <Route
               path="*"
               element={
-                <div className="p-20">
-                  <Button onClick={() => void auth.login()}>Log in</Button>
-                </div>
+                <LoginPage />
               }
             />
             <Route
@@ -169,8 +183,8 @@ function App(): ReactElement {
               path="/manage"
               element={
                 <SidebarLayout>
-                  <title>{makeSiteTitle(***REMOVED***manage***REMOVED***)}</title>
-                  <p>Main</p>
+                  <title>{makeSiteTitle(***REMOVED***create document***REMOVED***)}</title>
+                  <SelectDocumentForm />
                 </SidebarLayout>
               }
             />
@@ -233,6 +247,16 @@ function App(): ReactElement {
                   <title>{makeSiteTitle(***REMOVED***create document from schema***REMOVED***)}</title>
                   <CreateDocumentFromSchema returnToOnSuccess="/create-document-success" />
                 </SimpleLayout>
+              }
+            />
+
+            <Route
+              path="/document/create/:object_type_uuid/object_type"
+              element={
+                <SidebarLayout>
+                  <title>{makeSiteTitle(***REMOVED***create document from object type***REMOVED***)}</title>
+                  <CreateDocumentFromObjectType />
+                </SidebarLayout>
               }
             />
 

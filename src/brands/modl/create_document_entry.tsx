@@ -1,15 +1,18 @@
 import { useObjectTypesAndFormsAndSchemas } from "@/manage/object_type/useObjectTypeList";
 import { ViewWithLoader } from "@axdspub/axiom-ui-utilities";
+import { Book } from "lucide-react";
 import type { ReactElement } from "react";
 import { Link } from "react-router-dom";
 
-export const MODLCreateDocumentEntry = ({
-    returnToOnSuccess,
-    documentCreatePath = ***REMOVED***/document/create***REMOVED***
-}: {
+export type MODLCreateDocumentEntryProps = {
     returnToOnSuccess?: string
     documentCreatePath?: string
-}): ReactElement => {
+}
+
+export const MODLDocumentSelector = ({
+    returnToOnSuccess,
+    documentCreatePath
+}: MODLCreateDocumentEntryProps = {}): ReactElement => {
     const { data, isLoading, error } = useObjectTypesAndFormsAndSchemas({
         object_type_params: {
             filters: [
@@ -22,7 +25,9 @@ export const MODLCreateDocumentEntry = ({
         },
     })
 
-    return (
+    documentCreatePath = documentCreatePath ?? ***REMOVED***/document/create***REMOVED***
+
+    return (<>
         <ViewWithLoader isLoading={isLoading} error={error} data={data}>
             {data &&
                 data.object_types.map((type) => {
@@ -42,7 +47,23 @@ export const MODLCreateDocumentEntry = ({
                     )
                 })}
         </ViewWithLoader>
+    </>
     )
 
 
 }
+
+
+
+const MODLCreateDocumentEntry = (props: MODLCreateDocumentEntryProps = {}): ReactElement => {
+    return (
+        <>
+            <h2 className="text-2xl font-bold mb-2 flex flex-row items-center gap-2">
+                <Book size={18} /> Create asset metadata
+            </h2>
+            <MODLDocumentSelector {...(props ?? {})} />
+        </>
+    )
+}
+
+export default MODLCreateDocumentEntry

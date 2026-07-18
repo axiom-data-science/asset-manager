@@ -2,15 +2,15 @@ import { APPS_API_BASE_URL } from ***REMOVED***@/config/config***REMOVED***
 import type { IPostgrestFilter, IPostgrestParams } from ***REMOVED***@/types/types***REMOVED***
 
 
-const postgrestFilterArg = (f:IPostgrestFilter) => {
+const postgrestFilterArg = (f: IPostgrestFilter) => {
   const operator = f.operator ?? ***REMOVED***eq***REMOVED***
-    const valForOperator =
-      operator === ***REMOVED***in***REMOVED***
-        ? `(${Array.isArray(f.value) ? f.value.join(***REMOVED***,***REMOVED***) : String(f.value)})`
-        : String(f.value)
+  const valForOperator =
+    operator === ***REMOVED***in***REMOVED***
+      ? `(${Array.isArray(f.value) ? f.value.join(***REMOVED***,***REMOVED***) : String(f.value)})`
+      : String(f.value)
 
-    return `${f.not ? ***REMOVED***not.***REMOVED*** : ***REMOVED******REMOVED***}${operator}.${valForOperator}`
-  
+  return `${f.not ? ***REMOVED***not.***REMOVED*** : ***REMOVED******REMOVED***}${operator}.${valForOperator}`
+
 
 }
 
@@ -21,9 +21,9 @@ export const postgrestArgs = <T>(
   const args = existingArgs || new URLSearchParams();
 
   (params.filters ?? []).forEach((f) => {
-    args.append(String(f.column),postgrestFilterArg(f))
+    args.append(String(f.column), postgrestFilterArg(f))
   });
-  if(params.orFilters !== undefined && params.orFilters.length > 0) {
+  if (params.orFilters !== undefined && params.orFilters.length > 0) {
     const orFilters = params.orFilters.map((f) => `${String(f.column)}.${postgrestFilterArg(f)}`).join(***REMOVED***,***REMOVED***)
     args.append(***REMOVED***or***REMOVED***, `(${orFilters})`)
   }
@@ -75,15 +75,19 @@ export const postgrestRollupArgs = ({
 export const postgrestUrl = ({
   table,
   params,
+  queryString,
   args,
 }: {
   table: string
   params?: IPostgrestParams
+  queryString?: string
   args?: URLSearchParams
 }): string => {
   const url = new URL(`${APPS_API_BASE_URL}/${table}`)
   if (args) {
     url.search = args.toString()
+  } else if (queryString) {
+    url.search = queryString
   } else if (params) {
     const args = postgrestArgs(params, url.searchParams)
     url.search = args.toString()

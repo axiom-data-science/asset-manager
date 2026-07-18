@@ -13,16 +13,19 @@ const OBJECT_TYPES_TABLE = ***REMOVED***object_type***REMOVED***
 
 export const fetchObjectTypes = async ({
   params,
+  queryString,
   token,
   signal,
 }: {
   params?: IPostgrestParams
+  queryString?: string
   token: string
   signal?: AbortSignal
 }): Promise<IObjectType[]> => {
   const documents = await fetchListFromPostgrest<IObjectType>({
     table: OBJECT_TYPES_TABLE,
     params,
+    queryString,
     token,
     signal,
   })

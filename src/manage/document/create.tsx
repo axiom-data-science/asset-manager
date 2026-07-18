@@ -25,7 +25,8 @@ import StationSearch from '../custom_inputs/station_search'
 import { useSlug } from '@/manage/components/useSlug'
 import SampleFileObject from '../custom_inputs/sample_file_object'
 import CSVUploadForSampleFile from '../custom_inputs/csv_upload_for_sample_file'
-import { getBrandComponent } from '@/BrandComponents'
+import { getBrandComponent, type BrandComponentProps } from '@/BrandComponents'
+import { useObjectTypeFull } from '@/manage/object_type/useObjectType'
 
 const CreateDocumentForm = ({
   type,
@@ -232,14 +233,25 @@ const CreateDocumentForm = ({
   )
 }
 
-export const CreateDocumentFromObjectType = (): ReactElement => {
+export const CreateDocumentFromObjectType = ({
+  returnToOnSuccess,
+}: {
+  returnToOnSuccess?: string
+}): ReactElement => {
   const params = useParams()
   const object_type_uuid = params.object_type_uuid as string
-  const { data, isLoading, error } = useObjectSchemaAndType({ object_type_uuid })
+  const { data, isLoading, error } = useObjectTypeFull({ uuid: object_type_uuid })
 
   return (
     <ViewWithLoader isLoading={isLoading} error={error} data={data}>
-      {data && <CreateDocumentForm schema={omit(data, 'object_type')} type={data.object_type} />}
+      {data &&
+        <CreateDocumentForm
+          schema={data.schemas.find(s => s.is_type_default) ?? data.schemas.sort((a, b) => b.version - a.version)[0]}
+          type={data.object_type}
+          assetForm={data.forms.find(f => f.is_schema_and_version_default) ?? data.forms.sort((a, b) => b.object_schema_version - a.object_schema_version)[0] ?? undefined}
+          returnToOnSuccess={returnToOnSuccess}
+        />
+      }
     </ViewWithLoader>
   )
 }
@@ -305,7 +317,11 @@ export const SelectDocumentForm = ({
   filters
 }: ISelectDocumentFormProps): ReactElement => {
   const brand = getBrand()
-  const BrandCreateDocumentEntry = getBrandComponent(brand, 'CreateDocumentEntry')
+  const createEntryProps: BrandComponentProps['CreateDocumentEntry'] = {
+    returnToOnSuccess,
+    documentCreatePath,
+  }
+  const BrandCreateDocumentEntry = getBrandComponent(brand, 'CreateDocumentEntry', createEntryProps)
   if (BrandCreateDocumentEntry) {
     return BrandCreateDocumentEntry
   }

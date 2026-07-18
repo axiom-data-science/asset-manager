@@ -2,15 +2,15 @@ import { APPS_API_BASE_URL } from '@/config/config'
 import type { IPostgrestFilter, IPostgrestParams } from '@/types/types'
 
 
-const postgrestFilterArg = (f:IPostgrestFilter) => {
+const postgrestFilterArg = (f: IPostgrestFilter) => {
   const operator = f.operator ?? 'eq'
-    const valForOperator =
-      operator === 'in'
-        ? `(${Array.isArray(f.value) ? f.value.join(',') : String(f.value)})`
-        : String(f.value)
+  const valForOperator =
+    operator === 'in'
+      ? `(${Array.isArray(f.value) ? f.value.join(',') : String(f.value)})`
+      : String(f.value)
 
-    return `${f.not ? 'not.' : ''}${operator}.${valForOperator}`
-  
+  return `${f.not ? 'not.' : ''}${operator}.${valForOperator}`
+
 
 }
 
@@ -21,9 +21,9 @@ export const postgrestArgs = <T>(
   const args = existingArgs || new URLSearchParams();
 
   (params.filters ?? []).forEach((f) => {
-    args.append(String(f.column),postgrestFilterArg(f))
+    args.append(String(f.column), postgrestFilterArg(f))
   });
-  if(params.orFilters !== undefined && params.orFilters.length > 0) {
+  if (params.orFilters !== undefined && params.orFilters.length > 0) {
     const orFilters = params.orFilters.map((f) => `${String(f.column)}.${postgrestFilterArg(f)}`).join(',')
     args.append('or', `(${orFilters})`)
   }
@@ -75,15 +75,19 @@ export const postgrestRollupArgs = ({
 export const postgrestUrl = ({
   table,
   params,
+  queryString,
   args,
 }: {
   table: string
   params?: IPostgrestParams
+  queryString?: string
   args?: URLSearchParams
 }): string => {
   const url = new URL(`${APPS_API_BASE_URL}/${table}`)
   if (args) {
     url.search = args.toString()
+  } else if (queryString) {
+    url.search = queryString
   } else if (params) {
     const args = postgrestArgs(params, url.searchParams)
     url.search = args.toString()

@@ -74,8 +74,6 @@ export const getDocumentAndObjectTypeAndObjectTypeConfigQuery = <T>({
         signal,
       })
 
-      
-
       return {
         document: rawDocument,
         objectType

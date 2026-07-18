@@ -9,6 +9,7 @@ import ListDocuments from '@/manage/document/list'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   CreateDocumentFromForm,
+  CreateDocumentFromObjectType,
   CreateDocumentFromSchema,
   SelectDocumentForm,
 } from '@/manage/document/create'
@@ -37,7 +38,7 @@ import ListFilesLoader from './manage/document_file/list'
 import ImportRecordsPage from './import/pages'
 import { binninatorMetadata, binninatorRecords, binninatorRoot, defaultBinninatorRecordsURL, defaultOikosModelsURL, movingPlatform, OIKOS_URL_ROOT, oikosLayer, oikosLayerGroup, oikosModel, oikosModels, oikosModelVariable, oikosModelVariables, oikosModule, oikosVectorLayerGroups, oikosVectorLayers, oikosVectorModules, PLATFORM_ROOT, searchDocs, searchURL, SENSORS_ROOT, sensorStation } from '@/import/services'
 import { getBrand } from '@/lib/utils'
-import { getBrandComponent } from '@/BrandComponents'
+import { getBrandComponent, type BrandComponentProps } from '@/BrandComponents'
 
 const makeSiteTitle = (pageTitle?: string) => {
   return `${SITE_TITLE}${pageTitle ? ` - ${pageTitle}` : ''}`
@@ -82,7 +83,7 @@ const Header = ({ brand }: { brand?: string }): ReactElement => {
 
 const EntryPage = ({ brand }: { brand?: string }): ReactElement => {
   brand = brand ?? getBrand()
-  const props = {
+  const props: BrandComponentProps['EntryPage'] = {
     returnToOnSuccess: "/create-document-success",
     documentCreatePath: "/create-document",
   }
@@ -97,6 +98,21 @@ const EntryPage = ({ brand }: { brand?: string }): ReactElement => {
       {...props}
     />
   </>
+}
+
+const LoginPage = ({ brand }: { brand?: string }): ReactElement => {
+  brand = brand ?? getBrand()
+  const auth = useAuth()
+  const BrandLoginPage = getBrandComponent(brand, 'LoginPage')
+  if (BrandLoginPage) {
+    return BrandLoginPage
+  }
+
+  return (
+    <div className="p-20">
+      <Button onClick={() => void auth.login()}>Log in</Button>
+    </div>
+  )
 }
 
 function App(): ReactElement {
@@ -131,9 +147,7 @@ function App(): ReactElement {
             <Route
               path="*"
               element={
-                <div className="p-20">
-                  <Button onClick={() => void auth.login()}>Log in</Button>
-                </div>
+                <LoginPage />
               }
             />
             <Route
@@ -169,8 +183,8 @@ function App(): ReactElement {
               path="/manage"
               element={
                 <SidebarLayout>
-                  <title>{makeSiteTitle('manage')}</title>
-                  <p>Main</p>
+                  <title>{makeSiteTitle('create document')}</title>
+                  <SelectDocumentForm />
                 </SidebarLayout>
               }
             />
@@ -233,6 +247,16 @@ function App(): ReactElement {
                   <title>{makeSiteTitle('create document from schema')}</title>
                   <CreateDocumentFromSchema returnToOnSuccess="/create-document-success" />
                 </SimpleLayout>
+              }
+            />
+
+            <Route
+              path="/document/create/:object_type_uuid/object_type"
+              element={
+                <SidebarLayout>
+                  <title>{makeSiteTitle('create document from object type')}</title>
+                  <CreateDocumentFromObjectType />
+                </SidebarLayout>
               }
             />
 

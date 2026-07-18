@@ -17,7 +17,6 @@ import { getBrand, validate } from '@/lib/utils'
 import Errors from '@/manage/components/errors'
 import Link from '@/manage/components/link'
 import { useObjectTypesAndFormsAndSchemas } from '@/manage/object_type/useObjectTypeList'
-import { useObjectSchemaAndType, useObjectSchemaFull } from '@/manage/object_schema/useObjectSchema'
 import { useFullForm } from '@/manage/form/useForm'
 import FileUpload from '@/manage/custom_inputs/file_upload'
 import { Book, BookPlus, Check, Network } from 'lucide-react'
@@ -27,6 +26,7 @@ import SampleFileObject from '../custom_inputs/sample_file_object'
 import CSVUploadForSampleFile from '../custom_inputs/csv_upload_for_sample_file'
 import { getBrandComponent, type BrandComponentProps } from '@/BrandComponents'
 import { useObjectTypeFull } from '@/manage/object_type/useObjectType'
+import { useObjectSchemaFull } from '@/manage/object_schema/useObjectSchema'
 
 const CreateDocumentForm = ({
   type,

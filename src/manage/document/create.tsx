@@ -1,7 +1,12 @@
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
 import { postDocument } from ***REMOVED***@/manage/document/services***REMOVED***
 import { type IValidationError, type IObjectSchema, type IObjectType } from ***REMOVED***@/types/types***REMOVED***
-import type { IAssetForm, IDocument, IFormToFieldConfigWithDetails, IPostgrestFilter } from ***REMOVED***@/types/types***REMOVED***
+import type {
+  IAssetForm,
+  IDocument,
+  IFormToFieldConfigWithDetails,
+  IPostgrestFilter,
+} from ***REMOVED***@/types/types***REMOVED***
 import {
   FormCreator,
   schemaToFormUtils,
@@ -13,7 +18,7 @@ import { Button, Loader, utils, ViewWithLoader } from ***REMOVED***@axdspub/axio
 import { useState, type ReactElement } from ***REMOVED***react***REMOVED***
 import { useNavigate, useParams } from ***REMOVED***react-router-dom***REMOVED***
 import { omit } from ***REMOVED***lodash-es***REMOVED***
-import { getBrand, validate } from ***REMOVED***@/lib/utils***REMOVED***
+import { buildStringFromTemplate, getBrand, validate } from ***REMOVED***@/lib/utils***REMOVED***
 import Errors from ***REMOVED***@/manage/components/errors***REMOVED***
 import Link from ***REMOVED***@/manage/components/link***REMOVED***
 import { useObjectTypesAndFormsAndSchemas } from ***REMOVED***@/manage/object_type/useObjectTypeList***REMOVED***
@@ -41,10 +46,6 @@ const CreateDocumentForm = ({
   schema: IObjectSchema
   returnToOnSuccess?: string
 }): ReactElement => {
-  const navPath =
-    returnToOnSuccess ??
-    new URLSearchParams(window.location.search).get(***REMOVED***returnToOnSuccess***REMOVED***) ??
-    undefined
   const navigate = useNavigate()
   const [saving, setSaving] = useState(false)
   //const [formValues, setFormValues] = useState<IFormValues>({})
@@ -80,38 +81,38 @@ const CreateDocumentForm = ({
     []
   const dataForm = (
     assetForm?.use_form_config === true &&
-      assetForm?.form_config !== undefined &&
-      assetForm?.form_config !== null
+    assetForm?.form_config !== undefined &&
+    assetForm?.form_config !== null
       ? assetForm.form_config
       : assetForm?.schema_override_config !== undefined || fieldConfigJSON !== undefined
         ? omit(
-          schemaToFormUtils.overridesAndSchemaToFormObject({
-            schema: schema.json_schema,
-            formOverrides: assetForm?.schema_override_config
-              ? [assetForm?.schema_override_config as IFormOverride]
-              : undefined,
-            formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
-          }),
-          ***REMOVED***label***REMOVED***
-        )
+            schemaToFormUtils.overridesAndSchemaToFormObject({
+              schema: schema.json_schema,
+              formOverrides: assetForm?.schema_override_config
+                ? [assetForm?.schema_override_config as IFormOverride]
+                : undefined,
+              formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
+            }),
+            ***REMOVED***label***REMOVED***
+          )
         : schemaToFormUtils.schemaToFormObject(schema.json_schema)
   ) as IForm
 
-  const useDataForm = !!(dataForm.fields?.length ||
+  const useDataForm = !!(
+    dataForm.fields?.length ||
     dataForm.pages?.length ||
     dataForm.wizard_steps?.length ||
-    dataForm.tabs?.length)
+    dataForm.tabs?.length
+  )
 
-  const formJSON = useDataForm
-    ? dataForm
-    : defaultForm
+  const formJSON = useDataForm ? dataForm : defaultForm
 
   const {
     form,
     formState: [formValues, setFormValues],
     filterForSave,
   } = useSlug({
-    form: formJSON
+    form: formJSON,
   })
 
   const onSave = async () => {
@@ -148,12 +149,17 @@ const CreateDocumentForm = ({
         label,
         description,
         slug,
-        data: useDataForm ? valuesToSave : valuesToSave.data as JSON,
+        data: useDataForm ? valuesToSave : (valuesToSave.data as JSON),
       } as Omit<IDocument, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>
       const newDoc = await postDocument({
         document: docToSave,
         token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
       })
+
+      const navPath =
+        returnToOnSuccess !== undefined
+          ? buildStringFromTemplate(returnToOnSuccess, newDoc)
+          : (new URLSearchParams(window.location.search).get(***REMOVED***returnToOnSuccess***REMOVED***) ?? undefined)
 
       setSaving(false)
       navigate(`${navPath ?? ***REMOVED***/document***REMOVED***}?uuid=${newDoc.uuid}`)
@@ -244,14 +250,21 @@ export const CreateDocumentFromObjectType = ({
 
   return (
     <ViewWithLoader isLoading={isLoading} error={error} data={data}>
-      {data &&
+      {data && (
         <CreateDocumentForm
-          schema={data.schemas.find(s => s.is_type_default) ?? data.schemas.sort((a, b) => b.version - a.version)[0]}
+          schema={
+            data.schemas.find((s) => s.is_type_default) ??
+            data.schemas.sort((a, b) => b.version - a.version)[0]
+          }
           type={data.object_type}
-          assetForm={data.forms.find(f => f.is_schema_and_version_default) ?? data.forms.sort((a, b) => b.object_schema_version - a.object_schema_version)[0] ?? undefined}
+          assetForm={
+            data.forms.find((f) => f.is_schema_and_version_default) ??
+            data.forms.sort((a, b) => b.object_schema_version - a.object_schema_version)[0] ??
+            undefined
+          }
           returnToOnSuccess={returnToOnSuccess}
         />
-      }
+      )}
     </ViewWithLoader>
   )
 }
@@ -307,14 +320,14 @@ export const CreateDocumentFromForm = ({
 
 export type ISelectDocumentFormProps = {
   returnToOnSuccess?: string
-  documentCreatePath?: string,
+  documentCreatePath?: string
   filters?: IPostgrestFilter[]
 }
 
 export const SelectDocumentForm = ({
   returnToOnSuccess,
   documentCreatePath,
-  filters
+  filters,
 }: ISelectDocumentFormProps): ReactElement => {
   const brand = getBrand()
   const createEntryProps: BrandComponentProps[***REMOVED***CreateDocumentEntry***REMOVED***] = {
@@ -325,22 +338,22 @@ export const SelectDocumentForm = ({
   if (BrandCreateDocumentEntry) {
     return BrandCreateDocumentEntry
   }
-  return (<DefaultSelectDocumentForm
-    returnToOnSuccess={returnToOnSuccess}
-    documentCreatePath={documentCreatePath}
-    filters={filters}
-  />
+  return (
+    <DefaultSelectDocumentForm
+      returnToOnSuccess={returnToOnSuccess}
+      documentCreatePath={documentCreatePath}
+      filters={filters}
+    />
   )
-
 }
 
 export const DefaultSelectDocumentForm = ({
   returnToOnSuccess,
   documentCreatePath = ***REMOVED***/document/create***REMOVED***,
-  filters
+  filters,
 }: {
   returnToOnSuccess?: string
-  documentCreatePath?: string,
+  documentCreatePath?: string
   filters?: IPostgrestFilter[]
 }): ReactElement => {
   const pgFilters: IPostgrestFilter[] = [
@@ -348,16 +361,16 @@ export const DefaultSelectDocumentForm = ({
       column: ***REMOVED***category***REMOVED***,
       operator: ***REMOVED***eq***REMOVED***,
       value: ***REMOVED***document***REMOVED***,
-    }
+    },
   ]
   if (filters !== undefined) {
-    pgFilters.forEach(f => {
+    pgFilters.forEach((f) => {
       pgFilters.push(f)
     })
   }
   const { data, isLoading, error } = useObjectTypesAndFormsAndSchemas({
     object_type_params: {
-      filters: pgFilters
+      filters: pgFilters,
     },
   })
   return (

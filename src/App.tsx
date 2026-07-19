@@ -36,7 +36,30 @@ import AuthentikUsers from '@/examples/authentik-users'
 import { SITE_TITLE } from './config/config'
 import ListFilesLoader from './manage/document_file/list'
 import ImportRecordsPage from './import/pages'
-import { binninatorMetadata, binninatorRecords, binninatorRoot, defaultBinninatorRecordsURL, defaultOikosModelsURL, movingPlatform, OIKOS_URL_ROOT, oikosLayer, oikosLayerGroup, oikosModel, oikosModels, oikosModelVariable, oikosModelVariables, oikosModule, oikosVectorLayerGroups, oikosVectorLayers, oikosVectorModules, PLATFORM_ROOT, searchDocs, searchURL, SENSORS_ROOT, sensorStation } from '@/import/services'
+import {
+  binninatorMetadata,
+  binninatorRecords,
+  binninatorRoot,
+  defaultBinninatorRecordsURL,
+  defaultOikosModelsURL,
+  movingPlatform,
+  OIKOS_URL_ROOT,
+  oikosLayer,
+  oikosLayerGroup,
+  oikosModel,
+  oikosModels,
+  oikosModelVariable,
+  oikosModelVariables,
+  oikosModule,
+  oikosVectorLayerGroups,
+  oikosVectorLayers,
+  oikosVectorModules,
+  PLATFORM_ROOT,
+  searchDocs,
+  searchURL,
+  SENSORS_ROOT,
+  sensorStation,
+} from '@/import/services'
 import { getBrand } from '@/lib/utils'
 import { getBrandComponent, type BrandComponentProps } from '@/BrandComponents'
 
@@ -69,9 +92,6 @@ const queryClient = new QueryClient({
   },
 })
 
-
-
-
 const Header = ({ brand }: { brand?: string }): ReactElement => {
   brand = brand ?? getBrand()
   const BrandHeader = getBrandComponent(brand, 'Header')
@@ -84,20 +104,20 @@ const Header = ({ brand }: { brand?: string }): ReactElement => {
 const EntryPage = ({ brand }: { brand?: string }): ReactElement => {
   brand = brand ?? getBrand()
   const props: BrandComponentProps['EntryPage'] = {
-    returnToOnSuccess: "/create-document-success",
-    documentCreatePath: "/create-document",
+    returnToOnSuccess: '/create-document-success',
+    documentCreatePath: '/create-document',
   }
   const BrandEntryPage = getBrandComponent(brand, 'EntryPage', props)
 
   if (BrandEntryPage) {
     return BrandEntryPage
   }
-  return <>
-    <title>{makeSiteTitle('create document')}</title>
-    <SelectDocumentForm
-      {...props}
-    />
-  </>
+  return (
+    <>
+      <title>{makeSiteTitle('create document')}</title>
+      <SelectDocumentForm {...props} />
+    </>
+  )
 }
 
 const LoginPage = ({ brand }: { brand?: string }): ReactElement => {
@@ -113,6 +133,18 @@ const LoginPage = ({ brand }: { brand?: string }): ReactElement => {
       <Button onClick={() => void auth.login()}>Log in</Button>
     </div>
   )
+}
+
+const DocumentSuccessPage = ({ brand }: { brand?: string }): ReactElement => {
+  brand = brand ?? getBrand()
+  const props: BrandComponentProps['DocumentSuccessPage'] = {
+    action: 'created',
+  }
+  const BrandDocumentSuccessPage = getBrandComponent(brand, 'DocumentSuccessPage', props)
+  if (BrandDocumentSuccessPage) {
+    return BrandDocumentSuccessPage
+  }
+  return <CreateDocumentSuccess {...props} />
 }
 
 function App(): ReactElement {
@@ -144,12 +176,7 @@ function App(): ReactElement {
           </div>
         ) : !auth.isAuthenticated ? (
           <Routes>
-            <Route
-              path="*"
-              element={
-                <LoginPage />
-              }
-            />
+            <Route path="*" element={<LoginPage />} />
             <Route
               path="/loggedout"
               element={
@@ -226,7 +253,7 @@ function App(): ReactElement {
               element={
                 <SimpleLayout>
                   <title>{makeSiteTitle('document created')}</title>
-                  <CreateDocumentSuccess />
+                  <DocumentSuccessPage />
                 </SimpleLayout>
               }
             />
@@ -257,6 +284,16 @@ function App(): ReactElement {
                   <title>{makeSiteTitle('create document from object type')}</title>
                   <CreateDocumentFromObjectType />
                 </SidebarLayout>
+              }
+            />
+
+            <Route
+              path="/create-document/:object_type_uuid/object_type"
+              element={
+                <SimpleLayout>
+                  <title>{makeSiteTitle('create document from object type')}</title>
+                  <CreateDocumentFromObjectType />
+                </SimpleLayout>
               }
             />
 
@@ -484,11 +521,15 @@ function App(): ReactElement {
                 element={
                   <SidebarLayout>
                     <ImportRecordsPage
-                      defaultImportUrl={searchURL({ type: 'sensor_station', count: 100, portal_id: 25 })}
+                      defaultImportUrl={searchURL({
+                        type: 'sensor_station',
+                        count: 100,
+                        portal_id: 25,
+                      })}
                       defaultDetailRoot={SENSORS_ROOT}
                       service={searchDocs}
                       getFullDoc={sensorStation}
-                      label='Sensor Station'
+                      label="Sensor Station"
                     />
                   </SidebarLayout>
                 }
@@ -502,7 +543,7 @@ function App(): ReactElement {
                       service={searchDocs}
                       defaultDetailRoot={PLATFORM_ROOT}
                       getFullDoc={movingPlatform}
-                      label='Moving Platform'
+                      label="Moving Platform"
                     />
                   </SidebarLayout>
                 }
@@ -516,7 +557,7 @@ function App(): ReactElement {
                       service={oikosModels}
                       defaultDetailRoot={'UNUSED'}
                       getFullDoc={oikosModel}
-                      label='Oikos Model'
+                      label="Oikos Model"
                     />
                   </SidebarLayout>
                 }
@@ -530,7 +571,7 @@ function App(): ReactElement {
                       service={oikosModelVariables}
                       defaultDetailRoot={'UNUSED'}
                       getFullDoc={oikosModelVariable}
-                      label='Oikos Model Variable'
+                      label="Oikos Model Variable"
                     />
                   </SidebarLayout>
                 }
@@ -544,7 +585,7 @@ function App(): ReactElement {
                       service={binninatorRecords}
                       defaultDetailRoot={binninatorRoot}
                       getFullDoc={binninatorMetadata}
-                      label='Binner Record'
+                      label="Binner Record"
                     />
                   </SidebarLayout>
                 }
@@ -554,11 +595,15 @@ function App(): ReactElement {
                 element={
                   <SidebarLayout>
                     <ImportRecordsPage
-                      defaultImportUrl={searchURL({ type: 'layer_group', count: 100, portal_id: 25 })}
+                      defaultImportUrl={searchURL({
+                        type: 'layer_group',
+                        count: 100,
+                        portal_id: 25,
+                      })}
                       service={oikosVectorLayers}
                       defaultDetailRoot={OIKOS_URL_ROOT}
                       getFullDoc={oikosLayer}
-                      label='Oikos Vector Layer'
+                      label="Oikos Vector Layer"
                     />
                   </SidebarLayout>
                 }
@@ -568,11 +613,15 @@ function App(): ReactElement {
                 element={
                   <SidebarLayout>
                     <ImportRecordsPage
-                      defaultImportUrl={searchURL({ type: 'layer_group', count: 100, portal_id: 25 })}
+                      defaultImportUrl={searchURL({
+                        type: 'layer_group',
+                        count: 100,
+                        portal_id: 25,
+                      })}
                       service={oikosVectorLayerGroups}
                       defaultDetailRoot={OIKOS_URL_ROOT}
                       getFullDoc={oikosLayerGroup}
-                      label='Oikos Vector Layer Group'
+                      label="Oikos Vector Layer Group"
                     />
                   </SidebarLayout>
                 }
@@ -582,11 +631,15 @@ function App(): ReactElement {
                 element={
                   <SidebarLayout>
                     <ImportRecordsPage
-                      defaultImportUrl={searchURL({ type: 'layer_group', count: 100, portal_id: 25 })}
+                      defaultImportUrl={searchURL({
+                        type: 'layer_group',
+                        count: 100,
+                        portal_id: 25,
+                      })}
                       service={oikosVectorModules}
                       defaultDetailRoot={OIKOS_URL_ROOT}
                       getFullDoc={oikosModule}
-                      label='Oikos  Module'
+                      label="Oikos  Module"
                     />
                   </SidebarLayout>
                 }

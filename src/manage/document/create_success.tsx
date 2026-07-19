@@ -1,36 +1,11 @@
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { useDocumentAndObjectTypeAndObjectTypeConfig } from './useDocument'
 import { useState, type ReactElement } from 'react'
-import { Button, Loader, utils, ViewWithLoader, SelectInput } from '@axdspub/axiom-ui-utilities'
+import { Button, Loader, ViewWithLoader, SelectInput } from '@axdspub/axiom-ui-utilities'
 import type { IDocument, IHydratedExpectedChildType, IObjectType } from '@/types/types'
 import { useQuery } from '@tanstack/react-query'
-import { ExternalLink } from 'lucide-react'
 import ExpectedChildTypeLoader from '@/manage/components/expected_child_types_loader'
-
-const ButtonLink = ({
-  to,
-  children,
-  disabled,
-  target,
-  className
-}: {
-  to: string
-  children: React.ReactNode
-  disabled?: boolean
-  target?: string
-  className?: string
-}): ReactElement => {
-  return (
-    <Link
-      to={to}
-      className={`${utils.createButtonClass({ variant: 'link' })}${disabled ? ' opacity-50 cursor-not-allowed' : ''}${className ? ` ${className}` : ''}`}
-      target={target}
-    >
-      {children}
-      {target ? <ExternalLink /> : null}
-    </Link>
-  )
-}
+import ButtonLink from '@/manage/components/button_link'
 
 const getACDDUrl = (uuid: string, fixLatLons: boolean = false) => {
   return fixLatLons
@@ -154,27 +129,31 @@ const ERDDAPDatasetLoader = ({ document }: { document: IDocument<unknown> }): Re
 const CreateCollectionMetadataButton = ({
   document,
   objectType,
-  label
+  label,
 }: {
   document?: IDocument<unknown>
   objectType: IObjectType
   label: string
 }): ReactElement => {
-
   const collectionMetadataLink = `/document/create/${objectType.uuid}/object_type?${document !== undefined ? `returnToOnSuccess=/document/edit/${document.uuid}` : ''}`
   // const collectionMetadataLink = `/document/create/${collectionMetadataObjectTypeUUID}/object_type/${collectionMetadataObjectTypeUUID}/form?returnToOnSuccess=/document/edit/${document.uuid}`
   return (
-    <ButtonLink to={collectionMetadataLink} className='bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600'>{label}</ButtonLink>
+    <ButtonLink
+      to={collectionMetadataLink}
+      className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+    >
+      {label}
+    </ButtonLink>
   )
 }
 
 const SelectChildTypeForCreation = ({
   document,
   objectType,
-  expectedChildTypes
+  expectedChildTypes,
 }: {
   document?: IDocument<unknown>
-  objectType: IObjectType,
+  objectType: IObjectType
   expectedChildTypes: IObjectType[]
 }): ReactElement => {
   const childTypeMap = Object.fromEntries(expectedChildTypes.map((ect) => [ect.uuid, ect]))
@@ -189,81 +168,72 @@ const SelectChildTypeForCreation = ({
           setSelectedChildTypeUUID(e?.value ? String(e.value) : null)
         }}
       />
-      {
-        selectedChildTypeUUID !== null && (
-          <CreateCollectionMetadataButton
-            document={document}
-            objectType={childTypeMap[selectedChildTypeUUID]}
-            label={`Create ${childTypeMap[selectedChildTypeUUID]?.label ?? 'Create child record'}`}
-          />
-        )
-      }
-
+      {selectedChildTypeUUID !== null && (
+        <CreateCollectionMetadataButton
+          document={document}
+          objectType={childTypeMap[selectedChildTypeUUID]}
+          label={`Create ${childTypeMap[selectedChildTypeUUID]?.label ?? 'Create child record'}`}
+        />
+      )}
     </>
   )
 }
 
-
-
-
-const ExpectedChildTypeSelector = ({ parentDocument, objectType }: { parentDocument: IDocument<unknown>, objectType: IObjectType }): ReactElement => {
-
-
-  return <ExpectedChildTypeLoader
-    parentDocument={parentDocument}
-    objectType={objectType}
-    View={({
-      parentDocument,
-      objectType,
-      expectedChildTypes
-    }: {
-      parentDocument?: IDocument<unknown>
-      objectType: IObjectType,
-      expectedChildTypes?: IHydratedExpectedChildType[]
-    }) => {
-      if (expectedChildTypes === undefined || expectedChildTypes.length === 0) {
-        return <p>No expected child types</p>
-      }
-      return expectedChildTypes?.map((ect, index) => {
-        return (
-          <div key={index} className='flex flex-row gap-2 justify-center items-center'>
-            {
-              ect?.label && <h4 className='font-medium'>{ect.label}</h4>
-            }
-            {
-              ect?.object_types && ect.object_types.length > 0 && (
-                ect.object_types.length === 1 ? (
-
+const ExpectedChildTypeSelector = ({
+  parentDocument,
+  objectType,
+}: {
+  parentDocument: IDocument<unknown>
+  objectType: IObjectType
+}): ReactElement => {
+  return (
+    <ExpectedChildTypeLoader
+      parentDocument={parentDocument}
+      objectType={objectType}
+      View={({
+        parentDocument,
+        objectType,
+        expectedChildTypes,
+      }: {
+        parentDocument?: IDocument<unknown>
+        objectType: IObjectType
+        expectedChildTypes?: IHydratedExpectedChildType[]
+      }) => {
+        if (expectedChildTypes === undefined || expectedChildTypes.length === 0) {
+          return <p>No expected child types</p>
+        }
+        return expectedChildTypes?.map((ect, index) => {
+          return (
+            <div key={index} className="flex flex-row gap-2 justify-center items-center">
+              {ect?.label && <h4 className="font-medium">{ect.label}</h4>}
+              {ect?.object_types &&
+                ect.object_types.length > 0 &&
+                (ect.object_types.length === 1 ? (
                   <CreateCollectionMetadataButton
                     document={parentDocument}
                     objectType={ect.object_types[0]}
                     label={`Create ${ect.object_types[0].label}`}
                   />
-
                 ) : (
                   <SelectChildTypeForCreation
                     document={parentDocument}
                     objectType={objectType}
                     expectedChildTypes={ect.object_types}
                   />
-                )
-              )
-            }
-          </div>
-        )
-      })
-
-
-    }} />
-
+                ))}
+            </div>
+          )
+        })
+      }}
+    />
+  )
 }
 
-
-const CreateDocumentSuccess = ({
-  action = 'created',
-}: {
+export type ICreateDocumentSuccessProps = {
   action?: 'created' | 'updated'
-}): ReactElement => {
+}
+
+const CreateDocumentSuccess = ({ action }: ICreateDocumentSuccessProps): ReactElement => {
   const [searchParams] = useSearchParams()
   const uuid = searchParams.get('uuid')
   const { data, isLoading, error } = useDocumentAndObjectTypeAndObjectTypeConfig(uuid ?? '')
@@ -272,7 +242,6 @@ const CreateDocumentSuccess = ({
   if (!uuid) {
     return <div>Invalid document ID</div>
   }
-
 
   return (
     <ViewWithLoader isLoading={isLoading} error={error} data={data}>

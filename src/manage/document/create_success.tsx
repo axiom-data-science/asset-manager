@@ -88,7 +88,7 @@ const SubmitToERDDAPButton = ({
   )
 }
 
-const ERDDAPDatasetLoader = ({ document }: { document: IDocument<unknown> }): ReactElement => {
+export const ERDDAPDatasetLoader = ({ document }: { document: IDocument<unknown> }): ReactElement => {
   const uuid = document.uuid
   const { data, isLoading, error } = useQuery({
     queryKey: getERDDAPDatasetQueryKey(uuid),

@@ -6,7 +6,7 @@ import { ErrorBoundary, type FallbackProps } from ***REMOVED***react-error-bound
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
 import { Route, Routes, useNavigate } from ***REMOVED***react-router-dom***REMOVED***
 import ListDocuments from ***REMOVED***@/manage/document/list***REMOVED***
-import { QueryClient, QueryClientProvider } from ***REMOVED***@tanstack/react-query***REMOVED***
+import { QueryClient, QueryClientProvider, useQuery } from ***REMOVED***@tanstack/react-query***REMOVED***
 import {
   CreateChildDocumentFromObjectType,
   CreateDocumentFromForm,
@@ -63,6 +63,14 @@ import {
 } from ***REMOVED***@/import/services***REMOVED***
 import { getBrand } from ***REMOVED***@/lib/utils***REMOVED***
 import { getBrandComponent, type BrandComponentProps } from ***REMOVED***@/BrandComponents***REMOVED***
+import { fetchPredicates } from ***REMOVED***@/manage/document/services***REMOVED***
+import { fetchObjectCategories, fetchObjectTypes } from ***REMOVED***@/manage/object_type/services***REMOVED***
+import { fetchObjectSchemas } from ***REMOVED***@/manage/object_schema/services***REMOVED***
+import { ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
+import { fetchForms } from ***REMOVED***@/manage/form/services***REMOVED***
+import contextStateAtom from ***REMOVED***@/state/contextStateAtom***REMOVED***
+import { useAtom } from ***REMOVED***jotai***REMOVED***
+import type { IAssetForm } from ***REMOVED***@/types/types***REMOVED***
 
 const makeSiteTitle = (pageTitle?: string) => {
   return `${SITE_TITLE}${pageTitle ? ` - ${pageTitle}` : ***REMOVED******REMOVED***}`
@@ -149,26 +157,15 @@ const DocumentSuccessPage = ({ brand }: { brand?: string }): ReactElement => {
 }
 
 function App(): ReactElement {
-  function fallbackRender(props: FallbackProps): ReactElement {
-    // Call resetErrorBoundary() to reset the error boundary and retry the render.
 
-    return (
-      <div role="alert" className="p-20">
-        <p>Something went wrong:</p>
-        <pre style={{ color: ***REMOVED***red***REMOVED*** }}>
-          {props.error instanceof Error ? props.error.message : String(props.error)}
-        </pre>
-      </div>
-    )
-  }
 
   const auth = useAuth()
   console.log(auth)
 
   return (
-    <ErrorBoundary fallbackRender={fallbackRender}>
+    <>
       <Header />
-      <QueryClientProvider client={queryClient}>
+      <>
         {auth.isLoading ? (
           <div className="p-20">
             <Button disabled={true}>
@@ -276,6 +273,15 @@ function App(): ReactElement {
                   <title>{makeSiteTitle(***REMOVED***document created***REMOVED***)}</title>
                   <DocumentSuccessPage />
                 </SimpleLayout>
+              }
+            />
+
+            <Route
+              path=***REMOVED***/submit-document***REMOVED***
+              element={
+                <div className=***REMOVED***bg-slate-100 p-20 shadow-md m-10 mt-20***REMOVED***>
+                  <h1 className=***REMOVED***text-lg font-medium***REMOVED***>Submitted!</h1>
+                </div>
               }
             />
 
@@ -668,9 +674,86 @@ function App(): ReactElement {
             </Route>
           </Routes>
         )}
-      </QueryClientProvider>
-    </ErrorBoundary>
+      </>
+    </>
   )
 }
 
-export default App
+const AppPreload = (): ReactElement => {
+  const [contextState, setContextState] = useAtom(contextStateAtom)
+  const { data, isLoading, error } = useQuery({
+    queryKey: [***REMOVED***preload***REMOVED***],
+    queryFn: async ({ signal }) => {
+      const predicates = await fetchPredicates({ signal })
+      const object_types = await fetchObjectTypes({ signal })
+      const object_schemas = await fetchObjectSchemas({ signal })
+      const object_categories = await fetchObjectCategories({ signal })
+      const forms = await fetchForms({ signal })
+
+      const object_types_by_uuid = Object.fromEntries(object_types.map((ot) => [ot.uuid, ot]))
+      const object_schemas_by_uuid = Object.fromEntries(object_schemas.map((os) => [os.uuid, os]))
+      const forms_by_uuid = Object.fromEntries(forms.map((f) => [f.uuid, f]))
+      const forms_by_object_type_uuid: Record<string, IAssetForm[]> = {}
+      for (const ot of object_types) {
+        const forms_for_ot = forms.filter((f) => f.object_type_uuid === ot.uuid)
+        if (forms_for_ot.length > 0) {
+          forms_by_object_type_uuid[ot.uuid] = forms_for_ot
+        }
+      }
+
+
+      const newContextState = {
+        predicates,
+        predicates_by_uuid: Object.fromEntries(predicates.map((p) => [p.uuid, p])),
+        predicates_by_predicate: Object.fromEntries(predicates.map((p) => [p.predicate, p])),
+        object_types,
+        object_types_by_uuid,
+        object_types_by_slug: Object.fromEntries(object_types.map((ot) => [ot.slug, ot])),
+        object_schemas,
+        object_schemas_by_uuid,
+        object_schemas_by_slug: Object.fromEntries(object_schemas.map((os) => [os.slug, os])),
+        object_schema_defaults_by_object_type_uuid: Object.fromEntries(
+          object_schemas.filter(s => s.is_type_default).map((os) => [os.object_type_uuid, os])
+        ),
+        object_categories,
+        forms,
+        forms_by_uuid,
+        forms_by_slug: Object.fromEntries(forms.map((f) => [f.slug, f])),
+        form_defaults_by_object_type_uuid: Object.fromEntries(
+          forms.filter(f => f.is_schema_and_version_default).map((f) => [f.object_type_uuid, f])
+        ),
+        forms_by_object_type_uuid,
+        loaded: true
+      }
+      setContextState(newContextState)
+      return newContextState
+    }
+  })
+  return <ViewWithLoader isLoading={isLoading} error={error} data={data}>
+    {data && contextState.loaded &&
+      <App />
+    }
+  </ViewWithLoader>
+}
+
+const AppBoundary = (): ReactElement => {
+  function fallbackRender(props: FallbackProps): ReactElement {
+    // Call resetErrorBoundary() to reset the error boundary and retry the render.
+
+    return (
+      <div role="alert" className="p-20">
+        <p>Something went wrong:</p>
+        <pre style={{ color: ***REMOVED***red***REMOVED*** }}>
+          {props.error instanceof Error ? props.error.message : String(props.error)}
+        </pre>
+      </div>
+    )
+  }
+  return <ErrorBoundary fallbackRender={fallbackRender}>
+    <QueryClientProvider client={queryClient}>
+      <AppPreload />
+    </QueryClientProvider>
+  </ErrorBoundary>
+}
+
+export default AppBoundary

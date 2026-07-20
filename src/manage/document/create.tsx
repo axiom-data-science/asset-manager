@@ -1,4 +1,6 @@
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
+import { useAtom } from ***REMOVED***jotai***REMOVED***
+import contextStateAtom from ***REMOVED***@/state/contextStateAtom***REMOVED***
 import { fetchDocument, postDocument } from ***REMOVED***@/manage/document/services***REMOVED***
 import { type IValidationError, type IObjectSchema, type IObjectType } from ***REMOVED***@/types/types***REMOVED***
 import type {
@@ -17,8 +19,8 @@ import {
 } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
 import { Button, Loader, utils, ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
 import { useState, type ReactElement } from ***REMOVED***react***REMOVED***
-import { useNavigate, useParams } from ***REMOVED***react-router-dom***REMOVED***
-import { omit } from ***REMOVED***lodash-es***REMOVED***
+import { useNavigate, useParams, useSearchParams } from ***REMOVED***react-router-dom***REMOVED***
+import { get, omit } from ***REMOVED***lodash-es***REMOVED***
 import { buildStringFromTemplate, getBrand, validate } from ***REMOVED***@/lib/utils***REMOVED***
 import Errors from ***REMOVED***@/manage/components/errors***REMOVED***
 import Link from ***REMOVED***@/manage/components/link***REMOVED***
@@ -35,7 +37,7 @@ import { useObjectTypeFull } from ***REMOVED***@/manage/object_type/useObjectTyp
 import { useObjectSchemaFull } from ***REMOVED***@/manage/object_schema/useObjectSchema***REMOVED***
 import DocumentTabs from ***REMOVED***./document_tabs***REMOVED***
 import { useQuery } from ***REMOVED***@tanstack/react-query***REMOVED***
-import { fetchSingleFromPostgrest } from ***REMOVED***@/services/postgrest/services***REMOVED***
+import { fetchSingleFromPostgrest, postToPostgrest } from ***REMOVED***@/services/postgrest/services***REMOVED***
 import { fetchObjectType } from ***REMOVED***../object_type/services***REMOVED***
 import EditDocument from ***REMOVED***./edit***REMOVED***
 
@@ -45,14 +47,19 @@ const CreateDocumentForm = ({
   fieldConfigs,
   schema,
   returnToOnSuccess,
+  parentDocumentUUID,
+  hasPredicate
 }: {
   type: IObjectType
   assetForm?: IAssetForm
   fieldConfigs?: IFormToFieldConfigWithDetails[]
-  schema: IObjectSchema
+  schema: IObjectSchema,
+  parentDocumentUUID?: string,
+  hasPredicate?: string,
   returnToOnSuccess?: string
 }): ReactElement => {
   const navigate = useNavigate()
+  const [contextState] = useAtom(contextStateAtom)
   const [saving, setSaving] = useState(false)
   //const [formValues, setFormValues] = useState<IFormValues>({})
   const [errors, setErrors] = useState<IValidationError[]>([])
@@ -87,20 +94,20 @@ const CreateDocumentForm = ({
     []
   const dataForm = (
     assetForm?.use_form_config === true &&
-    assetForm?.form_config !== undefined &&
-    assetForm?.form_config !== null
+      assetForm?.form_config !== undefined &&
+      assetForm?.form_config !== null
       ? assetForm.form_config
       : assetForm?.schema_override_config !== undefined || fieldConfigJSON !== undefined
         ? omit(
-            schemaToFormUtils.overridesAndSchemaToFormObject({
-              schema: schema.json_schema,
-              formOverrides: assetForm?.schema_override_config
-                ? [assetForm?.schema_override_config as IFormOverride]
-                : undefined,
-              formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
-            }),
-            ***REMOVED***label***REMOVED***
-          )
+          schemaToFormUtils.overridesAndSchemaToFormObject({
+            schema: schema.json_schema,
+            formOverrides: assetForm?.schema_override_config
+              ? [assetForm?.schema_override_config as IFormOverride]
+              : undefined,
+            formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
+          }),
+          ***REMOVED***label***REMOVED***
+        )
         : schemaToFormUtils.schemaToFormObject(schema.json_schema)
   ) as IForm
 
@@ -116,9 +123,11 @@ const CreateDocumentForm = ({
   const {
     form,
     formState: [formValues, setFormValues],
-    filterForSave,
+    filterForSave
   } = useSlug({
     form: formJSON,
+    labelPath: type.data?.field_mappings?.label,
+    autoSlug: true
   })
 
   const onSave = async () => {
@@ -136,20 +145,25 @@ const CreateDocumentForm = ({
     }
     setErrors([])
     try {
-      const label =
-        formValues.label ??
+      const defaultLabel = formValues.label ??
         formValues.title ??
         formValues.platform_name ??
         formValues.station_label ??
         ***REMOVED***Untitled Document***REMOVED***
+      const label = type.data?.field_mappings?.label
+        ? get(valuesToSave, type.data.field_mappings.label, defaultLabel)
+        : defaultLabel
 
-      const slug =
-        formValues.slug ??
-        String(label)
-          .toLowerCase()
-          .replace(/\s+/g, ***REMOVED***-***REMOVED***)
-          .replace(/[^a-z0-9-]/g, ***REMOVED******REMOVED***)
-      const description = formValues.description ?? ***REMOVED******REMOVED***
+
+      const defaultSlug = formValues.slug
+      const slug = type.data?.field_mappings?.slug
+        ? get(valuesToSave, type.data.field_mappings.slug, defaultSlug)
+        : defaultSlug
+      const defaultDescription = formValues.description ?? ***REMOVED******REMOVED***
+      const description = type.data?.field_mappings?.description
+        ? get(valuesToSave, type.data.field_mappings.description, defaultDescription)
+        : defaultDescription
+
       const docToSave = {
         object_type_uuid: type.uuid,
         label,
@@ -162,9 +176,24 @@ const CreateDocumentForm = ({
         token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
       })
 
+      if (parentDocumentUUID && hasPredicate) {
+        const predicate = contextState.predicates_by_predicate[hasPredicate] ?? contextState.predicates_by_uuid[hasPredicate]
+        await postToPostgrest({
+          table: ***REMOVED***relationship***REMOVED***,
+          token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
+          body: {
+            predicate_uuid: predicate.uuid,
+            from_document_uuid: parentDocumentUUID,
+            to_document_uuid: newDoc.uuid
+          }
+        })
+      }
+
+
+
       const navPath =
         returnToOnSuccess !== undefined
-          ? buildStringFromTemplate(returnToOnSuccess, newDoc)
+          ? buildStringFromTemplate(returnToOnSuccess, { ...newDoc, ...{ parentDocumentUUID, hasPredicate }, ...{ object_type: type } })
           : (new URLSearchParams(window.location.search).get(***REMOVED***returnToOnSuccess***REMOVED***) ?? undefined)
 
       setSaving(false)
@@ -253,7 +282,10 @@ export const CreateDocumentFromObjectType = ({
   objectTypeUUID?: string
 }): ReactElement => {
   const params = useParams()
+  const [searchParams] = useSearchParams()
   const object_type_uuid = objectTypeUUID ?? (params.object_type_uuid as string)
+  const parentDocumentUUID = searchParams.get(***REMOVED***parentDocumentUUID***REMOVED***) ?? undefined
+  const hasPredicate = searchParams.get(***REMOVED***hasPredicate***REMOVED***) ?? undefined
   const { data, isLoading, error } = useObjectTypeFull({ uuid: object_type_uuid })
 
   return (
@@ -274,6 +306,8 @@ export const CreateDocumentFromObjectType = ({
                 data.forms.sort((a, b) => b.object_schema_version - a.object_schema_version)[0] ??
                 undefined
               }
+              parentDocumentUUID={parentDocumentUUID}
+              hasPredicate={hasPredicate}
               returnToOnSuccess={returnToOnSuccess}
             />
           }

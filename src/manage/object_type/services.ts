@@ -19,7 +19,7 @@ export const fetchObjectTypes = async ({
 }: {
   params?: IPostgrestParams
   queryString?: string
-  token: string
+  token?: string
   signal?: AbortSignal
 }): Promise<IObjectType[]> => {
   const documents = await fetchListFromPostgrest<IObjectType>({
@@ -40,7 +40,7 @@ export const fetchObjectType = async ({
 }: {
   uuid: string
   params?: IPostgrestParams
-  token: string
+  token?: string
   signal?: AbortSignal
 }): Promise<IObjectType> => {
   const document = await fetchSingleFromPostgrest<IObjectType>({
@@ -57,7 +57,7 @@ export const fetchObjectCategories = async ({
   token,
   signal,
 }: {
-  token: string
+  token?: string
   signal?: AbortSignal
 }): Promise<string[]> => {
   const list = await fetchListFromPostgrest<{

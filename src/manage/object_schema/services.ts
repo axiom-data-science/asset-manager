@@ -4,13 +4,13 @@ import type { IObjectSchema, IObjectSchemaWithObjectType, IPostgrestParams } fro
 
 const OBJECT_SCHEMAS_TABLE = ***REMOVED***object_schema***REMOVED***;
 
-export const fetchObjectSchemas = async({
-    params, 
+export const fetchObjectSchemas = async ({
+    params,
     token,
     signal
-}: { 
-    params?: IPostgrestParams, 
-    token: string ,
+}: {
+    params?: IPostgrestParams,
+    token?: string,
     signal?: AbortSignal
 }): Promise<IObjectSchema[]> => {
 
@@ -29,10 +29,10 @@ export const fetchObjectSchema = async ({
     params,
     token,
     signal
-}:{
+}: {
     uuid: string,
     params?: IPostgrestParams,
-    token: string,
+    token?: string,
     signal?: AbortSignal
 }): Promise<IObjectSchema> => {
     const document = await fetchSingleFromPostgrest<IObjectSchema>({
@@ -41,7 +41,7 @@ export const fetchObjectSchema = async ({
         params,
         token,
         signal
-    })   
+    })
     return document;
 
 }
@@ -51,7 +51,7 @@ export const fetchObjectSchemaAndObjectTypeAtObjectType = async ({
     params,
     token,
     signal
-}:{
+}: {
     object_type_uuid: string,
     params?: IPostgrestParams,
     token: string,
@@ -76,7 +76,7 @@ export const fetchObjectSchemaAndObjectTypeAtObjectType = async ({
         params: combinedParams,
         token,
         signal
-    })   
+    })
     return result;
 
 }
@@ -86,7 +86,7 @@ export const fetchDefaultObjectTypeSchemaAtUUID = async ({
     object_type_uuid,
     token,
     signal
-}:{
+}: {
     object_type_uuid: string,
     token: string,
     signal?: AbortSignal
@@ -103,7 +103,7 @@ export const fetchDefaultObjectTypeSchemaAtSlug = async ({
     object_type_slug,
     token,
     signal
-}:{
+}: {
     object_type_slug: string,
     token: string,
     signal?: AbortSignal
@@ -117,16 +117,16 @@ export const fetchDefaultObjectTypeSchemaAtSlug = async ({
 }
 export const fetchObjectSchemaRollup = async ({
     rollup,
-    params, 
+    params,
     signal,
     token
 }: {
-    rollup: string 
-    params?: IPostgrestParams, 
-    token: string ,
+    rollup: string
+    params?: IPostgrestParams,
+    token: string,
     signal?: AbortSignal
-}): Promise<{label: string, count: number}[]> => {
-    
+}): Promise<{ label: string, count: number }[]> => {
+
     const list = await fetchRollupFromPostgrest({
         table: OBJECT_SCHEMAS_TABLE,
         rollupColumn: rollup,
@@ -163,7 +163,7 @@ export const fetchSchemasForObjectType = async ({
     })
 
     return list
-        
+
 }
 
 export const fetchSchemaAtForm = async ({
@@ -179,8 +179,8 @@ export const fetchSchemaAtForm = async ({
 }) => {
     const form = await fetchForm({
         uuid: form_uuid,
-        params:{
-            select:[***REMOVED***object_type_uuid***REMOVED***, ***REMOVED***object_schema_version***REMOVED***],
+        params: {
+            select: [***REMOVED***object_type_uuid***REMOVED***, ***REMOVED***object_schema_version***REMOVED***],
         },
         token,
         signal
@@ -189,7 +189,7 @@ export const fetchSchemaAtForm = async ({
         table: OBJECT_SCHEMAS_TABLE,
         params: {
             ...params,
-            filters:[
+            filters: [
                 {
                     column: ***REMOVED***object_type_uuid***REMOVED***,
                     operator: ***REMOVED***eq***REMOVED***,
@@ -204,8 +204,8 @@ export const fetchSchemaAtForm = async ({
         },
         token,
         signal
-     })
-     return schema;
+    })
+    return schema;
 }
 
 

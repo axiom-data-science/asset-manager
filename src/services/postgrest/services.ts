@@ -12,14 +12,16 @@ export const fetchListFromPostgrest = async <T>({
   table: string
   params?: IPostgrestParams
   queryString?: string
-  token: string
+  token?: string
   signal?: AbortSignal
 }): Promise<T[]> => {
   const url = postgrestUrl({ table, params, queryString })
+  const headers: Record<string, string> = {}
+  if (token !== undefined) {
+    headers.Authorization = `Bearer ${token}`
+  }
   const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers,
     signal,
   })
 
@@ -41,14 +43,14 @@ export const fetchRollupFromPostgrest = async ({
   table: string
   rollupColumn: string
   params?: IPostgrestParams
-  token: string
+  token?: string
   signal?: AbortSignal
 }): Promise<{ label: string; count: number }[]> => {
   const args = postgrestRollupArgs({ rollupColumn, params })
   const url = postgrestUrl({ table, args })
   const response = await fetch(url, {
     headers: {
-      Authorization: `Bearer ${token}`,
+      ...(token !== undefined ? { Authorization: `Bearer ${token}` } : {}),
     },
     signal,
   })
@@ -77,26 +79,26 @@ export const fetchSingleFromPostgrest = async <T>({
   uuid?: string
   uuidColumn?: string
   params?: IPostgrestParams
-  token: string
+  token?: string
   signal?: AbortSignal
 }): Promise<T> => {
   const p = uuid
     ? {
-        ...params,
-        filters: [
-          {
-            column: uuidColumn,
-            operator: ***REMOVED***eq***REMOVED*** as const,
-            value: uuid,
-          },
-          ...(params?.filters ?? []),
-        ],
-      }
+      ...params,
+      filters: [
+        {
+          column: uuidColumn,
+          operator: ***REMOVED***eq***REMOVED*** as const,
+          value: uuid,
+        },
+        ...(params?.filters ?? []),
+      ],
+    }
     : params
   const url = postgrestUrl({ table, params: p })
   const response = await fetch(url, {
     headers: {
-      Authorization: `Bearer ${token}`,
+      ...(token !== undefined ? { Authorization: `Bearer ${token}` } : {}),
       Accept: ***REMOVED***application/vnd.pgrst.object+json***REMOVED***,
     },
     signal,

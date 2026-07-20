@@ -148,9 +148,9 @@ const CreateDocumentSuccess = ({ action }: ICreateDocumentSuccessProps): ReactEl
             Document {created ? ***REMOVED***Created***REMOVED*** : ***REMOVED***Updated***REMOVED***} Successfully
           </h1>
           <ExpectedChildTypeSelector parentDocument={data.document} objectType={data.objectType} />
-          <div className="flex flex-row gap-4 justify-center">
+          {/* <div className="flex flex-row gap-4 justify-center">
             <ERDDAPDatasetLoader document={data.document} />
-          </div>
+          </div> */}
           <div className="flex flex-row gap-4 justify-center">
             <ButtonLink to={`/document`}>All documents</ButtonLink>
 

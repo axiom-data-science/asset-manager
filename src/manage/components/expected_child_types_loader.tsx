@@ -74,11 +74,11 @@ const CreateCollectionMetadataButton = ({
 }): ReactElement => {
   const collectionMetadataLink = createViewPath
     ? buildStringFromTemplate(createViewPath, {
-        object_type_uuid: objectType.uuid,
-        object_type_slug: objectType.slug,
-        document_uuid: document?.uuid,
-        document_slug: document?.slug,
-      })
+      object_type_uuid: objectType.uuid,
+      object_type_slug: objectType.slug,
+      document_uuid: document?.uuid,
+      document_slug: document?.slug,
+    })
     : `/document/create/${objectType.uuid}/object_type?${document !== undefined ? `returnToOnSuccess=/document/edit/${document.uuid}` : ***REMOVED******REMOVED***}`
   // const collectionMetadataLink = `/document/create/${collectionMetadataObjectTypeUUID}/object_type/${collectionMetadataObjectTypeUUID}/form?returnToOnSuccess=/document/edit/${document.uuid}`
   return (
@@ -153,8 +153,13 @@ export const ExpectedChildTypeSelector = ({
         }
         return expectedChildTypes?.map((ect, index) => {
           return (
-            <div key={index} className="flex flex-row gap-2 justify-center items-center">
-              {ect?.label && <h4 className="font-medium">{ect.label}</h4>}
+            <div key={index} className="flex flex-col gap-2">
+              {
+                ect?.label && <h4 className="font-medium">{ect.label}</h4>
+              }
+              {
+                ect?.description && <p className=***REMOVED***text-sm text-gray-700***REMOVED***>{ect.description}</p>
+              }
               {ect?.object_types &&
                 ect.object_types.length > 0 &&
                 (ect.object_types.length === 1 ? (

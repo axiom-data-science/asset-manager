@@ -1,4 +1,4 @@
-export type CSVColumnType = 'string' | 'number' | 'dateString'
+export type CSVColumnType = 'string' | 'float' | 'dateString'
 
 export type CSVHeader = {
   key: string
@@ -196,7 +196,7 @@ export const parseCSV = (text: string): ParsedCSV => {
     let pattern: string | undefined
 
     if (sampleValues.length > 0 && sampleValues.every((value) => isNumericValue(value))) {
-      type = 'number'
+      type = 'float'
     } else if (sampleValues.length > 0 && sampleValues.every((value) => isDateLikeValue(value))) {
       type = 'dateString'
       pattern = inferDatePattern(sampleValues)
@@ -210,7 +210,7 @@ export const parseCSV = (text: string): ParsedCSV => {
 
     headers.forEach((header, index) => {
       const rawValue = (row[index] ?? '').trim()
-      if (header.type === 'number' && rawValue !== '' && isNumericValue(rawValue)) {
+      if (header.type === 'float' && rawValue !== '' && isNumericValue(rawValue)) {
         record[header.key] = Number(rawValue)
       } else {
         record[header.key] = rawValue

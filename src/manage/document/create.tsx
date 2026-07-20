@@ -40,6 +40,7 @@ import { useQuery } from ***REMOVED***@tanstack/react-query***REMOVED***
 import { fetchSingleFromPostgrest, postToPostgrest } from ***REMOVED***@/services/postgrest/services***REMOVED***
 import { fetchObjectType } from ***REMOVED***../object_type/services***REMOVED***
 import EditDocument from ***REMOVED***./edit***REMOVED***
+import StateSelector from ***REMOVED***@/manage/custom_inputs/state_selector***REMOVED***
 
 const CreateDocumentForm = ({
   type,
@@ -254,6 +255,7 @@ const CreateDocumentForm = ({
           ***REMOVED***custom:sample_file_object***REMOVED***: SampleFileObject,
           ***REMOVED***custom:csv_upload_for_sample_file***REMOVED***: CSVUploadForSampleFile,
           ***REMOVED***custom:station_search***REMOVED***: StationSearch,
+          ***REMOVED***custom:state_selector***REMOVED***: StateSelector
         }}
         SubmitButton={
           includeSaveButton && (

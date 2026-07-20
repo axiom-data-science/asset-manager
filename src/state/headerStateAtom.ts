@@ -1,8 +1,10 @@
-import { atom } from "jotai";
+import { atom } from 'jotai'
 
 const headerStateAtom = atom({
-    isSmall: false,
-    height: '0'
+  isSmall: false,
+  height: '0',
+  headerHeightClass: '',
+  topSpaceHeightClass: '',
 })
 
-export default headerStateAtom;
+export default headerStateAtom

@@ -6,7 +6,7 @@ import { ErrorBoundary, type FallbackProps } from 'react-error-boundary'
 import { useAuth } from '@/auth/useAuth'
 import { Route, Routes, useNavigate } from 'react-router-dom'
 import ListDocuments from '@/manage/document/list'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import {
   CreateChildDocumentFromObjectType,
   CreateDocumentFromForm,
@@ -63,6 +63,14 @@ import {
 } from '@/import/services'
 import { getBrand } from '@/lib/utils'
 import { getBrandComponent, type BrandComponentProps } from '@/BrandComponents'
+import { fetchPredicates } from '@/manage/document/services'
+import { fetchObjectCategories, fetchObjectTypes } from '@/manage/object_type/services'
+import { fetchObjectSchemas } from '@/manage/object_schema/services'
+import { ViewWithLoader } from '@axdspub/axiom-ui-utilities'
+import { fetchForms } from '@/manage/form/services'
+import contextStateAtom from '@/state/contextStateAtom'
+import { useAtom } from 'jotai'
+import type { IAssetForm } from '@/types/types'
 
 const makeSiteTitle = (pageTitle?: string) => {
   return `${SITE_TITLE}${pageTitle ? ` - ${pageTitle}` : ''}`
@@ -149,26 +157,15 @@ const DocumentSuccessPage = ({ brand }: { brand?: string }): ReactElement => {
 }
 
 function App(): ReactElement {
-  function fallbackRender(props: FallbackProps): ReactElement {
-    // Call resetErrorBoundary() to reset the error boundary and retry the render.
 
-    return (
-      <div role="alert" className="p-20">
-        <p>Something went wrong:</p>
-        <pre style={{ color: 'red' }}>
-          {props.error instanceof Error ? props.error.message : String(props.error)}
-        </pre>
-      </div>
-    )
-  }
 
   const auth = useAuth()
   console.log(auth)
 
   return (
-    <ErrorBoundary fallbackRender={fallbackRender}>
+    <>
       <Header />
-      <QueryClientProvider client={queryClient}>
+      <>
         {auth.isLoading ? (
           <div className="p-20">
             <Button disabled={true}>
@@ -276,6 +273,15 @@ function App(): ReactElement {
                   <title>{makeSiteTitle('document created')}</title>
                   <DocumentSuccessPage />
                 </SimpleLayout>
+              }
+            />
+
+            <Route
+              path='/submit-document'
+              element={
+                <div className='bg-slate-100 p-20 shadow-md m-10 mt-20'>
+                  <h1 className='text-lg font-medium'>Submitted!</h1>
+                </div>
               }
             />
 
@@ -668,9 +674,86 @@ function App(): ReactElement {
             </Route>
           </Routes>
         )}
-      </QueryClientProvider>
-    </ErrorBoundary>
+      </>
+    </>
   )
 }
 
-export default App
+const AppPreload = (): ReactElement => {
+  const [contextState, setContextState] = useAtom(contextStateAtom)
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['preload'],
+    queryFn: async ({ signal }) => {
+      const predicates = await fetchPredicates({ signal })
+      const object_types = await fetchObjectTypes({ signal })
+      const object_schemas = await fetchObjectSchemas({ signal })
+      const object_categories = await fetchObjectCategories({ signal })
+      const forms = await fetchForms({ signal })
+
+      const object_types_by_uuid = Object.fromEntries(object_types.map((ot) => [ot.uuid, ot]))
+      const object_schemas_by_uuid = Object.fromEntries(object_schemas.map((os) => [os.uuid, os]))
+      const forms_by_uuid = Object.fromEntries(forms.map((f) => [f.uuid, f]))
+      const forms_by_object_type_uuid: Record<string, IAssetForm[]> = {}
+      for (const ot of object_types) {
+        const forms_for_ot = forms.filter((f) => f.object_type_uuid === ot.uuid)
+        if (forms_for_ot.length > 0) {
+          forms_by_object_type_uuid[ot.uuid] = forms_for_ot
+        }
+      }
+
+
+      const newContextState = {
+        predicates,
+        predicates_by_uuid: Object.fromEntries(predicates.map((p) => [p.uuid, p])),
+        predicates_by_predicate: Object.fromEntries(predicates.map((p) => [p.predicate, p])),
+        object_types,
+        object_types_by_uuid,
+        object_types_by_slug: Object.fromEntries(object_types.map((ot) => [ot.slug, ot])),
+        object_schemas,
+        object_schemas_by_uuid,
+        object_schemas_by_slug: Object.fromEntries(object_schemas.map((os) => [os.slug, os])),
+        object_schema_defaults_by_object_type_uuid: Object.fromEntries(
+          object_schemas.filter(s => s.is_type_default).map((os) => [os.object_type_uuid, os])
+        ),
+        object_categories,
+        forms,
+        forms_by_uuid,
+        forms_by_slug: Object.fromEntries(forms.map((f) => [f.slug, f])),
+        form_defaults_by_object_type_uuid: Object.fromEntries(
+          forms.filter(f => f.is_schema_and_version_default).map((f) => [f.object_type_uuid, f])
+        ),
+        forms_by_object_type_uuid,
+        loaded: true
+      }
+      setContextState(newContextState)
+      return newContextState
+    }
+  })
+  return <ViewWithLoader isLoading={isLoading} error={error} data={data}>
+    {data && contextState.loaded &&
+      <App />
+    }
+  </ViewWithLoader>
+}
+
+const AppBoundary = (): ReactElement => {
+  function fallbackRender(props: FallbackProps): ReactElement {
+    // Call resetErrorBoundary() to reset the error boundary and retry the render.
+
+    return (
+      <div role="alert" className="p-20">
+        <p>Something went wrong:</p>
+        <pre style={{ color: 'red' }}>
+          {props.error instanceof Error ? props.error.message : String(props.error)}
+        </pre>
+      </div>
+    )
+  }
+  return <ErrorBoundary fallbackRender={fallbackRender}>
+    <QueryClientProvider client={queryClient}>
+      <AppPreload />
+    </QueryClientProvider>
+  </ErrorBoundary>
+}
+
+export default AppBoundary

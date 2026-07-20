@@ -1,3 +1,4 @@
+import { postgrestUrl } from '@/services/postgrest/endpoints'
 import {
   deleteFromPostgrest,
   fetchListFromPostgrest,
@@ -6,9 +7,32 @@ import {
   postToPostgrest,
   upsertToPostgrest,
 } from '@/services/postgrest/services'
-import type { IDocument, IPostgrestParams } from '@/types/types'
+import type { IDocument, IPostgrestParams, IPredicate } from '@/types/types'
 
 export const DOCUMENTS_TABLE = 'document'
+export const PREDICATES_TABLE = 'predicate'
+
+export const fetchPredicates = async ({
+  params,
+  queryString,
+  signal
+}: {
+  params?: IPostgrestParams,
+  queryString?: string,
+  signal?: AbortSignal
+}): Promise<IPredicate[]> => {
+  const url = postgrestUrl({ table: PREDICATES_TABLE, params, queryString })
+  const response = await fetch(url, {
+    signal,
+  })
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`)
+  }
+
+  const result = await response.json()
+  return result as unknown as IPredicate[]
+}
 
 export const fetchDocuments = async <T>({
   params,

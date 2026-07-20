@@ -17,7 +17,7 @@ export const fetchForms = async ({
   signal,
 }: {
   params?: IPostgrestParams
-  token: string
+  token?: string
   signal?: AbortSignal
 }): Promise<IAssetForm[]> => {
   const documents = await fetchListFromPostgrest<IAssetForm>({
@@ -37,7 +37,7 @@ export const fetchForm = async ({
 }: {
   uuid: string
   params?: IPostgrestParams
-  token: string
+  token?: string
   signal?: AbortSignal
 }): Promise<IAssetForm> => {
   const document = await fetchSingleFromPostgrest<IAssetForm>({

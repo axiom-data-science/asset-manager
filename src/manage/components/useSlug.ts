@@ -1,15 +1,20 @@
 import { createFilterForSaveFn } from "@/lib/utils";
 import type { IForm, IFormValues, IObjectField } from "@axdspub/axiom-ui-forms";
+import { get } from "lodash-es";
 import { useMemo, useState } from "react";
 
 export const useSlug = ({
     form,
     initialFormValues,
-    presentationFields
+    presentationFields,
+    labelPath = 'label',
+    autoSlug
 }: {
     form: IForm,
     initialFormValues?: IFormValues,
-    presentationFields?: string[]
+    presentationFields?: string[],
+    labelPath?: string,
+    autoSlug?: boolean
 }): {
     form: IForm,
     formState: [IFormValues, React.Dispatch<React.SetStateAction<IFormValues>>],
@@ -20,19 +25,20 @@ export const useSlug = ({
         ...initialFormValues
     });
 
+    const labelValue = get(formValues, labelPath) as string | undefined;
+    const autoSlugValue = formValues.auto_slug;
 
     useMemo(() => {
         const updateSlug = () => {
-            const autoSlug = Boolean(formValues.auto_slug);
-            const label = formValues.label as string | undefined;
-            if (autoSlug && label !== undefined) {
-                const slug = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+            const useAutoSlug = Boolean(autoSlug ?? autoSlugValue);
+            if (useAutoSlug && labelValue !== undefined) {
+                const slug = labelValue.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
                 setFormValues(prev => ({ ...prev, slug }));
             }
         }
 
         updateSlug();
-    }, [formValues.label, formValues.auto_slug])
+    }, [labelValue, autoSlug, autoSlugValue]);
 
 
     const newForm = {

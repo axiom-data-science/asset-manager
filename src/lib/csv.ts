@@ -1,4 +1,4 @@
-export type CSVColumnType = ***REMOVED***string***REMOVED*** | ***REMOVED***number***REMOVED*** | ***REMOVED***dateString***REMOVED***
+export type CSVColumnType = ***REMOVED***string***REMOVED*** | ***REMOVED***float***REMOVED*** | ***REMOVED***dateString***REMOVED***
 
 export type CSVHeader = {
   key: string
@@ -196,7 +196,7 @@ export const parseCSV = (text: string): ParsedCSV => {
     let pattern: string | undefined
 
     if (sampleValues.length > 0 && sampleValues.every((value) => isNumericValue(value))) {
-      type = ***REMOVED***number***REMOVED***
+      type = ***REMOVED***float***REMOVED***
     } else if (sampleValues.length > 0 && sampleValues.every((value) => isDateLikeValue(value))) {
       type = ***REMOVED***dateString***REMOVED***
       pattern = inferDatePattern(sampleValues)
@@ -210,7 +210,7 @@ export const parseCSV = (text: string): ParsedCSV => {
 
     headers.forEach((header, index) => {
       const rawValue = (row[index] ?? ***REMOVED******REMOVED***).trim()
-      if (header.type === ***REMOVED***number***REMOVED*** && rawValue !== ***REMOVED******REMOVED*** && isNumericValue(rawValue)) {
+      if (header.type === ***REMOVED***float***REMOVED*** && rawValue !== ***REMOVED******REMOVED*** && isNumericValue(rawValue)) {
         record[header.key] = Number(rawValue)
       } else {
         record[header.key] = rawValue

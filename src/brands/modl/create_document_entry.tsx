@@ -42,7 +42,7 @@ export const MODLDocumentSelector = ({
                         to={`${documentCreatePath.replace(/\/$/, ***REMOVED******REMOVED***)}/${type.uuid}/object_type/${form.uuid}/form${returnToOnSuccess ? `?returnToOnSuccess=${returnToOnSuccess}` : ***REMOVED******REMOVED***}`}
                         className="bg-[#003087] text-white px-4 py-2 rounded-md hover:bg-[#0056b3] transition-colors duration-300"
                       >
-                        Create {form.label}
+                        {form.label}
                       </Link>
                     </div>
                   )

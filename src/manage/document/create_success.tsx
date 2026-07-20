@@ -1,10 +1,10 @@
 import { useSearchParams } from ***REMOVED***react-router-dom***REMOVED***
 import { useDocumentAndObjectTypeAndObjectTypeConfig } from ***REMOVED***./useDocument***REMOVED***
 import { useState, type ReactElement } from ***REMOVED***react***REMOVED***
-import { Button, Loader, ViewWithLoader, SelectInput } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
-import type { IDocument, IHydratedExpectedChildType, IObjectType } from ***REMOVED***@/types/types***REMOVED***
+import { Button, Loader, ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
+import type { IDocument } from ***REMOVED***@/types/types***REMOVED***
 import { useQuery } from ***REMOVED***@tanstack/react-query***REMOVED***
-import ExpectedChildTypeLoader from ***REMOVED***@/manage/components/expected_child_types_loader***REMOVED***
+import { ExpectedChildTypeSelector } from ***REMOVED***@/manage/components/expected_child_types_loader***REMOVED***
 import ButtonLink from ***REMOVED***@/manage/components/button_link***REMOVED***
 
 const getACDDUrl = (uuid: string, fixLatLons: boolean = false) => {
@@ -123,109 +123,6 @@ const ERDDAPDatasetLoader = ({ document }: { document: IDocument<unknown> }): Re
         <SubmitToERDDAPButton document={document} initialERDDAPDatasetId={data.erddapDatasetId} />
       )}
     </ViewWithLoader>
-  )
-}
-
-const CreateCollectionMetadataButton = ({
-  document,
-  objectType,
-  label,
-}: {
-  document?: IDocument<unknown>
-  objectType: IObjectType
-  label: string
-}): ReactElement => {
-  const collectionMetadataLink = `/document/create/${objectType.uuid}/object_type?${document !== undefined ? `returnToOnSuccess=/document/edit/${document.uuid}` : ***REMOVED******REMOVED***}`
-  // const collectionMetadataLink = `/document/create/${collectionMetadataObjectTypeUUID}/object_type/${collectionMetadataObjectTypeUUID}/form?returnToOnSuccess=/document/edit/${document.uuid}`
-  return (
-    <ButtonLink
-      to={collectionMetadataLink}
-      className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-    >
-      {label}
-    </ButtonLink>
-  )
-}
-
-const SelectChildTypeForCreation = ({
-  document,
-  objectType,
-  expectedChildTypes,
-}: {
-  document?: IDocument<unknown>
-  objectType: IObjectType
-  expectedChildTypes: IObjectType[]
-}): ReactElement => {
-  const childTypeMap = Object.fromEntries(expectedChildTypes.map((ect) => [ect.uuid, ect]))
-  const [selectedChildTypeUUID, setSelectedChildTypeUUID] = useState<string | null>(null)
-  return (
-    <>
-      <SelectInput
-        id={`expected-child-type-${objectType.uuid}`}
-        testId={`expected-child-type-${objectType.uuid}`}
-        options={expectedChildTypes.map((ot) => ({ value: ot.uuid, label: ot.label }))}
-        onChange={(e) => {
-          setSelectedChildTypeUUID(e?.value ? String(e.value) : null)
-        }}
-      />
-      {selectedChildTypeUUID !== null && (
-        <CreateCollectionMetadataButton
-          document={document}
-          objectType={childTypeMap[selectedChildTypeUUID]}
-          label={`Create ${childTypeMap[selectedChildTypeUUID]?.label ?? ***REMOVED***Create child record***REMOVED***}`}
-        />
-      )}
-    </>
-  )
-}
-
-const ExpectedChildTypeSelector = ({
-  parentDocument,
-  objectType,
-}: {
-  parentDocument: IDocument<unknown>
-  objectType: IObjectType
-}): ReactElement => {
-  return (
-    <ExpectedChildTypeLoader
-      parentDocument={parentDocument}
-      objectType={objectType}
-      View={({
-        parentDocument,
-        objectType,
-        expectedChildTypes,
-      }: {
-        parentDocument?: IDocument<unknown>
-        objectType: IObjectType
-        expectedChildTypes?: IHydratedExpectedChildType[]
-      }) => {
-        if (expectedChildTypes === undefined || expectedChildTypes.length === 0) {
-          return <p>No expected child types</p>
-        }
-        return expectedChildTypes?.map((ect, index) => {
-          return (
-            <div key={index} className="flex flex-row gap-2 justify-center items-center">
-              {ect?.label && <h4 className="font-medium">{ect.label}</h4>}
-              {ect?.object_types &&
-                ect.object_types.length > 0 &&
-                (ect.object_types.length === 1 ? (
-                  <CreateCollectionMetadataButton
-                    document={parentDocument}
-                    objectType={ect.object_types[0]}
-                    label={`Create ${ect.object_types[0].label}`}
-                  />
-                ) : (
-                  <SelectChildTypeForCreation
-                    document={parentDocument}
-                    objectType={objectType}
-                    expectedChildTypes={ect.object_types}
-                  />
-                ))}
-            </div>
-          )
-        })
-      }}
-    />
   )
 }
 

@@ -26,6 +26,7 @@ import CSVUploadForSampleFile from ***REMOVED***../custom_inputs/csv_upload_for_
 
 import { ChevronDown, ChevronUp, Circle, Lock, Unlock } from ***REMOVED***lucide-react***REMOVED***
 import ShareDocument from ***REMOVED***@/components/custom/share-document***REMOVED***
+import DocumentTabs from ***REMOVED***./document_tabs***REMOVED***
 
 const DocumentLockStatus = ({
   document,
@@ -340,25 +341,52 @@ const EditDocumentForm = ({
   )
 }
 
-const LoadSchemaAndCreateDocumentForm = ({ document }: { document: IDocument }): ReactElement => {
+const LoadSchemaAndCreateDocumentForm = ({
+  document,
+  skip_tabs,
+}: {
+  document: IDocument
+  skip_tabs?: boolean
+}): ReactElement => {
   const { data, isLoading, error } = useFormAndSchemaAtObjectType({
     object_type_uuid: document.object_type_uuid,
   })
+  const objectType = data?.object_schema?.object_type
+  const editView =
+    data && objectType ? (
+      <EditDocumentForm
+        document={document}
+        schema={data.object_schema}
+        assetForm={data.forms.find((f) => f.is_schema_and_version_default) ?? data.forms[0]}
+      />
+    ) : null
   return (
     <ViewWithLoader isLoading={isLoading} error={error} data={data}>
-      {data && (
-        <EditDocumentForm
-          document={document}
-          schema={data.object_schema}
-          assetForm={data.forms.find((f) => f.is_schema_and_version_default) ?? data.forms[0]}
-        />
-      )}
+      {editView &&
+        objectType &&
+        (skip_tabs ? (
+          editView
+        ) : (
+          <DocumentTabs
+            objectType={objectType}
+            viewLabel={`${objectType.label}`}
+            document={document}
+            View={editView}
+          />
+        ))}
     </ViewWithLoader>
   )
 }
 
-const EditDocument = (): ReactElement => {
-  const uuid = useParams().uuid ?? null
+const EditDocument = ({
+  document_uuid,
+  skip_tabs,
+}: {
+  document_uuid?: string
+  skip_tabs?: boolean
+}): ReactElement => {
+  const params = useParams()
+  const uuid = document_uuid ?? params.uuid ?? null
 
   const { data: document, isLoading, error } = useDocument(uuid)
   if (uuid === null || uuid === undefined) {
@@ -370,7 +398,9 @@ const EditDocument = (): ReactElement => {
   }
   return (
     <ViewWithLoader isLoading={isLoading} error={error} data={document}>
-      {document && <LoadSchemaAndCreateDocumentForm document={document as IDocument} />}
+      {document && (
+        <LoadSchemaAndCreateDocumentForm skip_tabs={skip_tabs} document={document as IDocument} />
+      )}
     </ViewWithLoader>
   )
 

@@ -6,15 +6,18 @@ import headerStateAtom from ***REMOVED***@/state/headerStateAtom***REMOVED***
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
   const [headerState] = useAtom(headerStateAtom)
-  const triggerStyle = headerState.height !== ***REMOVED***0***REMOVED*** ? { top: headerState.height } : {}
+  const triggerStyle =
+    headerState.height !== ***REMOVED***0***REMOVED*** ? { top: `calc(${headerState.height} + 5px)` } : {}
   const mainStyle = headerState.height !== ***REMOVED***0***REMOVED*** ? { paddingTop: headerState.height } : {}
   return (
-    <SidebarProvider className=***REMOVED***h-full***REMOVED***>
+    <SidebarProvider className="h-full">
       <AppSidebar />
       <main className="w-full h-full" style={mainStyle}>
-        <Tooltip content="Toggle sidebar" side="right" dark={true} useSpan={true}>
-          <SidebarTrigger className="sticky z-50 cursor-pointer" style={triggerStyle} />
-        </Tooltip>
+        <span className="sticky z-50 cursor-pointer" style={triggerStyle}>
+          <Tooltip content="Toggle sidebar" side="right" dark={true} useSpan={true}>
+            <SidebarTrigger />
+          </Tooltip>
+        </span>
         <div className="p-10 pt-4 h-full">{children}</div>
       </main>
     </SidebarProvider>

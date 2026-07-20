@@ -8,6 +8,7 @@ import { Route, Routes, useNavigate } from ***REMOVED***react-router-dom***REMOV
 import ListDocuments from ***REMOVED***@/manage/document/list***REMOVED***
 import { QueryClient, QueryClientProvider } from ***REMOVED***@tanstack/react-query***REMOVED***
 import {
+  CreateChildDocumentFromObjectType,
   CreateDocumentFromForm,
   CreateDocumentFromObjectType,
   CreateDocumentFromSchema,
@@ -244,6 +245,26 @@ function App(): ReactElement {
                     returnToOnSuccess="/create-document-success"
                     documentCreatePath="/create-document"
                   />
+                </SimpleLayout>
+              }
+            />
+
+            <Route
+              path="/create-document/:parent_document_uuid/:expected_predicate/expected-predicate/:child_object_type_uuid/object_type"
+              element={
+                <SimpleLayout>
+                  <title>{makeSiteTitle(***REMOVED***create document***REMOVED***)}</title>
+                  <CreateChildDocumentFromObjectType />
+                </SimpleLayout>
+              }
+            />
+
+            <Route
+              path="/edit-document/:uuid"
+              element={
+                <SimpleLayout>
+                  <title>{makeSiteTitle(***REMOVED***edit document***REMOVED***)}</title>
+                  <EditDocument />
                 </SimpleLayout>
               }
             />

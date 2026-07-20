@@ -1,11 +1,12 @@
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
-import { postDocument } from ***REMOVED***@/manage/document/services***REMOVED***
+import { fetchDocument, postDocument } from ***REMOVED***@/manage/document/services***REMOVED***
 import { type IValidationError, type IObjectSchema, type IObjectType } from ***REMOVED***@/types/types***REMOVED***
 import type {
   IAssetForm,
   IDocument,
   IFormToFieldConfigWithDetails,
   IPostgrestFilter,
+  IPredicate,
 } from ***REMOVED***@/types/types***REMOVED***
 import {
   FormCreator,
@@ -32,6 +33,11 @@ import CSVUploadForSampleFile from ***REMOVED***../custom_inputs/csv_upload_for_
 import { getBrandComponent, type BrandComponentProps } from ***REMOVED***@/BrandComponents***REMOVED***
 import { useObjectTypeFull } from ***REMOVED***@/manage/object_type/useObjectType***REMOVED***
 import { useObjectSchemaFull } from ***REMOVED***@/manage/object_schema/useObjectSchema***REMOVED***
+import DocumentTabs from ***REMOVED***./document_tabs***REMOVED***
+import { useQuery } from ***REMOVED***@tanstack/react-query***REMOVED***
+import { fetchSingleFromPostgrest } from ***REMOVED***@/services/postgrest/services***REMOVED***
+import { fetchObjectType } from ***REMOVED***../object_type/services***REMOVED***
+import EditDocument from ***REMOVED***./edit***REMOVED***
 
 const CreateDocumentForm = ({
   type,
@@ -241,28 +247,101 @@ const CreateDocumentForm = ({
 
 export const CreateDocumentFromObjectType = ({
   returnToOnSuccess,
+  objectTypeUUID,
 }: {
   returnToOnSuccess?: string
+  objectTypeUUID?: string
 }): ReactElement => {
   const params = useParams()
-  const object_type_uuid = params.object_type_uuid as string
+  const object_type_uuid = objectTypeUUID ?? (params.object_type_uuid as string)
   const { data, isLoading, error } = useObjectTypeFull({ uuid: object_type_uuid })
 
   return (
     <ViewWithLoader isLoading={isLoading} error={error} data={data}>
       {data && (
-        <CreateDocumentForm
-          schema={
-            data.schemas.find((s) => s.is_type_default) ??
-            data.schemas.sort((a, b) => b.version - a.version)[0]
+        <DocumentTabs
+          objectType={data.object_type}
+          viewLabel={`${data.object_type.label}`}
+          View={
+            <CreateDocumentForm
+              schema={
+                data.schemas.find((s) => s.is_type_default) ??
+                data.schemas.sort((a, b) => b.version - a.version)[0]
+              }
+              type={data.object_type}
+              assetForm={
+                data.forms.find((f) => f.is_schema_and_version_default) ??
+                data.forms.sort((a, b) => b.object_schema_version - a.object_schema_version)[0] ??
+                undefined
+              }
+              returnToOnSuccess={returnToOnSuccess}
+            />
           }
-          type={data.object_type}
-          assetForm={
-            data.forms.find((f) => f.is_schema_and_version_default) ??
-            data.forms.sort((a, b) => b.object_schema_version - a.object_schema_version)[0] ??
-            undefined
+        />
+      )}
+    </ViewWithLoader>
+  )
+}
+
+export const CreateChildDocumentFromObjectType = ({
+  returnToOnSuccess,
+}: {
+  returnToOnSuccess?: string
+}): ReactElement => {
+  const { parent_document_uuid, expected_predicate, child_object_type_uuid } = useParams()
+  const auth = useAuth()
+  const { data, isLoading, error } = useQuery({
+    enabled: !!parent_document_uuid && !!expected_predicate && !!child_object_type_uuid,
+    queryKey: [***REMOVED***document***REMOVED***, parent_document_uuid, expected_predicate, child_object_type_uuid],
+    queryFn: async ({ signal }) => {
+      if (!parent_document_uuid || !expected_predicate || !child_object_type_uuid) {
+        throw new Error(***REMOVED***Missing required parameters***REMOVED***)
+      }
+      const parentDocument = await fetchDocument({
+        uuid: parent_document_uuid,
+        token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
+        signal,
+      })
+      const parentObjectType = await fetchObjectType({
+        uuid: parentDocument.object_type_uuid,
+        token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
+        signal,
+      })
+      const expectedPredicate = await fetchSingleFromPostgrest<IPredicate>({
+        table: ***REMOVED***predicate***REMOVED***,
+        token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
+        params: {
+          filters: [
+            {
+              column: ***REMOVED***predicate***REMOVED***,
+              operator: ***REMOVED***eq***REMOVED***,
+              value: expected_predicate,
+            },
+          ],
+        },
+      })
+      return {
+        parentDocument,
+        parentObjectType,
+        expectedPredicate,
+      }
+    },
+  })
+
+  return (
+    <ViewWithLoader isLoading={isLoading} error={error} data={data}>
+      {data && data.parentDocument && data.expectedPredicate && (
+        <DocumentTabs
+          objectType={data.parentObjectType}
+          viewLabel={`${data.parentObjectType.label}`}
+          document={data.parentDocument}
+          View={<EditDocument document_uuid={data.parentDocument.uuid} skip_tabs={true} />}
+          ExpectedChildView={
+            <CreateDocumentFromObjectType
+              objectTypeUUID={child_object_type_uuid}
+              returnToOnSuccess={returnToOnSuccess}
+            />
           }
-          returnToOnSuccess={returnToOnSuccess}
         />
       )}
     </ViewWithLoader>
@@ -277,17 +356,24 @@ export const CreateDocumentFromSchema = ({
   const params = useParams()
   const object_schema_uuid = params.object_schema_uuid as string
   const { data, isLoading, error } = useObjectSchemaFull({ uuid: object_schema_uuid })
+  const objectType = data?.object_types
+    ? (data.object_types.find((ot) => ot.uuid === data.object_schema.object_type_uuid) ??
+      data.object_types[0])
+    : null
 
   return (
     <ViewWithLoader isLoading={isLoading} error={error} data={data}>
-      {data && (
-        <CreateDocumentForm
-          schema={data.object_schema}
-          type={
-            data.object_types.find((ot) => ot.uuid === data.object_schema.object_type_uuid) ??
-            data.object_types[0]
+      {data && objectType && (
+        <DocumentTabs
+          objectType={objectType}
+          viewLabel={`${objectType.label}`}
+          View={
+            <CreateDocumentForm
+              schema={data.object_schema}
+              type={objectType}
+              returnToOnSuccess={returnToOnSuccess}
+            />
           }
-          returnToOnSuccess={returnToOnSuccess}
         />
       )}
     </ViewWithLoader>
@@ -306,12 +392,18 @@ export const CreateDocumentFromForm = ({
   return (
     <ViewWithLoader isLoading={isLoading} error={error} data={data}>
       {data && (
-        <CreateDocumentForm
-          schema={omit(data.object_schema, ***REMOVED***object_type***REMOVED***)}
-          type={data.object_schema.object_type}
-          assetForm={data.form}
-          fieldConfigs={data.field_configs}
-          returnToOnSuccess={returnToOnSuccess}
+        <DocumentTabs
+          objectType={data.object_schema.object_type}
+          viewLabel={`${data.object_schema.object_type.label}`}
+          View={
+            <CreateDocumentForm
+              schema={omit(data.object_schema, ***REMOVED***object_type***REMOVED***)}
+              type={data.object_schema.object_type}
+              assetForm={data.form}
+              fieldConfigs={data.field_configs}
+              returnToOnSuccess={returnToOnSuccess}
+            />
+          }
         />
       )}
     </ViewWithLoader>

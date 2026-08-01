@@ -85,8 +85,8 @@ export const useQueriesWithSignatures = (queryObject: ReturnType<typeof queryOpt
         error: results.find((r) => r.error)?.error ?? null,
         data: !isLoading
           ? Object.fromEntries(
-              results.map((r, index) => (r.data ? [Object.keys(queryObject)[index], r.data] : []))
-            )
+            results.map((r, index) => (r.data ? [Object.keys(queryObject)[index], r.data] : []))
+          )
           : null,
       }
     },
@@ -118,7 +118,7 @@ export const getBrand = (): string | undefined => {
   const origin = window.location.origin
   const url = new URL(window.location.href)
   const brand =
-    origin.match(/modl-asset/) || origin.match(/localhost/)
+    origin.match(/modl-asset/) /* || origin.match(/localhost/) */
       ? ***REMOVED***modl***REMOVED***
       : (url.searchParams.get(***REMOVED***brand***REMOVED***) ?? undefined)
   return brand
@@ -132,8 +132,8 @@ export const isValidUUID = (str: string): boolean => {
 type ExtractParams<T extends string> = T extends `${string}:${infer Param}/${infer Rest}`
   ? Param | ExtractParams<`/${Rest}`>
   : T extends `${string}:${infer Param}`
-    ? Param
-    : never
+  ? Param
+  : never
 
 // inserts values from params into string template
 // uses react-router-dom style /document/edit/:uuid/object_type/:object_type_uuid/form/:form_uuid

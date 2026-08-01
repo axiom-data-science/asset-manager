@@ -1,0 +1,5 @@
+- Update to latest forms
+- Investigate behavior where toggling ***REMOVED***Use form config rather than overriding schema ***REMOVED*** checkbox on form edit page somehow inserts a ton of extra json in the Form Configuration field 
+- Establish consistent UI for creating and discovering parent/child documents from currently created/edited document
+- Introduce form editor UI on form edit page
+- With new forms: update csv_upload_for_sample_file.tsx and custom:file_upload to use newly included csv and file upload inputs in forms ui

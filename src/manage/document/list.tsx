@@ -1,14 +1,14 @@
 import { documentListQueryKey, useDocumentListWithRollups } from '@/manage/document/useDocumentList'
-import { Button, SelectInput, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
+import { Button, Loader, SelectInput, Tooltip, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
 import { useState, type ReactElement } from 'react'
 import { useObjectTypeList } from '../object_type/useObjectTypeList'
 import type { IDocument, IObjectType, IPostgrestParams, IRollup } from '@/types/types'
 import Table from '@/manage/components/table'
 import Link from '@/manage/components/link'
 import { useAuth } from '@/auth/useAuth'
-import { deleteDocument } from './services'
+import { deleteDocument, patchDocument } from './services'
 import { useQueryClient } from '@tanstack/react-query'
-import { X, CheckIcon, Lock, Unlock } from 'lucide-react'
+import { X, CheckIcon, Lock, Unlock, UserRoundKey, Globe } from 'lucide-react'
 
 const DeleteButton = ({
   document,
@@ -39,6 +39,108 @@ const DeleteButton = ({
     <Button onClick={handleClick} disabled={document.can_modify === false || document.lock_sub !== null} size="xs" type="alert" className="text-white">
       {confirm ? 'Confirm' : 'Delete'}
     </Button>
+  )
+}
+
+const PublishedButton = ({
+  document,
+  onChange
+}: {
+  document: IDocument & { can_modify: boolean }
+  onChange?: (published: boolean) => void
+}): ReactElement => {
+  const auth = useAuth()
+  const [updating, setUpdating] = useState(false)
+  const [published, setPublished] = useState(document.published)
+  const [publishedAt, setPublishedAt] = useState(document.published_at)
+  const handleClick = (): void => {
+    const pubToSet = !published
+    setUpdating(true)
+    patchDocument({
+      token: auth?.user?.access_token ?? '',
+      uuid: document.uuid,
+      document: {
+        published: pubToSet
+      }
+    }).then(() => {
+      onChange?.(pubToSet)
+      setPublished(pubToSet)
+      setPublishedAt(pubToSet ? new Date().toISOString() : null)
+    }).finally(() => {
+      setUpdating(false)
+    })
+  }
+  return (
+    <div className='text-center flex flex-col gap-2'>
+      <Tooltip content={document.published ? 'Click to unpublish this document' : 'Click to publish this document'} dark={true} useSpan={true} className='block text-center'>
+        <Button onClick={handleClick} disabled={document.can_modify === false || document.lock_sub !== null} size="xs" variant="ghost">
+          {updating ? <Loader className='w-8 h-8' /> : published ? <Globe color="green" className="mx-auto w-8 h-8" /> : <UserRoundKey color="red" className="mx-auto w-8 h-8" />}
+        </Button>
+      </Tooltip>
+
+      <>{published && publishedAt && (
+        <p className="text-[10px] text-slate-400 text-center">
+          {new Date(publishedAt).toLocaleString()}
+        </p>
+      )}
+      </>
+
+    </div>
+  )
+}
+
+const LockButton = ({
+  document,
+  onChange
+}: {
+  document: IDocument & { can_modify: boolean }
+  onChange?: (locked_at: string | null) => void
+}): ReactElement => {
+  const auth = useAuth()
+  const canModify = document.lock_sub === auth?.user?.profile?.sub || auth.isAdmin
+  const [updating, setUpdating] = useState(false)
+  const [locked, setLocked] = useState(document.locked_at !== null)
+  const [lockedAt, setLockedAt] = useState(document.locked_at)
+  const handleClick = (): void => {
+    const lockToSet = !locked ? new Date().toISOString() : null
+    setUpdating(true)
+    patchDocument({
+      token: auth?.user?.access_token ?? '',
+      uuid: document.uuid,
+      document: {
+        locked_at: lockToSet
+      }
+    }).then(() => {
+      onChange?.(lockToSet)
+      setLocked(lockToSet !== null)
+      setLockedAt(lockToSet)
+    }).finally(() => {
+      setUpdating(false)
+    })
+  }
+  if (!canModify) {
+    return <span>
+      {
+        locked ? <Lock color="slate-400" className="mx-auto w-8 h-8" /> : <Unlock color="slate-400" className="mx-auto w-8 h-8" />
+      }
+    </span>
+  }
+  return (
+    <div className='text-center flex flex-col gap-2'>
+      <Tooltip content={locked ? 'Click to unlock this document' : 'Click to lock this document'} dark={true} useSpan={true} className='block text-center'>
+        <Button onClick={handleClick} disabled={document.can_modify === false || !canModify} size="xs" variant="ghost">
+          {updating ? <Loader className='w-8 h-8' /> : locked ? <Lock color="green" className="mx-auto w-8 h-8" /> : <Unlock color="red" className="mx-auto w-8 h-8" />}
+        </Button>
+      </Tooltip>
+
+      <>{locked && lockedAt && (
+        <p className="text-[10px] text-slate-400 text-center">
+          {new Date(lockedAt).toLocaleString()}
+        </p>
+      )}
+      </>
+
+    </div>
   )
 }
 
@@ -143,34 +245,15 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
               id: 'published',
               label: 'Published',
               accessor: (r) =>
-                r.published ? (
-                  <>
-                    <CheckIcon color="green" className="mx-auto" />
-                    <p className="text-[10px] text-slate-400 text-center">
-                      {r.published_at ? new Date(r.published_at).toLocaleString() : ''}
-                    </p>
-                  </>
-                ) : (
-                  <X color="red" className="mx-auto" />
-                ),
+
+                <PublishedButton document={r as IDocument & { can_modify: boolean }} />
+
             },
             {
               id: 'locked',
               label: 'Locked',
               accessor: (r) =>
-                r.lock_sub ? (
-                  <>
-                    <Lock
-                      color={`${r.lock_sub === auth?.user?.profile?.sub ? 'green' : 'red'}`}
-                      className="mx-auto"
-                    />
-                    <p className="text-[10px] text-slate-400 text-center">
-                      {r.locked_at ? new Date(r.locked_at).toLocaleString() : ''}
-                    </p>
-                  </>
-                ) : (
-                  <Unlock color="green" className="mx-auto" />
-                ),
+                <LockButton document={r as IDocument & { can_modify: boolean }} />
             },
             {
               label: 'Type',

@@ -1,14 +1,14 @@
 import { documentListQueryKey, useDocumentListWithRollups } from ***REMOVED***@/manage/document/useDocumentList***REMOVED***
-import { Button, SelectInput, ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
+import { Button, Loader, SelectInput, Tooltip, ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
 import { useState, type ReactElement } from ***REMOVED***react***REMOVED***
 import { useObjectTypeList } from ***REMOVED***../object_type/useObjectTypeList***REMOVED***
 import type { IDocument, IObjectType, IPostgrestParams, IRollup } from ***REMOVED***@/types/types***REMOVED***
 import Table from ***REMOVED***@/manage/components/table***REMOVED***
 import Link from ***REMOVED***@/manage/components/link***REMOVED***
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
-import { deleteDocument } from ***REMOVED***./services***REMOVED***
+import { deleteDocument, patchDocument } from ***REMOVED***./services***REMOVED***
 import { useQueryClient } from ***REMOVED***@tanstack/react-query***REMOVED***
-import { X, CheckIcon, Lock, Unlock } from ***REMOVED***lucide-react***REMOVED***
+import { X, CheckIcon, Lock, Unlock, UserRoundKey, Globe } from ***REMOVED***lucide-react***REMOVED***
 
 const DeleteButton = ({
   document,
@@ -39,6 +39,108 @@ const DeleteButton = ({
     <Button onClick={handleClick} disabled={document.can_modify === false || document.lock_sub !== null} size="xs" type="alert" className="text-white">
       {confirm ? ***REMOVED***Confirm***REMOVED*** : ***REMOVED***Delete***REMOVED***}
     </Button>
+  )
+}
+
+const PublishedButton = ({
+  document,
+  onChange
+}: {
+  document: IDocument & { can_modify: boolean }
+  onChange?: (published: boolean) => void
+}): ReactElement => {
+  const auth = useAuth()
+  const [updating, setUpdating] = useState(false)
+  const [published, setPublished] = useState(document.published)
+  const [publishedAt, setPublishedAt] = useState(document.published_at)
+  const handleClick = (): void => {
+    const pubToSet = !published
+    setUpdating(true)
+    patchDocument({
+      token: auth?.user?.access_token ?? ***REMOVED******REMOVED***,
+      uuid: document.uuid,
+      document: {
+        published: pubToSet
+      }
+    }).then(() => {
+      onChange?.(pubToSet)
+      setPublished(pubToSet)
+      setPublishedAt(pubToSet ? new Date().toISOString() : null)
+    }).finally(() => {
+      setUpdating(false)
+    })
+  }
+  return (
+    <div className=***REMOVED***text-center flex flex-col gap-2***REMOVED***>
+      <Tooltip content={document.published ? ***REMOVED***Click to unpublish this document***REMOVED*** : ***REMOVED***Click to publish this document***REMOVED***} dark={true} useSpan={true} className=***REMOVED***block text-center***REMOVED***>
+        <Button onClick={handleClick} disabled={document.can_modify === false || document.lock_sub !== null} size="xs" variant="ghost">
+          {updating ? <Loader className=***REMOVED***w-8 h-8***REMOVED*** /> : published ? <Globe color="green" className="mx-auto w-8 h-8" /> : <UserRoundKey color="red" className="mx-auto w-8 h-8" />}
+        </Button>
+      </Tooltip>
+
+      <>{published && publishedAt && (
+        <p className="text-[10px] text-slate-400 text-center">
+          {new Date(publishedAt).toLocaleString()}
+        </p>
+      )}
+      </>
+
+    </div>
+  )
+}
+
+const LockButton = ({
+  document,
+  onChange
+}: {
+  document: IDocument & { can_modify: boolean }
+  onChange?: (locked_at: string | null) => void
+}): ReactElement => {
+  const auth = useAuth()
+  const canModify = document.lock_sub === auth?.user?.profile?.sub || auth.isAdmin
+  const [updating, setUpdating] = useState(false)
+  const [locked, setLocked] = useState(document.locked_at !== null)
+  const [lockedAt, setLockedAt] = useState(document.locked_at)
+  const handleClick = (): void => {
+    const lockToSet = !locked ? new Date().toISOString() : null
+    setUpdating(true)
+    patchDocument({
+      token: auth?.user?.access_token ?? ***REMOVED******REMOVED***,
+      uuid: document.uuid,
+      document: {
+        locked_at: lockToSet
+      }
+    }).then(() => {
+      onChange?.(lockToSet)
+      setLocked(lockToSet !== null)
+      setLockedAt(lockToSet)
+    }).finally(() => {
+      setUpdating(false)
+    })
+  }
+  if (!canModify) {
+    return <span>
+      {
+        locked ? <Lock color="slate-400" className="mx-auto w-8 h-8" /> : <Unlock color="slate-400" className="mx-auto w-8 h-8" />
+      }
+    </span>
+  }
+  return (
+    <div className=***REMOVED***text-center flex flex-col gap-2***REMOVED***>
+      <Tooltip content={locked ? ***REMOVED***Click to unlock this document***REMOVED*** : ***REMOVED***Click to lock this document***REMOVED***} dark={true} useSpan={true} className=***REMOVED***block text-center***REMOVED***>
+        <Button onClick={handleClick} disabled={document.can_modify === false || !canModify} size="xs" variant="ghost">
+          {updating ? <Loader className=***REMOVED***w-8 h-8***REMOVED*** /> : locked ? <Lock color="green" className="mx-auto w-8 h-8" /> : <Unlock color="red" className="mx-auto w-8 h-8" />}
+        </Button>
+      </Tooltip>
+
+      <>{locked && lockedAt && (
+        <p className="text-[10px] text-slate-400 text-center">
+          {new Date(lockedAt).toLocaleString()}
+        </p>
+      )}
+      </>
+
+    </div>
   )
 }
 
@@ -143,34 +245,15 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
               id: ***REMOVED***published***REMOVED***,
               label: ***REMOVED***Published***REMOVED***,
               accessor: (r) =>
-                r.published ? (
-                  <>
-                    <CheckIcon color="green" className="mx-auto" />
-                    <p className="text-[10px] text-slate-400 text-center">
-                      {r.published_at ? new Date(r.published_at).toLocaleString() : ***REMOVED******REMOVED***}
-                    </p>
-                  </>
-                ) : (
-                  <X color="red" className="mx-auto" />
-                ),
+
+                <PublishedButton document={r as IDocument & { can_modify: boolean }} />
+
             },
             {
               id: ***REMOVED***locked***REMOVED***,
               label: ***REMOVED***Locked***REMOVED***,
               accessor: (r) =>
-                r.lock_sub ? (
-                  <>
-                    <Lock
-                      color={`${r.lock_sub === auth?.user?.profile?.sub ? ***REMOVED***green***REMOVED*** : ***REMOVED***red***REMOVED***}`}
-                      className="mx-auto"
-                    />
-                    <p className="text-[10px] text-slate-400 text-center">
-                      {r.locked_at ? new Date(r.locked_at).toLocaleString() : ***REMOVED******REMOVED***}
-                    </p>
-                  </>
-                ) : (
-                  <Unlock color="green" className="mx-auto" />
-                ),
+                <LockButton document={r as IDocument & { can_modify: boolean }} />
             },
             {
               label: ***REMOVED***Type***REMOVED***,

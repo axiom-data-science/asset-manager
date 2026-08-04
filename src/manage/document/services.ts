@@ -4,6 +4,7 @@ import {
   fetchListFromPostgrest,
   fetchRollupFromPostgrest,
   fetchSingleFromPostgrest,
+  patchToPostgrest,
   postToPostgrest,
   upsertToPostgrest,
 } from ***REMOVED***@/services/postgrest/services***REMOVED***
@@ -140,11 +141,11 @@ export const patchDocument = async ({
   signal,
 }: {
   uuid: string
-  document: IDocument
+  document: Partial<IDocument>
   token: string
   signal?: AbortSignal
 }): Promise<IDocument> => {
-  const newFieldOverrideConfig = await upsertToPostgrest<IDocument>({
+  const newFieldOverrideConfig = await patchToPostgrest<IDocument>({
     uuid,
     table: DOCUMENTS_TABLE,
     body: document,

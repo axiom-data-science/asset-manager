@@ -111,7 +111,7 @@ const AutoSaveStatus = ({
       const newIntervalId = setInterval(() => {
         setSeconds((prev) => prev + 1)
       }, 1000)
-      setIntervalId(newIntervalId)
+      setIntervalId(+newIntervalId)
     }
   }
   const endInterval = () => {
@@ -155,18 +155,18 @@ const AutoSaveStatus = ({
             style={
               intervalId !== null
                 ? {
-                  strokeDasharray: `${CIRCLE_CIRCUMFERENCE} ${CIRCLE_CIRCUMFERENCE}`,
-                  strokeDashoffset: strokeDashoffset,
-                  stroke: '#666',
-                  strokeWidth: 2,
-                  transition: 'stroke-dashoffset 1.1s ease-in-out',
-                }
+                    strokeDasharray: `${CIRCLE_CIRCUMFERENCE} ${CIRCLE_CIRCUMFERENCE}`,
+                    strokeDashoffset: strokeDashoffset,
+                    stroke: '#666',
+                    strokeWidth: 2,
+                    transition: 'stroke-dashoffset 1.1s ease-in-out',
+                  }
                 : {
-                  strokeDasharray: '0 0',
-                  strokeDashoffset: CIRCLE_CIRCUMFERENCE,
-                  stroke: '#FFF',
-                  strokeWidth: 2,
-                }
+                    strokeDasharray: '0 0',
+                    strokeDashoffset: CIRCLE_CIRCUMFERENCE,
+                    stroke: '#FFF',
+                    strokeWidth: 2,
+                  }
             }
           />
           <>
@@ -241,20 +241,20 @@ const EditDocumentForm = ({
     []
   const dataForm = (
     assetForm?.use_form_config === true &&
-      assetForm?.form_config !== undefined &&
-      assetForm?.form_config !== null
+    assetForm?.form_config !== undefined &&
+    assetForm?.form_config !== null
       ? assetForm.form_config
       : assetForm?.schema_override_config !== undefined || fieldConfigJSON !== undefined
         ? omit(
-          schemaToFormUtils.overridesAndSchemaToFormObject({
-            schema: schema.json_schema,
-            formOverrides: assetForm?.schema_override_config
-              ? [assetForm?.schema_override_config as IFormOverride]
-              : undefined,
-            formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
-          }),
-          'label'
-        )
+            schemaToFormUtils.overridesAndSchemaToFormObject({
+              schema: schema.json_schema,
+              formOverrides: assetForm?.schema_override_config
+                ? [assetForm?.schema_override_config as IFormOverride]
+                : undefined,
+              formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
+            }),
+            'label'
+          )
         : schemaToFormUtils.schemaToFormObject(schema.json_schema)
   ) as IForm
 
@@ -328,7 +328,7 @@ const EditDocumentForm = ({
           'custom:sample_file_object': SampleFileObject,
           'custom:csv_upload_for_sample_file': CSVUploadForSampleFile,
           'custom:station_search': StationSearch,
-          'custom:state_selector': StateSelector
+          'custom:state_selector': StateSelector,
         }}
         onChange={() => {
           setLastUpdate(new Date())

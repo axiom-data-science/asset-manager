@@ -23,6 +23,7 @@ import {
   DialogTrigger,
 } from ***REMOVED***@/components/ui/dialog***REMOVED***
 import { CopyButton } from ***REMOVED***@/manage/components/copy_field***REMOVED***
+import { Check, X } from ***REMOVED***lucide-react***REMOVED***
 
 async function quicktypeJSON(
   targetLanguage: LanguageName,
@@ -94,6 +95,11 @@ const ValidateAgainstSchema = ({
         <ul className="flex flex-col gap-2 h-full overflow-auto">
           {validationResults.map((result, index) => (
             <li key={index} className="flex flex-row gap-2 items-center">
+              {result.isValid ? (
+                <Check className="text-green-600" />
+              ) : (
+                <X className="text-red-600" />
+              )}
               <Dialog modal={true}>
                 <DialogTrigger asChild>
                   <Button size="xs" className="text-white">

@@ -106,12 +106,12 @@ const RelatedDocuments = ({
         )}
         <div>
           {
-            objectType.data?.expected_child_types?.length && (
+            objectType.data?.expected_child_types?.length ? (
               <ExpectedChildTypeLoader
                 parentDocument={document}
                 objectType={objectType}
               />
-            )
+            ) : <></>
           }
         </div>
 

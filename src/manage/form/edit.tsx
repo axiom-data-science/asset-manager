@@ -39,9 +39,9 @@ const EditForm = ({
   const onUpdate = async () => {
     setSaving(true)
     const valid = await validate({ formValues, form })
-    if (!valid.errors) {
+    if (!valid.valid) {
       setSaving(false)
-      setErrors(valid.errors)
+      setErrors(valid.errors ?? [{ field: ***REMOVED***form***REMOVED***, message: ***REMOVED***Validation failed***REMOVED*** }])
       return
     }
     try {

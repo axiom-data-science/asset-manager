@@ -2,7 +2,6 @@ import ButtonLink from ***REMOVED***@/manage/components/button_link***REMOVED***
 import ExpectedChildTypeLoader from ***REMOVED***@/manage/components/expected_child_types_loader***REMOVED***
 import type { ICreateDocumentSuccessProps } from ***REMOVED***@/manage/document/create_success***REMOVED***
 import { useDocumentAndObjectTypeAndObjectTypeConfig } from ***REMOVED***@/manage/document/useDocument***REMOVED***
-import type { IDocument, IHydratedExpectedChildType, IObjectType } from ***REMOVED***@/types/types***REMOVED***
 import { ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
 import type { ReactElement } from ***REMOVED***react***REMOVED***
 import { useSearchParams } from ***REMOVED***react-router-dom***REMOVED***

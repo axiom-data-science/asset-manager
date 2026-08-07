@@ -32,7 +32,7 @@ export const useSlug = ({
         const updateSlug = () => {
             const useAutoSlug = Boolean(autoSlug ?? autoSlugValue);
             if (useAutoSlug && labelValue !== undefined) {
-                const slug = labelValue.toLowerCase().replace(/\s+/g, ***REMOVED***-***REMOVED***).replace(/[^a-z0-9-]/g, ***REMOVED******REMOVED***);
+                const slug = labelValue.toLowerCase().replace(/\s+/g, ***REMOVED***_***REMOVED***).replace(/[^a-z0-9_]/g, ***REMOVED******REMOVED***);
                 setFormValues(prev => ({ ...prev, slug }));
             }
         }

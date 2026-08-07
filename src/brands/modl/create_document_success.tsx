@@ -37,41 +37,6 @@ const MODLCreateDocumentSuccess = ({
               <ExpectedChildTypeLoader
                 parentDocument={data.document}
                 objectType={data.objectType}
-                View={({
-                  parentDocument,
-                  expectedChildTypes,
-                }: {
-                  parentDocument?: IDocument<unknown>
-                  objectType: IObjectType
-                  expectedChildTypes?: IHydratedExpectedChildType[]
-                }): ReactElement => {
-                  return (
-                    <div>
-                      {expectedChildTypes?.map((ect, index) => {
-                        return (
-                          <div key={index} className="flex flex-col gap-2 bg-slate-100 text-left">
-                            <h4 className="font-medium">{ect.label}</h4>
-                            {
-                              ect?.description && <p className=***REMOVED***text-sm text-gray-700***REMOVED***>{ect.description}</p>
-                            }
-                            <div className="flex flex-row gap-4">
-                              {ect?.object_types?.map((ot) => {
-                                return (
-                                  <ButtonLink
-                                    to={`/create-document/${ot.uuid}/object_type?parentDocumentUUID=${parentDocument?.uuid}&hasPredicate=${ect.has_predicate}&parentObjectTypeUUID=${parentDocument?.object_type_uuid}&returnToOnSuccess=/create-document-success`}
-                                    key={ot.uuid}
-                                  >
-                                    Create {ot.label}
-                                  </ButtonLink>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )
-                }}
               />
           }
           <div className="flex flex-row gap-4">

@@ -29,7 +29,7 @@ const DefaultChildTypeSelector = ({
               {ect?.object_types?.map((ot) => {
                 return (
                   <ButtonLink
-                    to={`/create-document/${ot.uuid}/object_type?parentDocumentUUID=${parentDocument?.uuid}&hasPredicate=${ect.has_predicate}&parentObjectTypeUUID=${parentDocument?.object_type_uuid}&returnToOnSuccess=/create-document-success`}
+                    to={`/create-document/${ot.uuid}/object_type?parentDocumentUUID=${parentDocument?.uuid}&toParentPredicate=${ect.to_parent_predicate}&parentObjectTypeUUID=${parentDocument?.object_type_uuid}&returnToOnSuccess=/create-document-success`}
                     key={ot.uuid}
                   >
                     Create {ot.label}

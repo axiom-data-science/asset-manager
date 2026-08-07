@@ -49,14 +49,18 @@ const CreateDocumentForm = ({
   schema,
   returnToOnSuccess,
   parentDocumentUUID,
-  hasPredicate
+  toParentPredicate,
+  childDocumentUUID,
+  toChildPredicate,
 }: {
   type: IObjectType
   assetForm?: IAssetForm
   fieldConfigs?: IFormToFieldConfigWithDetails[]
   schema: IObjectSchema,
   parentDocumentUUID?: string,
-  hasPredicate?: string,
+  toParentPredicate?: string,
+  childDocumentUUID?: string,
+  toChildPredicate?: string,
   returnToOnSuccess?: string
 }): ReactElement => {
   const navigate = useNavigate()
@@ -156,10 +160,7 @@ const CreateDocumentForm = ({
         : defaultLabel
 
 
-      const defaultSlug = formValues.slug
-      const slug = type.data?.field_mappings?.slug
-        ? get(valuesToSave, type.data.field_mappings.slug, defaultSlug)
-        : defaultSlug
+      const slug = formValues.slug ?? null
       const defaultDescription = formValues.description ?? ***REMOVED******REMOVED***
       const description = type.data?.field_mappings?.description
         ? get(valuesToSave, type.data.field_mappings.description, defaultDescription)
@@ -177,24 +178,46 @@ const CreateDocumentForm = ({
         token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
       })
 
-      if (parentDocumentUUID && hasPredicate) {
-        const predicate = contextState.predicates_by_predicate[hasPredicate] ?? contextState.predicates_by_uuid[hasPredicate]
-        await postToPostgrest({
-          table: ***REMOVED***relationship***REMOVED***,
-          token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
-          body: {
-            predicate_uuid: predicate.uuid,
-            from_document_uuid: parentDocumentUUID,
-            to_document_uuid: newDoc.uuid
-          }
-        })
+      if (parentDocumentUUID && toParentPredicate) {
+        const predicate = contextState.predicates_by_predicate[toParentPredicate] ?? contextState.predicates_by_uuid[toParentPredicate]
+        if (predicate) {
+          await postToPostgrest({
+            table: ***REMOVED***relationship***REMOVED***,
+            token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
+            body: {
+              predicate_uuid: predicate.uuid,
+              // The relationship is from the newly created document to the parent document
+              from_document_uuid: newDoc.uuid,
+              to_document_uuid: parentDocumentUUID
+            }
+          })
+        } else {
+          console.warn(`Predicate not found for parent document relationship: ${toParentPredicate}`)
+        }
+      }
+      if (childDocumentUUID && toChildPredicate) {
+        const predicateObj = contextState.predicates_by_predicate[toChildPredicate] ?? contextState.predicates_by_uuid[toChildPredicate]
+        if (predicateObj) {
+          await postToPostgrest({
+            table: ***REMOVED***relationship***REMOVED***,
+            token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
+            body: {
+              predicate_uuid: predicateObj.uuid,
+              // The relationship is from the child document to the newly created document as it***REMOVED***s parent
+              from_document_uuid: childDocumentUUID,
+              to_document_uuid: newDoc.uuid
+            }
+          })
+        } else {
+          console.warn(`Predicate not found for child document relationship: ${toChildPredicate}`)
+        }
       }
 
 
 
       const navPath =
         returnToOnSuccess !== undefined
-          ? buildStringFromTemplate(returnToOnSuccess, { ...newDoc, ...{ parentDocumentUUID, hasPredicate }, ...{ object_type: type } })
+          ? buildStringFromTemplate(returnToOnSuccess, { ...newDoc, ...{ parentDocumentUUID, toParentPredicate, childDocumentUUID, toChildPredicate }, ...{ object_type: type } })
           : (new URLSearchParams(window.location.search).get(***REMOVED***returnToOnSuccess***REMOVED***) ?? undefined)
 
       setSaving(false)
@@ -287,7 +310,8 @@ export const CreateDocumentFromObjectType = ({
   const [searchParams] = useSearchParams()
   const object_type_uuid = objectTypeUUID ?? (params.object_type_uuid as string)
   const parentDocumentUUID = searchParams.get(***REMOVED***parentDocumentUUID***REMOVED***) ?? undefined
-  const hasPredicate = searchParams.get(***REMOVED***hasPredicate***REMOVED***) ?? undefined
+  const toParentPredicate = searchParams.get(***REMOVED***toParentPredicate***REMOVED***) ?? undefined
+  const toChildPredicate = searchParams.get(***REMOVED***toChildPredicate***REMOVED***) ?? undefined
   const { data, isLoading, error } = useObjectTypeFull({ uuid: object_type_uuid })
 
   return (
@@ -309,7 +333,8 @@ export const CreateDocumentFromObjectType = ({
                 undefined
               }
               parentDocumentUUID={parentDocumentUUID}
-              hasPredicate={hasPredicate}
+              toParentPredicate={toParentPredicate}
+              toChildPredicate={toChildPredicate}
               returnToOnSuccess={returnToOnSuccess}
             />
           }

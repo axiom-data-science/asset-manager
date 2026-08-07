@@ -139,7 +139,7 @@ export type IObjectTypeExpectedChildTypes = {
   description?: string;
   presidence?: number;
   predicate?: string;
-  has_predicate?: string;
+  to_parent_predicate?: string;
 };
 
 export type IHydratedExpectedChildType = IObjectTypeExpectedChildTypes & {

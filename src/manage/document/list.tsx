@@ -129,22 +129,22 @@ const LockButton = ({
   const [lockedAt, setLockedAt] = useState(document.locked_at)
   const handleClick = (): void => {
     const lockToSet = !locked ? new Date().toISOString() : null
+    const lockSubToSet = !locked ? auth?.user?.profile?.sub ?? null : null
     setUpdating(true)
     patchDocument({
       token: auth?.user?.access_token ?? ***REMOVED******REMOVED***,
       uuid: document.uuid,
       document: {
         locked_at: lockToSet,
-      },
+        lock_sub: lockSubToSet
+      }
+    }).then(() => {
+      onChange?.(lockToSet)
+      setLocked(lockToSet !== null)
+      setLockedAt(lockToSet)
+    }).finally(() => {
+      setUpdating(false)
     })
-      .then(() => {
-        onChange?.(lockToSet)
-        setLocked(lockToSet !== null)
-        setLockedAt(lockToSet)
-      })
-      .finally(() => {
-        setUpdating(false)
-      })
   }
   if (!canModify) {
     return (
@@ -229,7 +229,7 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
   })
   const object_types_map = Object.fromEntries(object_types.map((ot) => [ot.uuid, ot]))
   const queryClient = useQueryClient()
-  const onDeleteItem = (): void => {
+  const refetchList = (): void => {
     queryClient.invalidateQueries({ queryKey: documentListQueryKey({}) })
   }
 
@@ -298,7 +298,8 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
             {
               id: ***REMOVED***locked***REMOVED***,
               label: ***REMOVED***Locked***REMOVED***,
-              accessor: (r) => <LockButton document={r as IDocument & { can_modify: boolean }} />,
+              accessor: (r) =>
+                <LockButton document={r as IDocument & { can_modify: boolean }} onChange={refetchList} />
             },
             {
               label: ***REMOVED***Type***REMOVED***,
@@ -328,10 +329,7 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
               id: ***REMOVED***delete***REMOVED***,
               accessor: (r) => {
                 return r.can_modify ? (
-                  <DeleteButton
-                    document={r as IDocument & { can_modify: boolean }}
-                    onDelete={onDeleteItem}
-                  />
+                  <DeleteButton document={r as IDocument & { can_modify: boolean }} onDelete={refetchList} />
                 ) : null
               },
             },

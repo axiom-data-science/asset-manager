@@ -136,14 +136,14 @@ const DocumentTabs = ({
   const [settingsState] = useAtom(settingsStateAtom)
   const [queryParams, setQueryParams] = useSearchParams()
   const shouldHaveTabs =
-    settingsState.use_document_tabs &&
+    settingsState.use_document_tabs /* &&
     (
       (
         objectType.data?.expected_child_types &&
         objectType.data.expected_child_types.length > 0
       ) ||
       document
-    )
+    ) */
 
 
   const tabs: ITab[] = [
@@ -151,17 +151,16 @@ const DocumentTabs = ({
       id: 'parent',
       label: viewLabel,
       content: View,
+    },
+    {
+      id: 'related',
+      label: 'Related Documents',
+      disabled: !document,
+      content: document
+        ? <RelatedDocuments document={document} objectType={objectType} /> : <></>,
     }
   ]
-  if (document) {
-    tabs.push(
-      {
-        id: 'related',
-        label: 'Related Documents',
-        content: <RelatedDocuments document={document} objectType={objectType} />,
-      }
-    )
-  }
+
   const selectedTab = queryParams.get('tab') ?? 'parent'
   objectType.data?.expected_child_types?.forEach((ect, index) => {
     const tab = `ec-${index}`

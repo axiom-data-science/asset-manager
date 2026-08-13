@@ -24,6 +24,7 @@ import {
 } from ***REMOVED***@/components/ui/dialog***REMOVED***
 import { CopyButton } from ***REMOVED***@/manage/components/copy_field***REMOVED***
 import { Check, X } from ***REMOVED***lucide-react***REMOVED***
+import type { IValidationError } from ***REMOVED***@/types/types***REMOVED***
 
 async function quicktypeJSON(
   targetLanguage: LanguageName,
@@ -60,7 +61,7 @@ const ValidateAgainstSchema = ({
   documents: IDocumentImport[]
 }) => {
   const [validationResults, setValidationResults] = useState<
-    { document: IDocumentImport; isValid: boolean; errors?: string[] }[]
+    { document: IDocumentImport; isValid: boolean; errors?: IValidationError[] }[]
   >([])
 
   const [isLoading, setIsLoading] = useState(false)

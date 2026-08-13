@@ -237,7 +237,7 @@ const CreateDocumentForm = ({
     }
   }
 
-  const includeSaveButton = form.wizard_steps !== undefined
+  const includeSaveButton = form.wizard_steps !== undefined || form.pages !== undefined
 
   return (
     <div className="flex flex-col gap-4">

@@ -11,7 +11,7 @@ const Errors = ({ errors }: { errors: IValidationError[] }): ReactElement => {
                             ? <p>{errors[0].message}</p>
 
                             : <ul className=***REMOVED***list-disc list-inside***REMOVED***>
-                                {errors.map((err, i) => <li key={i}>{err.message}</li>)}
+                                {errors.map((err, i) => <li key={i}>{err.fieldLabel && (<strong>{err.fieldLabel}</strong>)} {err.message}</li>)}
                             </ul>
                     }
                 </div>

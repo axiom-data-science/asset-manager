@@ -250,7 +250,7 @@ const EditObjectTypeForm = ({
           )
         })}
       </div>
-      <div className="flex flex-row bg-white/80 py-4 sticky bottom-0">
+      <div className="flex flex-row bg-white/80 py-4 sticky bottom-0 justify-end">
         <Button onClick={onUpdate} type="primary" disabled={saving}>
           {saving ? <Loader className="animate-spin" /> : ***REMOVED***Update***REMOVED***}
         </Button>

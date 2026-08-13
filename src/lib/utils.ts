@@ -13,13 +13,11 @@ export const validate = async ({
   form,
   formValues,
   schema,
-  messagePrefix,
   schemaFields,
 }: {
   form: IForm
   formValues: IFormValues
   schema?: Record<string, unknown>
-  messagePrefix?: string
   schemaFields?: string[]
 }): Promise<{
   valid: boolean
@@ -35,7 +33,8 @@ export const validate = async ({
       valid = false
       errors.push({
         field: f.id,
-        message: `${messagePrefix ? messagePrefix + ***REMOVED***: ***REMOVED*** : ***REMOVED******REMOVED***}${f.label} is required.`,
+        fieldLabel: f.label ?? undefined,
+        message: `is required.`,
       })
     }
   })
@@ -45,7 +44,7 @@ export const validate = async ({
       if (schemaValid.error) {
         errors.push({
           field,
-          message: `${messagePrefix ? messagePrefix + ***REMOVED***: ***REMOVED*** : ***REMOVED******REMOVED***}${field} field is not a valid JSON schema. ${schemaValid.error}`,
+          message: `field is not a valid JSON schema. ${schemaValid.error}`,
         })
         valid = false
       }
@@ -58,17 +57,20 @@ export const validate = async ({
     )
     if (againstSchema?.length) {
       valid = false
-      errors.push(
-        ...againstSchema.map((e) => {
-          const fieldKey = e.split(***REMOVED*** ***REMOVED***)[0].replace(/\//g, ***REMOVED***.***REMOVED***).replace(/^\./, ***REMOVED******REMOVED***)
-          const field = fieldsById[fieldKey as keyof typeof fieldsById]?.label ?? fieldKey
-          const currentValue = get(formValues, fieldKey)
-          return {
+      againstSchema.forEach((e) => {
+        const fieldKey = e.field?.length ? e.field : e.message.split(***REMOVED*** ***REMOVED***)[0].replace(/\//g, ***REMOVED***.***REMOVED***).replace(/^\./, ***REMOVED******REMOVED***)
+        const field = fieldsById[fieldKey as keyof typeof fieldsById]
+        const fieldLabel = field?.label ?? undefined
+        const currentValue = get(formValues, fieldKey)
+        if (!errors.find(e => e.field === fieldKey)) {
+          errors.push({
             field: fieldKey,
-            message: `${messagePrefix ? messagePrefix + ***REMOVED***: ***REMOVED*** : ***REMOVED******REMOVED***}${field} ${e.split(***REMOVED*** ***REMOVED***).slice(1).join(***REMOVED*** ***REMOVED***)}${typeof currentValue !== ***REMOVED***undefined***REMOVED*** ? `. Current value: ${JSON.stringify(currentValue)}` : ***REMOVED******REMOVED***} [${fieldKey}]`,
-          }
-        })
-      )
+            fieldLabel,
+            path: field?.path?.map(d => d.id).join(***REMOVED***.***REMOVED***) ?? undefined,
+            message: `${e.message.split(***REMOVED*** ***REMOVED***).slice(1).join(***REMOVED*** ***REMOVED***)}${typeof currentValue !== ***REMOVED***undefined***REMOVED*** ? `. Current value: ${JSON.stringify(currentValue)}` : ***REMOVED******REMOVED***}`,
+          })
+        }
+      })
     }
   }
   return { valid, errors }

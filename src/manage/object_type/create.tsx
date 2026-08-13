@@ -11,6 +11,7 @@ import { useSlug } from ***REMOVED***@/manage/components/useSlug***REMOVED***
 import { useObjectTypeSchemaAndObjectCategories } from ***REMOVED***@/manage/object_type/useObjectType***REMOVED***
 import type { JSONSchema6 } from ***REMOVED***json-schema***REMOVED***
 import { useObjectTypeDataForm } from ***REMOVED***@/manage/object_type/useObjectTypeDataForm***REMOVED***
+import Errors from ***REMOVED***@/manage/components/errors***REMOVED***
 
 const CreateObjectTypeForm = ({
   object_categories,
@@ -126,13 +127,17 @@ const CreateObjectTypeForm = ({
         ? await validate({
           form: schemaForm,
           formValues: schemaFormValue,
-          messagePrefix: ***REMOVED***Default schema***REMOVED***,
           schemaFields: [***REMOVED***json_schema***REMOVED***],
         })
         : { valid: true, errors: [] }
       const valid = {
         valid: typeValid.valid && schemaValid.valid,
-        errors: [...typeValid.errors, ...schemaValid.errors],
+        errors: [...typeValid.errors, ...(schemaValid.errors?.map(e => {
+          return {
+            ...e,
+            fieldLabel: `${e.fieldLabel ? `${e.fieldLabel}` : ***REMOVED******REMOVED***} [default schema]`
+          }
+        }))],
       }
       if (!valid.valid) {
         setSaving(false)
@@ -191,15 +196,7 @@ const CreateObjectTypeForm = ({
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-bold">Create object type</h1>
-      {errorMessages.length > 0 && (
-        <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-          <ul className="list-disc list-inside">
-            {errorMessages.map((err, i) => (
-              <li key={i}>{err.message}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <Errors errors={errorMessages} />
       <Tabs
         tabs={[
           {
@@ -239,7 +236,7 @@ const CreateObjectTypeForm = ({
           }
         ]}
       />
-      <div className="flex flex-row gap-2 sticky bg-white/80 bottom-0 py-4">
+      <div className="flex flex-row gap-2 sticky bg-white/80 bottom-0 py-4 justify-end">
         <Button onClick={onSave} type="primary" disabled={saving}>
           {saving ? <Loader className="animate-spin" /> : ***REMOVED***Save***REMOVED***}
         </Button>

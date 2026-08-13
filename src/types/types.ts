@@ -310,4 +310,4 @@ export interface IFormToFieldConfigWithDetails extends IFormToFieldConfig {
 
 export type IRollup = { label: string; count: number }
 
-export type IValidationError = { field: string; path?: string; message: string }
+export type IValidationError = { field: string; fieldLabel?: string; path?: string; message: string }

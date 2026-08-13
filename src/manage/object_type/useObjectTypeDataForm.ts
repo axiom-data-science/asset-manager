@@ -41,11 +41,36 @@ export const useObjectTypeDataForm = ({
                 "multiple": true,
                 "label": "Expected child types",
                 "fields": [
-                    { "prop": "label", "type": "text" },
-                    { "prop": "description", "type": "long_text" },
-                    { "prop": "object_type_slug", "type": "text" },
-                    { "prop": "object_type_query", "type": "text" },
-                    { "prop": "single", "type": "boolean" }
+                    {
+                        "id": "expected_child_type_overview_wrapper",
+                        "type": "objectWrapper",
+                        "label": "Overview",
+                        "fields": [
+                            { "prop": "expected_child_types.label", "type": "text" },
+                            { "prop": "expected_child_types.description", "type": "long_text" },
+                            { "prop": "expected_child_types.single", "type": "boolean" }
+                        ],
+                        "settings": {
+                            "boldLabel": true,
+                            "className": "bg-transparent px-0"
+                        }
+
+                    },
+                    {
+                        "id": "expected_child_type_query_wrapper",
+                        "type": "objectWrapper",
+                        "label": "Query",
+                        "description": "Use slug to select a single object type. Use query (`slug=ilike.%partially_matching_value%`) to match multiple object types. If both are filled, slug will be used.",
+                        "settings": {
+                            "boldLabel": true,
+                            "className": "bg-transparent px-0"
+                        },
+                        "fields": [
+                            { "prop": "expected_child_types.object_type_slug", "type": "text" },
+                            { "prop": "expected_child_types.object_type_query", "type": "text" }
+                        ]
+                    }
+
                 ]
 
             }

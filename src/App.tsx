@@ -71,6 +71,7 @@ import { fetchForms } from ***REMOVED***@/manage/form/services***REMOVED***
 import contextStateAtom from ***REMOVED***@/state/contextStateAtom***REMOVED***
 import { useAtom } from ***REMOVED***jotai***REMOVED***
 import type { IAssetForm } from ***REMOVED***@/types/types***REMOVED***
+import { fetchPersons } from ***REMOVED***@/manage/person/services***REMOVED***
 
 const makeSiteTitle = (pageTitle?: string) => {
   return `${SITE_TITLE}${pageTitle ? ` - ${pageTitle}` : ***REMOVED******REMOVED***}`
@@ -680,6 +681,7 @@ function App(): ReactElement {
 }
 
 const AppPreload = (): ReactElement => {
+  const auth = useAuth()
   const [contextState, setContextState] = useAtom(contextStateAtom)
   const { data, isLoading, error } = useQuery({
     queryKey: [***REMOVED***preload***REMOVED***],
@@ -688,6 +690,8 @@ const AppPreload = (): ReactElement => {
       const object_types = await fetchObjectTypes({ signal })
       const object_schemas = await fetchObjectSchemas({ signal })
       const object_categories = await fetchObjectCategories({ signal })
+      const persons = auth.isAdmin && auth?.user?.access_token ? await fetchPersons({ signal, token: auth.user.access_token }) : []
+      const persons_by_owner_sub = Object.fromEntries(persons.map((p) => [p.owner_sub, p]))
       const forms = await fetchForms({ signal })
 
       const object_types_by_uuid = Object.fromEntries(object_types.map((ot) => [ot.uuid, ot]))
@@ -723,6 +727,8 @@ const AppPreload = (): ReactElement => {
           forms.filter(f => f.is_schema_and_version_default).map((f) => [f.object_type_uuid, f])
         ),
         forms_by_object_type_uuid,
+        persons,
+        persons_by_owner_sub,
         loaded: true
       }
       setContextState(newContextState)
@@ -733,6 +739,14 @@ const AppPreload = (): ReactElement => {
     {data && contextState.loaded &&
       <App />
     }
+  </ViewWithLoader>
+}
+
+const AuthPreload = (): ReactElement => {
+  const auth = useAuth()
+  // make sure auth is done loading
+  return <ViewWithLoader isLoading={auth.isLoading} error={null} data={{}}>
+    {!auth.isLoading && <AppPreload />}
   </ViewWithLoader>
 }
 
@@ -751,7 +765,7 @@ const AppBoundary = (): ReactElement => {
   }
   return <ErrorBoundary fallbackRender={fallbackRender}>
     <QueryClientProvider client={queryClient}>
-      <AppPreload />
+      <AuthPreload />
     </QueryClientProvider>
   </ErrorBoundary>
 }

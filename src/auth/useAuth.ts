@@ -3,7 +3,7 @@ import type { IAuth } from ***REMOVED***@/types/types***REMOVED***
 import { useAuth as useOIDCAuth } from ***REMOVED***react-oidc-context***REMOVED***
 import { useNavigate } from ***REMOVED***react-router-dom***REMOVED***
 
-export const useIsAdmin = (roles: string[] | undefined): boolean => {
+export const userIsAdmin = (roles: string[] | undefined): boolean => {
   if (!roles) return false
   return roles.find((r) => r.match(/admin/)) !== undefined
 }
@@ -20,7 +20,7 @@ export const useAuth = (): IAuth => {
     : [null, null]
   const navigate = useNavigate()
   const roles: string[] = (auth.user?.profile?.roles as string[]) ?? []
-  const isAdmin = useIsAdmin(roles)
+  const isAdmin = userIsAdmin(roles)
   const isSuperAdmin = useIsSuperAdmin(roles)
   return {
     ...auth,
@@ -48,23 +48,23 @@ export const useAuth = (): IAuth => {
     },
     user: auth.user
       ? {
-          access_token: auth.user.access_token,
-          expires_at: auth.user.expires_at ? new Date(auth.user.expires_at * 1000) : new Date(),
-          scope: auth.user.scope ? auth.user.scope.split(***REMOVED*** ***REMOVED***) : [],
-          profile: {
-            sub: auth.user.profile?.sub,
-            name: auth.user.profile?.name,
-            email: auth.user.profile?.email,
-            firstName,
-            lastName,
-            isAdmin,
-            ...Object.fromEntries(
-              Object.entries(auth.user.profile || {}).filter(
-                ([key]) => ![***REMOVED***sub***REMOVED***, ***REMOVED***name***REMOVED***, ***REMOVED***email***REMOVED***].includes(key)
-              )
-            ),
-          },
-        }
+        access_token: auth.user.access_token,
+        expires_at: auth.user.expires_at ? new Date(auth.user.expires_at * 1000) : new Date(),
+        scope: auth.user.scope ? auth.user.scope.split(***REMOVED*** ***REMOVED***) : [],
+        profile: {
+          sub: auth.user.profile?.sub,
+          name: auth.user.profile?.name,
+          email: auth.user.profile?.email,
+          firstName,
+          lastName,
+          isAdmin,
+          ...Object.fromEntries(
+            Object.entries(auth.user.profile || {}).filter(
+              ([key]) => ![***REMOVED***sub***REMOVED***, ***REMOVED***name***REMOVED***, ***REMOVED***email***REMOVED***].includes(key)
+            )
+          ),
+        },
+      }
       : null,
   }
 }

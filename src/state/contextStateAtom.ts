@@ -1,4 +1,4 @@
-import type { IAssetForm, IObjectSchema, IObjectType, IPredicate } from ***REMOVED***@/types/types***REMOVED***
+import type { IAssetForm, IObjectSchema, IObjectType, IPerson, IPredicate } from ***REMOVED***@/types/types***REMOVED***
 import { atom } from ***REMOVED***jotai***REMOVED***
 
 const contextStateAtom = atom({
@@ -18,7 +18,9 @@ const contextStateAtom = atom({
     forms_by_uuid: {} as Record<string, IAssetForm>,
     forms_by_slug: {} as Record<string, IAssetForm>,
     form_defaults_by_object_type_uuid: {} as Record<string, IAssetForm>,
-    forms_by_object_type_uuid: {} as Record<string, IAssetForm[]>
+    forms_by_object_type_uuid: {} as Record<string, IAssetForm[]>,
+    persons: [] as IPerson[],
+    persons_by_owner_sub: {} as Record<string, IPerson>,
 })
 
 export default contextStateAtom

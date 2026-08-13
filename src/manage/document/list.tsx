@@ -9,6 +9,8 @@ import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
 import { deleteDocument, patchDocument } from ***REMOVED***./services***REMOVED***
 import { useQueryClient } from ***REMOVED***@tanstack/react-query***REMOVED***
 import { Lock, Unlock, UserRoundKey, Globe } from ***REMOVED***lucide-react***REMOVED***
+import contextStateAtom from ***REMOVED***@/state/contextStateAtom***REMOVED***
+import { useAtom } from ***REMOVED***jotai***REMOVED***
 
 const DeleteButton = ({
   document,
@@ -193,6 +195,11 @@ const LockButton = ({
 }
 
 const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
+
+  const [contextState] = useAtom(contextStateAtom)
+  const { persons_by_owner_sub } = contextState
+  const [filters, setFilters] = useState<Record<string, string | undefined>>({})
+
   const uuidsForDocuments = object_types
     .filter((ot) => ot.category === ***REMOVED***document***REMOVED***)
     .map((ot) => ot.uuid)
@@ -236,6 +243,7 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
   return (
     <ViewWithLoader isLoading={isLoading} error={error} data={documents}>
       <h1 className="text-2xl font-bold py-2 sticky top-0 bg-white">Documents</h1>
+      <pre>{JSON.stringify(filters, null, 2)}</pre>
       <div className="flex flex-row gap-4 p-2 py-4 sticky top-12 bg-white z-10">
         {Object.keys(documents?.rollups ?? []).map((r) => {
           const rollup = documents?.rollups?.[r].filter(
@@ -244,6 +252,7 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
           if (rollup?.length === 0) return null
           return (
             <div className="flex flex-row gap-2" key={r}>
+
               <span className="font-semibold">
                 {r
                   .split(***REMOVED***_***REMOVED***)
@@ -259,10 +268,20 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
                 size="xs"
                 options={
                   rollup?.map((item) => ({
-                    label: `${r === ***REMOVED***object_type_uuid***REMOVED*** ? object_types_map[item.label]?.label : item.label} (${item.count})`,
+                    label: `${r === ***REMOVED***object_type_uuid***REMOVED***
+                      ? object_types_map[item.label]?.label
+                      : r === ***REMOVED***owner_sub***REMOVED***
+                        ? persons_by_owner_sub[item.label]?.label ?? item.label
+                        : item.label} (${item.count})`,
                     value: item.label,
                   })) ?? []
                 }
+                onChange={(o) => {
+                  setFilters((prev) => ({
+                    ...prev,
+                    [r]: o?.value ? String(o.value) : undefined,
+                  }))
+                }}
               />
             </div>
           )

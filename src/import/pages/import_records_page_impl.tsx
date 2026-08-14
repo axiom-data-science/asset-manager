@@ -7,7 +7,9 @@ import { forwardRef, useState, type ReactElement } from ***REMOVED***react***REM
 import { Button } from ***REMOVED***@/components/ui/button***REMOVED***
 import type { IDocumentImport, IFullDocForImport } from ***REMOVED***@/import/types***REMOVED***
 import SelectObjectTypeForImport from ***REMOVED***./select_object_type_for_import***REMOVED***
-import BatchLoadDocuments from ***REMOVED***@/import/components/batch_load_documents***REMOVED***
+import { objectTypeForRecordsState, recordsToImportState } from ***REMOVED***@/import/state/importState***REMOVED***
+import { useAtom } from ***REMOVED***jotai***REMOVED***
+
 
 const TableComponentsOverride: TableComponents<IDocumentImport> = {
     Table: (props) => (
@@ -105,9 +107,13 @@ const ImportRecordsPage = ({
     const [activeUrl, setActiveUrl] = useState<string | undefined>(undefined)
     const [activeDetailUrl, setActiveDetailUrl] = useState<string | undefined>(undefined)
     const [loadCount, setLoadCount] = useState(0)
+    const [recordsToImport] = useAtom(recordsToImportState)
+    const [objectTypeForRecords] = useAtom(objectTypeForRecordsState)
 
     const [prevDefaultImportUrl, setPrevDefaultImportUrl] = useState(defaultImportUrl)
     const [prevDefaultDetailRoot, setPrevDefaultDetailRoot] = useState(defaultDetailRoot)
+    const [, setSelectedObjectType] = useAtom(objectTypeForRecordsState)
+    const [, setSelectedRecordsToImport] = useAtom(recordsToImportState)
 
     if (prevDefaultImportUrl !== defaultImportUrl || prevDefaultDetailRoot !== defaultDetailRoot) {
         setPrevDefaultImportUrl(defaultImportUrl)
@@ -132,6 +138,9 @@ const ImportRecordsPage = ({
         queryFn: async ({ signal }) => {
             try {
                 const docs = await service({ signal, url: activeUrl! })
+                setSelectedTab(***REMOVED***records***REMOVED***)
+                setSelectedObjectType(undefined)
+                setSelectedRecordsToImport([])
                 return docs
             } catch (error) {
                 if (isAbortError(error, signal)) {
@@ -145,6 +154,8 @@ const ImportRecordsPage = ({
         },
         placeholderData: (previousData) => previousData,
     })
+
+    const [selectedTab, setSelectedTab] = useState(***REMOVED***records***REMOVED***)
 
     /* const state = useMemo<***REMOVED***idle***REMOVED*** | ***REMOVED***loading***REMOVED*** | ***REMOVED***success***REMOVED*** | ***REMOVED***error***REMOVED***>(() => {
                 if (!activeUrl) return ***REMOVED***idle***REMOVED***
@@ -199,6 +210,8 @@ const ImportRecordsPage = ({
                                 className="h-full"
                                 defaultContentClassName="h-full py-5 flex-col gap-2"
                                 navClassName="sticky top-0 z-10 bg-gray-100 dark:bg-gray-800 shadow-sm"
+                                selectedTab={selectedTab}
+                                onChange={(tabId) => setSelectedTab(tabId)}
                                 tabs={[
                                     {
                                         id: ***REMOVED***records***REMOVED***,
@@ -218,13 +231,17 @@ const ImportRecordsPage = ({
                                     {
                                         id: ***REMOVED***validate***REMOVED***,
                                         label: ***REMOVED***Validate Records***REMOVED***,
-                                        content: <>Validate records before import</>,
+                                        disabled: !documents?.length || !objectTypeForRecords,
+                                        content: <>Validate {documents?.length} records with object type {objectTypeForRecords?.label} before import</>,
                                     },
                                     {
                                         id: ***REMOVED***import***REMOVED***,
                                         label: ***REMOVED***Import Records***REMOVED***,
+                                        disabled: !documents?.length || !objectTypeForRecords,
                                         content: (
-                                            <BatchLoadDocuments
+                                            <>
+                                                Importing {documents?.length} records with object type {objectTypeForRecords?.label}
+                                                {/* <BatchLoadDocuments
                                                 documents={documents}
                                                 getFullDoc={getFullDoc}
                                                 detailRoot={activeDetailUrl}
@@ -234,7 +251,8 @@ const ImportRecordsPage = ({
                                                 onAllFullDocsLoaded={async (fullDocs) => {
                                                     console.log(***REMOVED***All full docs loaded:***REMOVED***, fullDocs)
                                                 }}
-                                            />
+                                            /> */}
+                                            </>
                                         ),
                                     },
                                 ]}

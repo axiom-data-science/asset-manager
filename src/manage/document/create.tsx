@@ -47,6 +47,7 @@ const CreateDocumentForm = ({
   assetForm,
   fieldConfigs,
   schema,
+  onSuccess,
   returnToOnSuccess,
   parentDocumentUUID,
   toParentPredicate,
@@ -61,6 +62,7 @@ const CreateDocumentForm = ({
   toParentPredicate?: string,
   childDocumentUUID?: string,
   toChildPredicate?: string,
+  onSuccess?: (document: IDocument) => void
   returnToOnSuccess?: string
 }): ReactElement => {
   const navigate = useNavigate()
@@ -214,6 +216,9 @@ const CreateDocumentForm = ({
       }
 
 
+      if (onSuccess) {
+        onSuccess(newDoc)
+      }
 
       const navPath =
         returnToOnSuccess !== undefined
@@ -301,9 +306,11 @@ const CreateDocumentForm = ({
 
 export const CreateDocumentFromObjectType = ({
   returnToOnSuccess,
+  onSuccess,
   objectTypeUUID,
 }: {
   returnToOnSuccess?: string
+  onSuccess?: (document: IDocument) => void
   objectTypeUUID?: string
 }): ReactElement => {
   const params = useParams()
@@ -336,6 +343,7 @@ export const CreateDocumentFromObjectType = ({
               toParentPredicate={toParentPredicate}
               toChildPredicate={toChildPredicate}
               returnToOnSuccess={returnToOnSuccess}
+              onSuccess={onSuccess}
             />
           }
         />

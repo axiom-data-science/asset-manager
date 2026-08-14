@@ -6,7 +6,7 @@ import { useAuth } from '@/auth/useAuth'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { IObjectSchema, IObjectType } from '@/types/types'
 import { postObjectSchema } from '@/manage/object_schema/services'
-import { validate } from '@/lib/utils'
+import { buildStringFromTemplate, validate } from '@/lib/utils'
 import { useSlug } from '@/manage/components/useSlug'
 import { useObjectTypeSchemaAndObjectCategories } from '@/manage/object_type/useObjectType'
 import type { JSONSchema6 } from 'json-schema'
@@ -15,10 +15,19 @@ import Errors from '@/manage/components/errors'
 
 const CreateObjectTypeForm = ({
   object_categories,
-  schema
+  objectTypeSchema,
+  initialSchema,
+  initialLabel,
+  onSuccess,
+  returnToOnSuccess
+
 }: {
   object_categories: string[],
-  schema: JSONSchema6
+  objectTypeSchema: JSONSchema6,
+  initialSchema?: JSONSchema6,
+  initialLabel?: string,
+  onSuccess?: (document: IObjectType) => void
+  returnToOnSuccess?: string
 }): ReactElement => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -94,7 +103,8 @@ const CreateObjectTypeForm = ({
       category:
         object_categories.find((c) => c === searchParams.get('category')) ??
         object_categories.find((d) => d.toLowerCase() === 'document') ??
-        object_categories[0]
+        object_categories[0],
+      label: initialLabel ?? undefined,
     }
   })
 
@@ -103,7 +113,11 @@ const CreateObjectTypeForm = ({
     formState: [schemaFormValue, setSchemaFormValue],
     filterForSave: schemaFilterForSave,
   } = useSlug({
-    form: schemaFormWithoutSlug
+    form: schemaFormWithoutSlug,
+    initialFormValues: initialSchema ? {
+      json_schema: initialSchema as JSON,
+      label: initialLabel ?? undefined,
+    } : {},
   })
 
 
@@ -112,10 +126,10 @@ const CreateObjectTypeForm = ({
     formState: [objectTypeConfigFormValue, setObjectTypeConfigFormValue],
     filterForSave: objectTypeConfigFilterForSave
   } = useObjectTypeDataForm({
-    objectTypeSchema: schema
+    objectTypeSchema
   })
 
-  const [createDefaultSchema, setCreateDefaultSchema] = useState(false)
+  const [createDefaultSchema, setCreateDefaultSchema] = useState(initialSchema ? true : false)
 
 
 
@@ -172,7 +186,18 @@ const CreateObjectTypeForm = ({
         })
       }
       setSaving(false)
-      navigate('/object_type')
+
+      if (onSuccess) {
+        onSuccess(newObjectType)
+      }
+
+      const navPath =
+        returnToOnSuccess !== undefined
+          ? buildStringFromTemplate(returnToOnSuccess, { ...newObjectType })
+          : (new URLSearchParams(window.location.search).get('returnToOnSuccess') ?? undefined)
+
+      setSaving(false)
+      navigate(`${navPath ?? '/object_type'}?uuid=${newObjectType.uuid}`)
     } catch (e: unknown) {
       setSaving(false)
       setErrorMessages([
@@ -245,11 +270,28 @@ const CreateObjectTypeForm = ({
   )
 }
 
-const CreateObjectType = (): ReactElement => {
+const CreateObjectType = ({
+  initialSchema,
+  initialLabel,
+  onSuccess,
+  returnToOnSuccess,
+}: {
+  initialSchema?: JSONSchema6,
+  initialLabel?: string
+  onSuccess?: (newObjectType: IObjectType) => void
+  returnToOnSuccess?: string
+}): ReactElement => {
   const { data, isLoading, error } = useObjectTypeSchemaAndObjectCategories()
   return (
     <ViewWithLoader isLoading={isLoading} error={error} data={data}>
-      {data && <CreateObjectTypeForm object_categories={data.object_categories} schema={data.schema} />}
+      {data && <CreateObjectTypeForm
+        object_categories={data.object_categories}
+        objectTypeSchema={data.schema}
+        initialSchema={initialSchema}
+        initialLabel={initialLabel}
+        onSuccess={onSuccess}
+        returnToOnSuccess={returnToOnSuccess}
+      />}
     </ViewWithLoader>
   )
 }

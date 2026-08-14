@@ -15,4 +15,7 @@ export default defineConfig({
       ***REMOVED***@***REMOVED***: resolve(__dirname, ***REMOVED***./src***REMOVED***),
     },
   },
+  preview: {
+    port: 4321
+  }
 })

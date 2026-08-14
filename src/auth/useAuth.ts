@@ -8,20 +8,29 @@ export const userIsAdmin = (roles: string[] | undefined): boolean => {
   return roles.find((r) => r.match(/admin/)) !== undefined
 }
 
-export const useIsSuperAdmin = (roles: string[] | undefined): boolean => {
+export const userIsSuperAdmin = (roles: string[] | undefined): boolean => {
   if (!roles) return false
   return roles.find((r) => r.match(/superadmin/)) !== undefined
 }
 
 export const useAuth = (): IAuth => {
   const auth = useOIDCAuth()
+  if (!auth.isLoading && !auth.isAuthenticated && auth.user) {
+    console.log(***REMOVED***User is not authenticated, clearing storage and removing user.***REMOVED***)
+    // Clear storage manually if your library doesn***REMOVED***t auto-clean
+    localStorage.clear();
+    sessionStorage.clear();
+
+    // Or use the library***REMOVED***s built-in signout/remove user method
+    auth.removeUser();
+  }
   const [firstName, lastName] = auth.user?.profile?.given_name
     ? auth.user.profile.given_name.split(***REMOVED*** ***REMOVED***)
     : [null, null]
   const navigate = useNavigate()
   const roles: string[] = (auth.user?.profile?.roles as string[]) ?? []
   const isAdmin = userIsAdmin(roles)
-  const isSuperAdmin = useIsSuperAdmin(roles)
+  const isSuperAdmin = userIsSuperAdmin(roles)
   return {
     ...auth,
     isAdmin,
@@ -46,7 +55,7 @@ export const useAuth = (): IAuth => {
         redirect_uri,
       })
     },
-    user: auth.user
+    user: auth.isAuthenticated && auth.user
       ? {
         access_token: auth.user.access_token,
         expires_at: auth.user.expires_at ? new Date(auth.user.expires_at * 1000) : new Date(),

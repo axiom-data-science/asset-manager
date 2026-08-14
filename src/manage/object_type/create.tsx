@@ -189,6 +189,7 @@ const CreateObjectTypeForm = ({
 
       if (onSuccess) {
         onSuccess(newObjectType)
+        return
       }
 
       const navPath =
@@ -196,7 +197,6 @@ const CreateObjectTypeForm = ({
           ? buildStringFromTemplate(returnToOnSuccess, { ...newObjectType })
           : (new URLSearchParams(window.location.search).get('returnToOnSuccess') ?? undefined)
 
-      setSaving(false)
       navigate(`${navPath ?? '/object_type'}?uuid=${newObjectType.uuid}`)
     } catch (e: unknown) {
       setSaving(false)

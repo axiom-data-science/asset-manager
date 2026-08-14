@@ -27,10 +27,11 @@ import { Check, TriangleAlert, X } from 'lucide-react'
 import type { IValidationError } from '@/types/types'
 import { Tabs } from '@axdspub/axiom-ui-utilities'
 import BatchLoadDocuments from '@/import/components/batch_load_documents'
-import contextStateAtom from '@/state/contextStateAtom'
-import { atom, useAtom } from 'jotai'
+import contextStateAtom, { requestContextReloadAtom } from '@/state/contextStateAtom'
+import { atom, useAtom, useSetAtom } from 'jotai'
 import CreateObjectType from '@/manage/object_type/create'
 import type { JSONSchema6 } from 'json-schema'
+import { objectTypeForRecordsState, recordsToImportState } from '@/import/state/importState'
 
 
 const createObjectTypeFromDataState = atom(false)
@@ -182,7 +183,8 @@ const SelectObjectTypeForImport = ({ documents }: { documents: IDocumentImport[]
   const [contextState] = useAtom(contextStateAtom)
   const [schema, setSchema] = useAtom(schemaStateAtom)
   const [createObjectTypeFromData, setCreateObjectTypeFromData] = useAtom(createObjectTypeFromDataState)
-  const [selectedObjectType, setSelectedObjectType] = useState<string | undefined>(undefined)
+  const [selectedObjectType, setSelectedObjectType] = useAtom(objectTypeForRecordsState)
+
   const { data, isLoading, error } = useQuery({
     enabled: createObjectTypeFromData,
     queryKey: ['eval-object-types', documents],
@@ -215,7 +217,7 @@ const SelectObjectTypeForImport = ({ documents }: { documents: IDocumentImport[]
             value={createObjectTypeFromData}
             onChange={(checked) => {
               setCreateObjectTypeFromData(checked)
-              const newSchema = selectedObjectType ? getSchemaForSelectedObjectType(selectedObjectType) : null
+              const newSchema = selectedObjectType ? getSchemaForSelectedObjectType(selectedObjectType.uuid) : null
               setSchema(newSchema)
             }}
           />
@@ -231,9 +233,10 @@ const SelectObjectTypeForImport = ({ documents }: { documents: IDocumentImport[]
                   value: t.uuid
                 }
               })}
-              value={selectedObjectType}
+              value={selectedObjectType?.uuid}
               onChange={(o) => {
-                setSelectedObjectType(o?.value !== undefined ? String(o.value) : undefined)
+                const newObjectType = o?.value !== undefined ? contextState.object_types_by_uuid[o.value] : undefined
+                setSelectedObjectType(newObjectType)
                 if (o?.value !== undefined) {
                   const newSchema = getSchemaForSelectedObjectType(String(o.value))
                   setSchema({ ...newSchema })
@@ -298,10 +301,12 @@ export default ({
       loading: false,
     }
   })
-  const [fullDocs, setFullDocs] = useState<Array<IDocumentImport & IFullDocForImport> | undefined>(undefined)
   const [selectedTab, setSelectedTab] = useState('preload')
   const [createObjectTypeFromData] = useAtom(createObjectTypeFromDataState)
   const [schema] = useAtom(schemaStateAtom)
+  const reloadContext = useSetAtom(requestContextReloadAtom)
+  const [recordsToImport, setRecordsToImport] = useAtom(recordsToImportState)
+  const [, setObjectTypeForRecords] = useAtom(objectTypeForRecordsState)
   return (
     <Tabs
       className="h-full p-4 bg-blue-100"
@@ -321,7 +326,7 @@ export default ({
             }}
             onAllFullDocsLoaded={async (fullDocs) => {
               console.log('All full docs loaded:', fullDocs)
-              setFullDocs(fullDocs.slice())
+              setRecordsToImport(fullDocs.slice())
               setSelectedTab('validate')
             }}
             includeRandomSelector={true}
@@ -330,9 +335,9 @@ export default ({
         },
         {
           id: 'validate',
-          content: <SelectObjectTypeForImport documents={fullDocs ?? []} />,
+          content: <SelectObjectTypeForImport documents={recordsToImport ?? []} />,
           label: 'Validate against schema',
-          disabled: !fullDocs,
+          disabled: !recordsToImport?.length,
         },
         {
           id: 'create-new-type',
@@ -341,6 +346,8 @@ export default ({
             initialSchema={schema ?? undefined}
             initialLabel={label}
             onSuccess={(newObjectType) => {
+              reloadContext()
+              setObjectTypeForRecords(newObjectType)
               console.log('New object type created:', newObjectType)
             }}
           /></div>,

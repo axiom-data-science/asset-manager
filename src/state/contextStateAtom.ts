@@ -1,7 +1,7 @@
 import type { IAssetForm, IObjectSchema, IObjectType, IPerson, IPredicate } from ***REMOVED***@/types/types***REMOVED***
 import { atom } from ***REMOVED***jotai***REMOVED***
 
-const contextStateAtom = atom({
+export const makeInitialContextState = () => ({
     loaded: false,
     predicates: [] as IPredicate[],
     predicates_by_uuid: {} as Record<string, IPredicate>,
@@ -21,6 +21,15 @@ const contextStateAtom = atom({
     forms_by_object_type_uuid: {} as Record<string, IAssetForm[]>,
     persons: [] as IPerson[],
     persons_by_owner_sub: {} as Record<string, IPerson>,
+})
+
+const contextStateAtom = atom(makeInitialContextState())
+
+export const contextReloadTokenAtom = atom(0)
+
+export const requestContextReloadAtom = atom(null, (get, set) => {
+    set(contextStateAtom, makeInitialContextState())
+    set(contextReloadTokenAtom, get(contextReloadTokenAtom) + 1)
 })
 
 export default contextStateAtom

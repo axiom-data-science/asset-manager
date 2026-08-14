@@ -68,7 +68,7 @@ import { fetchObjectCategories, fetchObjectTypes } from ***REMOVED***@/manage/ob
 import { fetchObjectSchemas } from ***REMOVED***@/manage/object_schema/services***REMOVED***
 import { ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
 import { fetchForms } from ***REMOVED***@/manage/form/services***REMOVED***
-import contextStateAtom from ***REMOVED***@/state/contextStateAtom***REMOVED***
+import contextStateAtom, { contextReloadTokenAtom } from ***REMOVED***@/state/contextStateAtom***REMOVED***
 import { useAtom } from ***REMOVED***jotai***REMOVED***
 import type { IAssetForm } from ***REMOVED***@/types/types***REMOVED***
 import { fetchPersons } from ***REMOVED***@/manage/person/services***REMOVED***
@@ -682,9 +682,10 @@ function App(): ReactElement {
 
 const AppPreload = (): ReactElement => {
   const auth = useAuth()
+  const [contextReloadToken] = useAtom(contextReloadTokenAtom)
   const [contextState, setContextState] = useAtom(contextStateAtom)
   const { data, isLoading, error } = useQuery({
-    queryKey: [***REMOVED***preload***REMOVED***],
+    queryKey: [***REMOVED***preload***REMOVED***, contextReloadToken],
     queryFn: async ({ signal }) => {
       const predicates = await fetchPredicates({ signal })
       const object_types = await fetchObjectTypes({ signal })

@@ -107,7 +107,6 @@ const ImportRecordsPage = ({
     const [activeUrl, setActiveUrl] = useState<string | undefined>(undefined)
     const [activeDetailUrl, setActiveDetailUrl] = useState<string | undefined>(undefined)
     const [loadCount, setLoadCount] = useState(0)
-    const [recordsToImport] = useAtom(recordsToImportState)
     const [objectTypeForRecords] = useAtom(objectTypeForRecordsState)
 
     const [prevDefaultImportUrl, setPrevDefaultImportUrl] = useState(defaultImportUrl)

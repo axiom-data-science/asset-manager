@@ -68,7 +68,7 @@ import { fetchObjectCategories, fetchObjectTypes } from '@/manage/object_type/se
 import { fetchObjectSchemas } from '@/manage/object_schema/services'
 import { ViewWithLoader } from '@axdspub/axiom-ui-utilities'
 import { fetchForms } from '@/manage/form/services'
-import contextStateAtom from '@/state/contextStateAtom'
+import contextStateAtom, { contextReloadTokenAtom } from '@/state/contextStateAtom'
 import { useAtom } from 'jotai'
 import type { IAssetForm } from '@/types/types'
 import { fetchPersons } from '@/manage/person/services'
@@ -682,9 +682,10 @@ function App(): ReactElement {
 
 const AppPreload = (): ReactElement => {
   const auth = useAuth()
+  const [contextReloadToken] = useAtom(contextReloadTokenAtom)
   const [contextState, setContextState] = useAtom(contextStateAtom)
   const { data, isLoading, error } = useQuery({
-    queryKey: ['preload'],
+    queryKey: ['preload', contextReloadToken],
     queryFn: async ({ signal }) => {
       const predicates = await fetchPredicates({ signal })
       const object_types = await fetchObjectTypes({ signal })

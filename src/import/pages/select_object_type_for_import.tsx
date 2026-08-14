@@ -116,9 +116,9 @@ const ValidateAgainstSchema = ({
             {validationResults.map((result, index) => (
               <li key={index} className="flex flex-row gap-2 items-center">
                 {result.isValid ? (
-                  <Check className="text-green-600" />
+                  <Check className="text-green-600 flex-none" />
                 ) : (
-                  <X className="text-red-600" />
+                  <X className="text-red-600 flex-none" />
                 )}
                 <Dialog modal={true}>
                   <DialogTrigger asChild>
@@ -160,11 +160,11 @@ const ValidateAgainstSchema = ({
                     />
                   </DialogContent>
                 </Dialog>
-                <span className="text-xs">
+                <span className="text-xs overflow-hidden">
                   {result.document.label ?? result.document.slug}:{' '}
                 </span>
                 {result.isValid ?
-                  'Valid' :
+                  <span className='bg-green-200 p-1 rounded-sm text-xs'>Valid</span> :
                   <Tooltip content={<div className='flex flex-col gap-2 text-xs w-100'>{result?.errors?.map(e => <p key={e.message}>{e.message}</p>)}</div>} dark={true}>
                     <span className='bg-red-600 p-1 text-white text-xs flex flex-row gap-1 rounded-sm shadow-sm items-center whitespace-nowrap'><TriangleAlert className='w-3 h-3' /> {result?.errors?.length} errors</span>
                   </Tooltip>

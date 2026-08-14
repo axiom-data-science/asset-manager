@@ -1,4 +1,4 @@
-import type { IObjectType } from '@/types/types'
+import type { IDocument, IObjectType } from '@/types/types'
 import { Input, Tabs, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
 import { useQuery } from '@tanstack/react-query'
 
@@ -9,6 +9,10 @@ import type { IDocumentImport, IFullDocForImport } from '@/import/types'
 import SelectObjectTypeForImport from './select_object_type_for_import'
 import { objectTypeForRecordsState, recordsToImportState } from '@/import/state/importState'
 import { useAtom } from 'jotai'
+import BatchLoadDocuments from '@/import/components/batch_load_documents'
+import { postDocument } from '@/manage/document/services'
+import { useAuth } from '@/auth/useAuth'
+import { pick } from 'lodash-es'
 
 
 const TableComponentsOverride: TableComponents<IDocumentImport> = {
@@ -154,6 +158,7 @@ const ImportRecordsPage = ({
         placeholderData: (previousData) => previousData,
     })
 
+    const auth = useAuth()
     const [selectedTab, setSelectedTab] = useState('records')
 
     /* const state = useMemo<'idle' | 'loading' | 'success' | 'error'>(() => {
@@ -238,20 +243,31 @@ const ImportRecordsPage = ({
                                         label: 'Import Records',
                                         disabled: !documents?.length || !objectTypeForRecords,
                                         content: (
-                                            <>
-                                                Importing {documents?.length} records with object type {objectTypeForRecords?.label}
-                                                {/* <BatchLoadDocuments
-                                                documents={documents}
-                                                getFullDoc={getFullDoc}
-                                                detailRoot={activeDetailUrl}
-                                                onFullDocLoaded={async (doc) => {
-                                                    console.log('Full doc loaded:', doc)
-                                                }}
-                                                onAllFullDocsLoaded={async (fullDocs) => {
-                                                    console.log('All full docs loaded:', fullDocs)
-                                                }}
-                                            /> */}
-                                            </>
+                                            <div className='flex flex-col h-full gap-2'>
+                                                <div>Importing {documents?.length} records with object type {objectTypeForRecords?.label}</div>
+                                                <BatchLoadDocuments
+                                                    documents={documents}
+                                                    getFullDoc={getFullDoc}
+                                                    detailRoot={activeDetailUrl}
+                                                    onFullDocLoaded={async (doc) => {
+                                                        if (objectTypeForRecords !== undefined) {
+                                                            const docToSave = {
+                                                                object_type_uuid: objectTypeForRecords.uuid,
+                                                                ...pick(doc, ['label', 'description', 'slug', 'data']),
+                                                            } as Omit<IDocument, 'uuid' | 'created_at' | 'updated_at'>
+                                                            const newDoc = await postDocument({
+                                                                document: docToSave,
+                                                                token: auth.user?.access_token ?? '',
+                                                            })
+
+                                                            console.log('new document saved!', newDoc)
+                                                        }
+                                                    }}
+                                                    onAllFullDocsLoaded={async (fullDocs) => {
+                                                        console.log('All full docs loaded:', fullDocs)
+                                                    }}
+                                                />
+                                            </div>
                                         ),
                                     },
                                 ]}

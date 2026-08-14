@@ -6,7 +6,7 @@ import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
 import { useNavigate, useSearchParams } from ***REMOVED***react-router-dom***REMOVED***
 import type { IObjectSchema, IObjectType } from ***REMOVED***@/types/types***REMOVED***
 import { postObjectSchema } from ***REMOVED***@/manage/object_schema/services***REMOVED***
-import { validate } from ***REMOVED***@/lib/utils***REMOVED***
+import { buildStringFromTemplate, validate } from ***REMOVED***@/lib/utils***REMOVED***
 import { useSlug } from ***REMOVED***@/manage/components/useSlug***REMOVED***
 import { useObjectTypeSchemaAndObjectCategories } from ***REMOVED***@/manage/object_type/useObjectType***REMOVED***
 import type { JSONSchema6 } from ***REMOVED***json-schema***REMOVED***
@@ -15,10 +15,19 @@ import Errors from ***REMOVED***@/manage/components/errors***REMOVED***
 
 const CreateObjectTypeForm = ({
   object_categories,
-  schema
+  objectTypeSchema,
+  initialSchema,
+  initialLabel,
+  onSuccess,
+  returnToOnSuccess
+
 }: {
   object_categories: string[],
-  schema: JSONSchema6
+  objectTypeSchema: JSONSchema6,
+  initialSchema?: JSONSchema6,
+  initialLabel?: string,
+  onSuccess?: (document: IObjectType) => void
+  returnToOnSuccess?: string
 }): ReactElement => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -94,7 +103,8 @@ const CreateObjectTypeForm = ({
       category:
         object_categories.find((c) => c === searchParams.get(***REMOVED***category***REMOVED***)) ??
         object_categories.find((d) => d.toLowerCase() === ***REMOVED***document***REMOVED***) ??
-        object_categories[0]
+        object_categories[0],
+      label: initialLabel ?? undefined,
     }
   })
 
@@ -103,7 +113,11 @@ const CreateObjectTypeForm = ({
     formState: [schemaFormValue, setSchemaFormValue],
     filterForSave: schemaFilterForSave,
   } = useSlug({
-    form: schemaFormWithoutSlug
+    form: schemaFormWithoutSlug,
+    initialFormValues: initialSchema ? {
+      json_schema: initialSchema as JSON,
+      label: initialLabel ?? undefined,
+    } : {},
   })
 
 
@@ -112,10 +126,10 @@ const CreateObjectTypeForm = ({
     formState: [objectTypeConfigFormValue, setObjectTypeConfigFormValue],
     filterForSave: objectTypeConfigFilterForSave
   } = useObjectTypeDataForm({
-    objectTypeSchema: schema
+    objectTypeSchema
   })
 
-  const [createDefaultSchema, setCreateDefaultSchema] = useState(false)
+  const [createDefaultSchema, setCreateDefaultSchema] = useState(initialSchema ? true : false)
 
 
 
@@ -172,7 +186,18 @@ const CreateObjectTypeForm = ({
         })
       }
       setSaving(false)
-      navigate(***REMOVED***/object_type***REMOVED***)
+
+      if (onSuccess) {
+        onSuccess(newObjectType)
+      }
+
+      const navPath =
+        returnToOnSuccess !== undefined
+          ? buildStringFromTemplate(returnToOnSuccess, { ...newObjectType })
+          : (new URLSearchParams(window.location.search).get(***REMOVED***returnToOnSuccess***REMOVED***) ?? undefined)
+
+      setSaving(false)
+      navigate(`${navPath ?? ***REMOVED***/object_type***REMOVED***}?uuid=${newObjectType.uuid}`)
     } catch (e: unknown) {
       setSaving(false)
       setErrorMessages([
@@ -245,11 +270,28 @@ const CreateObjectTypeForm = ({
   )
 }
 
-const CreateObjectType = (): ReactElement => {
+const CreateObjectType = ({
+  initialSchema,
+  initialLabel,
+  onSuccess,
+  returnToOnSuccess,
+}: {
+  initialSchema?: JSONSchema6,
+  initialLabel?: string
+  onSuccess?: (newObjectType: IObjectType) => void
+  returnToOnSuccess?: string
+}): ReactElement => {
   const { data, isLoading, error } = useObjectTypeSchemaAndObjectCategories()
   return (
     <ViewWithLoader isLoading={isLoading} error={error} data={data}>
-      {data && <CreateObjectTypeForm object_categories={data.object_categories} schema={data.schema} />}
+      {data && <CreateObjectTypeForm
+        object_categories={data.object_categories}
+        objectTypeSchema={data.schema}
+        initialSchema={initialSchema}
+        initialLabel={initialLabel}
+        onSuccess={onSuccess}
+        returnToOnSuccess={returnToOnSuccess}
+      />}
     </ViewWithLoader>
   )
 }

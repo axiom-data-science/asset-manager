@@ -1,4 +1,4 @@
-import type { IObjectType } from ***REMOVED***@/types/types***REMOVED***
+import type { IDocument, IObjectType } from ***REMOVED***@/types/types***REMOVED***
 import { Input, Tabs, ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
 import { useQuery } from ***REMOVED***@tanstack/react-query***REMOVED***
 
@@ -9,6 +9,10 @@ import type { IDocumentImport, IFullDocForImport } from ***REMOVED***@/import/ty
 import SelectObjectTypeForImport from ***REMOVED***./select_object_type_for_import***REMOVED***
 import { objectTypeForRecordsState, recordsToImportState } from ***REMOVED***@/import/state/importState***REMOVED***
 import { useAtom } from ***REMOVED***jotai***REMOVED***
+import BatchLoadDocuments from ***REMOVED***@/import/components/batch_load_documents***REMOVED***
+import { postDocument } from ***REMOVED***@/manage/document/services***REMOVED***
+import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
+import { pick } from ***REMOVED***lodash-es***REMOVED***
 
 
 const TableComponentsOverride: TableComponents<IDocumentImport> = {
@@ -154,6 +158,7 @@ const ImportRecordsPage = ({
         placeholderData: (previousData) => previousData,
     })
 
+    const auth = useAuth()
     const [selectedTab, setSelectedTab] = useState(***REMOVED***records***REMOVED***)
 
     /* const state = useMemo<***REMOVED***idle***REMOVED*** | ***REMOVED***loading***REMOVED*** | ***REMOVED***success***REMOVED*** | ***REMOVED***error***REMOVED***>(() => {
@@ -238,20 +243,31 @@ const ImportRecordsPage = ({
                                         label: ***REMOVED***Import Records***REMOVED***,
                                         disabled: !documents?.length || !objectTypeForRecords,
                                         content: (
-                                            <>
-                                                Importing {documents?.length} records with object type {objectTypeForRecords?.label}
-                                                {/* <BatchLoadDocuments
-                                                documents={documents}
-                                                getFullDoc={getFullDoc}
-                                                detailRoot={activeDetailUrl}
-                                                onFullDocLoaded={async (doc) => {
-                                                    console.log(***REMOVED***Full doc loaded:***REMOVED***, doc)
-                                                }}
-                                                onAllFullDocsLoaded={async (fullDocs) => {
-                                                    console.log(***REMOVED***All full docs loaded:***REMOVED***, fullDocs)
-                                                }}
-                                            /> */}
-                                            </>
+                                            <div className=***REMOVED***flex flex-col h-full gap-2***REMOVED***>
+                                                <div>Importing {documents?.length} records with object type {objectTypeForRecords?.label}</div>
+                                                <BatchLoadDocuments
+                                                    documents={documents}
+                                                    getFullDoc={getFullDoc}
+                                                    detailRoot={activeDetailUrl}
+                                                    onFullDocLoaded={async (doc) => {
+                                                        if (objectTypeForRecords !== undefined) {
+                                                            const docToSave = {
+                                                                object_type_uuid: objectTypeForRecords.uuid,
+                                                                ...pick(doc, [***REMOVED***label***REMOVED***, ***REMOVED***description***REMOVED***, ***REMOVED***slug***REMOVED***, ***REMOVED***data***REMOVED***]),
+                                                            } as Omit<IDocument, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>
+                                                            const newDoc = await postDocument({
+                                                                document: docToSave,
+                                                                token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
+                                                            })
+
+                                                            console.log(***REMOVED***new document saved!***REMOVED***, newDoc)
+                                                        }
+                                                    }}
+                                                    onAllFullDocsLoaded={async (fullDocs) => {
+                                                        console.log(***REMOVED***All full docs loaded:***REMOVED***, fullDocs)
+                                                    }}
+                                                />
+                                            </div>
                                         ),
                                     },
                                 ]}

@@ -131,22 +131,24 @@ const LockButton = ({
   const [lockedAt, setLockedAt] = useState(document.locked_at)
   const handleClick = (): void => {
     const lockToSet = !locked ? new Date().toISOString() : null
-    const lockSubToSet = !locked ? auth?.user?.profile?.sub ?? null : null
+    const lockSubToSet = !locked ? (auth?.user?.profile?.sub ?? null) : null
     setUpdating(true)
     patchDocument({
       token: auth?.user?.access_token ?? ***REMOVED******REMOVED***,
       uuid: document.uuid,
       document: {
         locked_at: lockToSet,
-        lock_sub: lockSubToSet
-      }
-    }).then(() => {
-      onChange?.(lockToSet)
-      setLocked(lockToSet !== null)
-      setLockedAt(lockToSet)
-    }).finally(() => {
-      setUpdating(false)
+        lock_sub: lockSubToSet,
+      },
     })
+      .then(() => {
+        onChange?.(lockToSet)
+        setLocked(lockToSet !== null)
+        setLockedAt(lockToSet)
+      })
+      .finally(() => {
+        setUpdating(false)
+      })
   }
   if (!canModify) {
     return (
@@ -195,7 +197,6 @@ const LockButton = ({
 }
 
 const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
-
   const [contextState] = useAtom(contextStateAtom)
   const { persons_by_owner_sub } = contextState
   const [filters, setFilters] = useState<Record<string, string | undefined>>({})
@@ -243,7 +244,6 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
   return (
     <ViewWithLoader isLoading={isLoading} error={error} data={documents}>
       <h1 className="text-2xl font-bold py-2 sticky top-0 bg-white">Documents</h1>
-      <pre>{JSON.stringify(filters, null, 2)}</pre>
       <div className="flex flex-row gap-4 p-2 py-4 sticky top-12 bg-white z-10">
         {Object.keys(documents?.rollups ?? []).map((r) => {
           const rollup = documents?.rollups?.[r].filter(
@@ -252,7 +252,6 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
           if (rollup?.length === 0) return null
           return (
             <div className="flex flex-row gap-2" key={r}>
-
               <span className="font-semibold">
                 {r
                   .split(***REMOVED***_***REMOVED***)
@@ -268,11 +267,13 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
                 size="xs"
                 options={
                   rollup?.map((item) => ({
-                    label: `${r === ***REMOVED***object_type_uuid***REMOVED***
-                      ? object_types_map[item.label]?.label
-                      : r === ***REMOVED***owner_sub***REMOVED***
-                        ? persons_by_owner_sub[item.label]?.label ?? item.label
-                        : item.label} (${item.count})`,
+                    label: `${
+                      r === ***REMOVED***object_type_uuid***REMOVED***
+                        ? object_types_map[item.label]?.label
+                        : r === ***REMOVED***owner_sub***REMOVED***
+                          ? (persons_by_owner_sub[item.label]?.label ?? item.label)
+                          : item.label
+                    } (${item.count})`,
                     value: item.label,
                   })) ?? []
                 }
@@ -317,8 +318,12 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
             {
               id: ***REMOVED***locked***REMOVED***,
               label: ***REMOVED***Locked***REMOVED***,
-              accessor: (r) =>
-                <LockButton document={r as IDocument & { can_modify: boolean }} onChange={refetchList} />
+              accessor: (r) => (
+                <LockButton
+                  document={r as IDocument & { can_modify: boolean }}
+                  onChange={refetchList}
+                />
+              ),
             },
             {
               label: ***REMOVED***Type***REMOVED***,
@@ -348,7 +353,10 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
               id: ***REMOVED***delete***REMOVED***,
               accessor: (r) => {
                 return r.can_modify ? (
-                  <DeleteButton document={r as IDocument & { can_modify: boolean }} onDelete={refetchList} />
+                  <DeleteButton
+                    document={r as IDocument & { can_modify: boolean }}
+                    onDelete={refetchList}
+                  />
                 ) : null
               },
             },

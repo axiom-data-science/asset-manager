@@ -19,13 +19,12 @@ const CreateObjectTypeForm = ({
   initialSchema,
   initialLabel,
   onSuccess,
-  returnToOnSuccess
-
+  returnToOnSuccess,
 }: {
-  object_categories: string[],
-  objectTypeSchema: JSONSchema6,
-  initialSchema?: JSONSchema6,
-  initialLabel?: string,
+  object_categories: string[]
+  objectTypeSchema: JSONSchema6
+  initialSchema?: JSONSchema6
+  initialLabel?: string
   onSuccess?: (document: IObjectType) => void
   returnToOnSuccess?: string
 }): ReactElement => {
@@ -62,9 +61,8 @@ const CreateObjectTypeForm = ({
         id: ***REMOVED***description***REMOVED***,
         label: ***REMOVED***Description***REMOVED***,
         type: ***REMOVED***long_text***REMOVED***,
-      }
-    ]
-
+      },
+    ],
   }
 
   const schemaFormWithoutSlug: IForm = {
@@ -105,7 +103,7 @@ const CreateObjectTypeForm = ({
         object_categories.find((d) => d.toLowerCase() === ***REMOVED***document***REMOVED***) ??
         object_categories[0],
       label: initialLabel ?? undefined,
-    }
+    },
   })
 
   const {
@@ -114,24 +112,23 @@ const CreateObjectTypeForm = ({
     filterForSave: schemaFilterForSave,
   } = useSlug({
     form: schemaFormWithoutSlug,
-    initialFormValues: initialSchema ? {
-      json_schema: initialSchema as JSON,
-      label: initialLabel ?? undefined,
-    } : {},
+    initialFormValues: initialSchema
+      ? {
+          json_schema: initialSchema as JSON,
+          label: initialLabel ?? undefined,
+        }
+      : {},
   })
-
 
   const {
     form: objectTypeConfigForm,
     formState: [objectTypeConfigFormValue, setObjectTypeConfigFormValue],
-    filterForSave: objectTypeConfigFilterForSave
+    filterForSave: objectTypeConfigFilterForSave,
   } = useObjectTypeDataForm({
-    objectTypeSchema
+    objectTypeSchema,
   })
 
   const [createDefaultSchema, setCreateDefaultSchema] = useState(initialSchema ? true : false)
-
-
 
   const onSave = async () => {
     setSaving(true)
@@ -139,19 +136,22 @@ const CreateObjectTypeForm = ({
       const typeValid = await validate({ form, formValues: formValue })
       const schemaValid = createDefaultSchema
         ? await validate({
-          form: schemaForm,
-          formValues: schemaFormValue,
-          schemaFields: [***REMOVED***json_schema***REMOVED***],
-        })
+            form: schemaForm,
+            formValues: schemaFormValue,
+            schemaFields: [***REMOVED***json_schema***REMOVED***],
+          })
         : { valid: true, errors: [] }
       const valid = {
         valid: typeValid.valid && schemaValid.valid,
-        errors: [...typeValid.errors, ...(schemaValid.errors?.map(e => {
-          return {
-            ...e,
-            fieldLabel: `${e.fieldLabel ? `${e.fieldLabel}` : ***REMOVED******REMOVED***} [default schema]`
-          }
-        }))],
+        errors: [
+          ...typeValid.errors,
+          ...(schemaValid.errors?.map((e) => {
+            return {
+              ...e,
+              fieldLabel: `${e.fieldLabel ? `${e.fieldLabel}` : ***REMOVED******REMOVED***} [default schema]`,
+            }
+          }) ?? []),
+        ],
       }
       if (!valid.valid) {
         setSaving(false)
@@ -225,27 +225,28 @@ const CreateObjectTypeForm = ({
       <Tabs
         tabs={[
           {
-            id: "object-type-details",
+            id: ***REMOVED***object-type-details***REMOVED***,
             label: ***REMOVED***Object type details***REMOVED***,
-            content: (
-              <FormCreator form={form} formValueState={[formValue, setFormValue]} />
-            )
+            content: <FormCreator form={form} formValueState={[formValue, setFormValue]} />,
           },
           {
             id: ***REMOVED***object-type-config***REMOVED***,
             label: ***REMOVED***Object type config***REMOVED***,
             content: (
-              <FormCreator form={objectTypeConfigForm} formValueState={[objectTypeConfigFormValue, setObjectTypeConfigFormValue]} />
-            )
+              <FormCreator
+                form={objectTypeConfigForm}
+                formValueState={[objectTypeConfigFormValue, setObjectTypeConfigFormValue]}
+              />
+            ),
           },
           {
-            id: "object-type-default-schema",
+            id: ***REMOVED***object-type-default-schema***REMOVED***,
             label: ***REMOVED***Default schema***REMOVED***,
             content: (
               <>
                 <Checkbox
                   id="create_default_schema"
-                  testId=***REMOVED***create_default_schema***REMOVED***
+                  testId="create_default_schema"
                   label="Create default schema"
                   value={createDefaultSchema}
                   onChange={(checked) => {
@@ -254,11 +255,14 @@ const CreateObjectTypeForm = ({
                   }}
                 />
                 {createDefaultSchema && (
-                  <FormCreator form={schemaForm} formValueState={[schemaFormValue, setSchemaFormValue]} />
+                  <FormCreator
+                    form={schemaForm}
+                    formValueState={[schemaFormValue, setSchemaFormValue]}
+                  />
                 )}
               </>
-            )
-          }
+            ),
+          },
         ]}
       />
       <div className="flex flex-row gap-2 sticky bg-white/80 bottom-0 py-4 justify-end">
@@ -276,7 +280,7 @@ const CreateObjectType = ({
   onSuccess,
   returnToOnSuccess,
 }: {
-  initialSchema?: JSONSchema6,
+  initialSchema?: JSONSchema6
   initialLabel?: string
   onSuccess?: (newObjectType: IObjectType) => void
   returnToOnSuccess?: string
@@ -284,14 +288,16 @@ const CreateObjectType = ({
   const { data, isLoading, error } = useObjectTypeSchemaAndObjectCategories()
   return (
     <ViewWithLoader isLoading={isLoading} error={error} data={data}>
-      {data && <CreateObjectTypeForm
-        object_categories={data.object_categories}
-        objectTypeSchema={data.schema}
-        initialSchema={initialSchema}
-        initialLabel={initialLabel}
-        onSuccess={onSuccess}
-        returnToOnSuccess={returnToOnSuccess}
-      />}
+      {data && (
+        <CreateObjectTypeForm
+          object_categories={data.object_categories}
+          objectTypeSchema={data.schema}
+          initialSchema={initialSchema}
+          initialLabel={initialLabel}
+          onSuccess={onSuccess}
+          returnToOnSuccess={returnToOnSuccess}
+        />
+      )}
     </ViewWithLoader>
   )
 }

@@ -158,8 +158,6 @@ const DocumentSuccessPage = ({ brand }: { brand?: string }): ReactElement => {
 }
 
 function App(): ReactElement {
-
-
   const auth = useAuth()
   console.log(auth)
 
@@ -278,10 +276,10 @@ function App(): ReactElement {
             />
 
             <Route
-              path=***REMOVED***/submit-document***REMOVED***
+              path="/submit-document"
               element={
-                <div className=***REMOVED***bg-slate-100 p-20 shadow-md m-10 mt-20***REMOVED***>
-                  <h1 className=***REMOVED***text-lg font-medium***REMOVED***>Submitted!</h1>
+                <div className="bg-slate-100 p-20 shadow-md m-10 mt-20">
+                  <h1 className="text-lg font-medium">Submitted!</h1>
                 </div>
               }
             />
@@ -691,7 +689,10 @@ const AppPreload = (): ReactElement => {
       const object_types = await fetchObjectTypes({ signal })
       const object_schemas = await fetchObjectSchemas({ signal })
       const object_categories = await fetchObjectCategories({ signal })
-      const persons = auth.isAdmin && auth?.user?.access_token ? await fetchPersons({ signal, token: auth.user.access_token }) : []
+      const persons =
+        auth.isAdmin && auth?.user?.access_token
+          ? await fetchPersons({ signal, token: auth.user.access_token })
+          : []
       const persons_by_owner_sub = Object.fromEntries(persons.map((p) => [p.owner_sub, p]))
       const forms = await fetchForms({ signal })
 
@@ -706,7 +707,6 @@ const AppPreload = (): ReactElement => {
         }
       }
 
-
       const newContextState = {
         predicates,
         predicates_by_uuid: Object.fromEntries(predicates.map((p) => [p.uuid, p])),
@@ -718,37 +718,39 @@ const AppPreload = (): ReactElement => {
         object_schemas_by_uuid,
         object_schemas_by_slug: Object.fromEntries(object_schemas.map((os) => [os.slug, os])),
         object_schema_defaults_by_object_type_uuid: Object.fromEntries(
-          object_schemas.filter(s => s.is_type_default).map((os) => [os.object_type_uuid, os])
+          object_schemas.filter((s) => s.is_type_default).map((os) => [os.object_type_uuid, os])
         ),
         object_categories,
         forms,
         forms_by_uuid,
         forms_by_slug: Object.fromEntries(forms.map((f) => [f.slug, f])),
         form_defaults_by_object_type_uuid: Object.fromEntries(
-          forms.filter(f => f.is_schema_and_version_default).map((f) => [f.object_type_uuid, f])
+          forms.filter((f) => f.is_schema_and_version_default).map((f) => [f.object_type_uuid, f])
         ),
         forms_by_object_type_uuid,
         persons,
         persons_by_owner_sub,
-        loaded: true
+        loaded: true,
       }
       setContextState(newContextState)
       return newContextState
-    }
+    },
   })
-  return <ViewWithLoader isLoading={isLoading} error={error} data={data}>
-    {data && contextState.loaded &&
-      <App />
-    }
-  </ViewWithLoader>
+  return (
+    <ViewWithLoader isLoading={isLoading} error={error} data={data}>
+      {data && contextState.loaded && <App />}
+    </ViewWithLoader>
+  )
 }
 
 const AuthPreload = (): ReactElement => {
   const auth = useAuth()
   // make sure auth is done loading
-  return <ViewWithLoader isLoading={auth.isLoading} error={null} data={{}}>
-    {!auth.isLoading && <AppPreload />}
-  </ViewWithLoader>
+  return (
+    <ViewWithLoader isLoading={auth.isLoading} error={null} data={{}}>
+      {!auth.isLoading && (auth.isAuthenticated ? <AppPreload /> : <LoginPage />)}
+    </ViewWithLoader>
+  )
 }
 
 const AppBoundary = (): ReactElement => {
@@ -764,11 +766,13 @@ const AppBoundary = (): ReactElement => {
       </div>
     )
   }
-  return <ErrorBoundary fallbackRender={fallbackRender}>
-    <QueryClientProvider client={queryClient}>
-      <AuthPreload />
-    </QueryClientProvider>
-  </ErrorBoundary>
+  return (
+    <ErrorBoundary fallbackRender={fallbackRender}>
+      <QueryClientProvider client={queryClient}>
+        <AuthPreload />
+      </QueryClientProvider>
+    </ErrorBoundary>
+  )
 }
 
 export default AppBoundary

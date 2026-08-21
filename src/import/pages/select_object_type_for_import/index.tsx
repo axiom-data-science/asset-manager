@@ -3,7 +3,7 @@ import type { IDocumentImport, IFullDocForImport } from '../../types'
 import { Inputs } from '@axdspub/axiom-ui-forms'
 
 import { type LanguageName, quicktype, jsonInputForTargetLanguage, InputData } from 'quicktype-core'
-import { Checkbox, SelectInput, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
+import { Checkbox, SelectInput, Tooltip, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
 import { useState, type ReactElement } from 'react'
 
 import { Tabs } from '@axdspub/axiom-ui-utilities'
@@ -14,6 +14,13 @@ import CreateObjectType from '@/manage/object_type/create'
 import type { JSONSchema6 } from 'json-schema'
 import { objectTypeForRecordsState, recordsToImportState } from '@/import/state/importState'
 import ValidateAgainstSchema from './validate_against_schema'
+import {
+  convertEnumToOpenStringAtPath,
+  convertToEnumOnlyAtPath,
+  findEnumProperties,
+  removeEnumAtPath,
+} from './schema_enum_utils'
+import { Redo2, Undo2, X } from 'lucide-react'
 
 const createObjectTypeFromDataState = atom(false)
 const schemaStateAtom = atom<JSONSchema6 | null>(null)
@@ -77,6 +84,7 @@ const SelectObjectTypeForImportTab = ({
       contextState.object_schema_defaults_by_object_type_uuid[objectTypeUuid]?.json_schema ?? null
     )
   }
+  const enumProps = schema ? findEnumProperties(schema) : []
   return (
     <>
       <div className="flex flex-row gap-4 h-full">
@@ -122,19 +130,99 @@ const SelectObjectTypeForImportTab = ({
           {createObjectTypeFromData && (
             <ViewWithLoader isLoading={isLoading} error={error} data={data}>
               {data && (
-                <Inputs.JSONInput
-                  value={schema as JSON}
-                  field={{
-                    id: 'objectTypeSchema',
-                    label: 'Object type schema',
-                    description:
-                      'The schema for the object type to be imported. This is generated from the imported data, but can be modified if needed.',
-                    type: 'json',
-                  }}
-                  onChange={(value) => {
-                    setSchema(value as JSONSchema6)
-                  }}
-                />
+                <>
+                  {enumProps.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                      <span className="text-xs font-bold">Enum properties found in schema:</span>
+                      <div className="flex flex-row gap-2 items-center text-xs">
+                        <span className="flex flex-row gap-1 items-center">
+                          <X className="w-3 h-3 text-red-600" /> Remove all enums
+                        </span>
+                        <span className="flex flex-row gap-1 items-center">
+                          <Redo2 className="w-3 h-3 text-green-600" /> Convert all enums to optional
+                        </span>
+                        <span className="flex flex-row gap-1 items-center">
+                          <Undo2 className="w-3 h-3 text-green-600" /> Convert all enums to strict
+                        </span>
+                      </div>
+                      <ul className="flex flex-col gap-1 text-xs">
+                        {enumProps.map((p) => (
+                          <li key={p.path.join('.')} className="flex flex-row gap-2 items-start">
+                            <Tooltip
+                              content={`Remove enum from ${p.name} (converts to "any string")`}
+                            >
+                              <X
+                                className="w-3 h-3 text-red-600 cursor-pointer"
+                                onClick={() => {
+                                  const newSchema = { ...schema }
+                                  const updatedSchema = removeEnumAtPath(newSchema, p.path)
+                                  setSchema(updatedSchema)
+                                }}
+                              />
+                            </Tooltip>
+                            {p.mode === 'enum-only' ? (
+                              <Tooltip content="Keep enum, but allow other values">
+                                <Redo2
+                                  className="w-3 h-3 text-blue-600 cursor-pointer"
+                                  onClick={() => {
+                                    const newSchema = { ...schema }
+                                    const updatedSchema = convertEnumToOpenStringAtPath(
+                                      newSchema,
+                                      p.path
+                                    )
+                                    setSchema(updatedSchema)
+                                  }}
+                                />
+                              </Tooltip>
+                            ) : (
+                              <Tooltip content='Make enum-only (remove "any string" or "null")'>
+                                <Undo2
+                                  className="w-3 h-3 text-blue-600 cursor-pointer"
+                                  onClick={() => {
+                                    const newSchema = { ...schema }
+                                    const updatedSchema = convertToEnumOnlyAtPath(newSchema, p.path)
+                                    setSchema(updatedSchema)
+                                  }}
+                                />
+                              </Tooltip>
+                            )}
+                            <span className="bg-slate-200 p-1 rounded-sm text-xs">{p.mode}</span>
+                            <span className="font-bold">{p.name}</span>
+                            <span className="text-gray-600">({p.path.join('.')})</span>
+                            <Tooltip
+                              content={
+                                <ul className="list-disc pl-4 text-xs">
+                                  {p?.enum?.map((e) => (
+                                    <li key={String(e)}>{String(e)}</li>
+                                  ))}
+                                </ul>
+                              }
+                              useSpan={true}
+                              dark={true}
+                            >
+                              <span className="bg-slate-200 p-1 rounded-md shadow">
+                                {p?.enum?.length ?? 0} enum values
+                              </span>
+                            </Tooltip>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <Inputs.JSONInput
+                    value={schema as JSON}
+                    field={{
+                      id: 'objectTypeSchema',
+                      label: 'Object type schema',
+                      description:
+                        'The schema for the object type to be imported. This is generated from the imported data, but can be modified if needed.',
+                      type: 'json',
+                    }}
+                    onChange={(value) => {
+                      setSchema(value as JSONSchema6)
+                    }}
+                  />
+                </>
               )}
             </ViewWithLoader>
           )}

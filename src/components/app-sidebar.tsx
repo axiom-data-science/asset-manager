@@ -10,7 +10,29 @@ import {
 } from '@/components/ui/sidebar'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { Book, BookPlus, ChartBarBig, ChevronDown, FilePen, Grid2X2, Grid2X2Plus, Import, Layers2, Layers3, LayersPlus, List, Lock, Network, PersonStanding, Plus, Share, Ship, Thermometer, User } from 'lucide-react'
+import {
+  Book,
+  BookPlus,
+  ChartBarBig,
+  ChevronDown,
+  FilePen,
+  Grid2X2,
+  Grid2X2Plus,
+  Import,
+  Layers2,
+  Layers3,
+  LayersPlus,
+  List,
+  Lock,
+  Network,
+  PersonStanding,
+  Plus,
+  RotateCw,
+  Share,
+  Ship,
+  Thermometer,
+  User,
+} from 'lucide-react'
 import { SidebarGroupContent, SidebarGroupLabel } from '@/components/ui/sidebar'
 import { Link } from 'react-router-dom'
 
@@ -31,22 +53,22 @@ export function AppSidebar() {
         {
           name: 'List documents',
           icon: List,
-          url: '/document'
+          url: '/document',
         },
         {
           name: 'Create document',
           icon: Plus,
-          url: '/document/create'
+          url: '/document/create',
         },
         {
           name: 'Upload a file',
           icon: Plus,
-          url: '/file/upload'
+          url: '/file/upload',
         },
         {
           name: 'List files',
           icon: List,
-          url: '/file/list'
+          url: '/file/list',
         },
       ],
     },
@@ -145,7 +167,7 @@ export function AppSidebar() {
           name: 'List Authentik users',
           icon: PersonStanding,
           url: '/examples/authentik-users',
-        }
+        },
       ],
     },
     {
@@ -154,89 +176,98 @@ export function AppSidebar() {
       requiresAdmin: true,
       actions: [
         {
+          name: 'All',
+          icon: RotateCw,
+          url: '/import/all',
+        },
+        {
           name: 'Sensor stations',
           icon: Thermometer,
-          url: '/import/sensor-stations'
+          url: '/import/sensor-stations',
         },
         {
           name: 'Moving platforms',
           icon: Ship,
-          url: '/import/moving-platforms'
+          url: '/import/moving-platforms',
         },
         {
           name: 'Model records (oikos)',
           icon: Grid2X2,
-          url: '/import/oikos-models'
+          url: '/import/oikos-models',
         },
         {
           name: 'Model variable records (oikos)',
           icon: Grid2X2Plus,
-          url: '/import/oikos-model-variables'
+          url: '/import/oikos-model-variables',
         },
         {
           name: 'Binner records',
           icon: ChartBarBig,
-          url: '/import/binner-records'
+          url: '/import/binner-records',
         },
         {
           name: 'Vector layers (oikos)',
           icon: Layers2,
-          url: '/import/oikos-vector-layers'
+          url: '/import/oikos-vector-layers',
         },
         {
           name: 'Vector layer groups (oikos)',
           icon: Layers3,
-          url: '/import/oikos-vector-layer-groups'
+          url: '/import/oikos-vector-layer-groups',
         },
         {
           name: 'Vector modules (oikos)',
           icon: LayersPlus,
-          url: '/import/oikos-vector-modules'
-        }
-
-      ]
-    }
+          url: '/import/oikos-vector-modules',
+        },
+      ],
+    },
   ]
 
-  const sideBarStyle = headerState.height !== '0' ? { top: headerState.height, height: `calc(100% - ${headerState.height})` } : {}
+  const sideBarStyle =
+    headerState.height !== '0'
+      ? { top: headerState.height, height: `calc(100% - ${headerState.height})` }
+      : {}
 
   return (
     <Sidebar style={sideBarStyle}>
       <SidebarHeader />
       <SidebarContent>
-        {navGroups.filter(group => {
-          if (group.requiresAdmin && !auth.isAdmin) {
-            return false
-          }
-          return true
-        }).map((group) => (
-          <Collapsible key={group.label} defaultOpen className="group/collapsible">
-            <SidebarGroup>
-              <SidebarGroupLabel asChild className="font-bold text-lg cursor-pointer">
-                <CollapsibleTrigger>
-                  <group.icon className="mr-2" /> {group.label}
-                  <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                </CollapsibleTrigger>
-              </SidebarGroupLabel>
-              <CollapsibleContent className="py-2">
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {group.actions.map((action) => (
-                      <SidebarMenuItem key={action.name}>
-                        <SidebarMenuButton asChild>
-                          <Link to={action.url}>
-                            <action.icon />
-                            <span>{action.name}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </CollapsibleContent>
-            </SidebarGroup>
-          </Collapsible>
-        ))}
+        {navGroups
+          .filter((group) => {
+            if (group.requiresAdmin && !auth.isAdmin) {
+              return false
+            }
+            return true
+          })
+          .map((group) => (
+            <Collapsible key={group.label} defaultOpen className="group/collapsible">
+              <SidebarGroup>
+                <SidebarGroupLabel asChild className="font-bold text-lg cursor-pointer">
+                  <CollapsibleTrigger>
+                    <group.icon className="mr-2" /> {group.label}
+                    <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                  </CollapsibleTrigger>
+                </SidebarGroupLabel>
+                <CollapsibleContent className="py-2">
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {group.actions.map((action) => (
+                        <SidebarMenuItem key={action.name}>
+                          <SidebarMenuButton asChild>
+                            <Link to={action.url}>
+                              <action.icon />
+                              <span>{action.name}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </CollapsibleContent>
+              </SidebarGroup>
+            </Collapsible>
+          ))}
       </SidebarContent>
       <SidebarFooter>
         <UserView />

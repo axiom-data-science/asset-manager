@@ -72,6 +72,8 @@ import contextStateAtom, { contextReloadTokenAtom } from '@/state/contextStateAt
 import { useAtom } from 'jotai'
 import type { IAssetForm } from '@/types/types'
 import { fetchPersons } from '@/manage/person/services'
+import importConfigs from './import/config'
+import ImportAllPage from './import/pages/all'
 
 const makeSiteTitle = (pageTitle?: string) => {
   return `${SITE_TITLE}${pageTitle ? ` - ${pageTitle}` : ''}`
@@ -543,20 +545,18 @@ function App(): ReactElement {
             </Route>
             <Route path="import">
               <Route
+                path="all"
+                element={
+                  <SidebarLayout>
+                    <ImportAllPage />
+                  </SidebarLayout>
+                }
+              />
+              <Route
                 path="sensor-stations"
                 element={
                   <SidebarLayout>
-                    <ImportRecordsPage
-                      defaultImportUrl={searchURL({
-                        type: 'sensor_station',
-                        count: 100,
-                        portal_id: 25,
-                      })}
-                      defaultDetailRoot={SENSORS_ROOT}
-                      service={searchDocs}
-                      getFullDoc={sensorStation}
-                      label="Sensor Station"
-                    />
+                    <ImportRecordsPage {...importConfigs.sensor_stations} />
                   </SidebarLayout>
                 }
               />
@@ -564,13 +564,7 @@ function App(): ReactElement {
                 path="moving-platforms"
                 element={
                   <SidebarLayout>
-                    <ImportRecordsPage
-                      defaultImportUrl={searchURL({ type: 'platform2', count: 100, portal_id: 25 })}
-                      service={searchDocs}
-                      defaultDetailRoot={PLATFORM_ROOT}
-                      getFullDoc={movingPlatform}
-                      label="Moving Platform"
-                    />
+                    <ImportRecordsPage {...importConfigs.moving_platforms} />
                   </SidebarLayout>
                 }
               />
@@ -578,13 +572,7 @@ function App(): ReactElement {
                 path="oikos-models"
                 element={
                   <SidebarLayout>
-                    <ImportRecordsPage
-                      defaultImportUrl={defaultOikosModelsURL}
-                      service={oikosModels}
-                      defaultDetailRoot={'UNUSED'}
-                      getFullDoc={oikosModel}
-                      label="Oikos Model"
-                    />
+                    <ImportRecordsPage {...importConfigs.oikos_models} />
                   </SidebarLayout>
                 }
               />
@@ -592,13 +580,7 @@ function App(): ReactElement {
                 path="oikos-model-variables"
                 element={
                   <SidebarLayout>
-                    <ImportRecordsPage
-                      defaultImportUrl={defaultOikosModelsURL}
-                      service={oikosModelVariables}
-                      defaultDetailRoot={'UNUSED'}
-                      getFullDoc={oikosModelVariable}
-                      label="Oikos Model Variable"
-                    />
+                    <ImportRecordsPage {...importConfigs.oikos_model_variables} />
                   </SidebarLayout>
                 }
               />
@@ -606,13 +588,7 @@ function App(): ReactElement {
                 path="binner-records"
                 element={
                   <SidebarLayout>
-                    <ImportRecordsPage
-                      defaultImportUrl={defaultBinninatorRecordsURL}
-                      service={binninatorRecords}
-                      defaultDetailRoot={binninatorRoot}
-                      getFullDoc={binninatorMetadata}
-                      label="Binner Record"
-                    />
+                    <ImportRecordsPage {...importConfigs.binner_records} />
                   </SidebarLayout>
                 }
               />
@@ -620,17 +596,7 @@ function App(): ReactElement {
                 path="oikos-vector-layers"
                 element={
                   <SidebarLayout>
-                    <ImportRecordsPage
-                      defaultImportUrl={searchURL({
-                        type: 'layer_group',
-                        count: 100,
-                        portal_id: 25,
-                      })}
-                      service={oikosVectorLayers}
-                      defaultDetailRoot={OIKOS_URL_ROOT}
-                      getFullDoc={oikosLayer}
-                      label="Oikos Vector Layer"
-                    />
+                    <ImportRecordsPage {...importConfigs.oikos_vector_layers} />
                   </SidebarLayout>
                 }
               />
@@ -638,17 +604,7 @@ function App(): ReactElement {
                 path="oikos-vector-layer-groups"
                 element={
                   <SidebarLayout>
-                    <ImportRecordsPage
-                      defaultImportUrl={searchURL({
-                        type: 'layer_group',
-                        count: 100,
-                        portal_id: 25,
-                      })}
-                      service={oikosVectorLayerGroups}
-                      defaultDetailRoot={OIKOS_URL_ROOT}
-                      getFullDoc={oikosLayerGroup}
-                      label="Oikos Vector Layer Group"
-                    />
+                    <ImportRecordsPage {...importConfigs.oikos_vector_layer_groups} />
                   </SidebarLayout>
                 }
               />
@@ -656,17 +612,7 @@ function App(): ReactElement {
                 path="oikos-vector-modules"
                 element={
                   <SidebarLayout>
-                    <ImportRecordsPage
-                      defaultImportUrl={searchURL({
-                        type: 'layer_group',
-                        count: 100,
-                        portal_id: 25,
-                      })}
-                      service={oikosVectorModules}
-                      defaultDetailRoot={OIKOS_URL_ROOT}
-                      getFullDoc={oikosModule}
-                      label="Oikos  Module"
-                    />
+                    <ImportRecordsPage {...importConfigs.oikos_vector_modules} />
                   </SidebarLayout>
                 }
               />

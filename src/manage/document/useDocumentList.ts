@@ -7,7 +7,7 @@ import {
 import { getObjectTypeListQuery } from ***REMOVED***@/manage/object_type/useObjectTypeList***REMOVED***
 import { postgrestRollupArgs } from ***REMOVED***@/services/postgrest/endpoints***REMOVED***
 import type { IPostgrestParams } from ***REMOVED***@/types/types***REMOVED***
-import { queryOptions, useQueries, useQuery } from ***REMOVED***@tanstack/react-query***REMOVED***
+import { keepPreviousData, queryOptions, useQueries, useQuery } from ***REMOVED***@tanstack/react-query***REMOVED***
 
 export const documentListQueryKey = ({
   params,
@@ -16,7 +16,7 @@ export const documentListQueryKey = ({
   params?: IPostgrestParams
   rollups?: string[]
 }) =>
-  [***REMOVED***document***REMOVED***,***REMOVED***documents-list***REMOVED***].concat(
+  [***REMOVED***document***REMOVED***, ***REMOVED***documents-list***REMOVED***].concat(
     (rollups ?? []).map((r) => postgrestRollupArgs({ rollupColumn: r, params }).toString())
   )
 
@@ -105,14 +105,15 @@ export const useDocumentListWithRollups = ({
 }) => {
   const auth = useAuth()
 
-  const queryResult = useQuery(
-    getDocumentListWithRollupsQuery({
+  const queryResult = useQuery({
+    ...getDocumentListWithRollupsQuery({
       params,
       targetedParams,
       rollups,
       token: auth.user?.access_token,
-    })
-  )
+    }),
+    placeholderData: keepPreviousData,
+  })
 
   return queryResult
 }

@@ -1,8 +1,22 @@
 import { documentListQueryKey, useDocumentListWithRollups } from ***REMOVED***@/manage/document/useDocumentList***REMOVED***
-import { Button, Loader, SelectInput, Tooltip, ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
+import {
+  Button,
+  Input,
+  Loader,
+  SelectInput,
+  Tooltip,
+  ViewWithLoader,
+} from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
 import { useState, type ReactElement } from ***REMOVED***react***REMOVED***
+import { useSearchParams } from ***REMOVED***react-router-dom***REMOVED***
 import { useObjectTypeList } from ***REMOVED***../object_type/useObjectTypeList***REMOVED***
-import type { IDocument, IObjectType, IPostgrestParams, IRollup } from ***REMOVED***@/types/types***REMOVED***
+import type {
+  IDocument,
+  IObjectType,
+  IPostgrestFilter,
+  IPostgrestParams,
+  IRollup,
+} from ***REMOVED***@/types/types***REMOVED***
 import Table from ***REMOVED***@/manage/components/table***REMOVED***
 import Link from ***REMOVED***@/manage/components/link***REMOVED***
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
@@ -199,20 +213,65 @@ const LockButton = ({
 const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
   const [contextState] = useAtom(contextStateAtom)
   const { persons_by_owner_sub } = contextState
-  const [filters, setFilters] = useState<Record<string, string | undefined>>({})
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const filters: Record<string, string | undefined> = Object.fromEntries(
+    Array.from(searchParams.entries())
+  )
+
+  const setFilters = (
+    updater: (prev: Record<string, string | undefined>) => Record<string, string | undefined>
+  ): void => {
+    const next = updater(filters)
+    setSearchParams(
+      (prev) => {
+        const newParams = new URLSearchParams(prev)
+        // Remove all filter keys then re-apply
+        Array.from(newParams.keys()).forEach((k) => newParams.delete(k))
+        Object.entries(next).forEach(([k, v]) => {
+          if (v !== undefined) newParams.set(k, v)
+        })
+        return newParams
+      },
+      { replace: true }
+    )
+  }
 
   const uuidsForDocuments = object_types
     .filter((ot) => ot.category === ***REMOVED***document***REMOVED***)
     .map((ot) => ot.uuid)
 
+  const defaultFilters: IPostgrestFilter[] = [
+    {
+      column: ***REMOVED***object_type_uuid***REMOVED***,
+      value: uuidsForDocuments,
+      operator: ***REMOVED***in***REMOVED***,
+    },
+  ]
+
+  const userFilters: IPostgrestFilter[] =
+    filters !== undefined
+      ? (Object.keys(filters)
+          .map((k) => {
+            return filters[k] !== undefined
+              ? k === ***REMOVED***search***REMOVED***
+                ? {
+                    column: ***REMOVED***label***REMOVED***,
+                    value: `%${String(filters[k])}%`,
+                    operator: ***REMOVED***ilike***REMOVED***,
+                  }
+                : {
+                    column: k,
+                    value: String(filters[k]),
+                    operator: ***REMOVED***eq***REMOVED***,
+                  }
+              : null
+          })
+          .filter((f) => f !== null) as IPostgrestFilter[])
+      : []
+
   const params: IPostgrestParams = {
-    filters: [
-      {
-        column: ***REMOVED***object_type_uuid***REMOVED***,
-        value: uuidsForDocuments,
-        operator: ***REMOVED***in***REMOVED***,
-      },
-    ],
+    filters: defaultFilters.concat(userFilters),
   }
 
   const targetedParams: Record<string, IPostgrestParams> = {
@@ -225,11 +284,25 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
       ],
     },
   }
+
   const rollups = [***REMOVED***owner_sub***REMOVED***, ***REMOVED***object_type_uuid***REMOVED***]
+
+  rollups.forEach((r) => {
+    if (userFilters.find((f) => f.column === r)) {
+      targetedParams[r] = {
+        ...targetedParams[r],
+        filters: userFilters.filter((f) => {
+          return f.column !== r
+        }),
+      }
+    }
+  })
+
   const {
     data: documents,
     isLoading,
     error,
+    isRefetching,
   } = useDocumentListWithRollups({
     params,
     targetedParams,
@@ -245,11 +318,10 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
     <ViewWithLoader isLoading={isLoading} error={error} data={documents}>
       <h1 className="text-2xl font-bold py-2 sticky top-0 bg-white">Documents</h1>
       <div className="flex flex-row gap-4 p-2 py-4 sticky top-12 bg-white z-10">
-        {Object.keys(documents?.rollups ?? []).map((r) => {
+        {(rollups ?? []).map((r) => {
           const rollup = documents?.rollups?.[r].filter(
             (item) => item.label !== null && item.label !== ***REMOVED******REMOVED***
           ) as IRollup[] | undefined
-          if (rollup?.length === 0) return null
           return (
             <div className="flex flex-row gap-2" key={r}>
               <span className="font-semibold">
@@ -265,6 +337,8 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
                 key={r}
                 label={null}
                 size="xs"
+                value={filters?.[r] ?? undefined}
+                className="w-40"
                 options={
                   rollup?.map((item) => ({
                     label: `${
@@ -287,6 +361,24 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
             </div>
           )
         })}
+        <div className="flex flex-row gap-2">
+          <span className="font-semibold">Search</span>
+          <Input
+            id="search"
+            testId="search"
+            label={null}
+            size="xs"
+            value={filters?.search ?? undefined}
+            placeholder="Search"
+            className="h-6"
+            onChange={(e) => {
+              setFilters((prev) => ({
+                ...prev,
+                search: e,
+              }))
+            }}
+          />
+        </div>
       </div>
       {documents && (
         <Table
@@ -362,6 +454,11 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
             },
           ]}
         />
+      )}
+      {isRefetching && (
+        <div className="absolute top-0 left-0 w-full h-full bg-white/20 flex items-center justify-center">
+          <Loader className="w-12 h-12" />
+        </div>
       )}
     </ViewWithLoader>
   )

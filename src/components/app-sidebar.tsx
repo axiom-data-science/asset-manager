@@ -10,7 +10,29 @@ import {
 } from ***REMOVED***@/components/ui/sidebar***REMOVED***
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from ***REMOVED***@/components/ui/collapsible***REMOVED***
-import { Book, BookPlus, ChartBarBig, ChevronDown, FilePen, Grid2X2, Grid2X2Plus, Import, Layers2, Layers3, LayersPlus, List, Lock, Network, PersonStanding, Plus, Share, Ship, Thermometer, User } from ***REMOVED***lucide-react***REMOVED***
+import {
+  Book,
+  BookPlus,
+  ChartBarBig,
+  ChevronDown,
+  FilePen,
+  Grid2X2,
+  Grid2X2Plus,
+  Import,
+  Layers2,
+  Layers3,
+  LayersPlus,
+  List,
+  Lock,
+  Network,
+  PersonStanding,
+  Plus,
+  RotateCw,
+  Share,
+  Ship,
+  Thermometer,
+  User,
+} from ***REMOVED***lucide-react***REMOVED***
 import { SidebarGroupContent, SidebarGroupLabel } from ***REMOVED***@/components/ui/sidebar***REMOVED***
 import { Link } from ***REMOVED***react-router-dom***REMOVED***
 
@@ -31,22 +53,22 @@ export function AppSidebar() {
         {
           name: ***REMOVED***List documents***REMOVED***,
           icon: List,
-          url: ***REMOVED***/document***REMOVED***
+          url: ***REMOVED***/document***REMOVED***,
         },
         {
           name: ***REMOVED***Create document***REMOVED***,
           icon: Plus,
-          url: ***REMOVED***/document/create***REMOVED***
+          url: ***REMOVED***/document/create***REMOVED***,
         },
         {
           name: ***REMOVED***Upload a file***REMOVED***,
           icon: Plus,
-          url: ***REMOVED***/file/upload***REMOVED***
+          url: ***REMOVED***/file/upload***REMOVED***,
         },
         {
           name: ***REMOVED***List files***REMOVED***,
           icon: List,
-          url: ***REMOVED***/file/list***REMOVED***
+          url: ***REMOVED***/file/list***REMOVED***,
         },
       ],
     },
@@ -145,7 +167,7 @@ export function AppSidebar() {
           name: ***REMOVED***List Authentik users***REMOVED***,
           icon: PersonStanding,
           url: ***REMOVED***/examples/authentik-users***REMOVED***,
-        }
+        },
       ],
     },
     {
@@ -154,89 +176,98 @@ export function AppSidebar() {
       requiresAdmin: true,
       actions: [
         {
+          name: ***REMOVED***All***REMOVED***,
+          icon: RotateCw,
+          url: ***REMOVED***/import/all***REMOVED***,
+        },
+        {
           name: ***REMOVED***Sensor stations***REMOVED***,
           icon: Thermometer,
-          url: ***REMOVED***/import/sensor-stations***REMOVED***
+          url: ***REMOVED***/import/sensor-stations***REMOVED***,
         },
         {
           name: ***REMOVED***Moving platforms***REMOVED***,
           icon: Ship,
-          url: ***REMOVED***/import/moving-platforms***REMOVED***
+          url: ***REMOVED***/import/moving-platforms***REMOVED***,
         },
         {
           name: ***REMOVED***Model records (oikos)***REMOVED***,
           icon: Grid2X2,
-          url: ***REMOVED***/import/oikos-models***REMOVED***
+          url: ***REMOVED***/import/oikos-models***REMOVED***,
         },
         {
           name: ***REMOVED***Model variable records (oikos)***REMOVED***,
           icon: Grid2X2Plus,
-          url: ***REMOVED***/import/oikos-model-variables***REMOVED***
+          url: ***REMOVED***/import/oikos-model-variables***REMOVED***,
         },
         {
           name: ***REMOVED***Binner records***REMOVED***,
           icon: ChartBarBig,
-          url: ***REMOVED***/import/binner-records***REMOVED***
+          url: ***REMOVED***/import/binner-records***REMOVED***,
         },
         {
           name: ***REMOVED***Vector layers (oikos)***REMOVED***,
           icon: Layers2,
-          url: ***REMOVED***/import/oikos-vector-layers***REMOVED***
+          url: ***REMOVED***/import/oikos-vector-layers***REMOVED***,
         },
         {
           name: ***REMOVED***Vector layer groups (oikos)***REMOVED***,
           icon: Layers3,
-          url: ***REMOVED***/import/oikos-vector-layer-groups***REMOVED***
+          url: ***REMOVED***/import/oikos-vector-layer-groups***REMOVED***,
         },
         {
           name: ***REMOVED***Vector modules (oikos)***REMOVED***,
           icon: LayersPlus,
-          url: ***REMOVED***/import/oikos-vector-modules***REMOVED***
-        }
-
-      ]
-    }
+          url: ***REMOVED***/import/oikos-vector-modules***REMOVED***,
+        },
+      ],
+    },
   ]
 
-  const sideBarStyle = headerState.height !== ***REMOVED***0***REMOVED*** ? { top: headerState.height, height: `calc(100% - ${headerState.height})` } : {}
+  const sideBarStyle =
+    headerState.height !== ***REMOVED***0***REMOVED***
+      ? { top: headerState.height, height: `calc(100% - ${headerState.height})` }
+      : {}
 
   return (
     <Sidebar style={sideBarStyle}>
       <SidebarHeader />
       <SidebarContent>
-        {navGroups.filter(group => {
-          if (group.requiresAdmin && !auth.isAdmin) {
-            return false
-          }
-          return true
-        }).map((group) => (
-          <Collapsible key={group.label} defaultOpen className="group/collapsible">
-            <SidebarGroup>
-              <SidebarGroupLabel asChild className="font-bold text-lg cursor-pointer">
-                <CollapsibleTrigger>
-                  <group.icon className="mr-2" /> {group.label}
-                  <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                </CollapsibleTrigger>
-              </SidebarGroupLabel>
-              <CollapsibleContent className="py-2">
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {group.actions.map((action) => (
-                      <SidebarMenuItem key={action.name}>
-                        <SidebarMenuButton asChild>
-                          <Link to={action.url}>
-                            <action.icon />
-                            <span>{action.name}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </CollapsibleContent>
-            </SidebarGroup>
-          </Collapsible>
-        ))}
+        {navGroups
+          .filter((group) => {
+            if (group.requiresAdmin && !auth.isAdmin) {
+              return false
+            }
+            return true
+          })
+          .map((group) => (
+            <Collapsible key={group.label} defaultOpen className="group/collapsible">
+              <SidebarGroup>
+                <SidebarGroupLabel asChild className="font-bold text-lg cursor-pointer">
+                  <CollapsibleTrigger>
+                    <group.icon className="mr-2" /> {group.label}
+                    <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                  </CollapsibleTrigger>
+                </SidebarGroupLabel>
+                <CollapsibleContent className="py-2">
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {group.actions.map((action) => (
+                        <SidebarMenuItem key={action.name}>
+                          <SidebarMenuButton asChild>
+                            <Link to={action.url}>
+                              <action.icon />
+                              <span>{action.name}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </CollapsibleContent>
+              </SidebarGroup>
+            </Collapsible>
+          ))}
       </SidebarContent>
       <SidebarFooter>
         <UserView />

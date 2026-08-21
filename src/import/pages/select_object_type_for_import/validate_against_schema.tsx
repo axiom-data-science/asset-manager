@@ -66,7 +66,7 @@ const ValidateAgainstSchema = ({
                 )}
                 <Dialog modal={true}>
                   <DialogTrigger asChild>
-                    <Button size="xs" className="text-white">
+                    <Button size="xs" variant="default">
                       Show document
                     </Button>
                   </DialogTrigger>

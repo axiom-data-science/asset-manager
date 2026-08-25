@@ -13,7 +13,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     <SidebarProvider className="h-full">
       <AppSidebar />
       <main className="w-full h-full" style={mainStyle}>
-        <span className="sticky z-50 cursor-pointer" style={triggerStyle}>
+        <span className="sticky top-2 z-50 cursor-pointer" style={triggerStyle}>
           <Tooltip content="Toggle sidebar" side="right" dark={true} useSpan={true}>
             <SidebarTrigger />
           </Tooltip>

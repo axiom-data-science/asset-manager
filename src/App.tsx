@@ -37,30 +37,6 @@ import AuthentikUsers from ***REMOVED***@/examples/authentik-users***REMOVED***
 import { SITE_TITLE } from ***REMOVED***./config/config***REMOVED***
 import ListFilesLoader from ***REMOVED***./manage/document_file/list***REMOVED***
 import ImportRecordsPage from ***REMOVED***./import/pages***REMOVED***
-import {
-  binninatorMetadata,
-  binninatorRecords,
-  binninatorRoot,
-  defaultBinninatorRecordsURL,
-  defaultOikosModelsURL,
-  movingPlatform,
-  OIKOS_URL_ROOT,
-  oikosLayer,
-  oikosLayerGroup,
-  oikosModel,
-  oikosModels,
-  oikosModelVariable,
-  oikosModelVariables,
-  oikosModule,
-  oikosVectorLayerGroups,
-  oikosVectorLayers,
-  oikosVectorModules,
-  PLATFORM_ROOT,
-  searchDocs,
-  searchURL,
-  SENSORS_ROOT,
-  sensorStation,
-} from ***REMOVED***@/import/services***REMOVED***
 import { getBrand } from ***REMOVED***@/lib/utils***REMOVED***
 import { getBrandComponent, type BrandComponentProps } from ***REMOVED***@/BrandComponents***REMOVED***
 import { fetchPredicates } from ***REMOVED***@/manage/document/services***REMOVED***

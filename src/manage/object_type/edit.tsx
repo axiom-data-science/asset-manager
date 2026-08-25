@@ -18,11 +18,11 @@ const EditObjectTypeForm = ({
   object_type,
   forms,
   schemas,
-  object_type_schema
+  object_type_schema,
 }: {
   object_type: IObjectType
   forms: IAssetForm[]
-  schemas: IObjectSchema[],
+  schemas: IObjectSchema[]
   object_type_schema: JSONSchema6
 }): ReactElement => {
   const queryClient = useQueryClient()
@@ -34,7 +34,7 @@ const EditObjectTypeForm = ({
   const {
     form,
     formState: [formValue, setFormValue],
-    filterForSave
+    filterForSave,
   } = useFormAndFormState({
     form: {
       id: ***REMOVED***edit-object-type***REMOVED***,
@@ -57,29 +57,31 @@ const EditObjectTypeForm = ({
     },
     initialFormValues: {
       label: object_type.label,
-      description: object_type.description
+      description: object_type.description,
     } as IFormValues,
   })
 
   const {
     form: objectTypeConfigForm,
     formState: [objectTypeConfigFormValue, setObjectTypeConfigFormValue],
-    filterForSave: objectTypeConfigFilterForSave
+    filterForSave: objectTypeConfigFilterForSave,
   } = useObjectTypeDataForm({
     objectTypeSchema: object_type_schema,
-    initialFormValues: object_type.data ? object_type.data as IFormValues : {},
+    initialFormValues: object_type.data ? (object_type.data as IFormValues) : {},
   })
 
   const onUpdate = () => {
     setSaving(true)
     const filteredObjectTypeDataValue = objectTypeConfigFilterForSave(objectTypeConfigFormValue)
-    const hasDataValues = Object.values(filteredObjectTypeDataValue).some((value) => value !== undefined && value !== null && value !== ***REMOVED******REMOVED***)
+    const hasDataValues = Object.values(filteredObjectTypeDataValue).some(
+      (value) => value !== undefined && value !== null && value !== ***REMOVED******REMOVED***
+    )
     const filteredValues = filterForSave(formValue)
     patchObjectType({
       uuid: object_type.uuid,
       object_type: {
         ...filteredValues,
-        data: hasDataValues ? filteredObjectTypeDataValue as JSONSchema6 : undefined
+        data: hasDataValues ? (filteredObjectTypeDataValue as JSONSchema6) : undefined,
       } as unknown as IObjectType,
       token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
     }).then(() => {
@@ -102,28 +104,38 @@ const EditObjectTypeForm = ({
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-bold">Edit object type ({object_type.category})</h1>
-      <CopyFields
-        fields={[
-          { id: ***REMOVED***category***REMOVED***, label: ***REMOVED***Category***REMOVED***, value: object_type.category },
-          { id: ***REMOVED***slug***REMOVED***, label: ***REMOVED***Slug***REMOVED***, value: object_type.slug },
-          { id: ***REMOVED***uuid***REMOVED***, label: ***REMOVED***UUID***REMOVED***, value: object_type.uuid },
-        ]}
-      />
+      <div className="flex flex-row gap-4 items-center">
+        <CopyFields
+          fields={[
+            { id: ***REMOVED***category***REMOVED***, label: ***REMOVED***Category***REMOVED***, value: object_type.category },
+            { id: ***REMOVED***slug***REMOVED***, label: ***REMOVED***Slug***REMOVED***, value: object_type.slug },
+            { id: ***REMOVED***uuid***REMOVED***, label: ***REMOVED***UUID***REMOVED***, value: object_type.uuid },
+          ]}
+        />
+        <div className="text-sm flex flex-col gap-1">
+          <p className="font-semibold">Documents</p>
+          <Link to={`/document?object_type_uuid=${object_type.uuid}`} className="text-blue-600">
+            View documents for this type
+          </Link>
+        </div>
+      </div>
+
       <Tabs
         tabs={[
           {
-            id: "object-type-details",
+            id: ***REMOVED***object-type-details***REMOVED***,
             label: ***REMOVED***Object type details***REMOVED***,
-            content: (
-              <FormCreator form={form} formValueState={[formValue, setFormValue]} />
-            )
+            content: <FormCreator form={form} formValueState={[formValue, setFormValue]} />,
           },
           {
             id: ***REMOVED***object-type-config***REMOVED***,
             label: ***REMOVED***Object type config***REMOVED***,
             content: (
-              <FormCreator form={objectTypeConfigForm} formValueState={[objectTypeConfigFormValue, setObjectTypeConfigFormValue]} />
-            )
+              <FormCreator
+                form={objectTypeConfigForm}
+                formValueState={[objectTypeConfigFormValue, setObjectTypeConfigFormValue]}
+              />
+            ),
           },
         ]}
       />

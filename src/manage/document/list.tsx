@@ -212,7 +212,7 @@ const LockButton = ({
 
 const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
   const [contextState] = useAtom(contextStateAtom)
-  const { persons_by_owner_sub } = contextState
+  const { person_by_owner_sub } = contextState
   const [searchParams, setSearchParams] = useSearchParams()
 
   const filters: Record<string, string | undefined> = Object.fromEntries(
@@ -252,22 +252,22 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
   const userFilters: IPostgrestFilter[] =
     filters !== undefined
       ? (Object.keys(filters)
-          .map((k) => {
-            return filters[k] !== undefined
-              ? k === 'search'
-                ? {
-                    column: 'label',
-                    value: `%${String(filters[k])}%`,
-                    operator: 'ilike',
-                  }
-                : {
-                    column: k,
-                    value: String(filters[k]),
-                    operator: 'eq',
-                  }
-              : null
-          })
-          .filter((f) => f !== null) as IPostgrestFilter[])
+        .map((k) => {
+          return filters[k] !== undefined
+            ? k === 'search'
+              ? {
+                column: 'label',
+                value: `%${String(filters[k])}%`,
+                operator: 'ilike',
+              }
+              : {
+                column: k,
+                value: String(filters[k]),
+                operator: 'eq',
+              }
+            : null
+        })
+        .filter((f) => f !== null) as IPostgrestFilter[])
       : []
 
   const params: IPostgrestParams = {
@@ -341,13 +341,12 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
                 className="w-40"
                 options={
                   rollup?.map((item) => ({
-                    label: `${
-                      r === 'object_type_uuid'
+                    label: `${r === 'object_type_uuid'
                         ? object_types_map[item.label]?.label
                         : r === 'owner_sub'
-                          ? (persons_by_owner_sub[item.label]?.label ?? item.label)
+                          ? (person_by_owner_sub[item.label]?.label ?? item.label)
                           : item.label
-                    } (${item.count})`,
+                      } (${item.count})`,
                     value: item.label,
                   })) ?? []
                 }

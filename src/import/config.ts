@@ -1,3 +1,4 @@
+import { ChartBarBig, Grid2X2, Grid2X2Plus, Layers2, Layers3, LayersPlus, Ship, Thermometer } from 'lucide-react'
 import type { IImportPageProps } from './pages/import_records_page_impl'
 import {
   binninatorMetadata,
@@ -24,8 +25,8 @@ import {
   sensorStation,
 } from './services'
 
-const importConfigs: Record<string, IImportPageProps> = {
-  moving_platforms: {
+const importConfigs: IImportPageProps[] = [
+  {
     defaultImportUrl: searchURL({
       type: 'platform2',
       count: 100,
@@ -35,8 +36,10 @@ const importConfigs: Record<string, IImportPageProps> = {
     defaultDetailRoot: PLATFORM_ROOT,
     getFullDoc: movingPlatform,
     label: 'Moving Platform',
+    type: 'moving_platform',
+    icon: Ship
   },
-  sensor_stations: {
+  {
     defaultImportUrl: searchURL({
       type: 'sensor_station',
       count: 100,
@@ -46,29 +49,37 @@ const importConfigs: Record<string, IImportPageProps> = {
     service: searchDocs,
     getFullDoc: sensorStation,
     label: 'Sensor Station',
+    type: 'sensor_station',
+    icon: Thermometer
   },
-  oikos_models: {
+  {
     defaultImportUrl: defaultOikosModelsURL,
     service: oikosModels,
     defaultDetailRoot: 'UNUSED',
     getFullDoc: oikosModel,
     label: 'Oikos Model',
+    type: 'oikos_model',
+    icon: Grid2X2
   },
-  oikos_model_variables: {
+  {
     defaultImportUrl: defaultOikosModelsURL,
     service: oikosModelVariables,
     defaultDetailRoot: 'UNUSED',
     getFullDoc: oikosModelVariable,
     label: 'Oikos Model Variable',
+    type: 'oikos_model_variable',
+    icon: Grid2X2Plus
   },
-  binner_records: {
+  {
     defaultImportUrl: defaultBinninatorRecordsURL,
     service: binninatorRecords,
     defaultDetailRoot: binninatorRoot,
     getFullDoc: binninatorMetadata,
     label: 'Binner Record',
+    type: 'binner_record',
+    icon: ChartBarBig
   },
-  oikos_vector_layers: {
+  {
     defaultImportUrl: searchURL({
       type: 'layer_group',
       count: 100,
@@ -78,8 +89,10 @@ const importConfigs: Record<string, IImportPageProps> = {
     defaultDetailRoot: OIKOS_URL_ROOT,
     getFullDoc: oikosLayer,
     label: 'Oikos Vector Layer',
+    type: 'oikos_vector_layer',
+    icon: Layers2
   },
-  oikos_vector_layer_groups: {
+  {
     defaultImportUrl: searchURL({
       type: 'layer_group',
       count: 100,
@@ -89,8 +102,10 @@ const importConfigs: Record<string, IImportPageProps> = {
     defaultDetailRoot: OIKOS_URL_ROOT,
     getFullDoc: oikosLayerGroup,
     label: 'Oikos Vector Layer Group',
+    type: 'oikos_vector_layer_group',
+    icon: Layers3
   },
-  oikos_vector_modules: {
+  {
     defaultImportUrl: searchURL({
       type: 'layer_group',
       count: 100,
@@ -100,7 +115,10 @@ const importConfigs: Record<string, IImportPageProps> = {
     defaultDetailRoot: OIKOS_URL_ROOT,
     getFullDoc: oikosModule,
     label: 'Oikos  Module',
+    type: 'oikos_vector_module',
+    icon: LayersPlus
   },
-}
+]
 
+export const importConfigsByKey = Object.fromEntries(importConfigs.map((config) => [config.type, config]))
 export default importConfigs

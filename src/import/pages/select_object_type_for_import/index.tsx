@@ -4,12 +4,12 @@ import { Inputs } from '@axdspub/axiom-ui-forms'
 
 import { type LanguageName, quicktype, jsonInputForTargetLanguage, InputData } from 'quicktype-core'
 import { Checkbox, SelectInput, Tooltip, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
-import { useState, type ReactElement } from 'react'
+import { useEffect, useRef, useState, type ReactElement } from 'react'
 
 import { Tabs } from '@axdspub/axiom-ui-utilities'
 import BatchLoadDocuments from '@/import/components/batch_load_documents'
-import contextStateAtom, { requestContextReloadAtom } from '@/state/contextStateAtom'
-import { atom, useAtom, useSetAtom } from 'jotai'
+import contextStateAtom from '@/state/contextStateAtom'
+import { atom, useAtom } from 'jotai'
 import CreateObjectType from '@/manage/object_type/create'
 import type { JSONSchema6 } from 'json-schema'
 import { objectTypeForRecordsState, recordsToImportState } from '@/import/state/importState'
@@ -54,8 +54,10 @@ async function quicktypeJSON(
 
 const SelectObjectTypeForImportTab = ({
   documents,
+  type
 }: {
   documents: IDocumentImport[]
+  type: string
 }): ReactElement => {
   const [contextState] = useAtom(contextStateAtom)
   const [schema, setSchema] = useAtom(schemaStateAtom)
@@ -63,6 +65,7 @@ const SelectObjectTypeForImportTab = ({
     createObjectTypeFromDataState
   )
   const [selectedObjectType, setSelectedObjectType] = useAtom(objectTypeForRecordsState)
+  const initializedTypeRef = useRef<string | null>(null)
 
   const { data, isLoading, error } = useQuery({
     enabled: createObjectTypeFromData,
@@ -84,7 +87,20 @@ const SelectObjectTypeForImportTab = ({
       contextState.object_schema_defaults_by_object_type_uuid[objectTypeUuid]?.json_schema ?? null
     )
   }
+
   const enumProps = schema ? findEnumProperties(schema) : []
+  useEffect(() => {
+    const defaultObjectType = contextState.object_type_by_slug[type]
+    if (!defaultObjectType) return
+    if (initializedTypeRef.current === type) return
+
+    initializedTypeRef.current = type
+    if (selectedObjectType?.uuid !== defaultObjectType.uuid) {
+      setSelectedObjectType(defaultObjectType)
+    }
+    setSchema(getSchemaForSelectedObjectType(defaultObjectType.uuid))
+  }, [contextState.object_type_by_slug, selectedObjectType?.uuid, setSchema, setSelectedObjectType, type])
+
   return (
     <>
       <div className="flex flex-row gap-4 h-full">
@@ -109,7 +125,7 @@ const SelectObjectTypeForImportTab = ({
               testId="object-type-select"
               placeholder="Select an object type"
               size="xs"
-              options={contextState.object_types.map((t) => {
+              options={contextState.object_type.map((t) => {
                 return {
                   label: t.label,
                   value: t.uuid,
@@ -118,11 +134,13 @@ const SelectObjectTypeForImportTab = ({
               value={selectedObjectType?.uuid}
               onChange={(o) => {
                 const newObjectType =
-                  o?.value !== undefined ? contextState.object_types_by_uuid[o.value] : undefined
+                  o?.value !== undefined ? contextState.object_type_by_uuid[o.value] : undefined
                 setSelectedObjectType(newObjectType)
                 if (o?.value !== undefined) {
                   const newSchema = getSchemaForSelectedObjectType(String(o.value))
                   setSchema({ ...newSchema })
+                } else {
+                  setSchema(null)
                 }
               }}
             />
@@ -246,6 +264,7 @@ const SelectObjectTypeForImport = ({
   getFullDoc,
   detailRoot,
   label,
+  type
 }: {
   documents: IDocumentImport[]
   getFullDoc: (props: {
@@ -256,6 +275,7 @@ const SelectObjectTypeForImport = ({
   }) => Promise<IFullDocForImport>
   detailRoot?: string
   label?: string
+  type: string
 }): ReactElement => {
   const initialData = documents.map((doc) => {
     return {
@@ -268,9 +288,9 @@ const SelectObjectTypeForImport = ({
   const [selectedTab, setSelectedTab] = useState('preload')
   const [createObjectTypeFromData] = useAtom(createObjectTypeFromDataState)
   const [schema] = useAtom(schemaStateAtom)
-  const reloadContext = useSetAtom(requestContextReloadAtom)
   const [recordsToImport, setRecordsToImport] = useAtom(recordsToImportState)
   const [, setObjectTypeForRecords] = useAtom(objectTypeForRecordsState)
+
   return (
     <Tabs
       className="h-full p-4 bg-blue-100"
@@ -301,7 +321,7 @@ const SelectObjectTypeForImport = ({
         },
         {
           id: 'validate',
-          content: <SelectObjectTypeForImportTab documents={recordsToImport ?? []} />,
+          content: <SelectObjectTypeForImportTab documents={recordsToImport ?? []} type={type} />,
           label: 'Validate against schema',
           disabled: !recordsToImport?.length,
         },
@@ -314,7 +334,6 @@ const SelectObjectTypeForImport = ({
                 initialSchema={schema ?? undefined}
                 initialLabel={label}
                 onSuccess={(newObjectType) => {
-                  reloadContext()
                   setObjectTypeForRecords(newObjectType)
                   console.log('New object type created:', newObjectType)
                 }}

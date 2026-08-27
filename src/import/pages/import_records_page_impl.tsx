@@ -3,7 +3,7 @@ import { Input, Tabs, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
 import { useQuery } from '@tanstack/react-query'
 
 import { TableVirtuoso, type TableComponents } from 'react-virtuoso'
-import { forwardRef, useState, type ReactElement } from 'react'
+import { forwardRef, useState, type ForwardRefExoticComponent, type ReactElement, type RefAttributes } from 'react'
 import { Button } from '@/components/ui/button'
 import type { IDocumentImport, IFullDocForImport } from '@/import/types'
 import SelectObjectTypeForImport from './select_object_type_for_import/index.tsx'
@@ -13,6 +13,7 @@ import BatchLoadDocuments from '@/import/components/batch_load_documents'
 import { postDocument } from '@/manage/document/services'
 import { useAuth } from '@/auth/useAuth'
 import { pick } from 'lodash-es'
+import type { LucideProps } from 'lucide-react'
 
 const TableComponentsOverride: TableComponents<IDocumentImport> = {
   Table: (props) => (
@@ -71,6 +72,7 @@ const isAbortError = (error: unknown, signal?: AbortSignal) =>
   (error instanceof DOMException && error.name === 'AbortError') || !!signal?.aborted
 
 export type IImportPageProps = {
+  type: string
   defaultImportUrl: string
   defaultDetailRoot: string
   label: string
@@ -88,7 +90,8 @@ export type IImportPageProps = {
     signal?: AbortSignal
     serviceRoot?: string
   }) => Promise<IFullDocForImport>
-  objectType?: IObjectType
+  objectType?: IObjectType,
+  icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>
 }
 
 const ImportRecordsPage = ({
@@ -98,6 +101,7 @@ const ImportRecordsPage = ({
   pluralLabel,
   service,
   getFullDoc,
+  type
   // objectType
 }: IImportPageProps): ReactElement => {
   pluralLabel = pluralLabel || `${label}s`
@@ -226,6 +230,7 @@ const ImportRecordsPage = ({
                         getFullDoc={getFullDoc}
                         detailRoot={activeDetailUrl}
                         label={label}
+                        type={type}
                       />
                     ),
                   },

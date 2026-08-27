@@ -12,6 +12,8 @@ import { useObjectTypeSchemaAndObjectCategories } from '@/manage/object_type/use
 import type { JSONSchema6 } from 'json-schema'
 import { useObjectTypeDataForm } from '@/manage/object_type/useObjectTypeDataForm'
 import Errors from '@/manage/components/errors'
+import { objectTypeListQueryKey } from '@/manage/object_type/useObjectTypeList'
+import useCacheInvalidator from '@/manage/components/useCacheInvalidator'
 
 const CreateObjectTypeForm = ({
   object_categories,
@@ -114,9 +116,9 @@ const CreateObjectTypeForm = ({
     form: schemaFormWithoutSlug,
     initialFormValues: initialSchema
       ? {
-          json_schema: initialSchema as JSON,
-          label: initialLabel ?? undefined,
-        }
+        json_schema: initialSchema as JSON,
+        label: initialLabel ?? undefined,
+      }
       : {},
   })
 
@@ -129,6 +131,7 @@ const CreateObjectTypeForm = ({
   })
 
   const [createDefaultSchema, setCreateDefaultSchema] = useState(initialSchema ? true : false)
+  const invalidateCache = useCacheInvalidator({ queryKey: objectTypeListQueryKey() })
 
   const onSave = async () => {
     setSaving(true)
@@ -136,10 +139,10 @@ const CreateObjectTypeForm = ({
       const typeValid = await validate({ form, formValues: formValue })
       const schemaValid = createDefaultSchema
         ? await validate({
-            form: schemaForm,
-            formValues: schemaFormValue,
-            schemaFields: ['json_schema'],
-          })
+          form: schemaForm,
+          formValues: schemaFormValue,
+          schemaFields: ['json_schema'],
+        })
         : { valid: true, errors: [] }
       const valid = {
         valid: typeValid.valid && schemaValid.valid,
@@ -186,6 +189,8 @@ const CreateObjectTypeForm = ({
         })
       }
       setSaving(false)
+      invalidateCache()
+
 
       if (onSuccess) {
         onSuccess(newObjectType)

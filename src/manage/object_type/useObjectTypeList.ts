@@ -8,7 +8,7 @@ import { getObjectSchemaListQueryOptions } from '../object_schema/useObjectSchem
 import { useCombinedQueries } from '@/hooks/use-combined-queries'
 
 export const objectTypeListQueryKey = (params?: IPostgrestParams, rollups?: string[]) =>
-  ['object_type-list'].concat(
+  ['object_type'].concat(
     (rollups ?? []).map((r) => postgrestRollupArgs({ rollupColumn: r, params }).toString())
   )
 
@@ -106,12 +106,12 @@ export const useObjectTypeListAtCategory = (
       filters:
         category !== undefined
           ? [
-              {
-                column: 'category',
-                operator: 'eq',
-                value: category,
-              },
-            ]
+            {
+              column: 'category',
+              operator: 'eq',
+              value: category,
+            },
+          ]
           : undefined,
     },
   })

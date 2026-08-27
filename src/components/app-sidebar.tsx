@@ -13,15 +13,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import {
   Book,
   BookPlus,
-  ChartBarBig,
   ChevronDown,
   FilePen,
-  Grid2X2,
-  Grid2X2Plus,
   Import,
-  Layers2,
-  Layers3,
-  LayersPlus,
   List,
   Lock,
   Network,
@@ -29,8 +23,6 @@ import {
   Plus,
   RotateCw,
   Share,
-  Ship,
-  Thermometer,
   User,
 } from 'lucide-react'
 import { SidebarGroupContent, SidebarGroupLabel } from '@/components/ui/sidebar'
@@ -40,6 +32,7 @@ import UserView from '@/manage/components/user'
 import { useAuth } from '@/auth/useAuth'
 import headerStateAtom from '@/state/headerStateAtom'
 import { useAtom } from 'jotai'
+import importConfigs from '@/import/config'
 
 export function AppSidebar() {
   const auth = useAuth()
@@ -180,7 +173,7 @@ export function AppSidebar() {
           icon: RotateCw,
           url: '/import/all',
         },
-        {
+        /* {
           name: 'Sensor stations',
           icon: Thermometer,
           url: '/import/sensor-stations',
@@ -219,8 +212,14 @@ export function AppSidebar() {
           name: 'Vector modules (oikos)',
           icon: LayersPlus,
           url: '/import/oikos-vector-modules',
-        },
-      ],
+        } */,
+      ].concat(importConfigs.map(config => {
+        return {
+          name: config.label,
+          icon: config.icon,
+          url: `/import/${config.type}`
+        }
+      }))
     },
   ]
 
@@ -252,7 +251,7 @@ export function AppSidebar() {
                 <CollapsibleContent className="py-2">
                   <SidebarGroupContent>
                     <SidebarMenu>
-                      {group.actions.map((action) => (
+                      {group.actions.filter(a => a !== undefined).map((action) => (
                         <SidebarMenuItem key={action.name}>
                           <SidebarMenuButton asChild>
                             <Link to={action.url}>

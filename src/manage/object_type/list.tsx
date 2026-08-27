@@ -10,7 +10,7 @@ import Table from '@/manage/components/table'
 import type { IObjectType, IPostgrestParams, IRollup } from '@/types/types'
 import { deleteObjectType } from './services'
 import { useAuth } from 'react-oidc-context'
-import { useQueryClient } from '@tanstack/react-query'
+import useCacheInvalidator from '@/manage/components/useCacheInvalidator'
 
 const DeleteButton = ({
   object_type,
@@ -45,7 +45,6 @@ const DeleteButton = ({
 }
 
 const ListObjectTypes = (): ReactElement => {
-  const queryClient = useQueryClient()
   const params: IPostgrestParams = {
     order: [
       {
@@ -63,9 +62,10 @@ const ListObjectTypes = (): ReactElement => {
     params,
     rollups,
   })
+  const invalidateCache = useCacheInvalidator({ queryKey: objectTypeListQueryKey() })
 
   const onDeleteItem = (): void => {
-    queryClient.invalidateQueries({ queryKey: objectTypeListQueryKey() })
+    invalidateCache()
   }
 
   return (

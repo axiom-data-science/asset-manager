@@ -24,7 +24,7 @@ export const searchDocs = async ({ url, signal }: { url: string, signal?: AbortS
     return results?.map((item: ISearchRecord<{ layers: { type: string, uuid: string }[] }>) => {
         return {
             uuid: item.type === ***REMOVED***sensor_station***REMOVED*** ? item.id : item.uuid,
-            slug: `${item.type}:${item.id}`,
+            slug: `${item.id}`,
             label: item.label,
             data: item.source ?? item.data,
             partial: !item.source
@@ -46,7 +46,7 @@ export const binninatorRecords = async ({ url = `${BINNINATOR_ROOT}/source/h3-me
     }))
     return all.flat().map((uuid: string) => {
         return {
-            slug: `binner:${uuid}`,
+            slug: `${uuid}`,
             uuid,
             label: uuid,
             data: {},
@@ -66,7 +66,7 @@ export const oikosVectorLayerGroups = async ({ url, signal }: { url: string, sig
 
     return layerGroups.map((item: ISearchRecord<{ layers: { type: string, uuid: string }[] }>) => {
         return {
-            slug: `layer_group:${item.id}`,
+            slug: `${item.id}`,
             uuid: item.uuid,
             label: item.label,
             data: item.source ?? item.data,
@@ -80,7 +80,7 @@ export const oikosVectorModules = async ({ url, signal }: { url: string, signal?
     return layerGroups.map((item: IDocumentImport) => {
         const data = item.data as { module_uuid: string, module_label: string }
         return {
-            slug: `module:${data.module_uuid}`,
+            slug: `${data.module_uuid}`,
             label: data.module_label,
             uuid: data.module_uuid,
             data: {
@@ -102,7 +102,7 @@ export const oikosVectorLayers = async ({ url, signal }: { url: string, signal?:
     const layers = layerGroups.map(item => item.source.layers.filter(layer => layer.type === ***REMOVED***VECTOR***REMOVED***)).flat()
     return layers.map((layer) => {
         return {
-            slug: `oikos_layer:${layer.id}`,
+            slug: `${layer.id}`,
             uuid: layer.uuid,
             label: layer.label,
             data: layer
@@ -124,7 +124,7 @@ export const oikosModels = async ({ url, signal }: { url?: string, signal?: Abor
     })).json()
     return j.map((model: { uuid: string, slug: string, label: string, description: string }) => {
         return {
-            slug: `oikos_model:${model.slug}`,
+            slug: `${model.slug}`,
             uuid: model.uuid,
             label: model.label,
             description: model.description,
@@ -148,7 +148,7 @@ export const oikosModelVariables = async ({ url, signal }: { url: string, signal
         }))
     }).flat().map((variable: { label: string, uuid: string } & Record<string, unknown>) => {
         return {
-            slug: `oikos_model_variable:${variable.modelSlug}:{variable.variableName}`,
+            slug: `${variable.modelSlug}_${variable.variableName}`,
             uuid: variable.uuid,
             label: variable.label,
             data: variable
@@ -164,7 +164,7 @@ export const binninatorMetadata = async ({ doc, url, signal }: { doc: IDocumentI
     const u = url || `${BINNINATOR_ROOT}/${uuid}/metadata`
     const d = await (await fetch(u, { signal })).json()
     return {
-        slug: `binner:${uuid}`,
+        slug: `binner:${uuid.replaceAll(***REMOVED***-***REMOVED***, ***REMOVED***_***REMOVED***)}`,
         label: uuid,
         description: ***REMOVED******REMOVED***,
         data: d.metadata,
@@ -175,7 +175,7 @@ export const binninatorMetadata = async ({ doc, url, signal }: { doc: IDocumentI
 
 export const oikosModelVariable = async ({ doc }: { doc: IDocumentImport, url?: string, serviceRoot?: string, signal?: AbortSignal }): Promise<IFullDocForImport> => {
     return {
-        slug: `oikos_model_variable:${doc.uuid}`,
+        slug: doc.slug,
         label: doc.label,
         description: ***REMOVED******REMOVED***,
         data: doc.data,
@@ -185,7 +185,7 @@ export const oikosModelVariable = async ({ doc }: { doc: IDocumentImport, url?: 
 
 export const oikosModel = async ({ doc }: { doc: IDocumentImport, url?: string, serviceRoot?: string, signal?: AbortSignal }): Promise<IFullDocForImport> => {
     return {
-        slug: `oikos_model:${doc.uuid}`,
+        slug: `${doc.slug}`,
         label: doc.label,
         description: doc.description ?? ***REMOVED******REMOVED***,
         data: doc.data,

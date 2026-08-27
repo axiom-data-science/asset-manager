@@ -3,7 +3,7 @@ import { Input, Tabs, ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utili
 import { useQuery } from ***REMOVED***@tanstack/react-query***REMOVED***
 
 import { TableVirtuoso, type TableComponents } from ***REMOVED***react-virtuoso***REMOVED***
-import { forwardRef, useState, type ReactElement } from ***REMOVED***react***REMOVED***
+import { forwardRef, useState, type ForwardRefExoticComponent, type ReactElement, type RefAttributes } from ***REMOVED***react***REMOVED***
 import { Button } from ***REMOVED***@/components/ui/button***REMOVED***
 import type { IDocumentImport, IFullDocForImport } from ***REMOVED***@/import/types***REMOVED***
 import SelectObjectTypeForImport from ***REMOVED***./select_object_type_for_import/index.tsx***REMOVED***
@@ -13,6 +13,7 @@ import BatchLoadDocuments from ***REMOVED***@/import/components/batch_load_docum
 import { postDocument } from ***REMOVED***@/manage/document/services***REMOVED***
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
 import { pick } from ***REMOVED***lodash-es***REMOVED***
+import type { LucideProps } from ***REMOVED***lucide-react***REMOVED***
 
 const TableComponentsOverride: TableComponents<IDocumentImport> = {
   Table: (props) => (
@@ -71,6 +72,7 @@ const isAbortError = (error: unknown, signal?: AbortSignal) =>
   (error instanceof DOMException && error.name === ***REMOVED***AbortError***REMOVED***) || !!signal?.aborted
 
 export type IImportPageProps = {
+  type: string
   defaultImportUrl: string
   defaultDetailRoot: string
   label: string
@@ -88,7 +90,8 @@ export type IImportPageProps = {
     signal?: AbortSignal
     serviceRoot?: string
   }) => Promise<IFullDocForImport>
-  objectType?: IObjectType
+  objectType?: IObjectType,
+  icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>
 }
 
 const ImportRecordsPage = ({
@@ -98,6 +101,7 @@ const ImportRecordsPage = ({
   pluralLabel,
   service,
   getFullDoc,
+  type
   // objectType
 }: IImportPageProps): ReactElement => {
   pluralLabel = pluralLabel || `${label}s`
@@ -226,6 +230,7 @@ const ImportRecordsPage = ({
                         getFullDoc={getFullDoc}
                         detailRoot={activeDetailUrl}
                         label={label}
+                        type={type}
                       />
                     ),
                   },

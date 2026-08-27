@@ -212,7 +212,7 @@ const LockButton = ({
 
 const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): ReactElement => {
   const [contextState] = useAtom(contextStateAtom)
-  const { persons_by_owner_sub } = contextState
+  const { person_by_owner_sub } = contextState
   const [searchParams, setSearchParams] = useSearchParams()
 
   const filters: Record<string, string | undefined> = Object.fromEntries(
@@ -252,22 +252,22 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
   const userFilters: IPostgrestFilter[] =
     filters !== undefined
       ? (Object.keys(filters)
-          .map((k) => {
-            return filters[k] !== undefined
-              ? k === ***REMOVED***search***REMOVED***
-                ? {
-                    column: ***REMOVED***label***REMOVED***,
-                    value: `%${String(filters[k])}%`,
-                    operator: ***REMOVED***ilike***REMOVED***,
-                  }
-                : {
-                    column: k,
-                    value: String(filters[k]),
-                    operator: ***REMOVED***eq***REMOVED***,
-                  }
-              : null
-          })
-          .filter((f) => f !== null) as IPostgrestFilter[])
+        .map((k) => {
+          return filters[k] !== undefined
+            ? k === ***REMOVED***search***REMOVED***
+              ? {
+                column: ***REMOVED***label***REMOVED***,
+                value: `%${String(filters[k])}%`,
+                operator: ***REMOVED***ilike***REMOVED***,
+              }
+              : {
+                column: k,
+                value: String(filters[k]),
+                operator: ***REMOVED***eq***REMOVED***,
+              }
+            : null
+        })
+        .filter((f) => f !== null) as IPostgrestFilter[])
       : []
 
   const params: IPostgrestParams = {
@@ -341,13 +341,12 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
                 className="w-40"
                 options={
                   rollup?.map((item) => ({
-                    label: `${
-                      r === ***REMOVED***object_type_uuid***REMOVED***
+                    label: `${r === ***REMOVED***object_type_uuid***REMOVED***
                         ? object_types_map[item.label]?.label
                         : r === ***REMOVED***owner_sub***REMOVED***
-                          ? (persons_by_owner_sub[item.label]?.label ?? item.label)
+                          ? (person_by_owner_sub[item.label]?.label ?? item.label)
                           : item.label
-                    } (${item.count})`,
+                      } (${item.count})`,
                     value: item.label,
                   })) ?? []
                 }

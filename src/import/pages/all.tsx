@@ -1,7 +1,7 @@
 import type { ReactElement } from ***REMOVED***react***REMOVED***
 import importConfigs from ***REMOVED***../config***REMOVED***
 import { Button, Checkbox, Input, Loader, SelectInput } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
-import { useState } from ***REMOVED***react***REMOVED***
+import { useEffect, useState } from ***REMOVED***react***REMOVED***
 import type { IImportPageProps } from ***REMOVED***./import_records_page_impl***REMOVED***
 import contextStateAtom from ***REMOVED***@/state/contextStateAtom***REMOVED***
 import { useAtom } from ***REMOVED***jotai***REMOVED***
@@ -34,12 +34,16 @@ const ImportItem = ({
   status,
   onItemComplete,
   onImportComplete,
+  importAll,
+  importCount,
   ...config
 }: IImportPageProps & {
   status: IImportStatus
   type: string
   onItemComplete: (key: string, status: IImportStatus) => void
   onImportComplete: () => void
+  importAll: boolean
+  importCount: number
 }): ReactElement => {
   const [context] = useAtom(contextStateAtom)
   const [selected, setSelected] = useState(true)
@@ -48,11 +52,16 @@ const ImportItem = ({
   const [overrideRoot, setOverrideRoot] = useState<string | undefined>(undefined)
   const [batchSize, setBatchSize] = useState<number | undefined>(20)
 
-  const existingObjectType = context.object_types_by_slug[type]
+  const existingObjectType = context.object_type_by_slug[type]
   const [objectType, setObjectType] = useState(existingObjectType)
   const [createObjectTypeFromData, setCreateObjectTypeFromData] = useState(!existingObjectType)
-  const [loadAllRecords, setLoadAllRecords] = useState(false)
-  const [totalToImport, setTotalToImport] = useState<number | undefined>(100)
+  const [loadAllRecords, setLoadAllRecords] = useState(importAll)
+  const [totalToImport, setTotalToImport] = useState<number | undefined>(importCount)
+
+  useEffect(() => {
+    setLoadAllRecords(importAll)
+    setTotalToImport(importCount)
+  }, [importAll, importCount])
 
   if (status === ***REMOVED***in_progress***REMOVED***) {
     // Simulate import process
@@ -63,7 +72,7 @@ const ImportItem = ({
   }
 
   return (
-    <div className={`relative overflow-hidden${selected ? ***REMOVED*** h-80***REMOVED*** : ***REMOVED******REMOVED***}`}>
+    <div className={`relative overflow-hidden${selected ? ***REMOVED*** h-85***REMOVED*** : ***REMOVED******REMOVED***}`}>
       <div className="flex flex-row gap-10 h-full min-h-0">
         <div className="flex flex-col gap-4 p-4 even:bg-gray-100">
           <span className="text-xs">{status}</span>
@@ -132,7 +141,7 @@ const ImportItem = ({
                 </span>
               </div>
               <div className="flex flex-row gap-10 py-2">
-                <span className="w-100 flex flex-col gap-4">
+                <span className="max-w-80 flex flex-col gap-1">
                   <Checkbox
                     id={`import-${type}-load-all-records`}
                     testId={`import-${type}-load-all-records`}
@@ -160,27 +169,28 @@ const ImportItem = ({
                       }}
                     />
 
-                    {!loadAllRecords && (
-                      <Input
-                        id={`import-${type}-total-to-import`}
-                        testId={`import-${type}-total-to-import`}
-                        label="Total to Import"
-                        placeholder="50"
-                        value={totalToImport?.toString() ?? ***REMOVED***50***REMOVED***}
-                        size="xs"
-                        onChange={(e) => {
-                          if (e !== undefined && e.trim() !== ***REMOVED******REMOVED***) {
-                            const totalToImport = parseInt(e)
-                            if (!isNaN(totalToImport)) {
-                              setTotalToImport(totalToImport)
-                            }
+
+                    <Input
+                      id={`import-${type}-total-to-import`}
+                      testId={`import-${type}-total-to-import`}
+                      label="Total to Import"
+                      disabled={loadAllRecords}
+                      placeholder="50"
+                      value={totalToImport?.toString() ?? ***REMOVED***50***REMOVED***}
+                      size="xs"
+                      onChange={(e) => {
+                        if (e !== undefined && e.trim() !== ***REMOVED******REMOVED***) {
+                          const totalToImport = parseInt(e)
+                          if (!isNaN(totalToImport)) {
+                            setTotalToImport(totalToImport)
                           }
-                        }}
-                      />
-                    )}
+                        }
+                      }}
+                    />
+
                   </span>
                 </span>
-                <span className="flex flex-col gap-2 w-100">
+                <span className="flex flex-col gap-1 max-w-60">
                   <Checkbox
                     id={`import-${type}-override-batch-size`}
                     testId={`import-${type}-override-batch-size`}
@@ -197,12 +207,13 @@ const ImportItem = ({
                       testId={`import-${type}-object-type`}
                       label="Object Type"
                       value={objectType?.slug ?? ***REMOVED******REMOVED***}
+                      size=***REMOVED***sm***REMOVED***
                       onChange={(e) => {
                         const selectedObjectType =
-                          context.object_types_by_slug[e?.value ? String(e.value) : ***REMOVED******REMOVED***]
+                          context.object_type_by_slug[e?.value ? String(e.value) : ***REMOVED******REMOVED***]
                         setObjectType(selectedObjectType)
                       }}
-                      options={Object.values(context.object_types_by_slug).map((ot) => ({
+                      options={Object.values(context.object_type_by_slug).map((ot) => ({
                         label: ot.label,
                         value: ot.slug,
                       }))}
@@ -215,10 +226,10 @@ const ImportItem = ({
         </div>
         {selected && (
           <div className="flex flex-col flex-1 min-w-0 min-h-0 relative bg-slate-200 overflow-hidden">
-            <h3 className="text-lg font-semibold p-2 absolute left-0 top-0 right-0 bg-slate-300">
+            <h3 className="text-sm font-semibold py-1 px-2 absolute left-0 top-0 right-0 bg-slate-300">
               Results
             </h3>
-            <div className="flex flex-col gap-0 flex-1 min-h-0 overflow-y-auto mt-10">
+            <div className="flex flex-col gap-0 flex-1 min-h-0 overflow-y-auto mt-7">
               <ImportResults />
             </div>
           </div>
@@ -235,7 +246,7 @@ const ImportItem = ({
 }
 
 const ImportAllPage = (): ReactElement => {
-  const configs = { ...importConfigs }
+  const configs = importConfigs.slice()
   const updateAllToStatus = (
     status: IImportStatus = ***REMOVED******REMOVED***
   ): Record<string, { status: IImportStatus }> => {
@@ -244,6 +255,7 @@ const ImportAllPage = (): ReactElement => {
   const [, setDoImport] = useState(false)
   const [importStatus, setImportStatus] =
     useState<Record<string, { status: IImportStatus }>>(updateAllToStatus())
+
 
   const getNextImportItem = (): string | undefined => {
     const pendingItems = Object.entries(importStatus).filter(
@@ -286,31 +298,71 @@ const ImportAllPage = (): ReactElement => {
     }
   }
 
+  const [importAll, setImportAll] = useState(false)
+  const [importCount, setImportCount] = useState(100)
+
   return (
     <>
-      <div className="flex flex-row gap-4 items-center p-4 bg-white sticky top-0 border-b z-10">
-        <span className="text-lg font-semibold">Import All</span>
-        <Button
-          onClick={() => {
-            startImport()
-          }}
-          variant="primary"
-        >
-          Start Import
-        </Button>
+      <div className="flex flex-col gap-2  p-4 bg-white sticky top-0 border-b z-10">
+        <div className=***REMOVED***flex flex-row gap-4 items-center***REMOVED***>
+          <span className="text-lg font-semibold">Import All</span>
+          <Button
+            onClick={() => {
+              startImport()
+            }}
+            variant="primary"
+          >
+            Start Import
+          </Button>
+          <span className=***REMOVED***flex flex-row grow text-xs justify-end gap-4 items-center***REMOVED***>
+            <Checkbox
+              id={`import-all`}
+              testId={`import-all`}
+              label="Import All"
+              value={importAll}
+              onChange={(e) => {
+                setImportAll(e)
+              }}
+            />
+
+
+            <Input
+              id={`import-count`}
+              testId={`import-count`}
+              placeholder="100"
+              value={importCount?.toString() ?? ***REMOVED***100***REMOVED***}
+              size="xs"
+              disabled={importAll}
+              onChange={(e) => {
+                if (e !== undefined && e.trim() !== ***REMOVED******REMOVED***) {
+                  const count = parseInt(e)
+                  if (!isNaN(count)) {
+                    setImportCount(count)
+                  }
+                }
+              }}
+            />
+
+          </span>
+
+        </div>
+
+
       </div>
       <div className="flex flex-col gap-4">
-        {Object.entries(configs).map(([key, config]) => (
-          <div key={key} className="flex flex-col gap-2 p-4 even:bg-gray-100 odd:bg-gray-50">
+        {configs.map(config => (
+          <div key={config.type} className="flex flex-col gap-2 p-4 even:bg-gray-100 odd:bg-gray-50">
             <ImportItem
               {...config}
-              type={key}
-              status={importStatus[key]?.status ?? ***REMOVED***pending***REMOVED***}
+              type={config.type}
+              status={importStatus[config.type]?.status ?? ***REMOVED***pending***REMOVED***}
+              importAll={importAll}
+              importCount={importCount}
               onItemComplete={(itemKey, status) => {
                 console.log(`Item ${itemKey} completed with status: ${status}`)
               }}
               onImportComplete={() => {
-                onImportComplete(key)
+                onImportComplete(config.type)
               }}
             />
           </div>

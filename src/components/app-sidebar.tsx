@@ -13,15 +13,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from ***REMOVED**
 import {
   Book,
   BookPlus,
-  ChartBarBig,
   ChevronDown,
   FilePen,
-  Grid2X2,
-  Grid2X2Plus,
   Import,
-  Layers2,
-  Layers3,
-  LayersPlus,
   List,
   Lock,
   Network,
@@ -29,8 +23,6 @@ import {
   Plus,
   RotateCw,
   Share,
-  Ship,
-  Thermometer,
   User,
 } from ***REMOVED***lucide-react***REMOVED***
 import { SidebarGroupContent, SidebarGroupLabel } from ***REMOVED***@/components/ui/sidebar***REMOVED***
@@ -40,6 +32,7 @@ import UserView from ***REMOVED***@/manage/components/user***REMOVED***
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
 import headerStateAtom from ***REMOVED***@/state/headerStateAtom***REMOVED***
 import { useAtom } from ***REMOVED***jotai***REMOVED***
+import importConfigs from ***REMOVED***@/import/config***REMOVED***
 
 export function AppSidebar() {
   const auth = useAuth()
@@ -180,7 +173,7 @@ export function AppSidebar() {
           icon: RotateCw,
           url: ***REMOVED***/import/all***REMOVED***,
         },
-        {
+        /* {
           name: ***REMOVED***Sensor stations***REMOVED***,
           icon: Thermometer,
           url: ***REMOVED***/import/sensor-stations***REMOVED***,
@@ -219,8 +212,14 @@ export function AppSidebar() {
           name: ***REMOVED***Vector modules (oikos)***REMOVED***,
           icon: LayersPlus,
           url: ***REMOVED***/import/oikos-vector-modules***REMOVED***,
-        },
-      ],
+        } */,
+      ].concat(importConfigs.map(config => {
+        return {
+          name: config.label,
+          icon: config.icon,
+          url: `/import/${config.type}`
+        }
+      }))
     },
   ]
 
@@ -252,7 +251,7 @@ export function AppSidebar() {
                 <CollapsibleContent className="py-2">
                   <SidebarGroupContent>
                     <SidebarMenu>
-                      {group.actions.map((action) => (
+                      {group.actions.filter(a => a !== undefined).map((action) => (
                         <SidebarMenuItem key={action.name}>
                           <SidebarMenuButton asChild>
                             <Link to={action.url}>

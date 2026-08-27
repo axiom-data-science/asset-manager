@@ -30,21 +30,29 @@ const ValidateAgainstSchema = ({
 
   const validateDocuments = async () => {
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    const results = await Promise.all(
-      documents.map(async (doc) => {
+    const cleanedSchema = omit(schema as Record<string, unknown>, ***REMOVED***$schema***REMOVED***)
+    const results: { document: IDocumentImport; isValid: boolean; errors?: IValidationError[] }[] = []
+    const batchSize = 10
+
+    for (let i = 0; i < documents.length; i += batchSize) {
+      const batch = documents.slice(i, i + batchSize)
+
+      for (const doc of batch) {
         const againstSchema = schemaToFormUtils.validateAgainstSchema(
-          omit(schema as Record<string, unknown>, ***REMOVED***$schema***REMOVED***),
+          cleanedSchema,
           doc.data as IFormValues
         )
 
-        return {
+        results.push({
           document: doc,
           isValid: !againstSchema?.length,
           errors: againstSchema?.length ? againstSchema : undefined,
-        }
-      })
-    )
+        })
+      }
+
+      // Yield between batches so the browser can paint and handle input.
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    }
 
     setValidationResults(results)
     setIsLoading(false)

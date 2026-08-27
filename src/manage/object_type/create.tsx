@@ -12,6 +12,8 @@ import { useObjectTypeSchemaAndObjectCategories } from ***REMOVED***@/manage/obj
 import type { JSONSchema6 } from ***REMOVED***json-schema***REMOVED***
 import { useObjectTypeDataForm } from ***REMOVED***@/manage/object_type/useObjectTypeDataForm***REMOVED***
 import Errors from ***REMOVED***@/manage/components/errors***REMOVED***
+import { objectTypeListQueryKey } from ***REMOVED***@/manage/object_type/useObjectTypeList***REMOVED***
+import useCacheInvalidator from ***REMOVED***@/manage/components/useCacheInvalidator***REMOVED***
 
 const CreateObjectTypeForm = ({
   object_categories,
@@ -114,9 +116,9 @@ const CreateObjectTypeForm = ({
     form: schemaFormWithoutSlug,
     initialFormValues: initialSchema
       ? {
-          json_schema: initialSchema as JSON,
-          label: initialLabel ?? undefined,
-        }
+        json_schema: initialSchema as JSON,
+        label: initialLabel ?? undefined,
+      }
       : {},
   })
 
@@ -129,6 +131,7 @@ const CreateObjectTypeForm = ({
   })
 
   const [createDefaultSchema, setCreateDefaultSchema] = useState(initialSchema ? true : false)
+  const invalidateCache = useCacheInvalidator({ queryKey: objectTypeListQueryKey() })
 
   const onSave = async () => {
     setSaving(true)
@@ -136,10 +139,10 @@ const CreateObjectTypeForm = ({
       const typeValid = await validate({ form, formValues: formValue })
       const schemaValid = createDefaultSchema
         ? await validate({
-            form: schemaForm,
-            formValues: schemaFormValue,
-            schemaFields: [***REMOVED***json_schema***REMOVED***],
-          })
+          form: schemaForm,
+          formValues: schemaFormValue,
+          schemaFields: [***REMOVED***json_schema***REMOVED***],
+        })
         : { valid: true, errors: [] }
       const valid = {
         valid: typeValid.valid && schemaValid.valid,
@@ -186,6 +189,8 @@ const CreateObjectTypeForm = ({
         })
       }
       setSaving(false)
+      invalidateCache()
+
 
       if (onSuccess) {
         onSuccess(newObjectType)

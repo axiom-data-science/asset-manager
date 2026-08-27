@@ -1,6 +1,6 @@
 import type { IValidationError } from ***REMOVED***@/types/types***REMOVED***
 import { getters, schemaToFormUtils, type IForm, type IFormValues } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
-import { queryOptions, useQueries } from ***REMOVED***@tanstack/react-query***REMOVED***
+import { QueryClient, queryOptions, useQueries } from ***REMOVED***@tanstack/react-query***REMOVED***
 import { clsx, type ClassValue } from ***REMOVED***clsx***REMOVED***
 import { twMerge } from ***REMOVED***tailwind-merge***REMOVED***
 import { get, omit } from ***REMOVED***lodash-es***REMOVED***
@@ -75,6 +75,20 @@ export const validate = async ({
   }
   return { valid, errors }
 }
+
+export const invalidateCache = ({
+  queryClient,
+  queryKey,
+  setContextReloadToken
+}: {
+  queryClient: QueryClient
+  queryKey: string[],
+  setContextReloadToken: (updater: (prev: number) => number) => void
+}) => {
+  queryClient.invalidateQueries({ queryKey })
+  setContextReloadToken((prev) => prev + 1)
+}
+
 
 export const useQueriesWithSignatures = (queryObject: ReturnType<typeof queryOptions>[]) => {
   const r = useQueries({

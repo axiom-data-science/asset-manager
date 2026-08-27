@@ -6,7 +6,7 @@ import { ErrorBoundary, type FallbackProps } from ***REMOVED***react-error-bound
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
 import { Route, Routes, useNavigate } from ***REMOVED***react-router-dom***REMOVED***
 import ListDocuments from ***REMOVED***@/manage/document/list***REMOVED***
-import { QueryClient, QueryClientProvider, useQuery } from ***REMOVED***@tanstack/react-query***REMOVED***
+import { QueryClient, QueryClientProvider, keepPreviousData, useQuery } from ***REMOVED***@tanstack/react-query***REMOVED***
 import {
   CreateChildDocumentFromObjectType,
   CreateDocumentFromForm,
@@ -528,70 +528,21 @@ function App(): ReactElement {
                   </SidebarLayout>
                 }
               />
-              <Route
-                path="sensor-stations"
-                element={
-                  <SidebarLayout>
-                    <ImportRecordsPage {...importConfigs.sensor_stations} />
-                  </SidebarLayout>
-                }
-              />
-              <Route
-                path="moving-platforms"
-                element={
-                  <SidebarLayout>
-                    <ImportRecordsPage {...importConfigs.moving_platforms} />
-                  </SidebarLayout>
-                }
-              />
-              <Route
-                path="oikos-models"
-                element={
-                  <SidebarLayout>
-                    <ImportRecordsPage {...importConfigs.oikos_models} />
-                  </SidebarLayout>
-                }
-              />
-              <Route
-                path="oikos-model-variables"
-                element={
-                  <SidebarLayout>
-                    <ImportRecordsPage {...importConfigs.oikos_model_variables} />
-                  </SidebarLayout>
-                }
-              />
-              <Route
-                path="binner-records"
-                element={
-                  <SidebarLayout>
-                    <ImportRecordsPage {...importConfigs.binner_records} />
-                  </SidebarLayout>
-                }
-              />
-              <Route
-                path="oikos-vector-layers"
-                element={
-                  <SidebarLayout>
-                    <ImportRecordsPage {...importConfigs.oikos_vector_layers} />
-                  </SidebarLayout>
-                }
-              />
-              <Route
-                path="oikos-vector-layer-groups"
-                element={
-                  <SidebarLayout>
-                    <ImportRecordsPage {...importConfigs.oikos_vector_layer_groups} />
-                  </SidebarLayout>
-                }
-              />
-              <Route
-                path="oikos-vector-modules"
-                element={
-                  <SidebarLayout>
-                    <ImportRecordsPage {...importConfigs.oikos_vector_modules} />
-                  </SidebarLayout>
-                }
-              />
+              <>{
+                importConfigs.map(config => {
+                  return (
+                    <Route
+                      key={config.type}
+                      path={config.type}
+                      element={
+                        <SidebarLayout>
+                          <ImportRecordsPage {...config} />
+                        </SidebarLayout>
+                      }
+                    />
+                  )
+                })
+              }</>
             </Route>
           </Routes>
         )}
@@ -604,64 +555,92 @@ const AppPreload = (): ReactElement => {
   const auth = useAuth()
   const [contextReloadToken] = useAtom(contextReloadTokenAtom)
   const [contextState, setContextState] = useAtom(contextStateAtom)
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, isFetching, error } = useQuery({
     queryKey: [***REMOVED***preload***REMOVED***, contextReloadToken],
+    placeholderData: keepPreviousData,
     queryFn: async ({ signal }) => {
-      const predicates = await fetchPredicates({ signal })
-      const object_types = await fetchObjectTypes({ signal })
-      const object_schemas = await fetchObjectSchemas({ signal })
-      const object_categories = await fetchObjectCategories({ signal })
-      const persons =
+      const predicate = await fetchPredicates({ signal })
+      const object_type = await fetchObjectTypes({ signal })
+      const object_schema = await fetchObjectSchemas({ signal })
+      const object_category = await fetchObjectCategories({ signal })
+      const person =
         auth.isAdmin && auth?.user?.access_token
           ? await fetchPersons({ signal, token: auth.user.access_token })
           : []
-      const persons_by_owner_sub = Object.fromEntries(persons.map((p) => [p.owner_sub, p]))
-      const forms = await fetchForms({ signal })
+      const person_by_owner_sub = Object.fromEntries(person.map((p) => [p.owner_sub, p]))
+      const form = await fetchForms({ signal })
 
-      const object_types_by_uuid = Object.fromEntries(object_types.map((ot) => [ot.uuid, ot]))
-      const object_schemas_by_uuid = Object.fromEntries(object_schemas.map((os) => [os.uuid, os]))
-      const forms_by_uuid = Object.fromEntries(forms.map((f) => [f.uuid, f]))
-      const forms_by_object_type_uuid: Record<string, IAssetForm[]> = {}
-      for (const ot of object_types) {
-        const forms_for_ot = forms.filter((f) => f.object_type_uuid === ot.uuid)
+      const object_type_by_uuid = Object.fromEntries(object_type.map((ot) => [ot.uuid, ot]))
+      const object_schema_by_uuid = Object.fromEntries(object_schema.map((os) => [os.uuid, os]))
+      const form_by_uuid = Object.fromEntries(form.map((f) => [f.uuid, f]))
+      const form_by_object_type_uuid: Record<string, IAssetForm[]> = {}
+      for (const ot of object_type) {
+        const forms_for_ot = form.filter((f) => f.object_type_uuid === ot.uuid)
         if (forms_for_ot.length > 0) {
-          forms_by_object_type_uuid[ot.uuid] = forms_for_ot
+          form_by_object_type_uuid[ot.uuid] = forms_for_ot
         }
       }
 
       const newContextState = {
-        predicates,
-        predicates_by_uuid: Object.fromEntries(predicates.map((p) => [p.uuid, p])),
-        predicates_by_predicate: Object.fromEntries(predicates.map((p) => [p.predicate, p])),
-        object_types,
-        object_types_by_uuid,
-        object_types_by_slug: Object.fromEntries(object_types.map((ot) => [ot.slug, ot])),
-        object_schemas,
-        object_schemas_by_uuid,
-        object_schemas_by_slug: Object.fromEntries(object_schemas.map((os) => [os.slug, os])),
+        predicate,
+        predicate_by_uuid: Object.fromEntries(predicate.map((p) => [p.uuid, p])),
+        predicate_by_predicate: Object.fromEntries(predicate.map((p) => [p.predicate, p])),
+        object_type,
+        object_type_by_uuid,
+        object_type_by_slug: Object.fromEntries(object_type.map((ot) => [ot.slug, ot])),
+        object_schema,
+        object_schema_by_uuid,
+        object_schema_by_slug: Object.fromEntries(object_schema.map((os) => [os.slug, os])),
         object_schema_defaults_by_object_type_uuid: Object.fromEntries(
-          object_schemas.filter((s) => s.is_type_default).map((os) => [os.object_type_uuid, os])
+          object_schema.filter((s) => s.is_type_default).map((os) => [os.object_type_uuid, os])
         ),
-        object_categories,
-        forms,
-        forms_by_uuid,
-        forms_by_slug: Object.fromEntries(forms.map((f) => [f.slug, f])),
-        form_defaults_by_object_type_uuid: Object.fromEntries(
-          forms.filter((f) => f.is_schema_and_version_default).map((f) => [f.object_type_uuid, f])
+        object_category,
+        form,
+        form_by_uuid,
+        form_by_slug: Object.fromEntries(form.map((f) => [f.slug, f])),
+        form_default_by_object_type_uuid: Object.fromEntries(
+          form.filter((f) => f.is_schema_and_version_default).map((f) => [f.object_type_uuid, f])
         ),
-        forms_by_object_type_uuid,
-        persons,
-        persons_by_owner_sub,
+        form_by_object_type_uuid,
+        person,
+        person_by_owner_sub,
         loaded: true,
       }
       setContextState(newContextState)
       return newContextState
     },
   })
+
+  const isInitialLoad = isLoading && !data
+  const isRefreshing = isFetching && !!data
+
+  if (isInitialLoad) {
+    return (
+      <ViewWithLoader isLoading={true} error={error} data={data}>
+        <></>
+      </ViewWithLoader>
+    )
+  }
+
   return (
-    <ViewWithLoader isLoading={isLoading} error={error} data={data}>
-      {data && contextState.loaded && <App />}
-    </ViewWithLoader>
+    <>
+      {isRefreshing && (
+        <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-slate-200">
+          <div className="h-full w-full animate-pulse bg-slate-500" />
+        </div>
+      )}
+      {error ? (
+        <ViewWithLoader isLoading={false} error={error} data={data}>
+          <></>
+        </ViewWithLoader>
+      ) : contextState.loaded ? (
+        <App />
+      ) : (
+        <ViewWithLoader isLoading={true} error={null} data={data}>
+          <></>
+        </ViewWithLoader>
+      )}
+    </>
   )
 }
 

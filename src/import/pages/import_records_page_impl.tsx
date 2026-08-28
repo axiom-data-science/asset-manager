@@ -235,17 +235,6 @@ const ImportRecordsPage = ({
                     ),
                   },
                   {
-                    id: 'validate',
-                    label: 'Validate Records',
-                    disabled: !documents?.length || !objectTypeForRecords,
-                    content: (
-                      <>
-                        Validate {documents?.length} records with object type{' '}
-                        {objectTypeForRecords?.label} before import
-                      </>
-                    ),
-                  },
-                  {
                     id: 'import',
                     label: 'Import Records',
                     disabled: !documents?.length || !objectTypeForRecords,

@@ -181,7 +181,7 @@ const CreateDocumentForm = ({
       })
 
       if (parentDocumentUUID && toParentPredicate) {
-        const predicate = contextState.predicates_by_predicate[toParentPredicate] ?? contextState.predicates_by_uuid[toParentPredicate]
+        const predicate = contextState.predicate_by_predicate[toParentPredicate] ?? contextState.predicate_by_uuid[toParentPredicate]
         if (predicate) {
           await postToPostgrest({
             table: ***REMOVED***relationship***REMOVED***,
@@ -198,7 +198,7 @@ const CreateDocumentForm = ({
         }
       }
       if (childDocumentUUID && toChildPredicate) {
-        const predicateObj = contextState.predicates_by_predicate[toChildPredicate] ?? contextState.predicates_by_uuid[toChildPredicate]
+        const predicateObj = contextState.predicate_by_predicate[toChildPredicate] ?? contextState.predicate_by_uuid[toChildPredicate]
         if (predicateObj) {
           await postToPostgrest({
             table: ***REMOVED***relationship***REMOVED***,

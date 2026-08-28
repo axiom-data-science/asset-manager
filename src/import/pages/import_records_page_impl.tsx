@@ -235,17 +235,6 @@ const ImportRecordsPage = ({
                     ),
                   },
                   {
-                    id: ***REMOVED***validate***REMOVED***,
-                    label: ***REMOVED***Validate Records***REMOVED***,
-                    disabled: !documents?.length || !objectTypeForRecords,
-                    content: (
-                      <>
-                        Validate {documents?.length} records with object type{***REMOVED*** ***REMOVED***}
-                        {objectTypeForRecords?.label} before import
-                      </>
-                    ),
-                  },
-                  {
                     id: ***REMOVED***import***REMOVED***,
                     label: ***REMOVED***Import Records***REMOVED***,
                     disabled: !documents?.length || !objectTypeForRecords,

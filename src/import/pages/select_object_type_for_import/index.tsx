@@ -15,12 +15,16 @@ import type { JSONSchema6 } from ***REMOVED***json-schema***REMOVED***
 import { objectTypeForRecordsState, recordsToImportState } from ***REMOVED***@/import/state/importState***REMOVED***
 import ValidateAgainstSchema from ***REMOVED***./validate_against_schema***REMOVED***
 import {
+  convertAllEnumToOptionalStringAtPath,
+  convertAllToEnumOnlyAtPath,
   convertEnumToOpenStringAtPath,
   convertToEnumOnlyAtPath,
   findEnumProperties,
+  removeAllEnumAtPath,
   removeEnumAtPath,
 } from ***REMOVED***./schema_enum_utils***REMOVED***
 import { Redo2, Undo2, X } from ***REMOVED***lucide-react***REMOVED***
+import { Button } from ***REMOVED***@/components/ui/button***REMOVED***
 
 const createObjectTypeFromDataState = atom(false)
 const schemaStateAtom = atom<JSONSchema6 | null>(null)
@@ -153,35 +157,79 @@ const SelectObjectTypeForImportTab = ({
                     <div className="flex flex-col gap-2">
                       <span className="text-xs font-bold">Enum properties found in schema:</span>
                       <div className="flex flex-row gap-2 items-center text-xs">
-                        <span className="flex flex-row gap-1 items-center">
-                          <X className="w-3 h-3 text-red-600" /> Remove all enums
-                        </span>
-                        <span className="flex flex-row gap-1 items-center">
+                        <Button
+                          variant=***REMOVED***outline***REMOVED***
+                          size=***REMOVED***xs***REMOVED***
+                          onClick={() => {
+                            const newSchema = { ...schema }
+                            const updatedSchema = removeAllEnumAtPath(
+                              newSchema,
+                              enumProps.map((p) => p.path)
+                            )
+                            setSchema(updatedSchema)
+                          }}
+                        >
+                          <X
+                            className="w-3 h-3 text-red-600"
+                          /> Remove all enums
+                        </Button>
+                        <Button
+                          variant=***REMOVED***outline***REMOVED***
+                          size=***REMOVED***xs***REMOVED***
+                          onClick={() => {
+                            const newSchema = { ...schema }
+                            const updatedSchema = convertAllEnumToOptionalStringAtPath(
+                              newSchema,
+                              enumProps.map((p) => p.path)
+                            )
+                            setSchema(updatedSchema)
+                          }}>
                           <Redo2 className="w-3 h-3 text-green-600" /> Convert all enums to optional
-                        </span>
-                        <span className="flex flex-row gap-1 items-center">
-                          <Undo2 className="w-3 h-3 text-green-600" /> Convert all enums to strict
-                        </span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size=***REMOVED***xs***REMOVED***
+                          onClick={() => {
+                            const newSchema = { ...schema }
+                            const updatedSchema = convertAllToEnumOnlyAtPath(
+                              newSchema,
+                              enumProps.map((p) => p.path)
+                            )
+                            setSchema(updatedSchema)
+                          }}
+                        >
+                          <Undo2
+                            className="w-3 h-3 text-green-600"
+                          /> Convert all enums to strict
+                        </Button>
                       </div>
-                      <ul className="flex flex-col gap-1 text-xs">
+                      <ul className="flex flex-col gap-0 text-xs max-h-60 overflow-y-auto">
                         {enumProps.map((p) => (
-                          <li key={p.path.join(***REMOVED***.***REMOVED***)} className="flex flex-row gap-2 items-start">
+                          <li key={p.path.join(***REMOVED***.***REMOVED***)} className="flex flex-row gap-2 px-3 py-2 items-start event:bg-white odd:bg-slate-100">
                             <Tooltip
                               content={`Remove enum from ${p.name} (converts to "any string")`}
+                              useSpan={true}
+                              dark={true}
                             >
-                              <X
-                                className="w-3 h-3 text-red-600 cursor-pointer"
+                              <Button
+                                variant="outline"
+                                size=***REMOVED***xs***REMOVED***
                                 onClick={() => {
                                   const newSchema = { ...schema }
                                   const updatedSchema = removeEnumAtPath(newSchema, p.path)
                                   setSchema(updatedSchema)
                                 }}
-                              />
+                              >
+                                <X
+                                  className="w-3 h-3 text-red-600 cursor-pointer"
+                                />
+                              </Button>
                             </Tooltip>
                             {p.mode === ***REMOVED***enum-only***REMOVED*** ? (
-                              <Tooltip content="Keep enum, but allow other values">
-                                <Redo2
-                                  className="w-3 h-3 text-blue-600 cursor-pointer"
+                              <Tooltip content="Keep enum, but allow other values" useSpan={true} dark={true}>
+                                <Button
+                                  variant="outline"
+                                  size=***REMOVED***xs***REMOVED***
                                   onClick={() => {
                                     const newSchema = { ...schema }
                                     const updatedSchema = convertEnumToOpenStringAtPath(
@@ -190,23 +238,36 @@ const SelectObjectTypeForImportTab = ({
                                     )
                                     setSchema(updatedSchema)
                                   }}
-                                />
+                                >
+                                  <Redo2
+                                    className="w-3 h-3 text-blue-600 cursor-pointer"
+
+                                  />
+                                </Button>
                               </Tooltip>
                             ) : (
-                              <Tooltip content=***REMOVED***Make enum-only (remove "any string" or "null")***REMOVED***>
-                                <Undo2
-                                  className="w-3 h-3 text-blue-600 cursor-pointer"
+                              <Tooltip content=***REMOVED***Make enum-only (remove "any string" or "null")***REMOVED*** useSpan={true} dark={true}>
+                                <Button
+                                  variant="outline"
+                                  size=***REMOVED***xs***REMOVED***
                                   onClick={() => {
                                     const newSchema = { ...schema }
                                     const updatedSchema = convertToEnumOnlyAtPath(newSchema, p.path)
                                     setSchema(updatedSchema)
                                   }}
-                                />
+                                >
+                                  <Undo2
+                                    className="w-3 h-3 text-blue-600 cursor-pointer"
+
+                                  />
+                                </Button>
                               </Tooltip>
                             )}
                             <span className="bg-slate-200 p-1 rounded-sm text-xs">{p.mode}</span>
-                            <span className="font-bold">{p.name}</span>
-                            <span className="text-gray-600">({p.path.join(***REMOVED***.***REMOVED***)})</span>
+                            <div className=***REMOVED***flex flex-col gap-1***REMOVED***>
+                              <span className="font-bold">{p.name}</span>
+                              <span className="text-gray-600">({p.path.join(***REMOVED***.***REMOVED***)})</span>
+                            </div>
                             <Tooltip
                               content={
                                 <ul className="list-disc pl-4 text-xs">
@@ -218,8 +279,8 @@ const SelectObjectTypeForImportTab = ({
                               useSpan={true}
                               dark={true}
                             >
-                              <span className="bg-slate-200 p-1 rounded-md shadow">
-                                {p?.enum?.length ?? 0} enum values
+                              <span className="bg-slate-200 p-1 rounded-md shadow whitespace-nowrap">
+                                {p?.enum?.length ?? 0} +
                               </span>
                             </Tooltip>
                           </li>

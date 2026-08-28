@@ -172,6 +172,14 @@ export function removeEnumAtPath(schema: JSONSchema6, path: string[]): JSONSchem
   return clone as JSONSchema6
 }
 
+export function removeAllEnumAtPath(schema: JSONSchema6, paths: string[][]): JSONSchema6 {
+  let updatedSchema = schema
+  for (const path of paths) {
+    updatedSchema = removeEnumAtPath(updatedSchema, path)
+  }
+  return updatedSchema
+}
+
 /**
  * Return a new schema where the property at `path` accepts either one of the known
  * enum values OR any arbitrary string. Idempotent — calling it twice does not nest.
@@ -188,6 +196,17 @@ export function convertEnumToOpenStringAtPath(schema: JSONSchema6, path: string[
     anyOf: [{ type: ***REMOVED***string***REMOVED***, enum: enumValues }, { type: ***REMOVED***string***REMOVED*** }],
   }
   return clone as JSONSchema6
+}
+
+export function convertAllEnumToOpenStringAtPath(
+  schema: JSONSchema6,
+  paths: string[][]
+): JSONSchema6 {
+  let updatedSchema = schema
+  for (const path of paths) {
+    updatedSchema = convertEnumToOpenStringAtPath(updatedSchema, path)
+  }
+  return updatedSchema
 }
 
 /**
@@ -212,6 +231,17 @@ export function convertEnumToOptionalStringAtPath(
   return clone as JSONSchema6
 }
 
+export function convertAllEnumToOptionalStringAtPath(
+  schema: JSONSchema6,
+  paths: string[][]
+): JSONSchema6 {
+  let updatedSchema = schema
+  for (const path of paths) {
+    updatedSchema = convertEnumToOptionalStringAtPath(updatedSchema, path)
+  }
+  return updatedSchema
+}
+
 /**
  * Return a new schema where the property at `path` is converted back to a strict enum-only
  * constraint, removing any open-string or null variants that were previously added.
@@ -230,4 +260,13 @@ export function convertToEnumOnlyAtPath(schema: JSONSchema6, path: string[]): JS
     enum: enumValues,
   }
   return clone as JSONSchema6
+}
+
+
+export function convertAllToEnumOnlyAtPath(schema: JSONSchema6, paths: string[][]): JSONSchema6 {
+  let updatedSchema = schema
+  for (const path of paths) {
+    updatedSchema = convertToEnumOnlyAtPath(updatedSchema, path)
+  }
+  return updatedSchema
 }

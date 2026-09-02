@@ -1,5 +1,5 @@
 import type { IDocument, IObjectType } from '@/types/types'
-import { Input, Tabs, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
+import { Input, Loader, Tabs, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
 import { useQuery } from '@tanstack/react-query'
 
 import { TableVirtuoso, type TableComponents } from 'react-virtuoso'
@@ -7,7 +7,7 @@ import { forwardRef, useState, type ForwardRefExoticComponent, type ReactElement
 import { Button } from '@/components/ui/button'
 import type { IDocumentImport, IFullDocForImport } from '@/import/types'
 import SelectObjectTypeForImport from './select_object_type_for_import/index.tsx'
-import { objectTypeForRecordsState, recordsToImportState } from '@/import/state/importState'
+import { objectTypeForRecordsState, previewrecordsToImportState, recordsToImportState } from '@/import/state/importState'
 import { useAtom } from 'jotai'
 import BatchLoadDocuments from '@/import/components/batch_load_documents'
 import { postDocument } from '@/manage/document/services'
@@ -71,52 +71,30 @@ const ListRecords = ({ documents }: { documents: IDocumentImport<unknown>[] }) =
 const isAbortError = (error: unknown, signal?: AbortSignal) =>
   (error instanceof DOMException && error.name === 'AbortError') || !!signal?.aborted
 
-export type IImportPageProps = {
-  type: string
-  defaultImportUrl: string
-  defaultDetailRoot: string
-  label: string
-  pluralLabel?: string
-  service: ({
-    signal,
-    url,
-  }: {
-    signal: AbortSignal
-    url: string
-  }) => Promise<IDocumentImport<unknown>[]>
-  getFullDoc: (props: {
-    doc: IDocumentImport
-    url?: string
-    signal?: AbortSignal
-    serviceRoot?: string
-  }) => Promise<IFullDocForImport>
-  objectType?: IObjectType,
-  icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>
-}
-
-const ImportRecordsPage = ({
+const RemoteSourceImport = ({
   defaultImportUrl,
   defaultDetailRoot,
-  label,
-  pluralLabel,
   service,
   getFullDoc,
+  label,
+  pluralLabel,
   type
-  // objectType
-}: IImportPageProps): ReactElement => {
-  pluralLabel = pluralLabel || `${label}s`
+}: IRemoteSourceImportProps & { type: string; label: string; pluralLabel: string }): ReactElement => {
+
+
   const [draftUrl, setDraftUrl] = useState<string | undefined>(defaultImportUrl)
   const [draftDetailUrl, setDraftDetailUrl] = useState<string | undefined>(defaultDetailRoot)
   const [activeUrl, setActiveUrl] = useState<string | undefined>(undefined)
   const [activeDetailUrl, setActiveDetailUrl] = useState<string | undefined>(undefined)
   const [loadCount, setLoadCount] = useState(0)
-  const [objectTypeForRecords] = useAtom(objectTypeForRecordsState)
+
+
+  const [, setSelectedObjectType] = useAtom(objectTypeForRecordsState)
+  const [, setSelectedRecordsToImport] = useAtom(recordsToImportState)
+  const [, setPreviewRecordsToImport] = useAtom(previewrecordsToImportState)
 
   const [prevDefaultImportUrl, setPrevDefaultImportUrl] = useState(defaultImportUrl)
   const [prevDefaultDetailRoot, setPrevDefaultDetailRoot] = useState(defaultDetailRoot)
-  const [, setSelectedObjectType] = useAtom(objectTypeForRecordsState)
-  const [, setSelectedRecordsToImport] = useAtom(recordsToImportState)
-
   if (prevDefaultImportUrl !== defaultImportUrl || prevDefaultDetailRoot !== defaultDetailRoot) {
     setPrevDefaultImportUrl(defaultImportUrl)
     setPrevDefaultDetailRoot(defaultDetailRoot)
@@ -135,14 +113,15 @@ const ImportRecordsPage = ({
     //isSuccess,
     isPending,
   } = useQuery({
-    queryKey: [label, activeUrl, loadCount],
+    queryKey: [type, activeUrl, loadCount],
     enabled: !!activeUrl,
     queryFn: async ({ signal }) => {
       try {
         const docs = await service({ signal, url: activeUrl! })
-        setSelectedTab('records')
+        //setSelectedTab('records')
         setSelectedObjectType(undefined)
         setSelectedRecordsToImport([])
+        setPreviewRecordsToImport(docs)
         return docs
       } catch (error) {
         if (isAbortError(error, signal)) {
@@ -157,22 +136,11 @@ const ImportRecordsPage = ({
     placeholderData: (previousData) => previousData,
   })
 
-  const auth = useAuth()
-  const [selectedTab, setSelectedTab] = useState('records')
-
-  /* const state = useMemo<'idle' | 'loading' | 'success' | 'error'>(() => {
-                if (!activeUrl) return 'idle'
-                if (isError) return 'error'
-                if (isPending || isFetching) return 'loading'
-                if (isSuccess) return 'success'
-                return 'idle'
-        }, [activeUrl, isError, isPending, isFetching, isSuccess]) */
-
   return (
-    <div className="flex flex-col gap-4 h-full">
-      <h1 className="text-2xl font-bold">Import {pluralLabel}</h1>
-
+    <>
       <div className="flex flex-row gap-4 items-end">
+
+
         <Input
           id="import-url"
           label="Import URL"
@@ -202,80 +170,162 @@ const ImportRecordsPage = ({
           Load {pluralLabel}
         </Button>
       </div>
+      {
+        isFetching && (
+          <div className="flex items-center justify-center p-6">
+            <Loader size="sm" />
+          </div>
+        )
+      }
+    </>
+  )
+
+
+
+}
+
+export type IRemoteSourceImportProps = {
+  defaultImportUrl: string
+  defaultDetailRoot: string
+  service: ({
+    signal,
+    url,
+  }: {
+    signal: AbortSignal
+    url: string
+  }) => Promise<IDocumentImport<unknown>[]>
+  getFullDoc: (props: {
+    doc: IDocumentImport
+    url?: string
+    signal?: AbortSignal
+    serviceRoot?: string
+  }) => Promise<IFullDocForImport>
+
+}
+
+export type IImportPageProps = {
+  type: string
+  label: string
+  pluralLabel?: string
+  remoteSource?: IRemoteSourceImportProps
+  objectType?: IObjectType,
+  csvSource?: boolean
+  icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>
+}
+
+const ImportRecordsPage = ({
+  label,
+  pluralLabel,
+  type,
+  remoteSource,
+  csvSource
+  // objectType
+}: IImportPageProps): ReactElement => {
+  pluralLabel = pluralLabel || `${label}s`
+
+  const [objectTypeForRecords] = useAtom(objectTypeForRecordsState)
+  const [previewRecordsToImport] = useAtom(previewrecordsToImportState)
+
+
+
+
+
+
+
+  const auth = useAuth()
+  const [selectedTab, setSelectedTab] = useState('records')
+  const getFullDoc = remoteSource?.getFullDoc ?? ((d) => (new Promise((resolve) => resolve({ doc: d.doc, fullDoc: d.doc, slug: d.doc.slug, label: d.doc.label, data: d.doc.data, attrs: {}, description: d.doc.description } as IFullDocForImport))))
+
+  /* const state = useMemo<'idle' | 'loading' | 'success' | 'error'>(() => {
+                if (!activeUrl) return 'idle'
+                if (isError) return 'error'
+                if (isPending || isFetching) return 'loading'
+                if (isSuccess) return 'success'
+                return 'idle'
+        }, [activeUrl, isError, isPending, isFetching, isSuccess]) */
+
+  return (
+    <div className="flex flex-col gap-4 h-full">
+      <h1 className="text-2xl font-bold">Import {pluralLabel}</h1>
+
+      {
+        remoteSource && (
+          <RemoteSourceImport
+            {...remoteSource}
+            label={label}
+            type={type}
+            pluralLabel={pluralLabel}
+          />
+        )
+      }
 
       <div className="relative flex-col h-full">
-        {!activeUrl || (isPending && !isFetching) ? (
-          ''
-        ) : (
-          <ViewWithLoader isLoading={isFetching} error={error} data={documents}>
-            {documents && (
-              <Tabs
-                className="h-full"
-                defaultContentClassName="h-full py-5 flex-col gap-2"
-                navClassName="sticky top-0 z-10 bg-gray-100 dark:bg-gray-800 shadow-sm"
-                selectedTab={selectedTab}
-                onChange={(tabId) => setSelectedTab(tabId)}
-                tabs={[
-                  {
-                    id: 'records',
-                    label: 'Available Records',
-                    content: <ListRecords documents={documents} />,
-                  },
-                  {
-                    id: 'type',
-                    label: 'Object type',
-                    content: (
-                      <SelectObjectTypeForImport
-                        documents={documents}
-                        getFullDoc={getFullDoc}
-                        detailRoot={activeDetailUrl}
-                        label={label}
-                        type={type}
-                      />
-                    ),
-                  },
-                  {
-                    id: 'import',
-                    label: 'Import Records',
-                    disabled: !documents?.length || !objectTypeForRecords,
-                    content: (
-                      <div className="flex flex-col h-full gap-2">
-                        <div>
-                          Importing {documents?.length} records with object type{' '}
-                          {objectTypeForRecords?.label}
-                        </div>
-                        <BatchLoadDocuments
-                          documents={documents}
-                          getFullDoc={getFullDoc}
-                          detailRoot={activeDetailUrl}
-                          onFullDocLoaded={async (doc) => {
-                            if (objectTypeForRecords !== undefined) {
-                              const docToSave = {
-                                object_type_uuid: objectTypeForRecords.uuid,
-                                ...pick(doc, ['label', 'description', 'slug', 'data']),
-                              } as Omit<IDocument, 'uuid' | 'created_at' | 'updated_at'>
-                              const newDoc = await postDocument({
-                                document: docToSave,
-                                token: auth.user?.access_token ?? '',
-                              })
+        {previewRecordsToImport && previewRecordsToImport.length && (
+          <Tabs
+            className="h-full"
+            defaultContentClassName="h-full py-5 flex-col gap-2"
+            navClassName="sticky top-0 z-10 bg-gray-100 dark:bg-gray-800 shadow-sm"
+            selectedTab={selectedTab}
+            onChange={(tabId) => setSelectedTab(tabId)}
+            tabs={[
+              {
+                id: 'records',
+                label: 'Available Records',
+                content: <ListRecords documents={previewRecordsToImport} />,
+              },
+              {
+                id: 'type',
+                label: 'Object type',
+                content: (
+                  <SelectObjectTypeForImport
+                    documents={previewRecordsToImport}
+                    getFullDoc={getFullDoc}
+                    detailRoot={remoteSource?.defaultDetailRoot}
+                    label={label}
+                    type={type}
+                  />
+                ),
+              },
+              {
+                id: 'import',
+                label: 'Import Records',
+                disabled: !previewRecordsToImport?.length || !objectTypeForRecords,
+                content: (
+                  <div className="flex flex-col h-full gap-2">
+                    <div>
+                      Importing {previewRecordsToImport?.length} records with object type{' '}
+                      {objectTypeForRecords?.label}
+                    </div>
+                    <BatchLoadDocuments
+                      documents={previewRecordsToImport}
+                      getFullDoc={getFullDoc}
+                      detailRoot={remoteSource?.defaultDetailRoot ?? 'NA'}
+                      onFullDocLoaded={async (doc) => {
+                        if (objectTypeForRecords !== undefined) {
+                          const docToSave = {
+                            object_type_uuid: objectTypeForRecords.uuid,
+                            ...pick(doc, ['label', 'description', 'slug', 'data']),
+                          } as Omit<IDocument, 'uuid' | 'created_at' | 'updated_at'>
+                          const newDoc = await postDocument({
+                            document: docToSave,
+                            token: auth.user?.access_token ?? '',
+                          })
 
-                              console.log('new document saved!', newDoc)
-                            }
-                          }}
-                          onAllFullDocsLoaded={async (fullDocs) => {
-                            console.log('All full docs loaded:', fullDocs)
-                          }}
-                        />
-                      </div>
-                    ),
-                  },
-                ]}
-              />
-            )}
-          </ViewWithLoader>
+                          console.log('new document saved!', newDoc)
+                        }
+                      }}
+                      onAllFullDocsLoaded={async (fullDocs) => {
+                        console.log('All full docs loaded:', fullDocs)
+                      }}
+                    />
+                  </div>
+                ),
+              },
+            ]}
+          />
         )}
       </div>
-    </div>
+    </div >
   )
 }
 

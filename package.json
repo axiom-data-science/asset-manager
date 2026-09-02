@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@axdspub/axiom-ui-forms": "^1.2.0-alpha.0",
+    "@axdspub/axiom-ui-forms": "^1.2.1-alpha.1",
     "@axdspub/axiom-ui-utilities": "^1.0.19",
     "@fontsource-variable/geist": "^5.2.9",
     "@tailwindcss/vite": "^4.2.1",
@@ -37,6 +37,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@types/json-schema": "^7.0.15",
+    "@types/lodash-es": "^4.17.12",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",

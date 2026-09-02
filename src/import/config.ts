@@ -27,93 +27,109 @@ import {
 
 const importConfigs: IImportPageProps[] = [
   {
-    defaultImportUrl: searchURL({
-      type: 'platform2',
-      count: 100,
-      portal_id: 25,
-    }),
-    service: searchDocs,
-    defaultDetailRoot: PLATFORM_ROOT,
-    getFullDoc: movingPlatform,
+    remoteSource: {
+      defaultImportUrl: searchURL({
+        type: 'platform2',
+        count: 100,
+        portal_id: 25,
+      }),
+      service: searchDocs,
+      defaultDetailRoot: PLATFORM_ROOT,
+      getFullDoc: movingPlatform,
+    },
     label: 'Moving Platform',
     type: 'moving_platform',
     icon: Ship
   },
   {
-    defaultImportUrl: searchURL({
-      type: 'sensor_station',
-      count: 100,
-      portal_id: 25,
-    }),
-    defaultDetailRoot: SENSORS_ROOT,
-    service: searchDocs,
-    getFullDoc: sensorStation,
+    remoteSource: {
+      defaultImportUrl: searchURL({
+        type: 'sensor_station',
+        count: 100,
+        portal_id: 25,
+      }),
+      defaultDetailRoot: SENSORS_ROOT,
+      service: searchDocs,
+      getFullDoc: sensorStation,
+    },
     label: 'Sensor Station',
     type: 'sensor_station',
     icon: Thermometer
   },
   {
-    defaultImportUrl: defaultOikosModelsURL,
-    service: oikosModels,
-    defaultDetailRoot: 'UNUSED',
-    getFullDoc: oikosModel,
+    remoteSource: {
+      defaultImportUrl: defaultOikosModelsURL,
+      service: oikosModels,
+      defaultDetailRoot: 'UNUSED',
+      getFullDoc: oikosModel,
+    },
     label: 'Oikos Model',
     type: 'oikos_model',
     icon: Grid2X2
   },
   {
-    defaultImportUrl: defaultOikosModelsURL,
-    service: oikosModelVariables,
-    defaultDetailRoot: 'UNUSED',
-    getFullDoc: oikosModelVariable,
+    remoteSource: {
+      defaultImportUrl: defaultOikosModelsURL,
+      service: oikosModelVariables,
+      defaultDetailRoot: 'UNUSED',
+      getFullDoc: oikosModelVariable,
+    },
     label: 'Oikos Model Variable',
     type: 'oikos_model_variable',
     icon: Grid2X2Plus
   },
   {
-    defaultImportUrl: defaultBinninatorRecordsURL,
-    service: binninatorRecords,
-    defaultDetailRoot: binninatorRoot,
-    getFullDoc: binninatorMetadata,
+    remoteSource: {
+      defaultImportUrl: defaultBinninatorRecordsURL,
+      service: binninatorRecords,
+      defaultDetailRoot: binninatorRoot,
+      getFullDoc: binninatorMetadata,
+    },
     label: 'Binner Record',
     type: 'binner_record',
     icon: ChartBarBig
   },
   {
-    defaultImportUrl: searchURL({
-      type: 'layer_group',
-      count: 100,
-      portal_id: 25,
-    }),
-    service: oikosVectorLayers,
-    defaultDetailRoot: OIKOS_URL_ROOT,
-    getFullDoc: oikosLayer,
+    remoteSource: {
+      defaultImportUrl: searchURL({
+        type: 'layer_group',
+        count: 100,
+        portal_id: 25,
+      }),
+      service: oikosVectorLayers,
+      defaultDetailRoot: OIKOS_URL_ROOT,
+      getFullDoc: oikosLayer,
+    },
     label: 'Oikos Vector Layer',
     type: 'oikos_vector_layer',
     icon: Layers2
   },
   {
-    defaultImportUrl: searchURL({
-      type: 'layer_group',
-      count: 100,
-      portal_id: 25,
-    }),
-    service: oikosVectorLayerGroups,
-    defaultDetailRoot: OIKOS_URL_ROOT,
-    getFullDoc: oikosLayerGroup,
+    remoteSource: {
+      defaultImportUrl: searchURL({
+        type: 'layer_group',
+        count: 100,
+        portal_id: 25,
+      }),
+      service: oikosVectorLayerGroups,
+      defaultDetailRoot: OIKOS_URL_ROOT,
+      getFullDoc: oikosLayerGroup,
+    },
     label: 'Oikos Vector Layer Group',
     type: 'oikos_vector_layer_group',
     icon: Layers3
   },
   {
-    defaultImportUrl: searchURL({
-      type: 'layer_group',
-      count: 100,
-      portal_id: 25,
-    }),
-    service: oikosVectorModules,
-    defaultDetailRoot: OIKOS_URL_ROOT,
-    getFullDoc: oikosModule,
+    remoteSource: {
+      defaultImportUrl: searchURL({
+        type: 'layer_group',
+        count: 100,
+        portal_id: 25,
+      }),
+      service: oikosVectorModules,
+      defaultDetailRoot: OIKOS_URL_ROOT,
+      getFullDoc: oikosModule,
+    },
     label: 'Oikos  Module',
     type: 'oikos_vector_module',
     icon: LayersPlus

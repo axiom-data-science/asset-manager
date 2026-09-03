@@ -11,12 +11,15 @@ import type { IObjectType, IPostgrestParams, IRollup } from ***REMOVED***@/types
 import { deleteObjectType } from ***REMOVED***./services***REMOVED***
 import { useAuth } from ***REMOVED***react-oidc-context***REMOVED***
 import useCacheInvalidator from ***REMOVED***@/manage/components/useCacheInvalidator***REMOVED***
+import { TriangleAlert, X } from ***REMOVED***lucide-react***REMOVED***
 
 const DeleteButton = ({
   object_type,
+  document_count,
   onDelete,
 }: {
   object_type: IObjectType
+  document_count: number
   onDelete: () => void
 }): ReactElement => {
   const [confirm, setConfirm] = useState(false)
@@ -38,9 +41,25 @@ const DeleteButton = ({
     })
   }
   return (
-    <Button onClick={handleClick} size="xs" type="alert" className="text-white">
-      {confirm ? ***REMOVED***Confirm***REMOVED*** : ***REMOVED***Delete***REMOVED***}
-    </Button>
+    <span className=***REMOVED***flex flex-col gap-2***REMOVED***>
+      {
+        confirm && document_count > 0 && (
+          <span className="text-xs text-red-600 flex flex-row items-start gap-2">
+            <TriangleAlert className=***REMOVED***w-4 h-4***REMOVED*** /> This will also delete {document_count} documents
+          </span>
+        )
+      }
+      <span className="flex flex-row items-center gap-4">
+        <Button onClick={handleClick} size="xs" type="alert" className="text-white">
+          {confirm ? ***REMOVED***Confirm***REMOVED*** : ***REMOVED***Delete***REMOVED***}
+        </Button>
+        {
+          confirm && (
+            <X onClick={() => setConfirm(false)} size="xs" type="secondary" className="w-4 h-4 cursor-pointer" />
+          )
+        }
+      </span>
+    </span>
   )
 }
 
@@ -52,6 +71,7 @@ const ListObjectTypes = (): ReactElement => {
         dir: ***REMOVED***desc***REMOVED***,
       },
     ],
+    select: [***REMOVED*******REMOVED***, ***REMOVED***document_count:document(count)***REMOVED***],
   }
   const rollups = [***REMOVED***category***REMOVED***]
   const {
@@ -147,6 +167,24 @@ const ListObjectTypes = (): ReactElement => {
                     },
                   },
                   {
+                    label: ***REMOVED***Documents***REMOVED***,
+                    id: ***REMOVED***document_count***REMOVED***,
+                    cellClassName: ***REMOVED***text-center***REMOVED***,
+                    accessor: (r) => {
+                      const c = r.document_count?.[0]?.count ?? 0
+                      return <span className=***REMOVED***text-xs text-slate-400***REMOVED***>{c > 0
+                        ? <Link to={`/document?object_type_uuid=${r.uuid}`} className={
+                          utils.createButtonClass({
+                            variant: ***REMOVED***primary***REMOVED***,
+                            size: ***REMOVED***sm***REMOVED***,
+                            className: ***REMOVED***px-2 py-1 bg-blue-600 text-white hover:bg-blue-700***REMOVED***,
+                          })
+                        }>{c}</Link>
+                        : 0
+                      }</span>
+                    }
+                  },
+                  {
                     label: ***REMOVED***Category***REMOVED***,
                     id: ***REMOVED***category***REMOVED***,
                   },
@@ -173,7 +211,7 @@ const ListObjectTypes = (): ReactElement => {
                           Protected
                         </Button>
                       ) : (
-                        <DeleteButton object_type={r as IObjectType} onDelete={onDeleteItem} />
+                        <DeleteButton object_type={r as IObjectType} document_count={r.document_count?.[0]?.count ?? 0} onDelete={onDeleteItem} />
                       ),
                   },
                 ]}

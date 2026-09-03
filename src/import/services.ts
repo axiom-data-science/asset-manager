@@ -247,9 +247,14 @@ export const oikosModule = async ({ doc, url, serviceRoot = OIKOS_URL_ROOT, sign
     })).json()
     return {
         slug: doc.slug,
-        label: j.label,
-        description: j.description,
-        data: j.module,
+        label: j.module.label,
+        description: j.module.description ?? ***REMOVED******REMOVED***,
+        data: {
+            ...j.module,
+            layerGroups: (j.layerGroups as Array<{ uuid: string }>).map(lg => lg.uuid),
+            layers: (j.dataLayers.concat(j.vectorLayers.concat(j.rasterLayers)) as Array<{ uuid: string }>).map(l => l.uuid),
+            stickyLayerGroups: (j.stickyLayerGroups as Array<{ uuid: string }>).map(lg => lg.uuid)
+        },
         attrs: {}
     }
 }

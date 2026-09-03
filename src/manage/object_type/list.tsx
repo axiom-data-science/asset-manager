@@ -11,12 +11,15 @@ import type { IObjectType, IPostgrestParams, IRollup } from '@/types/types'
 import { deleteObjectType } from './services'
 import { useAuth } from 'react-oidc-context'
 import useCacheInvalidator from '@/manage/components/useCacheInvalidator'
+import { TriangleAlert, X } from 'lucide-react'
 
 const DeleteButton = ({
   object_type,
+  document_count,
   onDelete,
 }: {
   object_type: IObjectType
+  document_count: number
   onDelete: () => void
 }): ReactElement => {
   const [confirm, setConfirm] = useState(false)
@@ -38,9 +41,25 @@ const DeleteButton = ({
     })
   }
   return (
-    <Button onClick={handleClick} size="xs" type="alert" className="text-white">
-      {confirm ? 'Confirm' : 'Delete'}
-    </Button>
+    <span className='flex flex-col gap-2'>
+      {
+        confirm && document_count > 0 && (
+          <span className="text-xs text-red-600 flex flex-row items-start gap-2">
+            <TriangleAlert className='w-4 h-4' /> This will also delete {document_count} documents
+          </span>
+        )
+      }
+      <span className="flex flex-row items-center gap-4">
+        <Button onClick={handleClick} size="xs" type="alert" className="text-white">
+          {confirm ? 'Confirm' : 'Delete'}
+        </Button>
+        {
+          confirm && (
+            <X onClick={() => setConfirm(false)} size="xs" type="secondary" className="w-4 h-4 cursor-pointer" />
+          )
+        }
+      </span>
+    </span>
   )
 }
 
@@ -52,6 +71,7 @@ const ListObjectTypes = (): ReactElement => {
         dir: 'desc',
       },
     ],
+    select: ['*', 'document_count:document(count)'],
   }
   const rollups = ['category']
   const {
@@ -147,6 +167,24 @@ const ListObjectTypes = (): ReactElement => {
                     },
                   },
                   {
+                    label: 'Documents',
+                    id: 'document_count',
+                    cellClassName: 'text-center',
+                    accessor: (r) => {
+                      const c = r.document_count?.[0]?.count ?? 0
+                      return <span className='text-xs text-slate-400'>{c > 0
+                        ? <Link to={`/document?object_type_uuid=${r.uuid}`} className={
+                          utils.createButtonClass({
+                            variant: 'primary',
+                            size: 'sm',
+                            className: 'px-2 py-1 bg-blue-600 text-white hover:bg-blue-700',
+                          })
+                        }>{c}</Link>
+                        : 0
+                      }</span>
+                    }
+                  },
+                  {
                     label: 'Category',
                     id: 'category',
                   },
@@ -173,7 +211,7 @@ const ListObjectTypes = (): ReactElement => {
                           Protected
                         </Button>
                       ) : (
-                        <DeleteButton object_type={r as IObjectType} onDelete={onDeleteItem} />
+                        <DeleteButton object_type={r as IObjectType} document_count={r.document_count?.[0]?.count ?? 0} onDelete={onDeleteItem} />
                       ),
                   },
                 ]}

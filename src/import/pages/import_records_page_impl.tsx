@@ -1,5 +1,5 @@
 import type { IDocument, IObjectType } from '@/types/types'
-import { Input, Loader, Tabs, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
+import { Input, Loader, Tabs } from '@axdspub/axiom-ui-utilities'
 import { useQuery } from '@tanstack/react-query'
 
 import { TableVirtuoso, type TableComponents } from 'react-virtuoso'
@@ -175,8 +175,7 @@ const RemoteSourceImport = ({
           <div className="flex items-center justify-center p-6">
             <Loader size="sm" />
           </div>
-        )
-      }
+        )}
     </>
   )
 
@@ -260,7 +259,7 @@ const ImportRecordsPage = ({
       }
 
       <div className="relative flex-col h-full">
-        {previewRecordsToImport && previewRecordsToImport.length && (
+        {previewRecordsToImport && previewRecordsToImport.length > 0 && (
           <Tabs
             className="h-full"
             defaultContentClassName="h-full py-5 flex-col gap-2"

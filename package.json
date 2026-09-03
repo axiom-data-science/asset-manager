@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@axdspub/axiom-ui-data-services": "^1.1.1-alpha.1",
     "@axdspub/axiom-ui-forms": "^1.2.1-alpha.1",
     "@axdspub/axiom-ui-utilities": "^1.0.19",
     "@fontsource-variable/geist": "^5.2.9",

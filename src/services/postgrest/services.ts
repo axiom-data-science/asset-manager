@@ -1,3 +1,4 @@
+import { isValidUUID } from '@/lib/utils'
 import { DOCUMENTS_TABLE } from '@/manage/document/services'
 import { postgrestRollupArgs, postgrestUrl } from '@/services/postgrest/endpoints'
 import type { IPostgrestParams } from '@/types/types'
@@ -82,18 +83,20 @@ export const fetchSingleFromPostgrest = async <T>({
   token?: string
   signal?: AbortSignal
 }): Promise<T> => {
+  const uuidIsSlug = isValidUUID(uuid ?? '') === false
+
   const p = uuid
     ? {
-      ...params,
-      filters: [
-        {
-          column: uuidColumn,
-          operator: 'eq' as const,
-          value: uuid,
-        },
-        ...(params?.filters ?? []),
-      ],
-    }
+        ...params,
+        filters: [
+          {
+            column: uuidIsSlug ? 'slug' : uuidColumn,
+            operator: 'eq' as const,
+            value: uuid,
+          },
+          ...(params?.filters ?? []),
+        ],
+      }
     : params
   const url = postgrestUrl({ table, params: p })
   const response = await fetch(url, {
@@ -402,11 +405,7 @@ export const updateDocumentLock = async ({
     })
   ).json()
   const doc = request && request?.length > 0 ? request[0] : null
-  return doc
-    ? lock
-      ? doc.lock_sub === user_sub
-      : doc.lock_sub === null
-    : false
+  return doc ? (lock ? doc.lock_sub === user_sub : doc.lock_sub === null) : false
 }
 
 export const lockDocument = async (params: {

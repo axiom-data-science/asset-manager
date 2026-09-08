@@ -1,3 +1,4 @@
+import { isValidUUID } from ***REMOVED***@/lib/utils***REMOVED***
 import { DOCUMENTS_TABLE } from ***REMOVED***@/manage/document/services***REMOVED***
 import { postgrestRollupArgs, postgrestUrl } from ***REMOVED***@/services/postgrest/endpoints***REMOVED***
 import type { IPostgrestParams } from ***REMOVED***@/types/types***REMOVED***
@@ -82,18 +83,20 @@ export const fetchSingleFromPostgrest = async <T>({
   token?: string
   signal?: AbortSignal
 }): Promise<T> => {
+  const uuidIsSlug = isValidUUID(uuid ?? ***REMOVED******REMOVED***) === false
+
   const p = uuid
     ? {
-      ...params,
-      filters: [
-        {
-          column: uuidColumn,
-          operator: ***REMOVED***eq***REMOVED*** as const,
-          value: uuid,
-        },
-        ...(params?.filters ?? []),
-      ],
-    }
+        ...params,
+        filters: [
+          {
+            column: uuidIsSlug ? ***REMOVED***slug***REMOVED*** : uuidColumn,
+            operator: ***REMOVED***eq***REMOVED*** as const,
+            value: uuid,
+          },
+          ...(params?.filters ?? []),
+        ],
+      }
     : params
   const url = postgrestUrl({ table, params: p })
   const response = await fetch(url, {
@@ -402,11 +405,7 @@ export const updateDocumentLock = async ({
     })
   ).json()
   const doc = request && request?.length > 0 ? request[0] : null
-  return doc
-    ? lock
-      ? doc.lock_sub === user_sub
-      : doc.lock_sub === null
-    : false
+  return doc ? (lock ? doc.lock_sub === user_sub : doc.lock_sub === null) : false
 }
 
 export const lockDocument = async (params: {

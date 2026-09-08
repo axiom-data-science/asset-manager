@@ -57,11 +57,11 @@ const CreateDocumentForm = ({
   type: IObjectType
   assetForm?: IAssetForm
   fieldConfigs?: IFormToFieldConfigWithDetails[]
-  schema: IObjectSchema,
-  parentDocumentUUID?: string,
-  toParentPredicate?: string,
-  childDocumentUUID?: string,
-  toChildPredicate?: string,
+  schema: IObjectSchema
+  parentDocumentUUID?: string
+  toParentPredicate?: string
+  childDocumentUUID?: string
+  toChildPredicate?: string
   onSuccess?: (document: IDocument) => void
   returnToOnSuccess?: string
 }): ReactElement => {
@@ -101,20 +101,20 @@ const CreateDocumentForm = ({
     []
   const dataForm = (
     assetForm?.use_form_config === true &&
-      assetForm?.form_config !== undefined &&
-      assetForm?.form_config !== null
+    assetForm?.form_config !== undefined &&
+    assetForm?.form_config !== null
       ? assetForm.form_config
       : assetForm?.schema_override_config !== undefined || fieldConfigJSON !== undefined
         ? omit(
-          schemaToFormUtils.overridesAndSchemaToFormObject({
-            schema: schema.json_schema,
-            formOverrides: assetForm?.schema_override_config
-              ? [assetForm?.schema_override_config as IFormOverride]
-              : undefined,
-            formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
-          }),
-          ***REMOVED***label***REMOVED***
-        )
+            schemaToFormUtils.overridesAndSchemaToFormObject({
+              schema: schema.json_schema,
+              formOverrides: assetForm?.schema_override_config
+                ? [assetForm?.schema_override_config as IFormOverride]
+                : undefined,
+              formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
+            }),
+            ***REMOVED***label***REMOVED***
+          )
         : schemaToFormUtils.schemaToFormObject(schema.json_schema)
   ) as IForm
 
@@ -130,11 +130,11 @@ const CreateDocumentForm = ({
   const {
     form,
     formState: [formValues, setFormValues],
-    filterForSave
+    filterForSave,
   } = useSlug({
     form: formJSON,
     labelPath: type.data?.field_mappings?.label,
-    autoSlug: true
+    autoSlug: true,
   })
 
   const onSave = async () => {
@@ -152,7 +152,8 @@ const CreateDocumentForm = ({
     }
     setErrors([])
     try {
-      const defaultLabel = formValues.label ??
+      const defaultLabel =
+        formValues.label ??
         formValues.title ??
         formValues.platform_name ??
         formValues.station_label ??
@@ -160,7 +161,6 @@ const CreateDocumentForm = ({
       const label = type.data?.field_mappings?.label
         ? get(valuesToSave, type.data.field_mappings.label, defaultLabel)
         : defaultLabel
-
 
       const slug = formValues.slug ?? null
       const defaultDescription = formValues.description ?? ***REMOVED******REMOVED***
@@ -181,7 +181,9 @@ const CreateDocumentForm = ({
       })
 
       if (parentDocumentUUID && toParentPredicate) {
-        const predicate = contextState.predicate_by_predicate[toParentPredicate] ?? contextState.predicate_by_uuid[toParentPredicate]
+        const predicate =
+          contextState.predicate_by_predicate[toParentPredicate] ??
+          contextState.predicate_by_uuid[toParentPredicate]
         if (predicate) {
           await postToPostgrest({
             table: ***REMOVED***relationship***REMOVED***,
@@ -190,15 +192,17 @@ const CreateDocumentForm = ({
               predicate_uuid: predicate.uuid,
               // The relationship is from the newly created document to the parent document
               from_document_uuid: newDoc.uuid,
-              to_document_uuid: parentDocumentUUID
-            }
+              to_document_uuid: parentDocumentUUID,
+            },
           })
         } else {
           console.warn(`Predicate not found for parent document relationship: ${toParentPredicate}`)
         }
       }
       if (childDocumentUUID && toChildPredicate) {
-        const predicateObj = contextState.predicate_by_predicate[toChildPredicate] ?? contextState.predicate_by_uuid[toChildPredicate]
+        const predicateObj =
+          contextState.predicate_by_predicate[toChildPredicate] ??
+          contextState.predicate_by_uuid[toChildPredicate]
         if (predicateObj) {
           await postToPostgrest({
             table: ***REMOVED***relationship***REMOVED***,
@@ -207,14 +211,13 @@ const CreateDocumentForm = ({
               predicate_uuid: predicateObj.uuid,
               // The relationship is from the child document to the newly created document as it***REMOVED***s parent
               from_document_uuid: childDocumentUUID,
-              to_document_uuid: newDoc.uuid
-            }
+              to_document_uuid: newDoc.uuid,
+            },
           })
         } else {
           console.warn(`Predicate not found for child document relationship: ${toChildPredicate}`)
         }
       }
-
 
       if (onSuccess) {
         onSuccess(newDoc)
@@ -222,7 +225,11 @@ const CreateDocumentForm = ({
 
       const navPath =
         returnToOnSuccess !== undefined
-          ? buildStringFromTemplate(returnToOnSuccess, { ...newDoc, ...{ parentDocumentUUID, toParentPredicate, childDocumentUUID, toChildPredicate }, ...{ object_type: type } })
+          ? buildStringFromTemplate(returnToOnSuccess, {
+              ...newDoc,
+              ...{ parentDocumentUUID, toParentPredicate, childDocumentUUID, toChildPredicate },
+              ...{ object_type: type },
+            })
           : (new URLSearchParams(window.location.search).get(***REMOVED***returnToOnSuccess***REMOVED***) ?? undefined)
 
       setSaving(false)
@@ -283,7 +290,7 @@ const CreateDocumentForm = ({
           ***REMOVED***custom:sample_file_object***REMOVED***: SampleFileObject,
           ***REMOVED***custom:csv_upload_for_sample_file***REMOVED***: CSVUploadForSampleFile,
           ***REMOVED***custom:station_search***REMOVED***: StationSearch,
-          ***REMOVED***custom:state_selector***REMOVED***: StateSelector
+          ***REMOVED***custom:state_selector***REMOVED***: StateSelector,
         }}
         SubmitButton={
           includeSaveButton && (
@@ -315,7 +322,10 @@ export const CreateDocumentFromObjectType = ({
 }): ReactElement => {
   const params = useParams()
   const [searchParams] = useSearchParams()
-  const object_type_uuid = objectTypeUUID ?? (params.object_type_uuid as string)
+  const [context] = useAtom(contextStateAtom)
+  const object_type_identifier = objectTypeUUID ?? (params.object_type_uuid as string)
+  const object_type_uuid =
+    context.object_type_by_slug[object_type_identifier]?.uuid ?? object_type_identifier
   const parentDocumentUUID = searchParams.get(***REMOVED***parentDocumentUUID***REMOVED***) ?? undefined
   const toParentPredicate = searchParams.get(***REMOVED***toParentPredicate***REMOVED***) ?? undefined
   const toChildPredicate = searchParams.get(***REMOVED***toChildPredicate***REMOVED***) ?? undefined
@@ -423,7 +433,10 @@ export const CreateDocumentFromSchema = ({
   returnToOnSuccess?: string
 }): ReactElement => {
   const params = useParams()
-  const object_schema_uuid = params.object_schema_uuid as string
+  const [context] = useAtom(contextStateAtom)
+  const object_identifier_param = params.object_schema_uuid as string
+  const object_schema_uuid =
+    context.object_schema_by_slug[object_identifier_param]?.uuid ?? object_identifier_param
   const { data, isLoading, error } = useObjectSchemaFull({ uuid: object_schema_uuid })
   const objectType = data?.object_types
     ? (data.object_types.find((ot) => ot.uuid === data.object_schema.object_type_uuid) ??
@@ -455,7 +468,9 @@ export const CreateDocumentFromForm = ({
   returnToOnSuccess?: string
 }): ReactElement => {
   const params = useParams()
-  const form_uuid = params.form_uuid as string
+  const [context] = useAtom(contextStateAtom)
+  const form_identifier = params.form_uuid as string
+  const form_uuid = context.form_by_slug[form_identifier]?.uuid ?? form_identifier
   const { data, isLoading, error } = useFullForm({ form_uuid })
 
   return (

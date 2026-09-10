@@ -50,6 +50,9 @@ import type { IAssetForm } from '@/types/types'
 import { fetchPersons } from '@/manage/person/services'
 import importConfigs from './import/config'
 import ImportAllPage from './import/pages/all'
+import ListRelationships from '@/manage/relationship/list'
+import EditRelationship from '@/manage/relationship/edit'
+import CreateRelationship from '@/manage/relationship/create'
 
 const makeSiteTitle = (pageTitle?: string) => {
   return `${SITE_TITLE}${pageTitle ? ` - ${pageTitle}` : ''}`
@@ -432,6 +435,34 @@ function App(): ReactElement {
                 <SidebarLayout>
                   <title>{makeSiteTitle('edit form')}</title>
                   <EditFormLoader />
+                </SidebarLayout>
+              }
+            />
+
+            <Route
+              path="/relationship"
+              element={
+                <SidebarLayout>
+                  <title>{makeSiteTitle('relationships')}</title>
+                  <ListRelationships />
+                </SidebarLayout>
+              }
+            />
+            <Route
+              path="/relationship/create"
+              element={
+                <SidebarLayout>
+                  <title>{makeSiteTitle('create relationship')}</title>
+                  <CreateRelationship />
+                </SidebarLayout>
+              }
+            />
+            <Route
+              path="/relationship/edit/:uuid"
+              element={
+                <SidebarLayout>
+                  <title>{makeSiteTitle('edit relationship')}</title>
+                  <EditRelationship />
                 </SidebarLayout>
               }
             />

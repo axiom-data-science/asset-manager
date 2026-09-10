@@ -66,6 +66,23 @@ export function AppSidebar() {
       ],
     },
     {
+      label: ***REMOVED***Asset relationships***REMOVED***,
+      icon: Network,
+      requiresAdmin: true,
+      actions: [
+        {
+          name: ***REMOVED***List asset relationships***REMOVED***,
+          icon: List,
+          url: ***REMOVED***/asset_relationships***REMOVED***,
+        },
+        {
+          name: ***REMOVED***Create asset relationship***REMOVED***,
+          icon: Plus,
+          url: ***REMOVED***/asset_relationships/create***REMOVED***,
+        },
+      ],
+    },
+    {
       label: ***REMOVED***Schemas***REMOVED***,
       icon: Network,
       requiresAdmin: true,

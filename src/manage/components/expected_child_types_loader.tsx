@@ -11,16 +11,18 @@ import { buildStringFromTemplate } from ***REMOVED***@/lib/utils***REMOVED***
 const DefaultChildTypeSelector = ({
   parentDocument,
   expectedChildTypes,
+  createViewPath,
 }: {
   parentDocument?: IDocument<unknown>
   objectType: IObjectType
   expectedChildTypes?: IHydratedExpectedChildType[]
+  createViewPath?: string
 }): ReactElement => {
   return (
     <div>
       {expectedChildTypes?.map((ect, index) => {
         return (
-          <div key={index} className="flex flex-col gap-2 bg-slate-100 text-left">
+          <div key={index} className="flex flex-col gap-2 text-left">
             <h4 className="font-medium">{ect.label}</h4>
             {
               ect?.description && <p className=***REMOVED***text-sm text-gray-700***REMOVED***>{ect.description}</p>
@@ -29,7 +31,13 @@ const DefaultChildTypeSelector = ({
               {ect?.object_types?.map((ot) => {
                 return (
                   <ButtonLink
-                    to={`/create-document/${ot.uuid}/object_type?parentDocumentUUID=${parentDocument?.uuid}&toParentPredicate=${ect.to_parent_predicate}&parentObjectTypeUUID=${parentDocument?.object_type_uuid}&returnToOnSuccess=/create-document-success`}
+                    to={createViewPath ? buildStringFromTemplate(createViewPath, {
+                      object_type_uuid: ot.uuid,
+                      parentDocumentUUID: parentDocument?.uuid,
+                      toParentPredicate: ect.to_parent_predicate,
+                      parentObjectTypeUUID: parentDocument?.object_type_uuid,
+                      returnToOnSuccess: ***REMOVED***/create-document-success***REMOVED***,
+                    }) : `/create-document/${ot.uuid}/object_type?parentDocumentUUID=${parentDocument?.uuid}&toParentPredicate=${ect.to_parent_predicate}&parentObjectTypeUUID=${parentDocument?.object_type_uuid}&returnToOnSuccess=/create-document-success`}
                     key={ot.uuid}
                   >
                     Create {ot.label}
@@ -47,14 +55,17 @@ const DefaultChildTypeSelector = ({
 const ExpectedChildTypeLoader = ({
   parentDocument,
   objectType,
+  createViewPath,
   View = DefaultChildTypeSelector,
 }: {
   parentDocument?: IDocument<unknown>
   objectType: IObjectType
+  createViewPath?: string
   View?: React.FC<{
     parentDocument?: IDocument<unknown>
     objectType: IObjectType
     expectedChildTypes?: IHydratedExpectedChildType[]
+    createViewPath?: string
   }>
 }): ReactElement => {
   const auth = useAuth()
@@ -176,48 +187,49 @@ export const ExpectedChildTypeSelector = ({
     <ExpectedChildTypeLoader
       parentDocument={parentDocument}
       objectType={objectType}
-      View={({
-        parentDocument,
-        objectType,
-        expectedChildTypes,
-      }: {
-        parentDocument?: IDocument<unknown>
-        objectType: IObjectType
-        expectedChildTypes?: IHydratedExpectedChildType[]
-      }) => {
-        if (expectedChildTypes === undefined || expectedChildTypes.length === 0) {
-          return <p>No expected child types</p>
-        }
-        return expectedChildTypes?.map((ect, index) => {
-          return (
-            <div key={index} className="flex flex-col gap-2">
-              {
-                ect?.label && <h4 className="font-medium">{ect.label}</h4>
-              }
-              {
-                ect?.description && <p className=***REMOVED***text-sm text-gray-700***REMOVED***>{ect.description}</p>
-              }
-              {ect?.object_types &&
-                ect.object_types.length > 0 &&
-                (ect.object_types.length === 1 ? (
-                  <CreateCollectionMetadataButton
-                    document={parentDocument}
-                    objectType={ect.object_types[0]}
-                    label={`Create ${ect.object_types[0].label}`}
-                    createViewPath={createViewPath}
-                  />
-                ) : (
-                  <SelectChildTypeForCreation
-                    document={parentDocument}
-                    objectType={objectType}
-                    expectedChildTypes={ect.object_types}
-                    createViewPath={createViewPath}
-                  />
-                ))}
-            </div>
-          )
-        })
-      }}
+      createViewPath={createViewPath}
+    /* View={({
+      parentDocument,
+      objectType,
+      expectedChildTypes,
+    }: {
+      parentDocument?: IDocument<unknown>
+      objectType: IObjectType
+      expectedChildTypes?: IHydratedExpectedChildType[]
+    }) => {
+      if (expectedChildTypes === undefined || expectedChildTypes.length === 0) {
+        return <p>No expected child types</p>
+      }
+      return expectedChildTypes?.map((ect, index) => {
+        return (
+          <div key={index} className="flex flex-col gap-2">
+            {
+              ect?.label && <h4 className="font-medium">{ect.label}</h4>
+            }
+            {
+              ect?.description && <p className=***REMOVED***text-sm text-gray-700***REMOVED***>{ect.description}</p>
+            }
+            {ect?.object_types &&
+              ect.object_types.length > 0 &&
+              (ect.object_types.length === 1 ? (
+                <CreateCollectionMetadataButton
+                  document={parentDocument}
+                  objectType={ect.object_types[0]}
+                  label={`Create ${ect.object_types[0].label}`}
+                  createViewPath={createViewPath}
+                />
+              ) : (
+                <SelectChildTypeForCreation
+                  document={parentDocument}
+                  objectType={objectType}
+                  expectedChildTypes={ect.object_types}
+                  createViewPath={createViewPath}
+                />
+              ))}
+          </div>
+        )
+      })
+    }} */
     />
   )
 }

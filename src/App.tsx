@@ -53,6 +53,9 @@ import ImportAllPage from ***REMOVED***./import/pages/all***REMOVED***
 import ListRelationships from ***REMOVED***@/manage/relationship/list***REMOVED***
 import EditRelationship from ***REMOVED***@/manage/relationship/edit***REMOVED***
 import CreateRelationship from ***REMOVED***@/manage/relationship/create***REMOVED***
+import EditPredicate from ***REMOVED***@/manage/predicate/edit***REMOVED***
+import CreatePredicate from ***REMOVED***@/manage/predicate/create***REMOVED***
+import ListPredicates from ***REMOVED***@/manage/predicate/list***REMOVED***
 
 const makeSiteTitle = (pageTitle?: string) => {
   return `${SITE_TITLE}${pageTitle ? ` - ${pageTitle}` : ***REMOVED******REMOVED***}`
@@ -463,6 +466,34 @@ function App(): ReactElement {
                 <SidebarLayout>
                   <title>{makeSiteTitle(***REMOVED***edit relationship***REMOVED***)}</title>
                   <EditRelationship />
+                </SidebarLayout>
+              }
+            />
+
+            <Route
+              path="/predicate"
+              element={
+                <SidebarLayout>
+                  <title>{makeSiteTitle(***REMOVED***predicates***REMOVED***)}</title>
+                  <ListPredicates />
+                </SidebarLayout>
+              }
+            />
+            <Route
+              path="/predicate/create"
+              element={
+                <SidebarLayout>
+                  <title>{makeSiteTitle(***REMOVED***create predicate***REMOVED***)}</title>
+                  <CreatePredicate />
+                </SidebarLayout>
+              }
+            />
+            <Route
+              path="/predicate/edit/:uuid"
+              element={
+                <SidebarLayout>
+                  <title>{makeSiteTitle(***REMOVED***edit predicate***REMOVED***)}</title>
+                  <EditPredicate />
                 </SidebarLayout>
               }
             />

@@ -22,7 +22,7 @@ import Link from ***REMOVED***@/manage/components/link***REMOVED***
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
 import { deleteDocument, patchDocument } from ***REMOVED***./services***REMOVED***
 import { useQueryClient } from ***REMOVED***@tanstack/react-query***REMOVED***
-import { Lock, Unlock, UserRoundKey, Globe } from ***REMOVED***lucide-react***REMOVED***
+import { Lock, Unlock, UserRoundKey, Globe, X } from ***REMOVED***lucide-react***REMOVED***
 import contextStateAtom from ***REMOVED***@/state/contextStateAtom***REMOVED***
 import { useAtom } from ***REMOVED***jotai***REMOVED***
 
@@ -52,15 +52,30 @@ const DeleteButton = ({
     })
   }
   return (
-    <Button
-      onClick={handleClick}
-      disabled={document.can_modify === false || document.lock_sub !== null}
-      size="xs"
-      type="alert"
-      className="text-white"
-    >
-      {confirm ? ***REMOVED***Confirm***REMOVED*** : ***REMOVED***Delete***REMOVED***}
-    </Button>
+    <span className="flex flex-col gap-2">
+      <span className="flex flex-row items-center gap-2">
+        <Button
+          onClick={handleClick}
+          disabled={document.can_modify === false || document.lock_sub !== null}
+          size="xs"
+          type="alert"
+          className="text-white"
+        >
+          {confirm ? ***REMOVED***Confirm***REMOVED*** : ***REMOVED***Delete***REMOVED***}
+        </Button>
+        {confirm && (
+          <Button
+            onClick={() => setConfirm(false)}
+            size="xs"
+            variant="ghost"
+            type="secondary"
+            className="text-slate-600"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+      </span>
+    </span>
   )
 }
 
@@ -342,10 +357,10 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
                 options={
                   rollup?.map((item) => ({
                     label: `${r === ***REMOVED***object_type_uuid***REMOVED***
-                        ? object_types_map[item.label]?.label
-                        : r === ***REMOVED***owner_sub***REMOVED***
-                          ? (person_by_owner_sub[item.label]?.label ?? item.label)
-                          : item.label
+                      ? object_types_map[item.label]?.label
+                      : r === ***REMOVED***owner_sub***REMOVED***
+                        ? (person_by_owner_sub[item.label]?.label ?? item.label)
+                        : item.label
                       } (${item.count})`,
                     value: item.label,
                   })) ?? []

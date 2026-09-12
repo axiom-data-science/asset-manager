@@ -13,6 +13,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from ***REMOVED**
 import {
   Book,
   BookPlus,
+  Group,
   ChevronDown,
   FilePen,
   Import,
@@ -24,15 +25,88 @@ import {
   RotateCw,
   Share,
   User,
+  BookA,
 } from ***REMOVED***lucide-react***REMOVED***
 import { SidebarGroupContent, SidebarGroupLabel } from ***REMOVED***@/components/ui/sidebar***REMOVED***
-import { Link } from ***REMOVED***react-router-dom***REMOVED***
+import { Link, useLocation } from ***REMOVED***react-router-dom***REMOVED***
 
 import UserView from ***REMOVED***@/manage/components/user***REMOVED***
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
 import headerStateAtom from ***REMOVED***@/state/headerStateAtom***REMOVED***
 import { useAtom } from ***REMOVED***jotai***REMOVED***
 import importConfigs from ***REMOVED***@/import/config***REMOVED***
+import type { ReactElement } from ***REMOVED***react***REMOVED***
+
+const SidebarNavItem = ({
+  name,
+  url,
+  icon
+}: {
+  name: string,
+  url: string,
+  icon: React.ComponentType,
+}): ReactElement => {
+  const Icon = icon
+  const location = useLocation()
+  return <SidebarMenuItem>
+    <SidebarMenuButton asChild className={`text-xs hover:bg-slate-150${location.pathname === url ? ***REMOVED*** bg-slate-100***REMOVED*** : ***REMOVED******REMOVED***}`}>
+      <Link to={url}>
+        <Icon />
+        <span>{name}</span>
+      </Link>
+    </SidebarMenuButton>
+  </SidebarMenuItem>
+}
+
+const SidebarCollapsibleSection = ({
+  label,
+  icon,
+  closeByDefault,
+  actions
+}: {
+  label: string,
+  icon: React.ComponentType,
+  closeByDefault?: boolean,
+  actions: Array<{
+    name: string,
+    url: string,
+    icon: React.ComponentType,
+  } | undefined>
+}) => {
+  const Icon = icon;
+  const location = useLocation()
+  const roots = Object.fromEntries(actions.filter(a => a !== undefined).map(a => [a!.url.split(***REMOVED***/***REMOVED***)[1], a!]))
+  const active = roots[location.pathname.split(***REMOVED***/***REMOVED***)[1]] !== undefined
+  return (
+    <Collapsible key={label} defaultOpen={active || !closeByDefault} className={`group/collapsible ${active ? ***REMOVED*** bg-slate-200***REMOVED*** : ***REMOVED******REMOVED***}`}>
+      <SidebarGroup>
+        <SidebarGroupLabel asChild className="font-bold text-sm cursor-pointer open:bg-red-100">
+          <CollapsibleTrigger className="flex items-center gap-2">
+            <Icon /> {label}
+            <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
+          </CollapsibleTrigger>
+        </SidebarGroupLabel>
+        <CollapsibleContent className="py-2">
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {actions.filter(a => a !== undefined).map((action) => (
+                action &&
+                <SidebarNavItem
+                  key={action.name}
+                  name={action.name}
+                  url={action.url}
+                  icon={action.icon}
+                />
+
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </CollapsibleContent>
+      </SidebarGroup>
+    </Collapsible>
+  )
+
+}
 
 export function AppSidebar() {
   const auth = useAuth()
@@ -66,19 +140,38 @@ export function AppSidebar() {
       ],
     },
     {
-      label: ***REMOVED***Asset relationships***REMOVED***,
-      icon: Network,
+      label: ***REMOVED***Relationships***REMOVED***,
+      icon: Group,
       requiresAdmin: true,
+      closeByDefault: true,
       actions: [
         {
-          name: ***REMOVED***List asset relationships***REMOVED***,
+          name: ***REMOVED***List document relationships***REMOVED***,
           icon: List,
-          url: ***REMOVED***/asset_relationships***REMOVED***,
+          url: ***REMOVED***/relationship***REMOVED***,
         },
         {
-          name: ***REMOVED***Create asset relationship***REMOVED***,
+          name: ***REMOVED***Create document relationship***REMOVED***,
           icon: Plus,
-          url: ***REMOVED***/asset_relationships/create***REMOVED***,
+          url: ***REMOVED***/relationship/create***REMOVED***,
+        },
+      ],
+    },
+    {
+      label: ***REMOVED***Predicates***REMOVED***,
+      icon: BookA,
+      requiresAdmin: true,
+      closeByDefault: true,
+      actions: [
+        {
+          name: ***REMOVED***List relationship predicates***REMOVED***,
+          icon: List,
+          url: ***REMOVED***/predicate***REMOVED***,
+        },
+        {
+          name: ***REMOVED***Create relationship predicate***REMOVED***,
+          icon: Plus,
+          url: ***REMOVED***/predicate/create***REMOVED***,
         },
       ],
     },
@@ -86,6 +179,7 @@ export function AppSidebar() {
       label: ***REMOVED***Schemas***REMOVED***,
       icon: Network,
       requiresAdmin: true,
+      closeByDefault: true,
       actions: [
         {
           name: ***REMOVED***List schemas***REMOVED***,
@@ -113,6 +207,7 @@ export function AppSidebar() {
       label: ***REMOVED***Forms***REMOVED***,
       icon: BookPlus,
       requiresAdmin: true,
+      closeByDefault: true,
       actions: [
         {
           name: ***REMOVED***List forms***REMOVED***,
@@ -140,6 +235,7 @@ export function AppSidebar() {
       label: ***REMOVED***Persons***REMOVED***,
       icon: User,
       requiresAdmin: true,
+      closeByDefault: true,
       actions: [
         {
           name: ***REMOVED***List persons***REMOVED***,
@@ -157,6 +253,7 @@ export function AppSidebar() {
       label: ***REMOVED***Examples***REMOVED***,
       icon: FilePen,
       requiresAdmin: false,
+      closeByDefault: true,
       actions: [
         {
           name: ***REMOVED***List NINJA pipelines***REMOVED***,
@@ -184,52 +281,13 @@ export function AppSidebar() {
       label: ***REMOVED***Imports***REMOVED***,
       icon: Import,
       requiresAdmin: true,
+      closeByDefault: true,
       actions: [
         {
           name: ***REMOVED***All***REMOVED***,
           icon: RotateCw,
           url: ***REMOVED***/import/all***REMOVED***,
         },
-        /* {
-          name: ***REMOVED***Sensor stations***REMOVED***,
-          icon: Thermometer,
-          url: ***REMOVED***/import/sensor-stations***REMOVED***,
-        },
-        {
-          name: ***REMOVED***Moving platforms***REMOVED***,
-          icon: Ship,
-          url: ***REMOVED***/import/moving-platforms***REMOVED***,
-        },
-        {
-          name: ***REMOVED***Model records (oikos)***REMOVED***,
-          icon: Grid2X2,
-          url: ***REMOVED***/import/oikos-models***REMOVED***,
-        },
-        {
-          name: ***REMOVED***Model variable records (oikos)***REMOVED***,
-          icon: Grid2X2Plus,
-          url: ***REMOVED***/import/oikos-model-variables***REMOVED***,
-        },
-        {
-          name: ***REMOVED***Binner records***REMOVED***,
-          icon: ChartBarBig,
-          url: ***REMOVED***/import/binner-records***REMOVED***,
-        },
-        {
-          name: ***REMOVED***Vector layers (oikos)***REMOVED***,
-          icon: Layers2,
-          url: ***REMOVED***/import/oikos-vector-layers***REMOVED***,
-        },
-        {
-          name: ***REMOVED***Vector layer groups (oikos)***REMOVED***,
-          icon: Layers3,
-          url: ***REMOVED***/import/oikos-vector-layer-groups***REMOVED***,
-        },
-        {
-          name: ***REMOVED***Vector modules (oikos)***REMOVED***,
-          icon: LayersPlus,
-          url: ***REMOVED***/import/oikos-vector-modules***REMOVED***,
-        } */,
       ].concat(importConfigs.map(config => {
         return {
           name: config.label,
@@ -248,7 +306,7 @@ export function AppSidebar() {
   return (
     <Sidebar style={sideBarStyle}>
       <SidebarHeader />
-      <SidebarContent>
+      <SidebarContent className=***REMOVED***gap-0***REMOVED***>
         {navGroups
           .filter((group) => {
             if (group.requiresAdmin && !auth.isAdmin) {
@@ -257,32 +315,7 @@ export function AppSidebar() {
             return true
           })
           .map((group) => (
-            <Collapsible key={group.label} defaultOpen className="group/collapsible">
-              <SidebarGroup>
-                <SidebarGroupLabel asChild className="font-bold text-lg cursor-pointer">
-                  <CollapsibleTrigger>
-                    <group.icon className="mr-2" /> {group.label}
-                    <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                  </CollapsibleTrigger>
-                </SidebarGroupLabel>
-                <CollapsibleContent className="py-2">
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      {group.actions.filter(a => a !== undefined).map((action) => (
-                        <SidebarMenuItem key={action.name}>
-                          <SidebarMenuButton asChild>
-                            <Link to={action.url}>
-                              <action.icon />
-                              <span>{action.name}</span>
-                            </Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      ))}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </CollapsibleContent>
-              </SidebarGroup>
-            </Collapsible>
+            <SidebarCollapsibleSection {...group} key={group.label} />
           ))}
       </SidebarContent>
       <SidebarFooter>

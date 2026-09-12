@@ -6,6 +6,7 @@ import { relationshipListQueryKey, useRelationshipListWithRollupsAndLookups } fr
 import type { IPostgrestFilter, IPostgrestParams, IRelationship, IRollup } from ***REMOVED***@/types/types***REMOVED***
 import { useQueryClient } from ***REMOVED***@tanstack/react-query***REMOVED***
 import { Button, SelectInput, utils, ViewWithLoader } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
+import { X } from ***REMOVED***lucide-react***REMOVED***
 import { useState, type ReactElement } from ***REMOVED***react***REMOVED***
 import { useSearchParams } from ***REMOVED***react-router-dom***REMOVED***
 
@@ -36,9 +37,22 @@ const DeleteButton = ({
     }
 
     return (
-        <Button onClick={onClick} size="xs" type="alert" className="text-white">
-            {confirm ? ***REMOVED***Confirm***REMOVED*** : ***REMOVED***Delete***REMOVED***}
-        </Button>
+        <span className="flex flex-row items-center gap-2">
+            <Button onClick={onClick} size="xs" type="alert" className="text-white">
+                {confirm ? ***REMOVED***Confirm***REMOVED*** : ***REMOVED***Delete***REMOVED***}
+            </Button>
+            {confirm && (
+                <Button
+                    onClick={() => setConfirm(false)}
+                    size="xs"
+                    variant="ghost"
+                    type="secondary"
+                    className="text-slate-600"
+                >
+                    <X className="h-4 w-4" />
+                </Button>
+            )}
+        </span>
     )
 }
 
@@ -217,7 +231,7 @@ const ListRelationships = (): ReactElement => {
                                 id: ***REMOVED***predicate_uuid***REMOVED***,
                                 accessor: (r) => {
                                     const predicate = predicateByUuid[r.predicate_uuid]
-                                    return predicate ? `${predicate.label} (${predicate.predicate})` : r.predicate_uuid
+                                    return <Link to={`/predicate/edit/${r.predicate_uuid}`}>{predicate ? `${predicate.label} (${predicate.predicate})` : r.predicate_uuid}</Link>
                                 },
                             },
                             {

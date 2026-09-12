@@ -83,16 +83,16 @@ const RelatedDocuments = ({
               {
                 Object.keys(data.byPredicate).map(predicate => (
                   <div key={predicate}>
-                    <div className=***REMOVED***text-bold text-lg my-2***REMOVED***>{predicate}</div>
+                    <div className=***REMOVED***font-semibold text-slate-400 my-2 uppercase***REMOVED***>{predicate}</div>
                     <ul className=***REMOVED***flex flex-col gap-2***REMOVED***>
                       {data.byPredicate[predicate].map((r) => (
                         <li key={`$${r.document.uuid}.${r.relationship.predicate.label}`}>
-                          <div><Link to={`/document/edit/${r.document.uuid}`} className=***REMOVED***text-blue-600 font-bold***REMOVED***>{r.document.label}</Link>: {r.relationship.label}: {r.relationship.is_inverse ? ***REMOVED***Inverse***REMOVED*** : ***REMOVED***Direct***REMOVED***}</div>
-                          <div className=***REMOVED***text-xs text-gray-500 flex flex-row gap-2***REMOVED***>
+                          <div><Link to={`/document/edit/${r.document.uuid}`} className=***REMOVED***text-blue-600 font-bold***REMOVED***>{r.document.label}</Link>{/* : {r.relationship.label}: {r.relationship.is_inverse ? ***REMOVED***Inverse***REMOVED*** : ***REMOVED***Direct***REMOVED***} */}</div>
+                          {/* <div className=***REMOVED***text-xs text-gray-500 flex flex-row gap-2***REMOVED***>
                             {r.path.map(d => {
                               return <span key={d.uuid} className=***REMOVED***bg-slate-200 p-2***REMOVED***>{<Link to={`/document/edit/${d.uuid}?tab=related`} className=***REMOVED***text-blue-600***REMOVED***>{data.documentLabelBySlug[d.slug] ?? d.label}</Link>} {d.relationship ? <span>({d.relationship.label} [{d.relationship.is_inverse ? ***REMOVED***inverse***REMOVED*** : ***REMOVED***direct***REMOVED***}] <Link to={`/document/edit/${d.relationship.to_document_uuid}?tab=related`} className=***REMOVED***text-blue-600***REMOVED***>{data.documentLabelByUUID[d.relationship.to_document_uuid] ?? d.relationship.to_document_uuid}</Link>)</span> : ***REMOVED******REMOVED***}</span>
                             })}
-                          </div>
+                          </div> */}
                         </li>
                       ))}
                     </ul>

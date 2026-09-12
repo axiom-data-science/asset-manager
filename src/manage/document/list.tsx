@@ -22,7 +22,7 @@ import Link from '@/manage/components/link'
 import { useAuth } from '@/auth/useAuth'
 import { deleteDocument, patchDocument } from './services'
 import { useQueryClient } from '@tanstack/react-query'
-import { Lock, Unlock, UserRoundKey, Globe } from 'lucide-react'
+import { Lock, Unlock, UserRoundKey, Globe, X } from 'lucide-react'
 import contextStateAtom from '@/state/contextStateAtom'
 import { useAtom } from 'jotai'
 
@@ -52,15 +52,30 @@ const DeleteButton = ({
     })
   }
   return (
-    <Button
-      onClick={handleClick}
-      disabled={document.can_modify === false || document.lock_sub !== null}
-      size="xs"
-      type="alert"
-      className="text-white"
-    >
-      {confirm ? 'Confirm' : 'Delete'}
-    </Button>
+    <span className="flex flex-col gap-2">
+      <span className="flex flex-row items-center gap-2">
+        <Button
+          onClick={handleClick}
+          disabled={document.can_modify === false || document.lock_sub !== null}
+          size="xs"
+          type="alert"
+          className="text-white"
+        >
+          {confirm ? 'Confirm' : 'Delete'}
+        </Button>
+        {confirm && (
+          <Button
+            onClick={() => setConfirm(false)}
+            size="xs"
+            variant="ghost"
+            type="secondary"
+            className="text-slate-600"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+      </span>
+    </span>
   )
 }
 
@@ -342,10 +357,10 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
                 options={
                   rollup?.map((item) => ({
                     label: `${r === 'object_type_uuid'
-                        ? object_types_map[item.label]?.label
-                        : r === 'owner_sub'
-                          ? (person_by_owner_sub[item.label]?.label ?? item.label)
-                          : item.label
+                      ? object_types_map[item.label]?.label
+                      : r === 'owner_sub'
+                        ? (person_by_owner_sub[item.label]?.label ?? item.label)
+                        : item.label
                       } (${item.count})`,
                     value: item.label,
                   })) ?? []

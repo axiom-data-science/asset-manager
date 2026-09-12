@@ -83,16 +83,16 @@ const RelatedDocuments = ({
               {
                 Object.keys(data.byPredicate).map(predicate => (
                   <div key={predicate}>
-                    <div className='text-bold text-lg my-2'>{predicate}</div>
+                    <div className='font-semibold text-slate-400 my-2 uppercase'>{predicate}</div>
                     <ul className='flex flex-col gap-2'>
                       {data.byPredicate[predicate].map((r) => (
                         <li key={`$${r.document.uuid}.${r.relationship.predicate.label}`}>
-                          <div><Link to={`/document/edit/${r.document.uuid}`} className='text-blue-600 font-bold'>{r.document.label}</Link>: {r.relationship.label}: {r.relationship.is_inverse ? 'Inverse' : 'Direct'}</div>
-                          <div className='text-xs text-gray-500 flex flex-row gap-2'>
+                          <div><Link to={`/document/edit/${r.document.uuid}`} className='text-blue-600 font-bold'>{r.document.label}</Link>{/* : {r.relationship.label}: {r.relationship.is_inverse ? 'Inverse' : 'Direct'} */}</div>
+                          {/* <div className='text-xs text-gray-500 flex flex-row gap-2'>
                             {r.path.map(d => {
                               return <span key={d.uuid} className='bg-slate-200 p-2'>{<Link to={`/document/edit/${d.uuid}?tab=related`} className='text-blue-600'>{data.documentLabelBySlug[d.slug] ?? d.label}</Link>} {d.relationship ? <span>({d.relationship.label} [{d.relationship.is_inverse ? 'inverse' : 'direct'}] <Link to={`/document/edit/${d.relationship.to_document_uuid}?tab=related`} className='text-blue-600'>{data.documentLabelByUUID[d.relationship.to_document_uuid] ?? d.relationship.to_document_uuid}</Link>)</span> : ''}</span>
                             })}
-                          </div>
+                          </div> */}
                         </li>
                       ))}
                     </ul>

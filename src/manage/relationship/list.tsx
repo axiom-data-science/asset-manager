@@ -6,6 +6,7 @@ import { relationshipListQueryKey, useRelationshipListWithRollupsAndLookups } fr
 import type { IPostgrestFilter, IPostgrestParams, IRelationship, IRollup } from '@/types/types'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, SelectInput, utils, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
+import { X } from 'lucide-react'
 import { useState, type ReactElement } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
@@ -36,9 +37,22 @@ const DeleteButton = ({
     }
 
     return (
-        <Button onClick={onClick} size="xs" type="alert" className="text-white">
-            {confirm ? 'Confirm' : 'Delete'}
-        </Button>
+        <span className="flex flex-row items-center gap-2">
+            <Button onClick={onClick} size="xs" type="alert" className="text-white">
+                {confirm ? 'Confirm' : 'Delete'}
+            </Button>
+            {confirm && (
+                <Button
+                    onClick={() => setConfirm(false)}
+                    size="xs"
+                    variant="ghost"
+                    type="secondary"
+                    className="text-slate-600"
+                >
+                    <X className="h-4 w-4" />
+                </Button>
+            )}
+        </span>
     )
 }
 
@@ -217,7 +231,7 @@ const ListRelationships = (): ReactElement => {
                                 id: 'predicate_uuid',
                                 accessor: (r) => {
                                     const predicate = predicateByUuid[r.predicate_uuid]
-                                    return predicate ? `${predicate.label} (${predicate.predicate})` : r.predicate_uuid
+                                    return <Link to={`/predicate/edit/${r.predicate_uuid}`}>{predicate ? `${predicate.label} (${predicate.predicate})` : r.predicate_uuid}</Link>
                                 },
                             },
                             {

@@ -137,7 +137,7 @@ export type IObjectTypeExpectedChildTypes = {
   object_type_slug?: string;
   label?: string;
   description?: string;
-  presidence?: number;
+  precedence?: number;
   predicate?: string;
   to_parent_predicate?: string;
 };

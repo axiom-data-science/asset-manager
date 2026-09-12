@@ -53,6 +53,9 @@ import ImportAllPage from './import/pages/all'
 import ListRelationships from '@/manage/relationship/list'
 import EditRelationship from '@/manage/relationship/edit'
 import CreateRelationship from '@/manage/relationship/create'
+import EditPredicate from '@/manage/predicate/edit'
+import CreatePredicate from '@/manage/predicate/create'
+import ListPredicates from '@/manage/predicate/list'
 
 const makeSiteTitle = (pageTitle?: string) => {
   return `${SITE_TITLE}${pageTitle ? ` - ${pageTitle}` : ''}`
@@ -463,6 +466,34 @@ function App(): ReactElement {
                 <SidebarLayout>
                   <title>{makeSiteTitle('edit relationship')}</title>
                   <EditRelationship />
+                </SidebarLayout>
+              }
+            />
+
+            <Route
+              path="/predicate"
+              element={
+                <SidebarLayout>
+                  <title>{makeSiteTitle('predicates')}</title>
+                  <ListPredicates />
+                </SidebarLayout>
+              }
+            />
+            <Route
+              path="/predicate/create"
+              element={
+                <SidebarLayout>
+                  <title>{makeSiteTitle('create predicate')}</title>
+                  <CreatePredicate />
+                </SidebarLayout>
+              }
+            />
+            <Route
+              path="/predicate/edit/:uuid"
+              element={
+                <SidebarLayout>
+                  <title>{makeSiteTitle('edit predicate')}</title>
+                  <EditPredicate />
                 </SidebarLayout>
               }
             />

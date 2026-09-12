@@ -3,6 +3,8 @@ import type { JSONSchema6 } from "json-schema"
 
 import { omit } from "lodash"
 import { useFormAndFormState } from "@/manage/components/useFormAndFormState"
+import { useAtom } from "jotai"
+import contextStateAtom from "@/state/contextStateAtom"
 
 export const useObjectTypeDataForm = ({
     objectTypeSchema,
@@ -17,6 +19,8 @@ export const useObjectTypeDataForm = ({
     formState: [IFormValues, React.Dispatch<React.SetStateAction<IFormValues>>],
     filterForSave: (formValues: IFormValues) => IFormValues
 } => {
+
+    const [contextState] = useAtom(contextStateAtom)
 
     const objectTypeConfigFormOverride: IFormOverride = {
         fields: [
@@ -48,6 +52,7 @@ export const useObjectTypeDataForm = ({
                         "fields": [
                             { "prop": "expected_child_types.label", "type": "text" },
                             { "prop": "expected_child_types.description", "type": "long_text" },
+                            { "prop": "expected_child_types.precedence" },
                             { "prop": "expected_child_types.single", "type": "boolean" }
                         ],
                         "settings": {
@@ -55,6 +60,19 @@ export const useObjectTypeDataForm = ({
                             "className": "bg-transparent px-0"
                         }
 
+                    }, {
+                        "id": "predicate_wrapper",
+                        "label": "Predicate selection",
+                        "type": "objectWrapper",
+                        "layout": "grid2",
+                        "fields": [
+                            { "prop": "expected_child_types.predicate", "label": "To child predicate", "type": "select", "options": contextState.predicate.map(p => ({ label: p.label, value: p.predicate })) },
+                            { "prop": "expected_child_types.to_parent_predicate", "type": "select", "options": contextState.predicate.map(p => ({ label: p.inverse_label ?? p.label, value: p.predicate })) }
+                        ],
+                        "settings": {
+                            "boldLabel": true,
+                            "className": "bg-transparent px-0"
+                        }
                     },
                     {
                         "id": "expected_child_type_query_wrapper",
@@ -66,7 +84,7 @@ export const useObjectTypeDataForm = ({
                             "className": "bg-transparent px-0"
                         },
                         "fields": [
-                            { "prop": "expected_child_types.object_type_slug", "type": "text" },
+                            { "prop": "expected_child_types.object_type_slug", "type": "select", "options": contextState.object_type.map(ot => ({ label: `${ot.label} (${ot.slug})`, value: ot.slug })) },
                             { "prop": "expected_child_types.object_type_query", "type": "text" }
                         ]
                     }

@@ -107,8 +107,8 @@ const ImportItem = ({
                     id={`import-${type}-override-endpoint`}
                     testId={`import-${type}-override-endpoint`}
                     label="Override Endpoint"
-                    placeholder={config.defaultImportUrl}
-                    value={overrideImport ?? config.defaultImportUrl}
+                    placeholder={***REMOVED***Override endpoint***REMOVED***}
+                    value={overrideImport}
                     size="xs"
                     onChange={(e) => {
                       if (e !== undefined && e.trim() !== ***REMOVED******REMOVED***) {
@@ -125,10 +125,10 @@ const ImportItem = ({
                     id={`import-${type}-override-root`}
                     testId={`import-${type}-override-root`}
                     label="Override Root"
-                    placeholder={config.defaultDetailRoot}
-                    value={overrideRoot ?? config.defaultDetailRoot}
+                    placeholder={***REMOVED***Override root***REMOVED***}
+                    value={overrideRoot}
                     size="xs"
-                    disabled={config.defaultDetailRoot === ***REMOVED***UNUSED***REMOVED***}
+                    disabled={overrideRoot === ***REMOVED***UNUSED***REMOVED***}
                     onChange={(e) => {
                       if (e !== undefined && e.trim() !== ***REMOVED******REMOVED***) {
                         setOverrideRoot(e)

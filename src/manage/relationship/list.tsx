@@ -56,17 +56,6 @@ const DeleteButton = ({
     )
 }
 
-const formatJsonPreview = (data: unknown): string => {
-    if (data === undefined || data === null || data === ***REMOVED******REMOVED***) {
-        return ***REMOVED***-***REMOVED***
-    }
-    try {
-        const raw = JSON.stringify(data)
-        return raw.length > 120 ? `${raw.slice(0, 117)}...` : raw
-    } catch {
-        return String(data)
-    }
-}
 
 const ListRelationships = (): ReactElement => {
     const auth = useAuth()

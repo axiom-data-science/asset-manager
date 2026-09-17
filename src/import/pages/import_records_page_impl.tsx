@@ -75,8 +75,6 @@ const RemoteSourceImport = ({
   defaultImportUrl,
   defaultDetailRoot,
   service,
-  getFullDoc,
-  label,
   pluralLabel,
   type
 }: IRemoteSourceImportProps & { type: string; label: string; pluralLabel: string }): ReactElement => {
@@ -85,7 +83,7 @@ const RemoteSourceImport = ({
   const [draftUrl, setDraftUrl] = useState<string | undefined>(defaultImportUrl)
   const [draftDetailUrl, setDraftDetailUrl] = useState<string | undefined>(defaultDetailRoot)
   const [activeUrl, setActiveUrl] = useState<string | undefined>(undefined)
-  const [activeDetailUrl, setActiveDetailUrl] = useState<string | undefined>(undefined)
+  const [, setActiveDetailUrl] = useState<string | undefined>(undefined)
   const [loadCount, setLoadCount] = useState(0)
 
 
@@ -106,12 +104,12 @@ const RemoteSourceImport = ({
   }
 
   const {
-    data: documents,
-    error,
+    //data: documents,
+    //error,
     //isError,
     isFetching,
     //isSuccess,
-    isPending,
+    //isPending,
   } = useQuery({
     queryKey: [type, activeUrl, loadCount],
     enabled: !!activeUrl,
@@ -217,7 +215,7 @@ const ImportRecordsPage = ({
   pluralLabel,
   type,
   remoteSource,
-  csvSource
+  //csvSource
   // objectType
 }: IImportPageProps): ReactElement => {
   pluralLabel = pluralLabel || `${label}s`

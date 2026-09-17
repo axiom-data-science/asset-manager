@@ -55,7 +55,7 @@ const DefaultChildTypeSelector = ({
 const ExpectedChildTypeLoader = ({
   parentDocument,
   objectType,
-  createViewPath,
+  //createViewPath,
   View = DefaultChildTypeSelector,
 }: {
   parentDocument?: IDocument<unknown>
@@ -139,7 +139,7 @@ const CreateCollectionMetadataButton = ({
   )
 }
 
-const SelectChildTypeForCreation = ({
+export const SelectChildTypeForCreation = ({
   document,
   objectType,
   expectedChildTypes,

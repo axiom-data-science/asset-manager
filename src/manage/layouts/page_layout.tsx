@@ -19,7 +19,7 @@ const ManageFormPageLayout = ({ form, formValueState, onSave, saving, title }: {
         <ManagePageLayout title={title}>
             <FormCreator form={form} formValueState={formValueState} />
             <div>
-                <Button onClick={onSave} type=***REMOVED***primary***REMOVED*** disabled={saving}>{saving ? <Loader className="animate-spin" /> : ***REMOVED***Save***REMOVED***}</Button>
+                <Button onClick={onSave} type=***REMOVED***default***REMOVED*** disabled={saving}>{saving ? <Loader className="animate-spin" /> : ***REMOVED***Save***REMOVED***}</Button>
             </div>
         </ManagePageLayout>
     )

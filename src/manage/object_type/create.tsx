@@ -271,7 +271,7 @@ const CreateObjectTypeForm = ({
         ]}
       />
       <div className="flex flex-row gap-2 sticky bg-white/80 bottom-0 py-4 justify-end">
-        <Button onClick={onSave} type="primary" disabled={saving}>
+        <Button onClick={onSave} type="default" disabled={saving}>
           {saving ? <Loader className="animate-spin" /> : ***REMOVED***Save***REMOVED***}
         </Button>
       </div>

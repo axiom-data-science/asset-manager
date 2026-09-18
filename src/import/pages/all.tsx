@@ -310,7 +310,7 @@ const ImportAllPage = (): ReactElement => {
             onClick={() => {
               startImport()
             }}
-            variant="primary"
+            variant="default"
           >
             Start Import
           </Button>

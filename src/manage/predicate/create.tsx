@@ -108,7 +108,7 @@ const CreatePredicate = (): ReactElement => {
             <Errors errors={errors} />
             <FormCreator form={form} formValueState={[formValues, setFormValues]} />
             <div className="flex flex-row sticky bottom-0 bg-white/80 py-4">
-                <Button onClick={onSave} type="primary" disabled={saving}>
+                <Button onClick={onSave} type="default" disabled={saving}>
                     {saving ? <Loader className="animate-spin" /> : ***REMOVED***Save***REMOVED***}
                 </Button>
             </div>

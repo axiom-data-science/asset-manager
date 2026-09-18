@@ -155,18 +155,18 @@ const AutoSaveStatus = ({
             style={
               intervalId !== null
                 ? {
-                    strokeDasharray: `${CIRCLE_CIRCUMFERENCE} ${CIRCLE_CIRCUMFERENCE}`,
-                    strokeDashoffset: strokeDashoffset,
-                    stroke: ***REMOVED***#666***REMOVED***,
-                    strokeWidth: 2,
-                    transition: ***REMOVED***stroke-dashoffset 1.1s ease-in-out***REMOVED***,
-                  }
+                  strokeDasharray: `${CIRCLE_CIRCUMFERENCE} ${CIRCLE_CIRCUMFERENCE}`,
+                  strokeDashoffset: strokeDashoffset,
+                  stroke: ***REMOVED***#666***REMOVED***,
+                  strokeWidth: 2,
+                  transition: ***REMOVED***stroke-dashoffset 1.1s ease-in-out***REMOVED***,
+                }
                 : {
-                    strokeDasharray: ***REMOVED***0 0***REMOVED***,
-                    strokeDashoffset: CIRCLE_CIRCUMFERENCE,
-                    stroke: ***REMOVED***#FFF***REMOVED***,
-                    strokeWidth: 2,
-                  }
+                  strokeDasharray: ***REMOVED***0 0***REMOVED***,
+                  strokeDashoffset: CIRCLE_CIRCUMFERENCE,
+                  stroke: ***REMOVED***#FFF***REMOVED***,
+                  strokeWidth: 2,
+                }
             }
           />
           <>
@@ -241,20 +241,20 @@ const EditDocumentForm = ({
     []
   const dataForm = (
     assetForm?.use_form_config === true &&
-    assetForm?.form_config !== undefined &&
-    assetForm?.form_config !== null
+      assetForm?.form_config !== undefined &&
+      assetForm?.form_config !== null
       ? assetForm.form_config
       : assetForm?.schema_override_config !== undefined || fieldConfigJSON !== undefined
         ? omit(
-            schemaToFormUtils.overridesAndSchemaToFormObject({
-              schema: schema.json_schema,
-              formOverrides: assetForm?.schema_override_config
-                ? [assetForm?.schema_override_config as IFormOverride]
-                : undefined,
-              formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
-            }),
-            ***REMOVED***label***REMOVED***
-          )
+          schemaToFormUtils.overridesAndSchemaToFormObject({
+            schema: schema.json_schema,
+            formOverrides: assetForm?.schema_override_config
+              ? [assetForm?.schema_override_config as IFormOverride]
+              : undefined,
+            formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
+          }),
+          ***REMOVED***label***REMOVED***
+        )
         : schemaToFormUtils.schemaToFormObject(schema.json_schema)
   ) as IForm
 
@@ -335,7 +335,7 @@ const EditDocumentForm = ({
         }}
       />
       <div className="flex flex-row gap-4  p-4 sticky bottom-0 bg-white/80 z-10">
-        <Button onClick={onSave} type="primary" disabled={isPending}>
+        <Button onClick={onSave} type="default" disabled={isPending}>
           {isPending ? <Loader className="animate-spin" /> : ***REMOVED***Save***REMOVED***}
         </Button>
       </div>

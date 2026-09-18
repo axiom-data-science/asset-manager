@@ -202,7 +202,7 @@ const CreateObjectSchemaForm = ({
       </div>
 
       <div className="flex flex-row sticky bottom-0 bg-white/80 py-4">
-        <Button onClick={onUpdate} type="primary" disabled={saving}>
+        <Button onClick={onUpdate} type="default" disabled={saving}>
           {saving ? <Loader className="animate-spin" /> : ***REMOVED***Update***REMOVED***}
         </Button>
       </div>

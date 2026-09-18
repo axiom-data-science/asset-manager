@@ -167,7 +167,7 @@ const EditObjectTypeForm = ({
                 to={`/forms/create?object_type=${object_type.uuid}`}
                 className={utils.createButtonClass({
                   size: ***REMOVED***md***REMOVED***,
-                  variant: ***REMOVED***primary***REMOVED***,
+                  variant: ***REMOVED***default***REMOVED***,
                 })}
               >
                 Create form
@@ -228,7 +228,7 @@ const EditObjectTypeForm = ({
                 to={`/object_schema/create?object_type=${object_type.uuid}`}
                 className={utils.createButtonClass({
                   size: ***REMOVED***md***REMOVED***,
-                  variant: ***REMOVED***primary***REMOVED***,
+                  variant: ***REMOVED***default***REMOVED***,
                 })}
               >
                 Create schema
@@ -263,7 +263,7 @@ const EditObjectTypeForm = ({
         })}
       </div>
       <div className="flex flex-row bg-white/80 py-4 sticky bottom-0 justify-end">
-        <Button onClick={onUpdate} type="primary" disabled={saving}>
+        <Button onClick={onUpdate} type="default" disabled={saving}>
           {saving ? <Loader className="animate-spin" /> : ***REMOVED***Update***REMOVED***}
         </Button>
       </div>

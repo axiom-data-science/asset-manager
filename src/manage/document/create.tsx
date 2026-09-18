@@ -101,20 +101,20 @@ const CreateDocumentForm = ({
     []
   const dataForm = (
     assetForm?.use_form_config === true &&
-    assetForm?.form_config !== undefined &&
-    assetForm?.form_config !== null
+      assetForm?.form_config !== undefined &&
+      assetForm?.form_config !== null
       ? assetForm.form_config
       : assetForm?.schema_override_config !== undefined || fieldConfigJSON !== undefined
         ? omit(
-            schemaToFormUtils.overridesAndSchemaToFormObject({
-              schema: schema.json_schema,
-              formOverrides: assetForm?.schema_override_config
-                ? [assetForm?.schema_override_config as IFormOverride]
-                : undefined,
-              formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
-            }),
-            ***REMOVED***label***REMOVED***
-          )
+          schemaToFormUtils.overridesAndSchemaToFormObject({
+            schema: schema.json_schema,
+            formOverrides: assetForm?.schema_override_config
+              ? [assetForm?.schema_override_config as IFormOverride]
+              : undefined,
+            formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
+          }),
+          ***REMOVED***label***REMOVED***
+        )
         : schemaToFormUtils.schemaToFormObject(schema.json_schema)
   ) as IForm
 
@@ -226,10 +226,10 @@ const CreateDocumentForm = ({
       const navPath =
         returnToOnSuccess !== undefined
           ? buildStringFromTemplate(returnToOnSuccess, {
-              ...newDoc,
-              ...{ parentDocumentUUID, toParentPredicate, childDocumentUUID, toChildPredicate },
-              ...{ object_type: type },
-            })
+            ...newDoc,
+            ...{ parentDocumentUUID, toParentPredicate, childDocumentUUID, toChildPredicate },
+            ...{ object_type: type },
+          })
           : (new URLSearchParams(window.location.search).get(***REMOVED***returnToOnSuccess***REMOVED***) ?? undefined)
 
       setSaving(false)
@@ -294,7 +294,7 @@ const CreateDocumentForm = ({
         }}
         SubmitButton={
           includeSaveButton && (
-            <Button onClick={onSave} type="primary" disabled={saving}>
+            <Button onClick={onSave} type="default" disabled={saving}>
               {saving ? <Loader className="animate-spin" /> : ***REMOVED***Save***REMOVED***}
             </Button>
           )
@@ -302,7 +302,7 @@ const CreateDocumentForm = ({
       />
       {!includeSaveButton && (
         <div className="flex flex-row gap-4  p-4 sticky bottom-0 bg-white/80 z-10 -mx-1 justify-end">
-          <Button onClick={onSave} type="primary" disabled={saving}>
+          <Button onClick={onSave} type="default" disabled={saving}>
             {saving ? <Loader className="animate-spin" /> : ***REMOVED***Save***REMOVED***}
           </Button>
         </div>
@@ -571,7 +571,7 @@ export const DefaultSelectDocumentForm = ({
                           to={`/form/create/${type.uuid}/object_type`}
                           className={utils.createButtonClass({
                             size: ***REMOVED***md***REMOVED***,
-                            variant: ***REMOVED***primary***REMOVED***,
+                            variant: ***REMOVED***default***REMOVED***,
                           })}
                         >
                           Create schema

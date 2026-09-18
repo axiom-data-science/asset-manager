@@ -17,14 +17,14 @@ const ButtonLink = ({
   disabled?: boolean
   target?: string
   className?: string
-  variant?: ***REMOVED***primary***REMOVED*** | ***REMOVED***secondary***REMOVED*** | ***REMOVED***link***REMOVED*** | ***REMOVED***ghost***REMOVED***
+  variant?: ***REMOVED***default***REMOVED*** | ***REMOVED***secondary***REMOVED*** | ***REMOVED***link***REMOVED*** | ***REMOVED***ghost***REMOVED***
   size?: ***REMOVED***xs***REMOVED*** | ***REMOVED***sm***REMOVED*** | ***REMOVED***md***REMOVED*** | ***REMOVED***lg***REMOVED*** | ***REMOVED***xl***REMOVED***
 }): ReactElement => {
   return (
     <Link
       to={to}
       className={`${utils.createButtonClass({
-        variant: variant ?? ***REMOVED***primary***REMOVED***,
+        variant: variant ?? ***REMOVED***default***REMOVED***,
         size,
       })}${disabled ? ***REMOVED*** opacity-50 cursor-not-allowed***REMOVED*** : ***REMOVED******REMOVED***}${className ? ` ${className}` : ***REMOVED******REMOVED***}`}
       target={target}

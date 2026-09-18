@@ -240,7 +240,7 @@ const EditForm = ({
                     to={`/field_configs/create?form_uuid=${assetForm.uuid}`}
                     className={utils.createButtonClass({
                       size: ***REMOVED***md***REMOVED***,
-                      variant: ***REMOVED***primary***REMOVED***,
+                      variant: ***REMOVED***default***REMOVED***,
                     })}
                   >
                     Create field override config
@@ -272,7 +272,7 @@ const EditForm = ({
       </div>
 
       <div className="flex flex-row sticky bottom-0 bg-white/80 py-4">
-        <Button onClick={onUpdate} type="primary" disabled={saving}>
+        <Button onClick={onUpdate} type="default" disabled={saving}>
           {saving ? <Loader className="animate-spin" /> : ***REMOVED***Update***REMOVED***}
         </Button>
       </div>

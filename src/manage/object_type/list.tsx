@@ -101,7 +101,7 @@ const ListObjectTypes = (): ReactElement => {
                   to="/object_type/create"
                   className={utils.createButtonClass({
                     size: ***REMOVED***md***REMOVED***,
-                    variant: ***REMOVED***primary***REMOVED***,
+                    variant: ***REMOVED***default***REMOVED***,
                   })}
                 >
                   Create object type
@@ -175,7 +175,7 @@ const ListObjectTypes = (): ReactElement => {
                       return <span className=***REMOVED***text-xs text-slate-400***REMOVED***>{c > 0
                         ? <Link to={`/document?object_type_uuid=${r.uuid}`} className={
                           utils.createButtonClass({
-                            variant: ***REMOVED***primary***REMOVED***,
+                            variant: ***REMOVED***default***REMOVED***,
                             size: ***REMOVED***sm***REMOVED***,
                             className: ***REMOVED***px-2 py-1 bg-blue-600 text-white hover:bg-blue-700***REMOVED***,
                           })

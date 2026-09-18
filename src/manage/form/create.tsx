@@ -226,7 +226,7 @@ const CreateForm = ({ type, schemas }: { type: IObjectType, schemas: IObjectSche
             <Errors errors={errors} />
             <FormCreator form={form} formValueState={[formValues, setFormValue]} />
             <div className=***REMOVED***flex flex-row sticky bottom-0 py-4 bg-white/80***REMOVED***>
-                <Button onClick={onSave} type=***REMOVED***primary***REMOVED*** disabled={saving}>{saving ? <Loader className="animate-spin" /> : ***REMOVED***Save***REMOVED***}</Button>
+                <Button onClick={onSave} type=***REMOVED***default***REMOVED*** disabled={saving}>{saving ? <Loader className="animate-spin" /> : ***REMOVED***Save***REMOVED***}</Button>
             </div>
         </div>
     )

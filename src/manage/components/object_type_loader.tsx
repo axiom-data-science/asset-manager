@@ -7,9 +7,9 @@ import type { IObjectType } from "@/types/types";
 const ObjectTypeLoader = ({
     urlRoot,
     View
-}:{
+}: {
     urlRoot: string,
-    View: ({type}: {type:IObjectType}) => ReactElement
+    View: ({ type }: { type: IObjectType }) => ReactElement
 }): ReactElement => {
     const [params] = useSearchParams();
     const objectType = params.get(***REMOVED***object_type***REMOVED***);
@@ -26,7 +26,7 @@ const ObjectTypeLoader = ({
                         <p>No object types found. Please create an object type first.</p>
                         <div className=***REMOVED***mt-4***REMOVED***><Link to=***REMOVED***/object_type/create***REMOVED*** className={utils.createButtonClass({
                             size: ***REMOVED***md***REMOVED***,
-                            variant: ***REMOVED***primary***REMOVED***
+                            variant: ***REMOVED***default***REMOVED***
                         })}>Create object type</Link>
                         </div>
                     </>}

@@ -154,7 +154,7 @@ const CreateObjectSchemaForm = ({ object_types, type }: { object_types: IObjectT
 
             />
             <div>
-                <Button onClick={onSave} type='primary' disabled={saving}>{saving ? <Loader className="animate-spin" /> : 'Save'}</Button>
+                <Button onClick={onSave} type='default' disabled={saving}>{saving ? <Loader className="animate-spin" /> : 'Save'}</Button>
             </div>
         </div>
     )

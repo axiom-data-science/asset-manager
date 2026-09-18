@@ -17,14 +17,14 @@ const ButtonLink = ({
   disabled?: boolean
   target?: string
   className?: string
-  variant?: 'primary' | 'secondary' | 'link' | 'ghost'
+  variant?: 'default' | 'secondary' | 'link' | 'ghost'
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
 }): ReactElement => {
   return (
     <Link
       to={to}
       className={`${utils.createButtonClass({
-        variant: variant ?? 'primary',
+        variant: variant ?? 'default',
         size,
       })}${disabled ? ' opacity-50 cursor-not-allowed' : ''}${className ? ` ${className}` : ''}`}
       target={target}

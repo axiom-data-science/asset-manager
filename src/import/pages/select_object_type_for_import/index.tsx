@@ -1,5 +1,5 @@
 import { useQuery } from ***REMOVED***@tanstack/react-query***REMOVED***
-import type { IDocumentImport, IFullDocForImport } from ***REMOVED***../../types***REMOVED***
+import type { CanonicalImportRecord, ImportCandidate } from ***REMOVED***../../types***REMOVED***
 import { Inputs } from ***REMOVED***@axdspub/axiom-ui-forms***REMOVED***
 
 import { type LanguageName, quicktype, jsonInputForTargetLanguage, InputData } from ***REMOVED***quicktype-core***REMOVED***
@@ -12,7 +12,7 @@ import contextStateAtom from ***REMOVED***@/state/contextStateAtom***REMOVED***
 import { atom, useAtom } from ***REMOVED***jotai***REMOVED***
 import CreateObjectType from ***REMOVED***@/manage/object_type/create***REMOVED***
 import type { JSONSchema6 } from ***REMOVED***json-schema***REMOVED***
-import { objectTypeForRecordsState, recordsToImportState } from ***REMOVED***@/import/state/importState***REMOVED***
+import { useImportSession } from ***REMOVED***@/import/state/importState***REMOVED***
 import ValidateAgainstSchema from ***REMOVED***./validate_against_schema***REMOVED***
 import {
   convertAllEnumToOptionalStringAtPath,
@@ -27,7 +27,6 @@ import { Redo2, Undo2, X } from ***REMOVED***lucide-react***REMOVED***
 import { Button } from ***REMOVED***@/components/ui/button***REMOVED***
 
 const createObjectTypeFromDataState = atom(false)
-const schemaStateAtom = atom<JSONSchema6 | null>(null)
 
 async function quicktypeJSON(
   targetLanguage: LanguageName,
@@ -58,17 +57,20 @@ async function quicktypeJSON(
 
 const SelectObjectTypeForImportTab = ({
   documents,
-  type
+  type,
+  sourceId,
 }: {
-  documents: IDocumentImport[]
+  documents: CanonicalImportRecord[]
   type: string
+  sourceId: string
 }): ReactElement => {
   const [contextState] = useAtom(contextStateAtom)
-  const [schema, setSchema] = useAtom(schemaStateAtom)
   const [createObjectTypeFromData, setCreateObjectTypeFromData] = useAtom(
     createObjectTypeFromDataState
   )
-  const [selectedObjectType, setSelectedObjectType] = useAtom(objectTypeForRecordsState)
+  const { session, setSchema, setSelectedObjectType } = useImportSession(sourceId)
+  const schema = session.schema
+  const selectedObjectType = session.selectedObjectType
   const initializedTypeRef = useRef<string | null>(null)
 
   const { data, isLoading, error } = useQuery({
@@ -312,6 +314,7 @@ const SelectObjectTypeForImportTab = ({
               key={JSON.stringify(schema)}
               schema={schema}
               documents={documents}
+              sourceId={sourceId}
             />
           )}
         </div>
@@ -325,32 +328,26 @@ const SelectObjectTypeForImport = ({
   getFullDoc,
   detailRoot,
   label,
-  type
+  type,
+  sourceId,
 }: {
-  documents: IDocumentImport[]
+  documents: ImportCandidate[]
   getFullDoc: (props: {
-    doc: IDocumentImport
+    doc: ImportCandidate
     url?: string
     signal?: AbortSignal
     serviceRoot?: string
-  }) => Promise<IFullDocForImport>
+  }) => Promise<CanonicalImportRecord>
   detailRoot?: string
   label?: string
   type: string
+  sourceId: string
 }): ReactElement => {
-  const initialData = documents.map((doc) => {
-    return {
-      ...doc,
-      selected: true,
-      imported: false,
-      loading: false,
-    }
-  })
   const [selectedTab, setSelectedTab] = useState(***REMOVED***preload***REMOVED***)
   const [createObjectTypeFromData] = useAtom(createObjectTypeFromDataState)
-  const [schema] = useAtom(schemaStateAtom)
-  const [recordsToImport, setRecordsToImport] = useAtom(recordsToImportState)
-  const [, setObjectTypeForRecords] = useAtom(objectTypeForRecordsState)
+  const { session, setRecords, setSelectedObjectType, setRecordResult } = useImportSession(sourceId)
+  const recordsToImport = session.records
+  const schema = session.schema
 
   return (
     <Tabs
@@ -364,7 +361,7 @@ const SelectObjectTypeForImport = ({
           id: ***REMOVED***preload***REMOVED***,
           content: (
             <BatchLoadDocuments
-              documents={initialData}
+              documents={documents}
               getFullDoc={getFullDoc}
               detailRoot={detailRoot}
               onFullDocLoaded={async (doc) => {
@@ -372,8 +369,21 @@ const SelectObjectTypeForImport = ({
               }}
               onAllFullDocsLoaded={async (fullDocs) => {
                 console.log(***REMOVED***All full docs loaded:***REMOVED***, fullDocs)
-                setRecordsToImport(fullDocs.slice())
+                setRecords(fullDocs.slice())
                 setSelectedTab(***REMOVED***validate***REMOVED***)
+              }}
+              onRecordResult={(record, result) => {
+                setRecordResult(
+                  record,
+                  result.status === ***REMOVED***fulfilled***REMOVED***
+                    ? { stage: ***REMOVED***loaded***REMOVED*** }
+                    : {
+                      stage: ***REMOVED***failed***REMOVED***,
+                      error: result.reason instanceof Error
+                        ? result.reason.message
+                        : String(result.reason),
+                    }
+                )
               }}
               includeRandomSelector={true}
             />
@@ -382,7 +392,13 @@ const SelectObjectTypeForImport = ({
         },
         {
           id: ***REMOVED***validate***REMOVED***,
-          content: <SelectObjectTypeForImportTab documents={recordsToImport ?? []} type={type} />,
+          content: (
+            <SelectObjectTypeForImportTab
+              documents={recordsToImport}
+              type={type}
+              sourceId={sourceId}
+            />
+          ),
           label: ***REMOVED***Validate against schema***REMOVED***,
           disabled: !recordsToImport?.length,
         },
@@ -395,7 +411,7 @@ const SelectObjectTypeForImport = ({
                 initialSchema={schema ?? undefined}
                 initialLabel={label}
                 onSuccess={(newObjectType) => {
-                  setObjectTypeForRecords(newObjectType)
+                  setSelectedObjectType(newObjectType)
                   console.log(***REMOVED***New object type created:***REMOVED***, newObjectType)
                 }}
               />

@@ -12,7 +12,7 @@ export type IDocumentImport<T = unknown> = {
     partial?: boolean
 }
 
-type ISearchRecordRoot= {
+type ISearchRecordRoot = {
     uuid: string
     label: string
     id: string
@@ -20,8 +20,8 @@ type ISearchRecordRoot= {
 }
 
 
-export type ISearchRecord<T = unknown> = ISearchRecordRoot &{
-    source: T &  ISearchRecordRoot & Record<string, unknown>
+export type ISearchRecord<T = unknown> = ISearchRecordRoot & {
+    source: T & ISearchRecordRoot & Record<string, unknown>
     data: ISearchRecordRoot & Record<string, unknown>
 }
 
@@ -65,3 +65,38 @@ export interface IBinninatorMetadata {
 }
 
 export type IFullDocForImport = Pick<IDocument, ***REMOVED***data***REMOVED*** | ***REMOVED***attrs***REMOVED*** | ***REMOVED***label***REMOVED*** | ***REMOVED***slug***REMOVED*** | ***REMOVED***description***REMOVED***>
+
+export type ImportProvenance = {
+    sourceId: string
+    externalId: string
+}
+
+export type ImportCandidate<T = unknown> = IDocumentImport<T> & {
+    provenance: ImportProvenance
+}
+
+export type CanonicalImportRecord<T = unknown> = IFullDocForImport & {
+    uuid: string
+    data: T
+    provenance: ImportProvenance
+    sourceData: unknown
+}
+
+export type ImportDiscoveryOptions = {
+    url: string
+    signal: AbortSignal
+}
+
+export type ImportLoadOptions = {
+    candidate: ImportCandidate
+    detailRoot?: string
+    signal?: AbortSignal
+}
+
+export type ImportSourceAdapter = {
+    id: string
+    defaultImportUrl: string
+    defaultDetailRoot?: string
+    discover: (options: ImportDiscoveryOptions) => Promise<ImportCandidate[]>
+    load: (options: ImportLoadOptions) => Promise<CanonicalImportRecord>
+}

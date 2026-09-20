@@ -1,19 +1,36 @@
 import type { IDocument, IObjectType } from ***REMOVED***@/types/types***REMOVED***
-import { Input, Loader, Tabs } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
+import { Checkbox, Input, Loader, Tabs } from ***REMOVED***@axdspub/axiom-ui-utilities***REMOVED***
 import { useQuery } from ***REMOVED***@tanstack/react-query***REMOVED***
 
 import { TableVirtuoso, type TableComponents } from ***REMOVED***react-virtuoso***REMOVED***
-import { forwardRef, useState, type ForwardRefExoticComponent, type ReactElement, type RefAttributes } from ***REMOVED***react***REMOVED***
+import { forwardRef, useMemo, useState, type ForwardRefExoticComponent, type ReactElement, type RefAttributes } from ***REMOVED***react***REMOVED***
 import { Button } from ***REMOVED***@/components/ui/button***REMOVED***
-import type { IDocumentImport, IFullDocForImport } from ***REMOVED***@/import/types***REMOVED***
+import type {
+  CanonicalImportRecord,
+  IDocumentImport,
+  ImportCandidate,
+  ImportSourceAdapter,
+} from ***REMOVED***@/import/types***REMOVED***
 import SelectObjectTypeForImport from ***REMOVED***./select_object_type_for_import/index.tsx***REMOVED***
-import { objectTypeForRecordsState, previewrecordsToImportState, recordsToImportState } from ***REMOVED***@/import/state/importState***REMOVED***
-import { useAtom } from ***REMOVED***jotai***REMOVED***
+import {
+  filterImportEligibleRecords,
+  isValidationComplete,
+  useImportSession,
+} from ***REMOVED***@/import/state/importState***REMOVED***
 import BatchLoadDocuments from ***REMOVED***@/import/components/batch_load_documents***REMOVED***
-import { postDocument } from ***REMOVED***@/manage/document/services***REMOVED***
+import ReconciliationReview from ***REMOVED***@/import/components/reconciliation_review***REMOVED***
+import { patchDocument, postDocument } from ***REMOVED***@/manage/document/services***REMOVED***
 import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
 import { pick } from ***REMOVED***lodash-es***REMOVED***
 import type { LucideProps } from ***REMOVED***lucide-react***REMOVED***
+import { importRecordKey } from ***REMOVED***@/import/state/importState***REMOVED***
+import { mergeIncomingNonEmpty, withImportProvenance } from ***REMOVED***@/import/reconciliation***REMOVED***
+import {
+  fetchExistingDocumentBySlug,
+  mergeImportDocumentViaRpc,
+} from ***REMOVED***@/import/reconciliation_service***REMOVED***
+import { IMPORT_MERGE_RPC } from ***REMOVED***@/config/config***REMOVED***
+import { classifyImportError } from ***REMOVED***@/import/import_errors***REMOVED***
 
 const TableComponentsOverride: TableComponents<IDocumentImport> = {
   Table: (props) => (
@@ -72,24 +89,27 @@ const isAbortError = (error: unknown, signal?: AbortSignal) =>
   (error instanceof DOMException && error.name === ***REMOVED***AbortError***REMOVED***) || !!signal?.aborted
 
 const RemoteSourceImport = ({
-  defaultImportUrl,
-  defaultDetailRoot,
-  service,
+  adapter,
   pluralLabel,
-  type
-}: IRemoteSourceImportProps & { type: string; label: string; pluralLabel: string }): ReactElement => {
+  type,
+  onDetailRootActivated,
+}: {
+  adapter: ImportSourceAdapter
+  type: string
+  label: string
+  pluralLabel: string
+  onDetailRootActivated: (detailRoot: string) => void
+}): ReactElement => {
+  const { defaultImportUrl, defaultDetailRoot } = adapter
 
 
   const [draftUrl, setDraftUrl] = useState<string | undefined>(defaultImportUrl)
   const [draftDetailUrl, setDraftDetailUrl] = useState<string | undefined>(defaultDetailRoot)
   const [activeUrl, setActiveUrl] = useState<string | undefined>(undefined)
-  const [, setActiveDetailUrl] = useState<string | undefined>(undefined)
   const [loadCount, setLoadCount] = useState(0)
 
 
-  const [, setSelectedObjectType] = useAtom(objectTypeForRecordsState)
-  const [, setSelectedRecordsToImport] = useAtom(recordsToImportState)
-  const [, setPreviewRecordsToImport] = useAtom(previewrecordsToImportState)
+  const { resetSession, setCandidates } = useImportSession(adapter.id)
 
   const [prevDefaultImportUrl, setPrevDefaultImportUrl] = useState(defaultImportUrl)
   const [prevDefaultDetailRoot, setPrevDefaultDetailRoot] = useState(defaultDetailRoot)
@@ -97,7 +117,6 @@ const RemoteSourceImport = ({
     setPrevDefaultImportUrl(defaultImportUrl)
     setPrevDefaultDetailRoot(defaultDetailRoot)
     setActiveUrl(undefined)
-    setActiveDetailUrl(undefined)
     setDraftUrl(defaultImportUrl)
     setDraftDetailUrl(defaultDetailRoot)
     setLoadCount(0)
@@ -105,8 +124,8 @@ const RemoteSourceImport = ({
 
   const {
     //data: documents,
-    //error,
-    //isError,
+    error,
+    isError,
     isFetching,
     //isSuccess,
     //isPending,
@@ -115,11 +134,8 @@ const RemoteSourceImport = ({
     enabled: !!activeUrl,
     queryFn: async ({ signal }) => {
       try {
-        const docs = await service({ signal, url: activeUrl! })
-        //setSelectedTab(***REMOVED***records***REMOVED***)
-        setSelectedObjectType(undefined)
-        setSelectedRecordsToImport([])
-        setPreviewRecordsToImport(docs)
+        const docs = await adapter.discover({ signal, url: activeUrl! })
+        setCandidates(docs)
         return docs
       } catch (error) {
         if (isAbortError(error, signal)) {
@@ -160,20 +176,25 @@ const RemoteSourceImport = ({
         <Button
           disabled={!draftUrl || isFetching}
           onClick={() => {
+            resetSession()
             setActiveUrl(draftUrl)
-            setActiveDetailUrl(draftDetailUrl)
+            onDetailRootActivated(draftDetailUrl ?? defaultDetailRoot ?? ***REMOVED******REMOVED***)
             setLoadCount((n) => n + 1)
           }}
         >
           Load {pluralLabel}
         </Button>
       </div>
-      {
-        isFetching && (
-          <div className="flex items-center justify-center p-6">
-            <Loader size="sm" />
-          </div>
-        )}
+      {isFetching && (
+        <div className="flex items-center justify-center p-6">
+          <Loader size="sm" />
+        </div>
+      )}
+      {isError && (
+        <div className="text-sm text-red-700" role="alert">
+          Unable to load {pluralLabel}: {error instanceof Error ? error.message : String(error)}
+        </div>
+      )}
     </>
   )
 
@@ -181,30 +202,11 @@ const RemoteSourceImport = ({
 
 }
 
-export type IRemoteSourceImportProps = {
-  defaultImportUrl: string
-  defaultDetailRoot: string
-  service: ({
-    signal,
-    url,
-  }: {
-    signal: AbortSignal
-    url: string
-  }) => Promise<IDocumentImport<unknown>[]>
-  getFullDoc: (props: {
-    doc: IDocumentImport
-    url?: string
-    signal?: AbortSignal
-    serviceRoot?: string
-  }) => Promise<IFullDocForImport>
-
-}
-
 export type IImportPageProps = {
   type: string
   label: string
   pluralLabel?: string
-  remoteSource?: IRemoteSourceImportProps
+  sourceAdapter?: ImportSourceAdapter
   objectType?: IObjectType,
   csvSource?: boolean
   icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>
@@ -214,24 +216,73 @@ const ImportRecordsPage = ({
   label,
   pluralLabel,
   type,
-  remoteSource,
+  sourceAdapter,
   //csvSource
   // objectType
 }: IImportPageProps): ReactElement => {
   pluralLabel = pluralLabel || `${label}s`
-
-  const [objectTypeForRecords] = useAtom(objectTypeForRecordsState)
-  const [previewRecordsToImport] = useAtom(previewrecordsToImportState)
-
-
-
-
-
+  const sourceId = sourceAdapter?.id ?? type
+  const {
+    session,
+    clearReconciliations,
+    setConflictAction,
+    setIncludeInvalidRecords,
+    setMergeStrategy,
+    setReconciliations,
+    setRecordResult,
+  } = useImportSession(sourceId)
+  const {
+    candidates: previewRecordsToImport,
+    selectedObjectType: objectTypeForRecords,
+  } = session
+  const validationComplete = isValidationComplete(session)
+  const eligibleRecords = useMemo(
+    () => filterImportEligibleRecords(
+      session.records,
+      session.validationResults,
+      session.includeInvalidRecords
+    ),
+    [session.includeInvalidRecords, session.records, session.validationResults]
+  )
+  const invalidCount = Object.values(session.validationResults).filter(
+    (validation) => !validation.isValid
+  ).length
+  const recordsToPersist = useMemo(
+    () => session.reconciliations
+      ?.filter(({ action, status }) => status !== ***REMOVED***ambiguous***REMOVED*** && action !== ***REMOVED***ignore***REMOVED***)
+      .map(({ record }) => record) ?? [],
+    [session.reconciliations]
+  )
+  const unresolvedCount = session.reconciliations?.filter(
+    ({ status, action }) => status === ***REMOVED***ambiguous***REMOVED*** || action === undefined
+  ).length ?? 0
+  const writeFailures = useMemo(
+    () => Object.entries(session.recordResults)
+      .filter(([, result]) => result.stage === ***REMOVED***failed***REMOVED*** && result.error)
+      .map(([key, result]) => ({ key, result })),
+    [session.recordResults]
+  )
 
 
   const auth = useAuth()
   const [selectedTab, setSelectedTab] = useState(***REMOVED***records***REMOVED***)
-  const getFullDoc = remoteSource?.getFullDoc ?? ((d) => (new Promise((resolve) => resolve({ doc: d.doc, fullDoc: d.doc, slug: d.doc.slug, label: d.doc.label, data: d.doc.data, attrs: {}, description: d.doc.description } as IFullDocForImport))))
+  const [activeDetailRoot, setActiveDetailRoot] = useState(sourceAdapter?.defaultDetailRoot)
+  const getFullDoc = sourceAdapter
+    ? ({ doc, signal, serviceRoot }: {
+      doc: IDocumentImport
+      signal?: AbortSignal
+      serviceRoot?: string
+    }) => sourceAdapter.load({ candidate: doc as ImportCandidate, signal, detailRoot: serviceRoot })
+    : (d: { doc: IDocumentImport }) => Promise.resolve({
+      uuid: d.doc.uuid,
+      slug: d.doc.slug,
+      label: d.doc.label,
+      data: d.doc.data,
+      attrs: {},
+      description: d.doc.description,
+      provenance: { sourceId: type, externalId: d.doc.uuid },
+      sourceData: d.doc.data,
+    } as CanonicalImportRecord)
 
   /* const state = useMemo<***REMOVED***idle***REMOVED*** | ***REMOVED***loading***REMOVED*** | ***REMOVED***success***REMOVED*** | ***REMOVED***error***REMOVED***>(() => {
                 if (!activeUrl) return ***REMOVED***idle***REMOVED***
@@ -246,12 +297,13 @@ const ImportRecordsPage = ({
       <h1 className="text-2xl font-bold">Import {pluralLabel}</h1>
 
       {
-        remoteSource && (
+        sourceAdapter && (
           <RemoteSourceImport
-            {...remoteSource}
+            adapter={sourceAdapter}
             label={label}
             type={type}
             pluralLabel={pluralLabel}
+            onDetailRootActivated={setActiveDetailRoot}
           />
         )
       }
@@ -277,44 +329,199 @@ const ImportRecordsPage = ({
                   <SelectObjectTypeForImport
                     documents={previewRecordsToImport}
                     getFullDoc={getFullDoc}
-                    detailRoot={remoteSource?.defaultDetailRoot}
+                    detailRoot={activeDetailRoot}
                     label={label}
                     type={type}
+                    sourceId={sourceId}
                   />
                 ),
               },
               {
                 id: ***REMOVED***import***REMOVED***,
-                label: ***REMOVED***Import Records***REMOVED***,
-                disabled: !previewRecordsToImport?.length || !objectTypeForRecords,
+                label: validationComplete ? ***REMOVED***Import Records***REMOVED*** : ***REMOVED***Import Records (validate first)***REMOVED***,
+                disabled: !validationComplete || !eligibleRecords.length || !objectTypeForRecords,
                 content: (
                   <div className="flex flex-col h-full gap-2">
                     <div>
-                      Importing {previewRecordsToImport?.length} records with object type{***REMOVED*** ***REMOVED***}
+                      Importing {eligibleRecords.length} validated records with object type{***REMOVED*** ***REMOVED***}
                       {objectTypeForRecords?.label}
                     </div>
-                    <BatchLoadDocuments
-                      documents={previewRecordsToImport}
-                      getFullDoc={getFullDoc}
-                      detailRoot={remoteSource?.defaultDetailRoot ?? ***REMOVED***NA***REMOVED***}
-                      onFullDocLoaded={async (doc) => {
-                        if (objectTypeForRecords !== undefined) {
-                          const docToSave = {
-                            object_type_uuid: objectTypeForRecords.uuid,
-                            ...pick(doc, [***REMOVED***label***REMOVED***, ***REMOVED***description***REMOVED***, ***REMOVED***slug***REMOVED***, ***REMOVED***data***REMOVED***]),
-                          } as Omit<IDocument, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>
-                          const newDoc = await postDocument({
-                            document: docToSave,
-                            token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
-                          })
+                    {invalidCount > 0 && !session.includeInvalidRecords && (
+                      <div className="text-sm text-amber-800">
+                        {invalidCount} invalid records are excluded from this import.
+                      </div>
+                    )}
+                    {auth.isAdmin && invalidCount > 0 && (
+                      <Checkbox
+                        id="include-invalid-records"
+                        testId="include-invalid-records"
+                        label="Include invalid records"
+                        value={session.includeInvalidRecords}
+                        onChange={setIncludeInvalidRecords}
+                      />
+                    )}
+                    {objectTypeForRecords && (
+                      <ReconciliationReview
+                        records={eligibleRecords}
+                        objectTypeUuid={objectTypeForRecords.uuid}
+                        token={auth.user?.access_token ?? ***REMOVED******REMOVED***}
+                        reconciliations={session.reconciliations}
+                        mergeStrategy={session.mergeStrategy}
+                        serverMergeAvailable={IMPORT_MERGE_RPC.trim().length > 0}
+                        onReconciled={setReconciliations}
+                        onActionChange={setConflictAction}
+                        onMergeStrategyChange={setMergeStrategy}
+                      />
+                    )}
+                    {session.reconciliations && unresolvedCount > 0 && (
+                      <div className="text-sm text-red-700">
+                        {unresolvedCount} records have ambiguous matches and will not be imported.
+                      </div>
+                    )}
+                    {writeFailures.length > 0 && (
+                      <div className="flex flex-col gap-2 border border-red-300 bg-red-50 p-3" role="alert">
+                        <strong className="text-sm text-red-800">
+                          {writeFailures.length} records could not be saved
+                        </strong>
+                        {writeFailures.map(({ key, result }) => {
+                          const failedRecord = eligibleRecords.find(
+                            (record) => importRecordKey(record) === key
+                          )
+                          return (
+                            <div key={key} className="flex flex-wrap items-center gap-2 text-sm text-red-800">
+                              <span>{failedRecord?.label ?? key}: {result.error}</span>
+                              {result.errorKind === ***REMOVED***duplicate-type-slug***REMOVED*** && failedRecord && (
+                                <>
+                                  <Button
+                                    size="xs"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setConflictAction(failedRecord, ***REMOVED***ignore***REMOVED***)
+                                      setRecordResult(failedRecord, { stage: ***REMOVED***reconciled***REMOVED*** })
+                                    }}
+                                  >
+                                    Ignore record
+                                  </Button>
+                                  <Button size="xs" variant="outline" onClick={clearReconciliations}>
+                                    Return to duplicate check
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                    {session.reconciliations && recordsToPersist.length === 0 && (
+                      <div className="text-sm text-gray-700">
+                        No records are selected for creation or update.
+                      </div>
+                    )}
+                    {session.reconciliations && recordsToPersist.length > 0 && (
+                      <BatchLoadDocuments
+                        documents={recordsToPersist}
+                        getFullDoc={async ({ doc }) => {
+                          const record = recordsToPersist.find(
+                            (candidate) => candidate.provenance.externalId === doc.provenance.externalId
+                          )
+                          if (!record) throw new Error(`Preloaded record not found: ${doc.label}`)
+                          return record
+                        }}
+                        detailRoot={activeDetailRoot}
+                        onFullDocLoaded={async (doc, { signal }) => {
+                          if (objectTypeForRecords !== undefined) {
+                            const reconciliation = session.reconciliations?.find(
+                              ({ record }) => importRecordKey(record) === importRecordKey(doc)
+                            )
+                            if (!reconciliation?.action || reconciliation.action === ***REMOVED***ignore***REMOVED***) return
 
-                          console.log(***REMOVED***new document saved!***REMOVED***, newDoc)
-                        }
-                      }}
-                      onAllFullDocsLoaded={async (fullDocs) => {
-                        console.log(***REMOVED***All full docs loaded:***REMOVED***, fullDocs)
-                      }}
-                    />
+                            const attrs = withImportProvenance(doc.attrs, doc.provenance)
+                            const docToSave = {
+                              object_type_uuid: objectTypeForRecords.uuid,
+                              ...pick(doc, [***REMOVED***label***REMOVED***, ***REMOVED***description***REMOVED***, ***REMOVED***slug***REMOVED***, ***REMOVED***data***REMOVED***]),
+                              attrs,
+                            } as Omit<IDocument, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>
+                            if (reconciliation.action === ***REMOVED***create***REMOVED***) {
+                              const existingDocument = await fetchExistingDocumentBySlug({
+                                slug: doc.slug,
+                                objectTypeUuid: objectTypeForRecords.uuid,
+                                token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
+                                signal,
+                              })
+                              if (existingDocument) {
+                                throw new Error(
+                                  `Document "${doc.slug}" already exists. Check existing documents again to choose ignore, merge, or overwrite.`
+                                )
+                              }
+                              await postDocument({
+                                document: docToSave,
+                                token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
+                                signal,
+                              })
+                              return
+                            }
+
+                            const existingDocument = reconciliation.existingDocuments[0]
+                            if (!existingDocument) throw new Error(***REMOVED***Existing document was not found***REMOVED***)
+                            if (
+                              reconciliation.action === ***REMOVED***merge***REMOVED*** &&
+                              session.mergeStrategy === ***REMOVED***postgrest-rpc***REMOVED***
+                            ) {
+                              await mergeImportDocumentViaRpc({
+                                rpcPath: IMPORT_MERGE_RPC,
+                                documentUuid: existingDocument.uuid,
+                                incomingDocument: docToSave,
+                                token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
+                                signal,
+                              })
+                              return
+                            }
+                            const document = reconciliation.action === ***REMOVED***merge***REMOVED***
+                              ? {
+                                label: mergeIncomingNonEmpty(existingDocument.label, doc.label) as string,
+                                description: mergeIncomingNonEmpty(
+                                  existingDocument.description,
+                                  doc.description
+                                ) as string,
+                                slug: mergeIncomingNonEmpty(existingDocument.slug, doc.slug) as string,
+                                data: mergeIncomingNonEmpty(existingDocument.data, doc.data),
+                                attrs: withImportProvenance(
+                                  mergeIncomingNonEmpty(existingDocument.attrs, doc.attrs),
+                                  doc.provenance
+                                ),
+                              }
+                              : docToSave
+                            await patchDocument({
+                              uuid: existingDocument.uuid,
+                              document,
+                              token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
+                              signal,
+                            })
+                          }
+                        }}
+                        onAllFullDocsLoaded={async (fullDocs, summary) => {
+                          console.log(***REMOVED***All full docs loaded:***REMOVED***, fullDocs)
+                          if (summary.failed === 0) clearReconciliations()
+                        }}
+                        onRecordResult={(record, result) => {
+                          const error = result.status === ***REMOVED***rejected***REMOVED***
+                            ? classifyImportError(result.reason)
+                            : undefined
+                          setRecordResult(
+                            record,
+                            result.status === ***REMOVED***fulfilled***REMOVED***
+                              ? { stage: ***REMOVED***imported***REMOVED*** }
+                              : {
+                                stage: ***REMOVED***failed***REMOVED***,
+                                error: error?.message,
+                                errorKind: error?.kind,
+                              }
+                          )
+                        }}
+                        onIgnoreConflict={(record) => setConflictAction(record, ***REMOVED***ignore***REMOVED***)}
+                        onResolveConflict={clearReconciliations}
+                      />
+                    )}
                   </div>
                 ),
               },

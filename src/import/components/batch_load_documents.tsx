@@ -3,12 +3,19 @@ import { Checkbox, Input, Loader } from ***REMOVED***@axdspub/axiom-ui-utilities
 import { TableVirtuoso, type TableComponents } from ***REMOVED***react-virtuoso***REMOVED***
 import { forwardRef, useCallback, useRef, useState, type ReactElement } from ***REMOVED***react***REMOVED***
 import { Button } from ***REMOVED***@/components/ui/button***REMOVED***
-import { Check } from ***REMOVED***lucide-react***REMOVED***
-import { useBatchImport } from ***REMOVED***../hooks/useBatchImport***REMOVED***
-import type { IDocumentImport, IFullDocForImport } from ***REMOVED***@/import/types***REMOVED***
+import { Check, TriangleAlert } from ***REMOVED***lucide-react***REMOVED***
+import { useBatchImport, type BatchProgress } from ***REMOVED***../hooks/useBatchImport***REMOVED***
+import type { CanonicalImportRecord, ImportCandidate } from ***REMOVED***@/import/types***REMOVED***
 import type { IDocument } from ***REMOVED***@/types/types***REMOVED***
+import {
+  applyBatchResults,
+  createImportRows,
+  importCandidateListKey,
+  type ImportRowState,
+} from ***REMOVED***./batch_import_state***REMOVED***
+import type { ImportErrorKind } from ***REMOVED***@/import/import_errors***REMOVED***
 
-const TableComponentsOverride: TableComponents<IDocumentImport> = {
+const TableComponentsOverride: TableComponents<ImportCandidate> = {
   Table: (props) => (
     <table
       {...props}
@@ -41,7 +48,10 @@ type IRowViewProps = {
   loading?: boolean
   selected?: boolean
   error?: string
+  errorKind?: ImportErrorKind
   onChangeSelected: (selected: boolean, index: number) => void
+  onIgnoreError: (index: number) => void
+  onResolveConflict?: () => void
 }
 
 const ImportRow = ({
@@ -52,7 +62,11 @@ const ImportRow = ({
   imported,
   loading,
   selected,
+  error,
+  errorKind,
   onChangeSelected,
+  onIgnoreError,
+  onResolveConflict,
 }: IRowViewProps): ReactElement => {
   return (
     <>
@@ -75,6 +89,25 @@ const ImportRow = ({
             onChangeSelected(e, index)
           }}
         />
+        {error && (
+          <div className="flex flex-wrap items-center gap-2 mt-2 text-red-700 text-xs" role="alert">
+            <span className="inline-flex items-center gap-1">
+              <TriangleAlert size={14} /> {error}
+            </span>
+            {errorKind === ***REMOVED***duplicate-type-slug***REMOVED*** && (
+              <>
+                <Button type="button" size="xs" variant="outline" onClick={() => onIgnoreError(index)}>
+                  Ignore record
+                </Button>
+                {onResolveConflict && (
+                  <Button type="button" size="xs" variant="outline" onClick={onResolveConflict}>
+                    Return to duplicate check
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </td>
       <td className="px-6 py-4">{slug}</td>
     </>
@@ -88,43 +121,47 @@ const BatchLoadDocuments = ({
   RowView = ImportRow,
   onFullDocLoaded,
   onAllFullDocsLoaded,
+  onRecordResult,
+  onIgnoreConflict,
+  onResolveConflict,
   createDocument,
   includeRandomSelector = false,
 }: {
-  documents: IDocumentImport<unknown>[]
+  documents: ImportCandidate<unknown>[]
   getFullDoc: (props: {
-    doc: IDocumentImport
+    doc: ImportCandidate
     url?: string
     signal?: AbortSignal
     serviceRoot?: string
-  }) => Promise<IFullDocForImport>
+  }) => Promise<CanonicalImportRecord>
   detailRoot?: string
   RowView?: React.FC<IRowViewProps>
-  onFullDocLoaded?: (fullDoc: IDocumentImport & IFullDocForImport) => Promise<void>
-  onAllFullDocsLoaded?: (fullDocs: Array<IDocumentImport & IFullDocForImport>) => Promise<void>
+  onFullDocLoaded?: (
+    fullDoc: CanonicalImportRecord,
+    context: { signal: AbortSignal }
+  ) => Promise<void>
+  onAllFullDocsLoaded?: (
+    fullDocs: CanonicalImportRecord[],
+    summary: BatchProgress
+  ) => Promise<void>
+  onRecordResult?: (
+    record: ImportCandidate,
+    result: PromiseSettledResult<void>
+  ) => void
+  onIgnoreConflict?: (record: ImportCandidate) => void
+  onResolveConflict?: () => void
   createDocument?: (
-    fullDoc: IDocumentImport & IFullDocForImport
+    fullDoc: CanonicalImportRecord
   ) => Promise<{ error?: string; document?: IDocument }>
   includeRandomSelector?: boolean
 }): ReactElement => {
-  const initialData = documents.map((doc) => {
-    return {
-      ...doc,
-      selected: true,
-      imported: false,
-      loading: false,
-    } as IDocument & {
-      selected: boolean
-      imported: boolean
-      loading: boolean
-      error?: string
-      savedDocument?: IDocument
-    }
-  })
-  const [data, setData] = useState(initialData)
-  /* useEffect(() => {
-        setData(initialData)
-    }, [documents]) */
+  const [data, setData] = useState<ImportRowState[]>(() => createImportRows(documents))
+  const documentListKey = importCandidateListKey(documents)
+  const [previousDocumentListKey, setPreviousDocumentListKey] = useState(documentListKey)
+  if (previousDocumentListKey !== documentListKey) {
+    setPreviousDocumentListKey(documentListKey)
+    setData(createImportRows(documents))
+  }
 
   const onChangeSelected = (selected: boolean, index: number) => {
     const newData = [...data]
@@ -132,13 +169,23 @@ const BatchLoadDocuments = ({
     setData(newData)
   }
 
+  const onIgnoreError = (index: number) => {
+    const record = data[index]
+    if (record) onIgnoreConflict?.(record)
+    setData((previous) => previous.map((row, rowIndex) =>
+      rowIndex === index
+        ? { ...row, selected: false, error: undefined, errorKind: undefined }
+        : row
+    ))
+  }
+
   const [startImport, setStartImport] = useState(false)
   const [batchSize, setBatchSize] = useState(10)
   const [randomSelectCount, setRandomSelectCount] = useState(20)
-  const allDocsRef = useRef<Array<IDocumentImport & IFullDocForImport>>([])
+  const allDocsRef = useRef<CanonicalImportRecord[]>([])
 
   const importOneRecord = useCallback(
-    async (item: IDocumentImport<unknown>, { signal }: { signal: AbortSignal }) => {
+    async (item: ImportCandidate<unknown>, { signal }: { signal: AbortSignal }) => {
       //console.log(item, signal)
 
       const fullDoc = await getFullDoc({ doc: item, signal, serviceRoot: detailRoot })
@@ -153,17 +200,25 @@ const BatchLoadDocuments = ({
   const importBatchItem = useCallback(
     async (row: (typeof data)[number], { signal }: { signal: AbortSignal }) => {
       const doc = await importOneRecord(row, { signal })
-      const mergedFullDoc = {
+      const mergedFullDoc: CanonicalImportRecord = {
         ...row,
         ...doc,
       }
       if (onFullDocLoaded) {
-        await onFullDocLoaded(mergedFullDoc)
+        await onFullDocLoaded(mergedFullDoc, { signal })
       }
       if (createDocument) {
         const { error, document } = await createDocument(mergedFullDoc)
-        mergedFullDoc.error = error
-        mergedFullDoc.savedDocument = document
+        if (error) throw new Error(error)
+        if (document) {
+          setData((previous) =>
+            previous.map((candidate) =>
+              candidate.uuid === row.uuid
+                ? { ...candidate, savedDocument: document }
+                : candidate
+            )
+          )
+        }
       }
       allDocsRef.current.push(mergedFullDoc)
     },
@@ -177,24 +232,18 @@ const BatchLoadDocuments = ({
 
   const handleBatchComplete = useCallback(
     (batch: typeof data, results: PromiseSettledResult<void>[]) => {
-      const byId = new Map(batch.map((r, i) => [r.uuid, results[i]]))
-      setData((prev) =>
-        prev.map((r) => {
-          const result = byId.get(r.uuid)
-          if (!result) return r
-          if (result.status === ***REMOVED***fulfilled***REMOVED***) {
-            return { ...r, imported: true, selected: false, loading: false }
-          }
-          return { ...r, loading: false }
-        })
-      )
+      setData((previous) => applyBatchResults(previous, batch, results))
+      batch.forEach((record, index) => {
+        const result = results[index]
+        if (result) onRecordResult?.(record, result)
+      })
     },
-    []
+    [onRecordResult]
   )
 
-  const handleDone = useCallback(async () => {
+  const handleDone = useCallback(async (summary: BatchProgress) => {
     if (onAllFullDocsLoaded) {
-      await onAllFullDocsLoaded(allDocsRef.current)
+      await onAllFullDocsLoaded(allDocsRef.current, summary)
     }
     allDocsRef.current = []
     setStartImport(false)
@@ -211,6 +260,7 @@ const BatchLoadDocuments = ({
     onBatchComplete: handleBatchComplete,
     onDone: handleDone,
   })
+  const failedRows = data.filter((row) => row.error)
 
   return (
     <>
@@ -290,12 +340,23 @@ const BatchLoadDocuments = ({
               Cancel
             </Button>
             <span className="text-xs">
-              {progress.done} of {progress.total}
+              {progress.done} succeeded, {progress.failed} failed of {progress.total}
             </span>
           </>
         )}
+        {!isRunning && progress.total > 0 && (
+          <span className={progress.failed > 0 ? ***REMOVED***text-red-600 text-xs***REMOVED*** : ***REMOVED***text-green-700 text-xs***REMOVED***}>
+            {progress.done} succeeded, {progress.failed} failed of {progress.total}
+          </span>
+        )}
         {runError && <span className="text-red-500 text-xs">Error: {String(runError)}</span>}
       </div>
+      {failedRows.length > 0 && (
+        <div className="mb-3 border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">
+          <strong>{failedRows.length} records could not be saved.</strong>
+          <span className="ml-2">Review the errors below and choose an available action.</span>
+        </div>
+      )}
       <TableVirtuoso
         className="w-full bg-slate-100"
         data={data}
@@ -307,7 +368,13 @@ const BatchLoadDocuments = ({
           </tr>
         )}
         itemContent={(index, doc) => (
-          <RowView {...doc} index={index} onChangeSelected={onChangeSelected} />
+          <RowView
+            {...doc}
+            index={index}
+            onChangeSelected={onChangeSelected}
+            onIgnoreError={onIgnoreError}
+            onResolveConflict={onResolveConflict}
+          />
         )}
       />
     </>

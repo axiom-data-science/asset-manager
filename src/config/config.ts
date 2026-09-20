@@ -41,4 +41,10 @@ export const APPS_API_BASE_URL = twconfig(
   ***REMOVED***http://localhost:3345***REMOVED***
 )
 
+export const IMPORT_MERGE_RPC = twconfig(
+  ***REMOVED***$TWOWOLVES_IMPORT_MERGE_RPC***REMOVED***,
+  ***REMOVED***VITE_IMPORT_MERGE_RPC***REMOVED***,
+  ***REMOVED******REMOVED***
+)
+
 export const SITE_TITLE = twconfig(***REMOVED***$TWOWOLVES_SITE_TITLE***REMOVED***, ***REMOVED***VITE_SITE_TITLE***REMOVED***, ***REMOVED***Asset Manager***REMOVED***)

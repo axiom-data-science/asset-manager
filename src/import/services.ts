@@ -291,7 +291,7 @@ export const movingPlatform = async ({ doc, url, serviceRoot = PLATFORM_ROOT, si
         description: j.base.attributes.summary ?? ***REMOVED******REMOVED***,
         data: {
             ...j,
-            uuid: j.base.attributes.packrate_uuid
+            uuid: j.base.attributes.packrat_uuid
         },
         attrs: {}
     }

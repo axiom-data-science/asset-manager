@@ -1,5 +1,6 @@
 import { ChartBarBig, Grid2X2, Grid2X2Plus, Layers2, Layers3, LayersPlus, Ship, Thermometer } from ***REMOVED***lucide-react***REMOVED***
 import type { IImportPageProps } from ***REMOVED***./pages/import_records_page_impl***REMOVED***
+import { createRemoteImportAdapter } from ***REMOVED***./adapters***REMOVED***
 import {
   binninatorMetadata,
   binninatorRecords,
@@ -27,109 +28,117 @@ import {
 
 const importConfigs: IImportPageProps[] = [
   {
-    remoteSource: {
+    sourceAdapter: createRemoteImportAdapter({
+      id: ***REMOVED***moving_platform***REMOVED***,
       defaultImportUrl: searchURL({
         type: ***REMOVED***platform2***REMOVED***,
         count: 100,
         portal_id: 25,
       }),
-      service: searchDocs,
+      discover: searchDocs,
       defaultDetailRoot: PLATFORM_ROOT,
-      getFullDoc: movingPlatform,
-    },
+      load: movingPlatform,
+    }),
     label: ***REMOVED***Moving Platform***REMOVED***,
     type: ***REMOVED***moving_platform***REMOVED***,
     icon: Ship
   },
   {
-    remoteSource: {
+    sourceAdapter: createRemoteImportAdapter({
+      id: ***REMOVED***sensor_station***REMOVED***,
       defaultImportUrl: searchURL({
         type: ***REMOVED***sensor_station***REMOVED***,
         count: 100,
         portal_id: 25,
       }),
       defaultDetailRoot: SENSORS_ROOT,
-      service: searchDocs,
-      getFullDoc: sensorStation,
-    },
+      discover: searchDocs,
+      load: sensorStation,
+    }),
     label: ***REMOVED***Sensor Station***REMOVED***,
     type: ***REMOVED***sensor_station***REMOVED***,
     icon: Thermometer
   },
   {
-    remoteSource: {
+    sourceAdapter: createRemoteImportAdapter({
+      id: ***REMOVED***oikos_model***REMOVED***,
       defaultImportUrl: defaultOikosModelsURL,
-      service: oikosModels,
+      discover: oikosModels,
       defaultDetailRoot: ***REMOVED***UNUSED***REMOVED***,
-      getFullDoc: oikosModel,
-    },
+      load: oikosModel,
+    }),
     label: ***REMOVED***Oikos Model***REMOVED***,
     type: ***REMOVED***oikos_model***REMOVED***,
     icon: Grid2X2
   },
   {
-    remoteSource: {
+    sourceAdapter: createRemoteImportAdapter({
+      id: ***REMOVED***oikos_model_variable***REMOVED***,
       defaultImportUrl: defaultOikosModelsURL,
-      service: oikosModelVariables,
+      discover: oikosModelVariables,
       defaultDetailRoot: ***REMOVED***UNUSED***REMOVED***,
-      getFullDoc: oikosModelVariable,
-    },
+      load: oikosModelVariable,
+    }),
     label: ***REMOVED***Oikos Model Variable***REMOVED***,
     type: ***REMOVED***oikos_model_variable***REMOVED***,
     icon: Grid2X2Plus
   },
   {
-    remoteSource: {
+    sourceAdapter: createRemoteImportAdapter({
+      id: ***REMOVED***binner_record***REMOVED***,
       defaultImportUrl: defaultBinninatorRecordsURL,
-      service: binninatorRecords,
+      discover: binninatorRecords,
       defaultDetailRoot: binninatorRoot,
-      getFullDoc: binninatorMetadata,
-    },
+      load: binninatorMetadata,
+    }),
     label: ***REMOVED***Binner Record***REMOVED***,
     type: ***REMOVED***binner_record***REMOVED***,
     icon: ChartBarBig
   },
   {
-    remoteSource: {
+    sourceAdapter: createRemoteImportAdapter({
+      id: ***REMOVED***oikos_vector_layer***REMOVED***,
       defaultImportUrl: searchURL({
         type: ***REMOVED***layer_group***REMOVED***,
         count: 100,
         portal_id: 25,
       }),
-      service: oikosVectorLayers,
+      discover: oikosVectorLayers,
       defaultDetailRoot: OIKOS_URL_ROOT,
-      getFullDoc: oikosLayer,
-    },
+      load: oikosLayer,
+    }),
     label: ***REMOVED***Oikos Vector Layer***REMOVED***,
     type: ***REMOVED***oikos_vector_layer***REMOVED***,
     icon: Layers2
   },
   {
-    remoteSource: {
+    sourceAdapter: createRemoteImportAdapter({
+      id: ***REMOVED***oikos_vector_layer_group***REMOVED***,
       defaultImportUrl: searchURL({
         type: ***REMOVED***layer_group***REMOVED***,
         count: 100,
         portal_id: 25,
       }),
-      service: oikosVectorLayerGroups,
+      discover: oikosVectorLayerGroups,
       defaultDetailRoot: OIKOS_URL_ROOT,
-      getFullDoc: oikosLayerGroup,
-    },
+      load: oikosLayerGroup,
+    }),
     label: ***REMOVED***Oikos Vector Layer Group***REMOVED***,
     type: ***REMOVED***oikos_vector_layer_group***REMOVED***,
     icon: Layers3
   },
   {
-    remoteSource: {
+    sourceAdapter: createRemoteImportAdapter({
+      id: ***REMOVED***oikos_vector_module***REMOVED***,
       defaultImportUrl: searchURL({
         type: ***REMOVED***layer_group***REMOVED***,
         count: 100,
         portal_id: 25,
       }),
-      service: oikosVectorModules,
+      discover: oikosVectorModules,
       defaultDetailRoot: OIKOS_URL_ROOT,
-      getFullDoc: oikosModule,
-    },
+      load: oikosModule,
+    }),
     label: ***REMOVED***Oikos  Module***REMOVED***,
     type: ***REMOVED***oikos_vector_module***REMOVED***,
     icon: LayersPlus

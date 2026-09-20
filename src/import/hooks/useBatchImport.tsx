@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from ***REMOVED***react***REMOVED***
 
-type BatchProgress = {
+export type BatchProgress = {
   total: number
   done: number
   failed: number
@@ -36,6 +36,7 @@ export function useBatchImport<T>({
   const [runError, setRunError] = useState<Error | null>(null)
 
   const runIdRef = useRef(0)
+  const controllerRef = useRef<AbortController | null>(null)
   const importItemRef = useRef(importItem)
   const callbacksRef = useRef({ onBatchStart, onBatchComplete, onDone })
 
@@ -50,6 +51,8 @@ export function useBatchImport<T>({
 
   const cancel = useCallback(() => {
     runIdRef.current += 1
+    controllerRef.current?.abort()
+    controllerRef.current = null
     setIsRunning(false)
   }, [])
 
@@ -58,6 +61,7 @@ export function useBatchImport<T>({
 
     const runId = ++runIdRef.current
     const controller = new AbortController()
+    controllerRef.current = controller
     let cancelled = false
 
     const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -118,6 +122,7 @@ export function useBatchImport<T>({
       }
 
       if (!cancelled && runId === runIdRef.current) {
+        controllerRef.current = null
         setIsRunning(false)
         callbacksRef.current.onDone?.(finalSummary)
       }
@@ -125,6 +130,7 @@ export function useBatchImport<T>({
 
     run().catch((e) => {
       if (!cancelled && runId === runIdRef.current) {
+        controllerRef.current = null
         setRunError(e as Error)
         setIsRunning(false)
       }
@@ -133,6 +139,7 @@ export function useBatchImport<T>({
     return () => {
       cancelled = true
       controller.abort()
+      if (controllerRef.current === controller) controllerRef.current = null
     }
   }, [enabled, batchSize, delayMsBetweenBatches])
 

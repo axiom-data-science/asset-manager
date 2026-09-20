@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import type { IDocumentImport, IFullDocForImport } from '../../types'
+import type { CanonicalImportRecord, ImportCandidate } from '../../types'
 import { Inputs } from '@axdspub/axiom-ui-forms'
 
 import { type LanguageName, quicktype, jsonInputForTargetLanguage, InputData } from 'quicktype-core'
@@ -12,7 +12,7 @@ import contextStateAtom from '@/state/contextStateAtom'
 import { atom, useAtom } from 'jotai'
 import CreateObjectType from '@/manage/object_type/create'
 import type { JSONSchema6 } from 'json-schema'
-import { objectTypeForRecordsState, recordsToImportState } from '@/import/state/importState'
+import { useImportSession } from '@/import/state/importState'
 import ValidateAgainstSchema from './validate_against_schema'
 import {
   convertAllEnumToOptionalStringAtPath,
@@ -27,7 +27,6 @@ import { Redo2, Undo2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 const createObjectTypeFromDataState = atom(false)
-const schemaStateAtom = atom<JSONSchema6 | null>(null)
 
 async function quicktypeJSON(
   targetLanguage: LanguageName,
@@ -58,17 +57,20 @@ async function quicktypeJSON(
 
 const SelectObjectTypeForImportTab = ({
   documents,
-  type
+  type,
+  sourceId,
 }: {
-  documents: IDocumentImport[]
+  documents: CanonicalImportRecord[]
   type: string
+  sourceId: string
 }): ReactElement => {
   const [contextState] = useAtom(contextStateAtom)
-  const [schema, setSchema] = useAtom(schemaStateAtom)
   const [createObjectTypeFromData, setCreateObjectTypeFromData] = useAtom(
     createObjectTypeFromDataState
   )
-  const [selectedObjectType, setSelectedObjectType] = useAtom(objectTypeForRecordsState)
+  const { session, setSchema, setSelectedObjectType } = useImportSession(sourceId)
+  const schema = session.schema
+  const selectedObjectType = session.selectedObjectType
   const initializedTypeRef = useRef<string | null>(null)
 
   const { data, isLoading, error } = useQuery({
@@ -312,6 +314,7 @@ const SelectObjectTypeForImportTab = ({
               key={JSON.stringify(schema)}
               schema={schema}
               documents={documents}
+              sourceId={sourceId}
             />
           )}
         </div>
@@ -325,32 +328,26 @@ const SelectObjectTypeForImport = ({
   getFullDoc,
   detailRoot,
   label,
-  type
+  type,
+  sourceId,
 }: {
-  documents: IDocumentImport[]
+  documents: ImportCandidate[]
   getFullDoc: (props: {
-    doc: IDocumentImport
+    doc: ImportCandidate
     url?: string
     signal?: AbortSignal
     serviceRoot?: string
-  }) => Promise<IFullDocForImport>
+  }) => Promise<CanonicalImportRecord>
   detailRoot?: string
   label?: string
   type: string
+  sourceId: string
 }): ReactElement => {
-  const initialData = documents.map((doc) => {
-    return {
-      ...doc,
-      selected: true,
-      imported: false,
-      loading: false,
-    }
-  })
   const [selectedTab, setSelectedTab] = useState('preload')
   const [createObjectTypeFromData] = useAtom(createObjectTypeFromDataState)
-  const [schema] = useAtom(schemaStateAtom)
-  const [recordsToImport, setRecordsToImport] = useAtom(recordsToImportState)
-  const [, setObjectTypeForRecords] = useAtom(objectTypeForRecordsState)
+  const { session, setRecords, setSelectedObjectType, setRecordResult } = useImportSession(sourceId)
+  const recordsToImport = session.records
+  const schema = session.schema
 
   return (
     <Tabs
@@ -364,7 +361,7 @@ const SelectObjectTypeForImport = ({
           id: 'preload',
           content: (
             <BatchLoadDocuments
-              documents={initialData}
+              documents={documents}
               getFullDoc={getFullDoc}
               detailRoot={detailRoot}
               onFullDocLoaded={async (doc) => {
@@ -372,8 +369,21 @@ const SelectObjectTypeForImport = ({
               }}
               onAllFullDocsLoaded={async (fullDocs) => {
                 console.log('All full docs loaded:', fullDocs)
-                setRecordsToImport(fullDocs.slice())
+                setRecords(fullDocs.slice())
                 setSelectedTab('validate')
+              }}
+              onRecordResult={(record, result) => {
+                setRecordResult(
+                  record,
+                  result.status === 'fulfilled'
+                    ? { stage: 'loaded' }
+                    : {
+                      stage: 'failed',
+                      error: result.reason instanceof Error
+                        ? result.reason.message
+                        : String(result.reason),
+                    }
+                )
               }}
               includeRandomSelector={true}
             />
@@ -382,7 +392,13 @@ const SelectObjectTypeForImport = ({
         },
         {
           id: 'validate',
-          content: <SelectObjectTypeForImportTab documents={recordsToImport ?? []} type={type} />,
+          content: (
+            <SelectObjectTypeForImportTab
+              documents={recordsToImport}
+              type={type}
+              sourceId={sourceId}
+            />
+          ),
           label: 'Validate against schema',
           disabled: !recordsToImport?.length,
         },
@@ -395,7 +411,7 @@ const SelectObjectTypeForImport = ({
                 initialSchema={schema ?? undefined}
                 initialLabel={label}
                 onSuccess={(newObjectType) => {
-                  setObjectTypeForRecords(newObjectType)
+                  setSelectedObjectType(newObjectType)
                   console.log('New object type created:', newObjectType)
                 }}
               />

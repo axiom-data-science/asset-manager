@@ -5,7 +5,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import type { IDocumentImport } from '@/import/types'
+import type { CanonicalImportRecord } from '@/import/types'
+import { importRecordKey, useImportSession } from '@/import/state/importState'
 import { CopyButton } from '@/manage/components/copy_field'
 import type { IValidationError } from '@/types/types'
 import { schemaToFormUtils, type IFormValues } from '@axdspub/axiom-ui-forms'
@@ -18,20 +19,32 @@ import { omit } from 'lodash-es'
 const ValidateAgainstSchema = ({
   schema,
   documents,
+  sourceId,
 }: {
   schema: JSONSchema
-  documents: IDocumentImport[]
+  documents: CanonicalImportRecord[]
+  sourceId: string
 }): ReactElement => {
-  const [validationResults, setValidationResults] = useState<
-    { document: IDocumentImport; isValid: boolean; errors?: IValidationError[] }[]
-  >([])
-
+  const { session, setValidationResults } = useImportSession(sourceId)
   const [isLoading, setIsLoading] = useState(false)
+  const validationResults = documents
+    .map((document) => ({
+      document,
+      result: session.validationResults[importRecordKey(document)],
+    }))
+    .filter(({ result }) => result !== undefined)
+    .map(({ document, result }) => ({
+      document,
+      isValid: result.isValid,
+      errors: result.errors.map((message) => ({ message }) as IValidationError),
+    }))
+  const validCount = validationResults.filter((result) => result.isValid).length
+  const invalidCount = validationResults.length - validCount
 
   const validateDocuments = async () => {
     setIsLoading(true)
     const cleanedSchema = omit(schema as Record<string, unknown>, '$schema')
-    const results: { document: IDocumentImport; isValid: boolean; errors?: IValidationError[] }[] = []
+    const results: { document: CanonicalImportRecord; isValid: boolean; errors?: IValidationError[] }[] = []
     const batchSize = 10
 
     for (let i = 0; i < documents.length; i += batchSize) {
@@ -54,7 +67,15 @@ const ValidateAgainstSchema = ({
       await new Promise((resolve) => setTimeout(resolve, 10))
     }
 
-    setValidationResults(results)
+    setValidationResults(
+      results.map((result) => ({
+        record: result.document,
+        result: {
+          isValid: result.isValid,
+          errors: result.errors?.map((validationError) => validationError.message) ?? [],
+        },
+      }))
+    )
     setIsLoading(false)
   }
 
@@ -62,6 +83,14 @@ const ValidateAgainstSchema = ({
     <>
       <div className="flex flex-col gap-2 h-full relative">
         <Button onClick={validateDocuments}>Validate {documents.length} Documents</Button>
+        {validationResults.length > 0 && (
+          <div className="flex gap-3 text-sm" role="status">
+            <span className="text-green-700">{validCount} valid</span>
+            <span className={invalidCount > 0 ? 'text-red-700' : 'text-gray-600'}>
+              {invalidCount} invalid
+            </span>
+          </div>
+        )}
         {isLoading && <Loader className="top-30" />}
         {!isLoading && (
           <ul className="flex flex-col gap-2 h-full overflow-auto">

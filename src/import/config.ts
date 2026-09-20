@@ -1,5 +1,6 @@
 import { ChartBarBig, Grid2X2, Grid2X2Plus, Layers2, Layers3, LayersPlus, Ship, Thermometer } from 'lucide-react'
 import type { IImportPageProps } from './pages/import_records_page_impl'
+import { createRemoteImportAdapter } from './adapters'
 import {
   binninatorMetadata,
   binninatorRecords,
@@ -27,109 +28,117 @@ import {
 
 const importConfigs: IImportPageProps[] = [
   {
-    remoteSource: {
+    sourceAdapter: createRemoteImportAdapter({
+      id: 'moving_platform',
       defaultImportUrl: searchURL({
         type: 'platform2',
         count: 100,
         portal_id: 25,
       }),
-      service: searchDocs,
+      discover: searchDocs,
       defaultDetailRoot: PLATFORM_ROOT,
-      getFullDoc: movingPlatform,
-    },
+      load: movingPlatform,
+    }),
     label: 'Moving Platform',
     type: 'moving_platform',
     icon: Ship
   },
   {
-    remoteSource: {
+    sourceAdapter: createRemoteImportAdapter({
+      id: 'sensor_station',
       defaultImportUrl: searchURL({
         type: 'sensor_station',
         count: 100,
         portal_id: 25,
       }),
       defaultDetailRoot: SENSORS_ROOT,
-      service: searchDocs,
-      getFullDoc: sensorStation,
-    },
+      discover: searchDocs,
+      load: sensorStation,
+    }),
     label: 'Sensor Station',
     type: 'sensor_station',
     icon: Thermometer
   },
   {
-    remoteSource: {
+    sourceAdapter: createRemoteImportAdapter({
+      id: 'oikos_model',
       defaultImportUrl: defaultOikosModelsURL,
-      service: oikosModels,
+      discover: oikosModels,
       defaultDetailRoot: 'UNUSED',
-      getFullDoc: oikosModel,
-    },
+      load: oikosModel,
+    }),
     label: 'Oikos Model',
     type: 'oikos_model',
     icon: Grid2X2
   },
   {
-    remoteSource: {
+    sourceAdapter: createRemoteImportAdapter({
+      id: 'oikos_model_variable',
       defaultImportUrl: defaultOikosModelsURL,
-      service: oikosModelVariables,
+      discover: oikosModelVariables,
       defaultDetailRoot: 'UNUSED',
-      getFullDoc: oikosModelVariable,
-    },
+      load: oikosModelVariable,
+    }),
     label: 'Oikos Model Variable',
     type: 'oikos_model_variable',
     icon: Grid2X2Plus
   },
   {
-    remoteSource: {
+    sourceAdapter: createRemoteImportAdapter({
+      id: 'binner_record',
       defaultImportUrl: defaultBinninatorRecordsURL,
-      service: binninatorRecords,
+      discover: binninatorRecords,
       defaultDetailRoot: binninatorRoot,
-      getFullDoc: binninatorMetadata,
-    },
+      load: binninatorMetadata,
+    }),
     label: 'Binner Record',
     type: 'binner_record',
     icon: ChartBarBig
   },
   {
-    remoteSource: {
+    sourceAdapter: createRemoteImportAdapter({
+      id: 'oikos_vector_layer',
       defaultImportUrl: searchURL({
         type: 'layer_group',
         count: 100,
         portal_id: 25,
       }),
-      service: oikosVectorLayers,
+      discover: oikosVectorLayers,
       defaultDetailRoot: OIKOS_URL_ROOT,
-      getFullDoc: oikosLayer,
-    },
+      load: oikosLayer,
+    }),
     label: 'Oikos Vector Layer',
     type: 'oikos_vector_layer',
     icon: Layers2
   },
   {
-    remoteSource: {
+    sourceAdapter: createRemoteImportAdapter({
+      id: 'oikos_vector_layer_group',
       defaultImportUrl: searchURL({
         type: 'layer_group',
         count: 100,
         portal_id: 25,
       }),
-      service: oikosVectorLayerGroups,
+      discover: oikosVectorLayerGroups,
       defaultDetailRoot: OIKOS_URL_ROOT,
-      getFullDoc: oikosLayerGroup,
-    },
+      load: oikosLayerGroup,
+    }),
     label: 'Oikos Vector Layer Group',
     type: 'oikos_vector_layer_group',
     icon: Layers3
   },
   {
-    remoteSource: {
+    sourceAdapter: createRemoteImportAdapter({
+      id: 'oikos_vector_module',
       defaultImportUrl: searchURL({
         type: 'layer_group',
         count: 100,
         portal_id: 25,
       }),
-      service: oikosVectorModules,
+      discover: oikosVectorModules,
       defaultDetailRoot: OIKOS_URL_ROOT,
-      getFullDoc: oikosModule,
-    },
+      load: oikosModule,
+    }),
     label: 'Oikos  Module',
     type: 'oikos_vector_module',
     icon: LayersPlus

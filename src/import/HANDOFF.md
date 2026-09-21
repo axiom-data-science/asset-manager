@@ -2,7 +2,7 @@
 
 ## Current state
 
-The import workflow now uses source-neutral adapters and source-scoped sessions. Individual source imports support canonical loading, schema validation, duplicate reconciliation, conflict policies, and batch result reporting. Import All supports real multi-source discovery and non-writing preparation.
+The import workflow now uses source-neutral adapters and source-scoped sessions. Individual source imports support canonical loading, schema validation, duplicate reconciliation, conflict policies, and batch result reporting. Import All supports real multi-source discovery, preparation, controlled execution, conflict defaults, row overrides, and per-record results.
 
 The implementation plan and remaining work are tracked in `src/import/TODO.md`.
 
@@ -40,7 +40,25 @@ The implementation plan and remaining work are tracked in `src/import/TODO.md`.
 - Discovery supports per-source URL overrides, limits, all-record mode, errors, and cancellation.
 - Preparation loads canonical full records, validates against each matching type***REMOVED***s default schema, and reconciles valid records against PostgREST.
 - The plan displays per-source and aggregate record, validation, and conflict counts.
-- Import All does not write documents yet.
+- Import All executes only valid, non-ambiguous records after review.
+- Per-source conflict defaults and exceptional row overrides select ignore, overwrite, or merge behavior.
+- Late create conflicts are rechecked by type and slug before writing.
+- Per-record execution results remain visible for retry review.
+- Failed records can be retried per source without rerunning successful records.
+- Failed-record retries refresh duplicate reconciliation before writing and preserve successful results.
+- Import All preparation loads records in batches and reports per-source progress without requiring a type first.
+- Missing-type sources show `Pending type`; type setup reuses the shared schema/type UI and displays prepared records.
+- Import All has a page-level `Create missing types` action that generates a type and default schema from prepared records without opening the setup modal.
+- Automatic type creation removes all enum constraints from the generated schema before saving the default schema.
+- Changed-record actions use a right-side virtualized list powered by `react-virtuoso`.
+- Relationship planning now reads `expected_child_types`, matches provenance identities by default, supports optional match paths, and surfaces ready or blocked plans before writes.
+- Full Import All execution now writes ready relationships after documents, retains document UUIDs, and reports link failures independently.
+- Failed relationship writes can be retried from the UI without rerunning document imports; successful link results remain preserved.
+- Relationship execution checks for an existing child-to-parent link before posting, so repeat runs do not create another link when the existing row is readable.
+- Database duplicate protection is verified: `UNIQUE("from_document_uuid", "to_document_uuid", "predicate_uuid")`.
+- The Import All page uses source adapter relationship rules, including the Oikos model-to-model-variable rule.
+
+Relationship UI note: the individual source `Import Records` tab only checks document duplicates. Relationship counts and link results appear on `Import All Sources` after execution, when matching parent and child records are included in the same plan.
 
 ## Known issue: hidden or late duplicate conflicts
 
@@ -95,16 +113,24 @@ npm run dev
 
 Live validation requires configured external source endpoints and authenticated PostgREST for reconciliation/writes.
 
+Recent focused validation:
+
+```text
+src/import/import_all_plan.test.ts
+src/import/relationship_planning.test.ts
+# 15 tests passed
+npm run build  # passed
+```
+
 ## Next implementation step
 
-Add controlled Import All execution:
+Investigate missing relationships reported during UI testing:
 
-1. Add per-source bulk conflict defaults and exceptional row overrides.
-2. Require every enabled source to be prepared with no unresolved type/schema blockers.
-3. Present a final read-only execution summary.
-4. Execute only valid, non-ambiguous records using the same create/ignore/overwrite/merge functions as individual imports.
-5. Preserve per-source and per-record results for retry.
-6. Do not begin relationship ordering until execution results are durable.
+1. Compare planned ready links with persisted link results.
+2. Check missing parents, source identity fields, predicates, and selected-source coverage.
+3. Add focused tests for the observed missing case.
+4. Then implement the concise Import All Errors view/tab.
+5. Keep CSV next after relationship coverage is understood; XLS/XLSX remains deferred.
 
 After execution is stable, implement relationship planning, then CSV through the shared adapter API. XLS/XLSX remains deferred until the CSV adapter API is proven.
 

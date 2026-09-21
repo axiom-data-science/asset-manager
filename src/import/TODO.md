@@ -24,12 +24,25 @@
 - [x] Forward cancellation through both source loading and document persistence where supported.
   - **Outside import:** `src/manage/document/services.ts` may need an optional `AbortSignal`; preserve existing callers.
 - [x] Show per-record persistence errors and failed counts.
+- [x] Add a top-level select/unselect-all control to Import All Sources.
+- [x] Open missing-type setup from Import All in a focused dialog using the shared type/schema and type-creation components.
+- [x] Allow missing-type sources to prepare records for schema inference before type creation.
+- [x] Add one-click automatic type creation from prepared records with enums removed.
+- [x] Add page-level automatic creation for all missing types, bypassing the setup modal.
+- [ ] Surface Import All errors in one concise user-facing view, possibly an Errors tab.
+- [x] Batch Import All preparation requests and show per-source progress.
+- [x] Yield between preparation batches so progress can repaint while sources load.
+- [x] Show a `Pending type` placeholder for sources without a type.
+- [x] Show prepared records in the type-setup dialog.
+- [x] Render per-source changed-record actions in a right-side `react-virtuoso` list.
 
 ### UI simplification
 
 - Replace the current three loosely coupled tabs with a step-based flow: Source, Type and Schema, Validate, Review, Import.
 - Keep endpoint overrides and batch tuning in an advanced settings disclosure.
 - Show a compact source summary after a step is complete instead of keeping all controls visible.
+- Open type setup from Import All in a focused modal showing only type selection, schema setup, and the return action.
+- Support a simple one-button import path for prepared sources, with automatic type creation only when explicitly enabled.
 
 ## 2. Introduce a source-neutral import pipeline
 
@@ -58,6 +71,8 @@
 - [x] Prevent invalid records from being imported by default.
 - [x] Allow users with appropriate permissions to explicitly include invalid records.
 - [ ] Remove or reconcile enum controls with Quicktype***REMOVED***s current `no-enums` configuration.
+- [x] Ensure automatically created Import All schemas strip all enum constraints.
+  - UI verification still needed: create a type automatically and inspect the saved default schema for enum properties.
 
 ### UI simplification
 
@@ -102,12 +117,62 @@
 - [x] Load canonical full records for selected discovered sources during plan preparation.
 - [x] Validate prepared records against each matching type***REMOVED***s default schema.
 - [x] Run duplicate reconciliation for valid prepared records without writing documents.
-- [ ] Apply saved type, identity, validation, and conflict defaults per source.
+- [x] Apply per-source bulk conflict defaults and exceptional row overrides during execution.
 - [ ] Expand the prepared plan from counts, source errors, validation, and conflicts to include relationship dependencies.
 - [x] Require source discovery and plan review before execution.
 - [ ] Execute sources in dependency order when relationships require it.
-- [ ] Preserve per-source and per-record results for retry.
+- [x] Preserve per-source and per-record execution results for retry review.
 - [x] Remove the current mock results and simulated completion behavior.
+- [ ] Add a simple one-button import path for prepared sources.
+- [ ] Decide whether automatic type creation is allowed when a source type is missing; prefer pre-populated types by default.
+- [x] Add an explicit page-level `Create missing types` action for prepared sources.
+- [ ] Add a simple one-button import path for prepared sources after type setup and review are complete.
+
+### Completed item verification: controlled Import All execution
+
+- Automated: `src/import/import_all_plan.test.ts` passes (6 tests); `npm run build` passes.
+- UI verification still needed with authenticated PostgREST and configured source endpoints:
+  - Discover two or more sources and confirm each source keeps its own count and status.
+  - Prepare a source containing new, changed, invalid, and ambiguous records.
+  - Confirm the Execute button stays disabled until all enabled sources are prepared and type/schema blockers are resolved.
+  - Change a source conflict default, override one changed row, execute, and confirm imported/ignored/blocked/failed counts remain visible after completion.
+  - Confirm a late slug conflict reports failure and does not overwrite the existing document.
+
+Suggested next step: should I add retry controls for failed Import All records next? Reply `yes` to continue with retry behavior, or `no` to pause for live UI verification.
+
+### Completed item verification: failed-record retry controls
+
+- Automated: `src/import/import_all_plan.test.ts` passes (7 tests); `npm run build` passes.
+- UI verification still needed:
+  - Force one record to fail while another succeeds.
+  - Confirm `Retry failed` appears for that source and successful records are not rerun.
+  - Confirm the failed record***REMOVED***s result is replaced by the retry result while the other result remains unchanged.
+  - Confirm retry remains disabled while another execution is running.
+
+Suggested next step: should I make retry re-run duplicate reconciliation for failed records before writing? Reply `yes` to continue with retry reconciliation, or `no` to pause for live UI verification.
+
+### Completed item verification: retry reconciliation
+
+- Automated: `src/import/import_all_plan.test.ts` passes (8 tests); `npm run build` passes.
+- UI verification still needed:
+  - Force a write failure, then create or change the same document before selecting `Retry failed`.
+  - Confirm retry refreshes the failed row and changes its classification when appropriate.
+  - Confirm a newly ambiguous row is blocked rather than written.
+  - Confirm successful rows from the original execution remain untouched.
+
+Suggested next step: should I start relationship planning and persistence next? Reply `yes` to continue with relationships, or `no` to pause for live UI verification.
+
+### Follow-up tasks from current UI testing
+
+- [ ] Investigate missing relationships reported after Import All execution.
+  - Compare `relationships ready`, `relationship blockers`, and persisted link results.
+  - Check missing parents, identity-field mismatches, predicate lookup, and source coverage.
+  - Add focused tests for the observed missing case before changing matching behavior.
+- [ ] Add a concise Import All error view, possibly an Errors tab.
+  - Include source discovery, preparation, validation, document, and relationship errors.
+  - Keep per-source and per-record context, with retry actions where available.
+
+Suggested next step: should I investigate the missing relationships first? Reply `yes` to continue, or `no` to pause for UI verification.
 
 ### UI simplification
 
@@ -117,16 +182,38 @@
 
 ## 6. Add relationship planning and persistence
 
-- [ ] Extend relationship rules from object-type `expected_child_types` metadata.
-- [ ] Add parent match field, child match field, predicate, cardinality, and required/optional semantics.
-  - **Outside import:** `src/types/types.ts` and object-type editing UI will need compatible optional fields; existing object types must continue to work unchanged.
-- [ ] Allow source adapters to override object-type relationship rules.
+- [x] Read relationship candidates from object-type `expected_child_types` metadata.
+- [x] Support provenance identity by default and source-adapter match fields.
+- [x] Classify ready, missing-parent, ambiguous-parent, and invalid-rule plans before writes.
+- [x] Allow source adapters to define relationship rules without changing the backend object-type contract.
 - [ ] Resolve relationships from canonical external identities before execution.
 - [ ] Detect missing parents, ambiguous matches, cardinality violations, and cycles during review.
 - [ ] Persist documents first and retain the resulting document UUID map.
-- [ ] Persist relationships in a separate, retryable phase.
+- [x] Persist documents first and retain the resulting document UUID map.
+- [x] Persist ready relationships in a separate phase with independent per-link results.
   - **Outside import:** reuse the existing relationship PostgREST service or extract a shared service from document creation; regression-test normal document creation.
-- [ ] Make relationship retries idempotent.
+- [x] Add UI retry controls for failed relationship writes without rerunning documents.
+- [x] Check for an existing relationship before creating or retrying a link.
+- [x] Verify database protection for duplicate relationships.
+  - Confirmed unique constraint on `from_document_uuid`, `to_document_uuid`, and `predicate_uuid`.
+
+### Completed item verification: relationship planning and persistence foundation
+
+- Automated: `src/import/relationship_planning.test.ts` and Import All tests pass (15 tests); `npm run build` passes.
+- UI verification still needed:
+  - Prepare parent and child sources whose external identities match and confirm the ready relationship count.
+  - Prepare a child without a matching parent and confirm it appears as a relationship blocker.
+  - Prepare duplicate parent identities and confirm the relationship is classified as ambiguous rather than written.
+  - Confirm relationship counts reset when a source is rediscovered or re-prepared.
+  - Execute a ready parent/child pair and confirm the relationship is written child-to-parent.
+  - Force a relationship write failure and confirm link failures remain separate from document failures.
+  - Confirm the `Retry failed links` button appears beside link counts only after a link failure.
+  - Confirm retry disables the button while links are being written and does not rerun document imports.
+  - Confirm a successful retry changes the failed count to zero and increments links created.
+  - For relationship checks, use **Import All Sources**, not the individual source***REMOVED***s `Import Records` tab.
+  - In Import All, include the parent and child sources, prepare the plan, execute it twice, and confirm the summary shows `links already existed` on the second run without adding duplicate links.
+
+Suggested next step: should I move on to the CSV import adapter? Reply `yes` to continue, or `no` to pause for live UI verification.
 
 ### UI simplification
 
@@ -153,6 +240,27 @@
 - Treat each uploaded file as a source row rather than opening a separate CSV-only workflow.
 - Infer mappings and types, showing only uncertain mappings for confirmation.
 - Reuse the standard records, validation, conflict, relationship, and review screens.
+
+### Completed item verification: Import All type setup dialog
+
+- Automated: focused Import All and relationship tests pass (15 tests); `npm run build` passes.
+- UI verification still needed:
+  - Open `Set up type` from a missing-type source and confirm a dialog opens without leaving Import All.
+  - Confirm the dialog contains type selection/schema setup and type creation, but not the full source-loading/import workflow.
+  - Confirm `Create automatically` appears next to the type form only after a schema exists.
+  - Click it and confirm a type and default schema are created without additional input, then confirm the source setup state refreshes.
+  - Confirm `Create missing types` appears on the main Import All page after preparation and creates all missing types without opening the modal.
+  - Confirm the dialog lists prepared records on the left before schema inference.
+  - Confirm sources without types show `Pending type` while preparation is incomplete.
+  - Confirm each source shows `N of M records loaded` during preparation without freezing other source rows.
+  - Confirm changed records appear in a right-side scroll area and scrolling it does not move later sources.
+  - Confirm `Apply to all...` changes every changed record in that source.
+  - Confirm overall preparation progress updates while batches are loading.
+  - Select an existing type, close the dialog, and confirm the Import All page reflects the type after context refresh.
+  - Create a type from the prepared records, close the dialog, and confirm the source no longer shows `Set up type`.
+  - For a missing type, confirm `Prepare review` loads records first; then `Set up type` opens without a schema-inference error.
+
+Suggested next step: should I add the one-button import path for prepared sources? Reply `yes` to continue, or `no` to pause for UI verification.
 
 ## 8. Add XLS/XLSX only after CSV is complete
 

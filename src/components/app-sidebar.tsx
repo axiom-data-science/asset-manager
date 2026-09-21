@@ -16,6 +16,7 @@ import {
   Group,
   ChevronDown,
   FilePen,
+  FileSpreadsheet,
   Import,
   List,
   Lock,
@@ -40,45 +41,59 @@ import type { ReactElement } from ***REMOVED***react***REMOVED***
 const SidebarNavItem = ({
   name,
   url,
-  icon
+  icon,
 }: {
-  name: string,
-  url: string,
-  icon: React.ComponentType,
+  name: string
+  url: string
+  icon: React.ComponentType
 }): ReactElement => {
   const Icon = icon
   const location = useLocation()
-  return <SidebarMenuItem>
-    <SidebarMenuButton asChild className={`text-xs hover:bg-slate-150${location.pathname === url ? ***REMOVED*** bg-slate-100***REMOVED*** : ***REMOVED******REMOVED***}`}>
-      <Link to={url}>
-        <Icon />
-        <span>{name}</span>
-      </Link>
-    </SidebarMenuButton>
-  </SidebarMenuItem>
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        asChild
+        className={`text-xs hover:bg-slate-150${location.pathname === url ? ***REMOVED*** bg-slate-100***REMOVED*** : ***REMOVED******REMOVED***}`}
+      >
+        <Link to={url}>
+          <Icon />
+          <span>{name}</span>
+        </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  )
 }
 
 const SidebarCollapsibleSection = ({
   label,
   icon,
   closeByDefault,
-  actions
+  actions,
 }: {
-  label: string,
-  icon: React.ComponentType,
-  closeByDefault?: boolean,
-  actions: Array<{
-    name: string,
-    url: string,
-    icon: React.ComponentType,
-  } | undefined>
+  label: string
+  icon: React.ComponentType
+  closeByDefault?: boolean
+  actions: Array<
+    | {
+        name: string
+        url: string
+        icon: React.ComponentType
+      }
+    | undefined
+  >
 }) => {
-  const Icon = icon;
+  const Icon = icon
   const location = useLocation()
-  const roots = Object.fromEntries(actions.filter(a => a !== undefined).map(a => [a!.url.split(***REMOVED***/***REMOVED***)[1], a!]))
+  const roots = Object.fromEntries(
+    actions.filter((a) => a !== undefined).map((a) => [a!.url.split(***REMOVED***/***REMOVED***)[1], a!])
+  )
   const active = roots[location.pathname.split(***REMOVED***/***REMOVED***)[1]] !== undefined
   return (
-    <Collapsible key={label} defaultOpen={active || !closeByDefault} className={`group/collapsible ${active ? ***REMOVED*** bg-slate-200***REMOVED*** : ***REMOVED******REMOVED***}`}>
+    <Collapsible
+      key={label}
+      defaultOpen={active || !closeByDefault}
+      className={`group/collapsible ${active ? ***REMOVED*** bg-slate-200***REMOVED*** : ***REMOVED******REMOVED***}`}
+    >
       <SidebarGroup>
         <SidebarGroupLabel asChild className="font-bold text-sm cursor-pointer open:bg-red-100">
           <CollapsibleTrigger className="flex items-center gap-2">
@@ -89,23 +104,25 @@ const SidebarCollapsibleSection = ({
         <CollapsibleContent className="py-2">
           <SidebarGroupContent>
             <SidebarMenu>
-              {actions.filter(a => a !== undefined).map((action) => (
-                action &&
-                <SidebarNavItem
-                  key={action.name}
-                  name={action.name}
-                  url={action.url}
-                  icon={action.icon}
-                />
-
-              ))}
+              {actions
+                .filter((a) => a !== undefined)
+                .map(
+                  (action) =>
+                    action && (
+                      <SidebarNavItem
+                        key={action.name}
+                        name={action.name}
+                        url={action.url}
+                        icon={action.icon}
+                      />
+                    )
+                )}
             </SidebarMenu>
           </SidebarGroupContent>
         </CollapsibleContent>
       </SidebarGroup>
     </Collapsible>
   )
-
 }
 
 export function AppSidebar() {
@@ -288,13 +305,20 @@ export function AppSidebar() {
           icon: RotateCw,
           url: ***REMOVED***/import/all***REMOVED***,
         },
-      ].concat(importConfigs.map(config => {
-        return {
-          name: config.label,
-          icon: config.icon,
-          url: `/import/${config.type}`
-        }
-      }))
+        {
+          name: ***REMOVED***CSV***REMOVED***,
+          icon: FileSpreadsheet,
+          url: ***REMOVED***/import/csv***REMOVED***,
+        },
+      ].concat(
+        importConfigs.map((config) => {
+          return {
+            name: config.label,
+            icon: config.icon,
+            url: `/import/${config.type}`,
+          }
+        })
+      ),
     },
   ]
 
@@ -306,7 +330,7 @@ export function AppSidebar() {
   return (
     <Sidebar style={sideBarStyle}>
       <SidebarHeader />
-      <SidebarContent className=***REMOVED***gap-0***REMOVED***>
+      <SidebarContent className="gap-0">
         {navGroups
           .filter((group) => {
             if (group.requiresAdmin && !auth.isAdmin) {

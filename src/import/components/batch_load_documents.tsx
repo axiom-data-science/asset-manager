@@ -96,7 +96,12 @@ const ImportRow = ({
             </span>
             {errorKind === ***REMOVED***duplicate-type-slug***REMOVED*** && (
               <>
-                <Button type="button" size="xs" variant="outline" onClick={() => onIgnoreError(index)}>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="outline"
+                  onClick={() => onIgnoreError(index)}
+                >
                   Ignore record
                 </Button>
                 {onResolveConflict && (
@@ -140,14 +145,8 @@ const BatchLoadDocuments = ({
     fullDoc: CanonicalImportRecord,
     context: { signal: AbortSignal }
   ) => Promise<void>
-  onAllFullDocsLoaded?: (
-    fullDocs: CanonicalImportRecord[],
-    summary: BatchProgress
-  ) => Promise<void>
-  onRecordResult?: (
-    record: ImportCandidate,
-    result: PromiseSettledResult<void>
-  ) => void
+  onAllFullDocsLoaded?: (fullDocs: CanonicalImportRecord[], summary: BatchProgress) => Promise<void>
+  onRecordResult?: (record: ImportCandidate, result: PromiseSettledResult<void>) => void
   onIgnoreConflict?: (record: ImportCandidate) => void
   onResolveConflict?: () => void
   createDocument?: (
@@ -172,11 +171,13 @@ const BatchLoadDocuments = ({
   const onIgnoreError = (index: number) => {
     const record = data[index]
     if (record) onIgnoreConflict?.(record)
-    setData((previous) => previous.map((row, rowIndex) =>
-      rowIndex === index
-        ? { ...row, selected: false, error: undefined, errorKind: undefined }
-        : row
-    ))
+    setData((previous) =>
+      previous.map((row, rowIndex) =>
+        rowIndex === index
+          ? { ...row, selected: false, error: undefined, errorKind: undefined }
+          : row
+      )
+    )
   }
 
   const [startImport, setStartImport] = useState(false)
@@ -213,9 +214,7 @@ const BatchLoadDocuments = ({
         if (document) {
           setData((previous) =>
             previous.map((candidate) =>
-              candidate.uuid === row.uuid
-                ? { ...candidate, savedDocument: document }
-                : candidate
+              candidate.uuid === row.uuid ? { ...candidate, savedDocument: document } : candidate
             )
           )
         }
@@ -241,13 +240,16 @@ const BatchLoadDocuments = ({
     [onRecordResult]
   )
 
-  const handleDone = useCallback(async (summary: BatchProgress) => {
-    if (onAllFullDocsLoaded) {
-      await onAllFullDocsLoaded(allDocsRef.current, summary)
-    }
-    allDocsRef.current = []
-    setStartImport(false)
-  }, [onAllFullDocsLoaded])
+  const handleDone = useCallback(
+    async (summary: BatchProgress) => {
+      if (onAllFullDocsLoaded) {
+        await onAllFullDocsLoaded(allDocsRef.current, summary)
+      }
+      allDocsRef.current = []
+      setStartImport(false)
+    },
+    [onAllFullDocsLoaded]
+  )
 
   const { isRunning, progress, runError, cancel } = useBatchImport({
     enabled: startImport,
@@ -263,8 +265,8 @@ const BatchLoadDocuments = ({
   const failedRows = data.filter((row) => row.error)
 
   return (
-    <>
-      <div className="flex flex-row gap-4 items-center mb-4">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex shrink-0 flex-row gap-4 items-center mb-4">
         <Checkbox
           id="select-all"
           testId="select-all"
@@ -358,7 +360,8 @@ const BatchLoadDocuments = ({
         </div>
       )}
       <TableVirtuoso
-        className="w-full bg-slate-100"
+        className="min-h-80 w-full flex-1 bg-slate-100"
+        style={{ minHeight: 320 }}
         data={data}
         components={TableComponentsOverride}
         fixedHeaderContent={() => (
@@ -377,7 +380,7 @@ const BatchLoadDocuments = ({
           />
         )}
       />
-    </>
+    </div>
   )
 }
 

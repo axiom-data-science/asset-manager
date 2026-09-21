@@ -56,7 +56,8 @@ const FileUpload = ({
   acceptFileTypes?: string[]
   onFileUploaded?: (
     fileData: string | ArrayBuffer | undefined | null,
-    csvData: ParsedCSV | null
+    csvData: ParsedCSV | null,
+    fileName?: string
   ) => void
 }): ReactElement => {
   const [file, setFile] = useState<File | null>(null)
@@ -81,10 +82,10 @@ const FileUpload = ({
         if (typeof text === ***REMOVED***string***REMOVED***) {
           const data = parseCSV(text)
           if (onFileUploaded) {
-            onFileUploaded(text, data)
+            onFileUploaded(text, data, _file.name)
           }
         } else if (onFileUploaded) {
-          onFileUploaded(event.target?.result, null)
+          onFileUploaded(event.target?.result, null, _file.name)
         }
       }
 

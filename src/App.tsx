@@ -50,6 +50,7 @@ import type { IAssetForm } from ***REMOVED***@/types/types***REMOVED***
 import { fetchPersons } from ***REMOVED***@/manage/person/services***REMOVED***
 import importConfigs from ***REMOVED***./import/config***REMOVED***
 import ImportAllPage from ***REMOVED***./import/pages/all***REMOVED***
+import CSVImportPage from ***REMOVED***./import/pages/csv***REMOVED***
 import ListRelationships from ***REMOVED***@/manage/relationship/list***REMOVED***
 import EditRelationship from ***REMOVED***@/manage/relationship/edit***REMOVED***
 import CreateRelationship from ***REMOVED***@/manage/relationship/create***REMOVED***
@@ -583,15 +584,26 @@ function App(): ReactElement {
             </Route>
             <Route path="import">
               <Route
+                path="csv"
+                element={
+                  <SidebarLayout>
+                    <CSVImportPage />
+                  </SidebarLayout>
+                }
+              />
+              <Route
                 path="all"
                 element={
-                  <SidebarLayout mainClassName="min-h-0 overflow-hidden" contentClassName="min-h-0 overflow-hidden">
+                  <SidebarLayout
+                    mainClassName="min-h-0 overflow-hidden"
+                    contentClassName="min-h-0 overflow-hidden"
+                  >
                     <ImportAllPage />
                   </SidebarLayout>
                 }
               />
-              <>{
-                importConfigs.map(config => {
+              <>
+                {importConfigs.map((config) => {
                   return (
                     <Route
                       key={config.type}
@@ -603,8 +615,8 @@ function App(): ReactElement {
                       }
                     />
                   )
-                })
-              }</>
+                })}
+              </>
             </Route>
           </Routes>
         )}

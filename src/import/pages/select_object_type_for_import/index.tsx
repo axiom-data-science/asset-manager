@@ -25,6 +25,10 @@ import {
 } from ***REMOVED***./schema_enum_utils***REMOVED***
 import { Redo2, Undo2, X } from ***REMOVED***lucide-react***REMOVED***
 import { Button } from ***REMOVED***@/components/ui/button***REMOVED***
+import { postObjectType } from ***REMOVED***@/manage/object_type/services***REMOVED***
+import { postObjectSchema } from ***REMOVED***@/manage/object_schema/services***REMOVED***
+import { useAuth } from ***REMOVED***@/auth/useAuth***REMOVED***
+import { requestContextReloadAtom } from ***REMOVED***@/state/contextStateAtom***REMOVED***
 
 const createObjectTypeFromDataState = atom(false)
 
@@ -59,18 +63,25 @@ export const SelectObjectTypeForImportTab = ({
   documents,
   type,
   sourceId,
+  label,
 }: {
   documents: CanonicalImportRecord[]
   type: string
   sourceId: string
+  label?: string
 }): ReactElement => {
   const [contextState] = useAtom(contextStateAtom)
   const [createObjectTypeFromData, setCreateObjectTypeFromData] = useAtom(
     createObjectTypeFromDataState
   )
   const { session, setSchema, setSelectedObjectType } = useImportSession(sourceId)
+  const auth = useAuth()
+  const [, requestContextReload] = useAtom(requestContextReloadAtom)
+  const [isCreatingAutomatically, setIsCreatingAutomatically] = useState(false)
+  const [automaticCreateError, setAutomaticCreateError] = useState<string>()
   const schema = session.schema
   const selectedObjectType = session.selectedObjectType
+  const intendedObjectType = contextState.object_type_by_slug[type]
   const initializedTypeRef = useRef<string | null>(null)
 
   const { data, isLoading, error } = useQuery({
@@ -95,6 +106,39 @@ export const SelectObjectTypeForImportTab = ({
   }
 
   const enumProps = schema ? findEnumProperties(schema) : []
+  const createAutomatically = async () => {
+    if (!schema || intendedObjectType || !auth.user?.access_token) return
+    setIsCreatingAutomatically(true)
+    setAutomaticCreateError(undefined)
+    try {
+      const newObjectType = await postObjectType({
+        object_type: {
+          category: ***REMOVED***document***REMOVED***,
+          label: label ?? type,
+          slug: type,
+        },
+        token: auth.user.access_token,
+      })
+      await postObjectSchema({
+        object_schema: {
+          object_type_uuid: newObjectType.uuid,
+          label: `${label ?? type} default schema`,
+          slug: `${type}_default`,
+          description: `Automatically generated from imported records.`,
+          version: 1,
+          is_type_default: true,
+          json_schema: schema as Record<string, unknown>,
+        },
+        token: auth.user.access_token,
+      })
+      setSelectedObjectType(newObjectType)
+      requestContextReload()
+    } catch (error) {
+      setAutomaticCreateError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setIsCreatingAutomatically(false)
+    }
+  }
   useEffect(() => {
     const defaultObjectType = contextState.object_type_by_slug[type]
     if (!defaultObjectType) return
@@ -105,7 +149,13 @@ export const SelectObjectTypeForImportTab = ({
       setSelectedObjectType(defaultObjectType)
     }
     setSchema(getSchemaForSelectedObjectType(defaultObjectType.uuid))
-  }, [contextState.object_type_by_slug, selectedObjectType?.uuid, setSchema, setSelectedObjectType, type])
+  }, [
+    contextState.object_type_by_slug,
+    selectedObjectType?.uuid,
+    setSchema,
+    setSelectedObjectType,
+    type,
+  ])
 
   if (documents.length === 0) {
     return (
@@ -160,160 +210,217 @@ export const SelectObjectTypeForImportTab = ({
             />
           )}
           {createObjectTypeFromData && (
-            <ViewWithLoader isLoading={isLoading} error={error} data={data}>
-              {data && (
-                <>
-                  {enumProps.length > 0 && (
-                    <div className="flex flex-col gap-2">
-                      <span className="text-xs font-bold">Enum properties found in schema:</span>
-                      <div className="flex flex-row gap-2 items-center text-xs">
-                        <Button
-                          variant=***REMOVED***outline***REMOVED***
-                          size=***REMOVED***xs***REMOVED***
-                          onClick={() => {
-                            const newSchema = { ...schema }
-                            const updatedSchema = removeAllEnumAtPath(
-                              newSchema,
-                              enumProps.map((p) => p.path)
-                            )
-                            setSchema(updatedSchema)
-                          }}
-                        >
-                          <X
-                            className="w-3 h-3 text-red-600"
-                          /> Remove all enums
-                        </Button>
-                        <Button
-                          variant=***REMOVED***outline***REMOVED***
-                          size=***REMOVED***xs***REMOVED***
-                          onClick={() => {
-                            const newSchema = { ...schema }
-                            const updatedSchema = convertAllEnumToOptionalStringAtPath(
-                              newSchema,
-                              enumProps.map((p) => p.path)
-                            )
-                            setSchema(updatedSchema)
-                          }}>
-                          <Redo2 className="w-3 h-3 text-green-600" /> Convert all enums to optional
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size=***REMOVED***xs***REMOVED***
-                          onClick={() => {
-                            const newSchema = { ...schema }
-                            const updatedSchema = convertAllToEnumOnlyAtPath(
-                              newSchema,
-                              enumProps.map((p) => p.path)
-                            )
-                            setSchema(updatedSchema)
-                          }}
-                        >
-                          <Undo2
-                            className="w-3 h-3 text-green-600"
-                          /> Convert all enums to strict
-                        </Button>
-                      </div>
-                      <ul className="flex flex-col gap-0 text-xs max-h-60 overflow-y-auto">
-                        {enumProps.map((p) => (
-                          <li key={p.path.join(***REMOVED***.***REMOVED***)} className="flex flex-row gap-2 px-3 py-2 items-start event:bg-white odd:bg-slate-100">
-                            <Tooltip
-                              content={`Remove enum from ${p.name} (converts to "any string")`}
-                              useSpan={true}
-                              dark={true}
-                            >
-                              <Button
-                                variant="outline"
-                                size=***REMOVED***xs***REMOVED***
-                                onClick={() => {
-                                  const newSchema = { ...schema }
-                                  const updatedSchema = removeEnumAtPath(newSchema, p.path)
-                                  setSchema(updatedSchema)
-                                }}
-                              >
-                                <X
-                                  className="w-3 h-3 text-red-600 cursor-pointer"
-                                />
-                              </Button>
-                            </Tooltip>
-                            {p.mode === ***REMOVED***enum-only***REMOVED*** ? (
-                              <Tooltip content="Keep enum, but allow other values" useSpan={true} dark={true}>
-                                <Button
-                                  variant="outline"
-                                  size=***REMOVED***xs***REMOVED***
-                                  onClick={() => {
-                                    const newSchema = { ...schema }
-                                    const updatedSchema = convertEnumToOpenStringAtPath(
-                                      newSchema,
-                                      p.path
-                                    )
-                                    setSchema(updatedSchema)
-                                  }}
-                                >
-                                  <Redo2
-                                    className="w-3 h-3 text-blue-600 cursor-pointer"
-
-                                  />
-                                </Button>
-                              </Tooltip>
-                            ) : (
-                              <Tooltip content=***REMOVED***Make enum-only (remove "any string" or "null")***REMOVED*** useSpan={true} dark={true}>
-                                <Button
-                                  variant="outline"
-                                  size=***REMOVED***xs***REMOVED***
-                                  onClick={() => {
-                                    const newSchema = { ...schema }
-                                    const updatedSchema = convertToEnumOnlyAtPath(newSchema, p.path)
-                                    setSchema(updatedSchema)
-                                  }}
-                                >
-                                  <Undo2
-                                    className="w-3 h-3 text-blue-600 cursor-pointer"
-
-                                  />
-                                </Button>
-                              </Tooltip>
-                            )}
-                            <span className="bg-slate-200 p-1 rounded-sm text-xs">{p.mode}</span>
-                            <div className=***REMOVED***flex flex-col gap-1***REMOVED***>
-                              <span className="font-bold">{p.name}</span>
-                              <span className="text-gray-600">({p.path.join(***REMOVED***.***REMOVED***)})</span>
-                            </div>
-                            <Tooltip
-                              content={
-                                <ul className="list-disc pl-4 text-xs">
-                                  {p?.enum?.map((e) => (
-                                    <li key={String(e)}>{String(e)}</li>
-                                  ))}
-                                </ul>
-                              }
-                              useSpan={true}
-                              dark={true}
-                            >
-                              <span className="bg-slate-200 p-1 rounded-md shadow whitespace-nowrap">
-                                {p?.enum?.length ?? 0} +
-                              </span>
-                            </Tooltip>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  <Inputs.JSONInput
-                    value={schema as JSON}
-                    field={{
-                      id: ***REMOVED***objectTypeSchema***REMOVED***,
-                      label: ***REMOVED***Object type schema***REMOVED***,
-                      description:
-                        ***REMOVED***The schema for the object type to be imported. This is generated from the imported data, but can be modified if needed.***REMOVED***,
-                      type: ***REMOVED***json***REMOVED***,
+            <>
+              {intendedObjectType && (
+                <div
+                  className="border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
+                  role="alert"
+                >
+                  An object type with slug <strong>{type}</strong> already exists. Choose it instead
+                  of creating another type.
+                  <Button
+                    className="mt-2"
+                    size="xs"
+                    variant="outline"
+                    onClick={() => {
+                      setCreateObjectTypeFromData(false)
+                      setSelectedObjectType(intendedObjectType)
+                      setSchema(getSchemaForSelectedObjectType(intendedObjectType.uuid))
                     }}
-                    onChange={(value) => {
-                      setSchema(value as JSONSchema6)
-                    }}
-                  />
-                </>
+                  >
+                    Use existing type
+                  </Button>
+                </div>
               )}
-            </ViewWithLoader>
+              <ViewWithLoader isLoading={isLoading} error={error} data={data}>
+                {data && (
+                  <>
+                    {enumProps.length > 0 && (
+                      <div className="flex flex-col gap-2">
+                        <span className="text-xs font-bold">Enum properties found in schema:</span>
+                        <div className="flex flex-row gap-2 items-center text-xs">
+                          <Button
+                            variant="outline"
+                            size="xs"
+                            onClick={() => {
+                              const newSchema = { ...schema }
+                              const updatedSchema = removeAllEnumAtPath(
+                                newSchema,
+                                enumProps.map((p) => p.path)
+                              )
+                              setSchema(updatedSchema)
+                            }}
+                          >
+                            <X className="w-3 h-3 text-red-600" /> Remove all enums
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="xs"
+                            onClick={() => {
+                              const newSchema = { ...schema }
+                              const updatedSchema = convertAllEnumToOptionalStringAtPath(
+                                newSchema,
+                                enumProps.map((p) => p.path)
+                              )
+                              setSchema(updatedSchema)
+                            }}
+                          >
+                            <Redo2 className="w-3 h-3 text-green-600" /> Convert all enums to
+                            optional
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="xs"
+                            onClick={() => {
+                              const newSchema = { ...schema }
+                              const updatedSchema = convertAllToEnumOnlyAtPath(
+                                newSchema,
+                                enumProps.map((p) => p.path)
+                              )
+                              setSchema(updatedSchema)
+                            }}
+                          >
+                            <Undo2 className="w-3 h-3 text-green-600" /> Convert all enums to strict
+                          </Button>
+                        </div>
+                        <ul className="flex flex-col gap-0 text-xs max-h-60 overflow-y-auto">
+                          {enumProps.map((p) => (
+                            <li
+                              key={p.path.join(***REMOVED***.***REMOVED***)}
+                              className="flex flex-row gap-2 px-3 py-2 items-start event:bg-white odd:bg-slate-100"
+                            >
+                              <Tooltip
+                                content={`Remove enum from ${p.name} (converts to "any string")`}
+                                useSpan={true}
+                                dark={true}
+                              >
+                                <Button
+                                  variant="outline"
+                                  size="xs"
+                                  onClick={() => {
+                                    const newSchema = { ...schema }
+                                    const updatedSchema = removeEnumAtPath(newSchema, p.path)
+                                    setSchema(updatedSchema)
+                                  }}
+                                >
+                                  <X className="w-3 h-3 text-red-600 cursor-pointer" />
+                                </Button>
+                              </Tooltip>
+                              {p.mode === ***REMOVED***enum-only***REMOVED*** ? (
+                                <Tooltip
+                                  content="Keep enum, but allow other values"
+                                  useSpan={true}
+                                  dark={true}
+                                >
+                                  <Button
+                                    variant="outline"
+                                    size="xs"
+                                    onClick={() => {
+                                      const newSchema = { ...schema }
+                                      const updatedSchema = convertEnumToOpenStringAtPath(
+                                        newSchema,
+                                        p.path
+                                      )
+                                      setSchema(updatedSchema)
+                                    }}
+                                  >
+                                    <Redo2 className="w-3 h-3 text-blue-600 cursor-pointer" />
+                                  </Button>
+                                </Tooltip>
+                              ) : (
+                                <Tooltip
+                                  content=***REMOVED***Make enum-only (remove "any string" or "null")***REMOVED***
+                                  useSpan={true}
+                                  dark={true}
+                                >
+                                  <Button
+                                    variant="outline"
+                                    size="xs"
+                                    onClick={() => {
+                                      const newSchema = { ...schema }
+                                      const updatedSchema = convertToEnumOnlyAtPath(
+                                        newSchema,
+                                        p.path
+                                      )
+                                      setSchema(updatedSchema)
+                                    }}
+                                  >
+                                    <Undo2 className="w-3 h-3 text-blue-600 cursor-pointer" />
+                                  </Button>
+                                </Tooltip>
+                              )}
+                              <span className="bg-slate-200 p-1 rounded-sm text-xs">{p.mode}</span>
+                              <div className="flex flex-col gap-1">
+                                <span className="font-bold">{p.name}</span>
+                                <span className="text-gray-600">({p.path.join(***REMOVED***.***REMOVED***)})</span>
+                              </div>
+                              <Tooltip
+                                content={
+                                  <ul className="list-disc pl-4 text-xs">
+                                    {p?.enum?.map((e) => (
+                                      <li key={String(e)}>{String(e)}</li>
+                                    ))}
+                                  </ul>
+                                }
+                                useSpan={true}
+                                dark={true}
+                              >
+                                <span className="bg-slate-200 p-1 rounded-md shadow whitespace-nowrap">
+                                  {p?.enum?.length ?? 0} +
+                                </span>
+                              </Tooltip>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    <Inputs.JSONInput
+                      value={schema as JSON}
+                      field={{
+                        id: ***REMOVED***objectTypeSchema***REMOVED***,
+                        label: ***REMOVED***Object type schema***REMOVED***,
+                        description:
+                          ***REMOVED***The schema for the object type to be imported. This is generated from the imported data, but can be modified if needed.***REMOVED***,
+                        type: ***REMOVED***json***REMOVED***,
+                      }}
+                      onChange={(value) => {
+                        setSchema(value as JSONSchema6)
+                      }}
+                    />
+                    {!intendedObjectType && (
+                      <div className="flex flex-col gap-2 border-t pt-3">
+                        <Button
+                          size="sm"
+                          disabled={isCreatingAutomatically || !auth.user?.access_token}
+                          onClick={() => void createAutomatically()}
+                        >
+                          {isCreatingAutomatically
+                            ? ***REMOVED***Creating type and schema...***REMOVED***
+                            : ***REMOVED***Create automatically***REMOVED***}
+                        </Button>
+                        {automaticCreateError && (
+                          <div className="text-sm text-red-700" role="alert">
+                            Could not create the type and schema: {automaticCreateError}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {!intendedObjectType && (
+                      <div className="border-t pt-3">
+                        <h3 className="mb-2 font-medium">Create object type and schema</h3>
+                        <CreateObjectType
+                          initialSchema={schema ?? undefined}
+                          initialLabel={label ?? type}
+                          onSuccess={(newObjectType) => {
+                            setSelectedObjectType(newObjectType)
+                          }}
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+              </ViewWithLoader>
+            </>
           )}
         </div>
         <div className="flex flex-col gap-2 w-1/2 h-full">
@@ -358,77 +465,80 @@ const SelectObjectTypeForImport = ({
   const schema = session.schema
 
   return (
-    <Tabs
-      className="h-full p-4 bg-blue-100"
-      defaultContentClassName="h-full py-5 flex-col gap-2"
-      navClassName="sticky top-0 z-10 bg-blue-200 -mx-4 -mt-4 text-xs"
-      selectedTab={selectedTab}
-      onChange={(tabId) => setSelectedTab(tabId)}
-      tabs={[
-        {
-          id: ***REMOVED***preload***REMOVED***,
-          content: (
-            <BatchLoadDocuments
-              documents={documents}
-              getFullDoc={getFullDoc}
-              detailRoot={detailRoot}
-              onFullDocLoaded={async (doc) => {
-                console.log(***REMOVED***Full doc loaded:***REMOVED***, doc)
-              }}
-              onAllFullDocsLoaded={async (fullDocs) => {
-                console.log(***REMOVED***All full docs loaded:***REMOVED***, fullDocs)
-                setRecords(fullDocs.slice())
-                setSelectedTab(***REMOVED***validate***REMOVED***)
-              }}
-              onRecordResult={(record, result) => {
-                setRecordResult(
-                  record,
-                  result.status === ***REMOVED***fulfilled***REMOVED***
-                    ? { stage: ***REMOVED***loaded***REMOVED*** }
-                    : {
-                      stage: ***REMOVED***failed***REMOVED***,
-                      error: result.reason instanceof Error
-                        ? result.reason.message
-                        : String(result.reason),
-                    }
-                )
-              }}
-              includeRandomSelector={true}
-            />
-          ),
-          label: ***REMOVED***Select and preload full records***REMOVED***,
-        },
-        {
-          id: ***REMOVED***validate***REMOVED***,
-          content: (
-            <SelectObjectTypeForImportTab
-              documents={recordsToImport}
-              type={type}
-              sourceId={sourceId}
-            />
-          ),
-          label: ***REMOVED***Validate against schema***REMOVED***,
-          disabled: !recordsToImport?.length,
-        },
-        {
-          id: ***REMOVED***create-new-type***REMOVED***,
-          label: ***REMOVED***Create new object type***REMOVED***,
-          content: (
-            <div className="p-8 bg-white shadow-md">
-              <CreateObjectType
-                initialSchema={schema ?? undefined}
-                initialLabel={label}
-                onSuccess={(newObjectType) => {
-                  setSelectedObjectType(newObjectType)
-                  console.log(***REMOVED***New object type created:***REMOVED***, newObjectType)
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-blue-100 p-4">
+      <Tabs
+        className="h-full min-h-0 flex-1"
+        defaultContentClassName="h-full min-h-0 flex-1 overflow-auto py-3 flex-col gap-2"
+        navClassName="sticky top-0 z-10 bg-blue-200 -mx-4 -mt-4 text-xs"
+        selectedTab={selectedTab}
+        onChange={(tabId) => setSelectedTab(tabId)}
+        tabs={[
+          {
+            id: ***REMOVED***preload***REMOVED***,
+            content: (
+              <BatchLoadDocuments
+                documents={documents}
+                getFullDoc={getFullDoc}
+                detailRoot={detailRoot}
+                onFullDocLoaded={async (doc) => {
+                  console.log(***REMOVED***Full doc loaded:***REMOVED***, doc)
                 }}
+                onAllFullDocsLoaded={async (fullDocs) => {
+                  console.log(***REMOVED***All full docs loaded:***REMOVED***, fullDocs)
+                  setRecords(fullDocs.slice())
+                  setSelectedTab(***REMOVED***validate***REMOVED***)
+                }}
+                onRecordResult={(record, result) => {
+                  setRecordResult(
+                    record,
+                    result.status === ***REMOVED***fulfilled***REMOVED***
+                      ? { stage: ***REMOVED***loaded***REMOVED*** }
+                      : {
+                          stage: ***REMOVED***failed***REMOVED***,
+                          error:
+                            result.reason instanceof Error
+                              ? result.reason.message
+                              : String(result.reason),
+                        }
+                  )
+                }}
+                includeRandomSelector={true}
               />
-            </div>
-          ),
-          disabled: !createObjectTypeFromData,
-        },
-      ]}
-    />
+            ),
+            label: ***REMOVED***Select and preload full records***REMOVED***,
+          },
+          {
+            id: ***REMOVED***validate***REMOVED***,
+            content: (
+              <SelectObjectTypeForImportTab
+                documents={recordsToImport}
+                type={type}
+                sourceId={sourceId}
+              />
+            ),
+            label: ***REMOVED***Validate against schema***REMOVED***,
+            disabled: !recordsToImport?.length,
+          },
+          {
+            id: ***REMOVED***create-new-type***REMOVED***,
+            label: ***REMOVED***Create new object type***REMOVED***,
+            content: (
+              <div className="p-8 bg-white shadow-md">
+                <CreateObjectType
+                  initialSchema={schema ?? undefined}
+                  initialLabel={label}
+                  onSuccess={(newObjectType) => {
+                    setSelectedObjectType(newObjectType)
+                    console.log(***REMOVED***New object type created:***REMOVED***, newObjectType)
+                  }}
+                />
+              </div>
+            ),
+            disabled: !createObjectTypeFromData,
+          },
+        ]}
+      />
+    </div>
   )
 }
 

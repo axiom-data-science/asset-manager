@@ -585,7 +585,7 @@ function App(): ReactElement {
               <Route
                 path="all"
                 element={
-                  <SidebarLayout>
+                  <SidebarLayout mainClassName="min-h-0 overflow-hidden" contentClassName="min-h-0 overflow-hidden">
                     <ImportAllPage />
                   </SidebarLayout>
                 }

@@ -28,7 +28,7 @@ import { Button } from ***REMOVED***@/components/ui/button***REMOVED***
 
 const createObjectTypeFromDataState = atom(false)
 
-async function quicktypeJSON(
+export async function quicktypeJSON(
   targetLanguage: LanguageName,
   typeName: string,
   jsonString: string | string[]
@@ -55,7 +55,7 @@ async function quicktypeJSON(
   })
 }
 
-const SelectObjectTypeForImportTab = ({
+export const SelectObjectTypeForImportTab = ({
   documents,
   type,
   sourceId,
@@ -74,7 +74,7 @@ const SelectObjectTypeForImportTab = ({
   const initializedTypeRef = useRef<string | null>(null)
 
   const { data, isLoading, error } = useQuery({
-    enabled: createObjectTypeFromData,
+    enabled: createObjectTypeFromData && documents.length > 0,
     queryKey: [***REMOVED***eval-object-types***REMOVED***, documents],
     queryFn: async () => {
       const ob = await quicktypeJSON(
@@ -106,6 +106,14 @@ const SelectObjectTypeForImportTab = ({
     }
     setSchema(getSchemaForSelectedObjectType(defaultObjectType.uuid))
   }, [contextState.object_type_by_slug, selectedObjectType?.uuid, setSchema, setSelectedObjectType, type])
+
+  if (documents.length === 0) {
+    return (
+      <div className="p-4 text-sm text-gray-700">
+        Prepare this source first so records are available for schema inference.
+      </div>
+    )
+  }
 
   return (
     <>

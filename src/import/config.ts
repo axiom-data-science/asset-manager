@@ -66,6 +66,15 @@ const importConfigs: IImportPageProps[] = [
       discover: oikosModels,
       defaultDetailRoot: ***REMOVED***UNUSED***REMOVED***,
       load: oikosModel,
+      relationshipRules: [
+        {
+          parentObjectTypeSlug: ***REMOVED***oikos_model***REMOVED***,
+          childObjectTypeSlug: ***REMOVED***oikos_model_variable***REMOVED***,
+          parentMatchField: ***REMOVED***slug***REMOVED***,
+          childMatchField: ***REMOVED***modelSlug***REMOVED***,
+          predicate: ***REMOVED***has_parent***REMOVED***,
+        }
+      ]
     }),
     label: ***REMOVED***Oikos Model***REMOVED***,
     type: ***REMOVED***oikos_model***REMOVED***,
@@ -81,7 +90,8 @@ const importConfigs: IImportPageProps[] = [
     }),
     label: ***REMOVED***Oikos Model Variable***REMOVED***,
     type: ***REMOVED***oikos_model_variable***REMOVED***,
-    icon: Grid2X2Plus
+    icon: Grid2X2Plus,
+
   },
   {
     sourceAdapter: createRemoteImportAdapter({
@@ -105,7 +115,7 @@ const importConfigs: IImportPageProps[] = [
       }),
       discover: oikosVectorLayers,
       defaultDetailRoot: OIKOS_URL_ROOT,
-      load: oikosLayer,
+      load: oikosLayer
     }),
     label: ***REMOVED***Oikos Vector Layer***REMOVED***,
     type: ***REMOVED***oikos_vector_layer***REMOVED***,
@@ -122,6 +132,15 @@ const importConfigs: IImportPageProps[] = [
       discover: oikosVectorLayerGroups,
       defaultDetailRoot: OIKOS_URL_ROOT,
       load: oikosLayerGroup,
+      relationshipRules: [
+        {
+          parentObjectTypeSlug: ***REMOVED***oikos_layer_group***REMOVED***,
+          childObjectTypeSlug: ***REMOVED***oikos_vector_layer***REMOVED***,
+          parentMatchField: ***REMOVED***slug***REMOVED***,
+          childMatchField: ***REMOVED***layerGroupSlug***REMOVED***,
+          predicate: ***REMOVED***has_parent***REMOVED***,
+        }
+      ]
     }),
     label: ***REMOVED***Oikos Vector Layer Group***REMOVED***,
     type: ***REMOVED***oikos_vector_layer_group***REMOVED***,

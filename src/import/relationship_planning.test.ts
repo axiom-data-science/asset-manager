@@ -1,0 +1,226 @@
+import { describe, expect, it, vi } from ***REMOVED***vitest***REMOVED***
+import type { IObjectType } from ***REMOVED***@/types/types***REMOVED***
+import type { CanonicalImportRecord } from ***REMOVED***./types***REMOVED***
+import {
+    persistImportRelationships,
+    importRelationshipKey,
+    planImportRelationships,
+    relationshipDocumentKey,
+    type ImportRelationshipCandidate,
+} from ***REMOVED***./relationship_planning***REMOVED***
+
+const objectType = (uuid: string, slug: string, expectedChildTypes: Record<string, unknown>[]): IObjectType => ({
+    uuid,
+    slug,
+    owner_sub: ***REMOVED***owner***REMOVED***,
+    label: slug,
+    category: ***REMOVED***document***REMOVED***,
+    created_at: ***REMOVED******REMOVED***,
+    updated_at: ***REMOVED******REMOVED***,
+    data: { expected_child_types: expectedChildTypes },
+})
+
+const candidate = (
+    sourceId: string,
+    externalId: string,
+    objectTypeUuid: string,
+    objectTypeSlug: string,
+    data: Record<string, unknown> = {}
+): ImportRelationshipCandidate => ({
+    objectTypeUuid,
+    objectTypeSlug,
+    record: {
+        uuid: externalId,
+        slug: externalId,
+        label: externalId,
+        description: ***REMOVED******REMOVED***,
+        data,
+        attrs: {},
+        sourceData: data,
+        provenance: { sourceId, externalId },
+    } as CanonicalImportRecord,
+})
+
+describe(***REMOVED***Import relationship planning***REMOVED***, () => {
+    it(***REMOVED***plans a relationship using provenance identity by default***REMOVED***, () => {
+        const parent = candidate(***REMOVED***source***REMOVED***, ***REMOVED***parent-1***REMOVED***, ***REMOVED***parent-type***REMOVED***, ***REMOVED***parents***REMOVED***)
+        const child = candidate(***REMOVED***source***REMOVED***, ***REMOVED***parent-1***REMOVED***, ***REMOVED***child-type***REMOVED***, ***REMOVED***children***REMOVED***)
+
+        const plans = planImportRelationships({
+            parentObjectTypes: new Map([
+                [***REMOVED***parent-type***REMOVED***, objectType(***REMOVED***parent-type***REMOVED***, ***REMOVED***parents***REMOVED***, [{
+                    object_type_slug: ***REMOVED***children***REMOVED***,
+                    to_parent_predicate: ***REMOVED***belongs_to***REMOVED***,
+                }])],
+            ]),
+            candidates: [parent, child],
+        })
+
+        expect(plans).toMatchObject([{
+            parent: { record: { provenance: { externalId: ***REMOVED***parent-1***REMOVED*** } } },
+            child: { record: { provenance: { externalId: ***REMOVED***parent-1***REMOVED*** } } },
+            predicate: ***REMOVED***belongs_to***REMOVED***,
+            status: ***REMOVED***ready***REMOVED***,
+        }])
+    })
+
+    it(***REMOVED***reports missing and ambiguous parents***REMOVED***, () => {
+        const parent = candidate(***REMOVED***source***REMOVED***, ***REMOVED***parent-1***REMOVED***, ***REMOVED***parent-type***REMOVED***, ***REMOVED***parents***REMOVED***)
+        const duplicateParent = candidate(***REMOVED***source***REMOVED***, ***REMOVED***parent-1***REMOVED***, ***REMOVED***parent-type***REMOVED***, ***REMOVED***parents***REMOVED***, { key: ***REMOVED***same***REMOVED*** })
+        const missingChild = candidate(***REMOVED***source***REMOVED***, ***REMOVED***missing***REMOVED***, ***REMOVED***child-type***REMOVED***, ***REMOVED***children***REMOVED***)
+        const ambiguousChild = candidate(***REMOVED***source***REMOVED***, ***REMOVED***parent-1***REMOVED***, ***REMOVED***child-type***REMOVED***, ***REMOVED***children***REMOVED***)
+        const plans = planImportRelationships({
+            parentObjectTypes: new Map([
+                [***REMOVED***parent-type***REMOVED***, objectType(***REMOVED***parent-type***REMOVED***, ***REMOVED***parents***REMOVED***, [{
+                    object_type_slug: ***REMOVED***children***REMOVED***,
+                    to_parent_predicate: ***REMOVED***belongs_to***REMOVED***,
+                }])],
+            ]),
+            candidates: [parent, duplicateParent, missingChild, ambiguousChild],
+        })
+
+        expect(plans.map(({ status }) => status)).toEqual([
+            ***REMOVED***missing-parent***REMOVED***,
+            ***REMOVED***ambiguous-parent***REMOVED***,
+        ])
+    })
+
+    it(***REMOVED***uses configured data paths for parent and child matching***REMOVED***, () => {
+        const parent = candidate(***REMOVED***source***REMOVED***, ***REMOVED***parent-1***REMOVED***, ***REMOVED***parent-type***REMOVED***, ***REMOVED***parents***REMOVED***, { code: ***REMOVED***A-1***REMOVED*** })
+        const child = candidate(***REMOVED***source***REMOVED***, ***REMOVED***child-1***REMOVED***, ***REMOVED***child-type***REMOVED***, ***REMOVED***children***REMOVED***, { parentCode: ***REMOVED***A-1***REMOVED*** })
+        const plans = planImportRelationships({
+            parentObjectTypes: new Map([
+                [***REMOVED***parent-type***REMOVED***, objectType(***REMOVED***parent-type***REMOVED***, ***REMOVED***parents***REMOVED***, [])],
+            ]),
+            candidates: [parent, child],
+            relationshipRules: [{
+                parentObjectTypeSlug: ***REMOVED***parents***REMOVED***,
+                childObjectTypeSlug: ***REMOVED***children***REMOVED***,
+                parentMatchField: ***REMOVED***code***REMOVED***,
+                childMatchField: ***REMOVED***parentCode***REMOVED***,
+                predicate: ***REMOVED***belongs_to***REMOVED***,
+            }],
+        })
+
+        expect(plans[0]).toMatchObject({ status: ***REMOVED***ready***REMOVED***, predicate: ***REMOVED***belongs_to***REMOVED*** })
+    })
+
+    it(***REMOVED***reports a missing parent when only child records are imported***REMOVED***, () => {
+        const child = candidate(***REMOVED***source***REMOVED***, ***REMOVED***parent-1***REMOVED***, ***REMOVED***child-type***REMOVED***, ***REMOVED***children***REMOVED***)
+        const plans = planImportRelationships({
+            parentObjectTypes: new Map([
+                [***REMOVED***parent-type***REMOVED***, objectType(***REMOVED***parent-type***REMOVED***, ***REMOVED***parents***REMOVED***, [{
+                    object_type_slug: ***REMOVED***children***REMOVED***,
+                    to_parent_predicate: ***REMOVED***belongs_to***REMOVED***,
+                }])],
+            ]),
+            candidates: [child],
+        })
+
+        expect(plans[0]).toMatchObject({ status: ***REMOVED***missing-parent***REMOVED***, child })
+        expect(plans[0].parent).toBeUndefined()
+    })
+
+    it(***REMOVED***persists only ready relationships from child to parent***REMOVED***, async () => {
+        const parent = candidate(***REMOVED***source***REMOVED***, ***REMOVED***parent-1***REMOVED***, ***REMOVED***parent-type***REMOVED***, ***REMOVED***parents***REMOVED***)
+        const child = candidate(***REMOVED***source***REMOVED***, ***REMOVED***parent-1***REMOVED***, ***REMOVED***child-type***REMOVED***, ***REMOVED***children***REMOVED***)
+        const plans = planImportRelationships({
+            parentObjectTypes: new Map([
+                [***REMOVED***parent-type***REMOVED***, objectType(***REMOVED***parent-type***REMOVED***, ***REMOVED***parents***REMOVED***, [{
+                    object_type_slug: ***REMOVED***children***REMOVED***,
+                    to_parent_predicate: ***REMOVED***belongs_to***REMOVED***,
+                }])],
+            ]),
+            candidates: [parent, child],
+        })
+        const post = vi.fn().mockResolvedValue({ uuid: ***REMOVED***relationship-1***REMOVED*** })
+        const results = await persistImportRelationships({
+            plans,
+            documentUuids: new Map([
+                [relationshipDocumentKey(parent), ***REMOVED***parent-document***REMOVED***],
+                [relationshipDocumentKey(child), ***REMOVED***child-document***REMOVED***],
+            ]),
+            predicateUuids: new Map([[***REMOVED***belongs_to***REMOVED***, ***REMOVED***predicate-1***REMOVED***]]),
+            signal: new AbortController().signal,
+            post,
+        })
+
+        expect(results).toEqual([{ relationshipKey: ***REMOVED***child-type:source:parent-1:belongs_to***REMOVED***, status: ***REMOVED***created***REMOVED*** }])
+        expect(post).toHaveBeenCalledWith({
+            from_document_uuid: ***REMOVED***child-document***REMOVED***,
+            to_document_uuid: ***REMOVED***parent-document***REMOVED***,
+            predicate_uuid: ***REMOVED***predicate-1***REMOVED***,
+        }, expect.any(AbortSignal))
+    })
+
+    it(***REMOVED***allows a failed relationship to be retried without changing the plan***REMOVED***, async () => {
+        const parent = candidate(***REMOVED***source***REMOVED***, ***REMOVED***parent-1***REMOVED***, ***REMOVED***parent-type***REMOVED***, ***REMOVED***parents***REMOVED***)
+        const child = candidate(***REMOVED***source***REMOVED***, ***REMOVED***parent-1***REMOVED***, ***REMOVED***child-type***REMOVED***, ***REMOVED***children***REMOVED***)
+        const plans = planImportRelationships({
+            parentObjectTypes: new Map([
+                [***REMOVED***parent-type***REMOVED***, objectType(***REMOVED***parent-type***REMOVED***, ***REMOVED***parents***REMOVED***, [{
+                    object_type_slug: ***REMOVED***children***REMOVED***,
+                    to_parent_predicate: ***REMOVED***belongs_to***REMOVED***,
+                }])],
+            ]),
+            candidates: [parent, child],
+        })
+        let attempts = 0
+        const post = vi.fn(async () => {
+            attempts += 1
+            if (attempts === 1) throw new Error(***REMOVED***temporary failure***REMOVED***)
+            return { uuid: ***REMOVED***relationship-1***REMOVED*** }
+        })
+        const options = {
+            plans,
+            documentUuids: new Map([
+                [relationshipDocumentKey(parent), ***REMOVED***parent-document***REMOVED***],
+                [relationshipDocumentKey(child), ***REMOVED***child-document***REMOVED***],
+            ]),
+            predicateUuids: new Map([[***REMOVED***belongs_to***REMOVED***, ***REMOVED***predicate-1***REMOVED***]]),
+            signal: new AbortController().signal,
+            post,
+        }
+
+        const first = await persistImportRelationships(options)
+        const retry = await persistImportRelationships({
+            ...options, plans: plans.filter((plan) =>
+                first.some((result) => result.status === ***REMOVED***failed***REMOVED*** && result.relationshipKey === importRelationshipKey(plan))
+            )
+        })
+
+        expect(first[0]).toMatchObject({ status: ***REMOVED***failed***REMOVED*** })
+        expect(retry[0]).toMatchObject({ status: ***REMOVED***created***REMOVED*** })
+        expect(post).toHaveBeenCalledTimes(2)
+    })
+
+    it(***REMOVED***does not post a relationship that already exists***REMOVED***, async () => {
+        const parent = candidate(***REMOVED***source***REMOVED***, ***REMOVED***parent-1***REMOVED***, ***REMOVED***parent-type***REMOVED***, ***REMOVED***parents***REMOVED***)
+        const child = candidate(***REMOVED***source***REMOVED***, ***REMOVED***parent-1***REMOVED***, ***REMOVED***child-type***REMOVED***, ***REMOVED***children***REMOVED***)
+        const plans = planImportRelationships({
+            parentObjectTypes: new Map([
+                [***REMOVED***parent-type***REMOVED***, objectType(***REMOVED***parent-type***REMOVED***, ***REMOVED***parents***REMOVED***, [{
+                    object_type_slug: ***REMOVED***children***REMOVED***,
+                    to_parent_predicate: ***REMOVED***belongs_to***REMOVED***,
+                }])],
+            ]),
+            candidates: [parent, child],
+        })
+        const post = vi.fn()
+        const findExisting = vi.fn().mockResolvedValue(true)
+        const results = await persistImportRelationships({
+            plans,
+            documentUuids: new Map([
+                [relationshipDocumentKey(parent), ***REMOVED***parent-document***REMOVED***],
+                [relationshipDocumentKey(child), ***REMOVED***child-document***REMOVED***],
+            ]),
+            predicateUuids: new Map([[***REMOVED***belongs_to***REMOVED***, ***REMOVED***predicate-1***REMOVED***]]),
+            signal: new AbortController().signal,
+            post,
+            findExisting,
+        })
+
+        expect(results).toEqual([{ relationshipKey: ***REMOVED***child-type:source:parent-1:belongs_to***REMOVED***, status: ***REMOVED***existing***REMOVED*** }])
+        expect(post).not.toHaveBeenCalled()
+    })
+})

@@ -3,9 +3,19 @@ import type { ImportReconciliation } from ***REMOVED***./reconciliation***REMOVE
 import { reconcileImportRecords } from ***REMOVED***./reconciliation***REMOVED***
 import type { JSONSchema6 } from ***REMOVED***json-schema***REMOVED***
 import type { IDocument } from ***REMOVED***@/types/types***REMOVED***
+import { mergeIncomingNonEmpty, withImportProvenance, type ImportConflictAction, type ImportMergeStrategy } from ***REMOVED***./reconciliation***REMOVED***
 
 export type ImportAllDiscoveryStatus = ***REMOVED***idle***REMOVED*** | ***REMOVED***loading***REMOVED*** | ***REMOVED***ready***REMOVED*** | ***REMOVED***error***REMOVED***
 export type ImportAllPreparationStatus = ***REMOVED***idle***REMOVED*** | ***REMOVED***loading***REMOVED*** | ***REMOVED***ready***REMOVED*** | ***REMOVED***error***REMOVED***
+export type ImportAllExecutionStatus = ***REMOVED***idle***REMOVED*** | ***REMOVED***loading***REMOVED*** | ***REMOVED***ready***REMOVED*** | ***REMOVED***error***REMOVED***
+
+export type ImportAllExecutionResult = {
+    recordKey: string
+    action?: ImportConflictAction
+    status: ***REMOVED***imported***REMOVED*** | ***REMOVED***ignored***REMOVED*** | ***REMOVED***blocked***REMOVED*** | ***REMOVED***failed***REMOVED***
+    documentUuid?: string
+    error?: string
+}
 
 export type ImportAllValidationResult = {
     record: CanonicalImportRecord
@@ -21,10 +31,16 @@ export type ImportAllSourcePlan = {
     importUrl: string
     status: ImportAllDiscoveryStatus
     preparationStatus: ImportAllPreparationStatus
+    preparationCompleted: number
+    preparationTotal: number
+    executionStatus: ImportAllExecutionStatus
+    defaultConflictAction: Exclude<ImportConflictAction, ***REMOVED***create***REMOVED***>
+    conflictActions: Record<string, Exclude<ImportConflictAction, ***REMOVED***create***REMOVED***>>
     candidates: ImportCandidate[]
     records: CanonicalImportRecord[]
     validationResults: ImportAllValidationResult[]
     reconciliations: ImportReconciliation[]
+    executionResults: ImportAllExecutionResult[]
     error?: string
 }
 
@@ -42,11 +58,118 @@ export const createImportAllSourcePlan = (source: ImportAllPlanSource): ImportAl
     importUrl: source.sourceAdapter.defaultImportUrl,
     status: ***REMOVED***idle***REMOVED***,
     preparationStatus: ***REMOVED***idle***REMOVED***,
+    preparationCompleted: 0,
+    preparationTotal: 0,
+    executionStatus: ***REMOVED***idle***REMOVED***,
+    defaultConflictAction: ***REMOVED***ignore***REMOVED***,
+    conflictActions: {},
     candidates: [],
     records: [],
     validationResults: [],
     reconciliations: [],
+    executionResults: [],
 })
+
+export const importAllRecordKey = (record: CanonicalImportRecord): string =>
+    `${record.provenance.sourceId}:${record.provenance.externalId}`
+
+type ImportAllPersistence = {
+    post: (document: Omit<IDocument, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>, signal: AbortSignal) => Promise<IDocument>
+    patch: (uuid: string, document: Partial<IDocument>, signal: AbortSignal) => Promise<IDocument>
+    mergeRpc: (uuid: string, document: Partial<IDocument>, signal: AbortSignal) => Promise<IDocument>
+    fetchBySlug: (slug: string, objectTypeUuid: string, signal: AbortSignal) => Promise<IDocument | undefined>
+}
+
+export const executeImportAllSource = async ({
+    plan,
+    objectTypeUuid,
+    signal,
+    mergeStrategy,
+    persistence,
+    recordKeys,
+}: {
+    plan: ImportAllSourcePlan
+    objectTypeUuid: string
+    signal: AbortSignal
+    mergeStrategy: ImportMergeStrategy
+    persistence: ImportAllPersistence
+    recordKeys?: ReadonlySet<string>
+}): Promise<ImportAllSourcePlan> => {
+    const validationByKey = new Map(
+        plan.validationResults.map((result) => [importAllRecordKey(result.record), result])
+    )
+    const results: ImportAllExecutionResult[] = []
+
+    for (const reconciliation of plan.reconciliations) {
+        if (signal.aborted) throw new DOMException(***REMOVED***Execution cancelled***REMOVED***, ***REMOVED***AbortError***REMOVED***)
+        const recordKey = importAllRecordKey(reconciliation.record)
+        if (recordKeys && !recordKeys.has(recordKey)) continue
+        const validation = validationByKey.get(recordKey)
+        if (!validation?.isValid || reconciliation.status === ***REMOVED***ambiguous***REMOVED***) {
+            results.push({ recordKey, status: ***REMOVED***blocked***REMOVED***, action: reconciliation.action })
+            continue
+        }
+
+        const action = reconciliation.status === ***REMOVED***new***REMOVED***
+            ? ***REMOVED***create***REMOVED***
+            : reconciliation.status === ***REMOVED***exact***REMOVED***
+                ? ***REMOVED***ignore***REMOVED***
+                : plan.conflictActions[recordKey] ?? plan.defaultConflictAction
+        if (action === ***REMOVED***ignore***REMOVED***) {
+            results.push({ recordKey, action, status: ***REMOVED***ignored***REMOVED*** })
+            continue
+        }
+
+        try {
+            const record = reconciliation.record
+            const incomingDocument = {
+                object_type_uuid: objectTypeUuid,
+                label: record.label,
+                description: record.description,
+                slug: record.slug,
+                data: record.data,
+                attrs: withImportProvenance(record.attrs, record.provenance),
+            } as Omit<IDocument, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>
+
+            if (action === ***REMOVED***create***REMOVED***) {
+                const existing = await persistence.fetchBySlug(record.slug, objectTypeUuid, signal)
+                if (existing) throw new Error(`Document "${record.slug}" already exists. Return to duplicate check.`)
+                const created = await persistence.post(incomingDocument, signal)
+                results.push({ recordKey, action, status: ***REMOVED***imported***REMOVED***, documentUuid: created.uuid })
+            } else {
+                const existing = reconciliation.existingDocuments[0]
+                if (!existing) throw new Error(***REMOVED***Existing document was not found***REMOVED***)
+                const document = action === ***REMOVED***merge***REMOVED***
+                    ? {
+                        label: mergeIncomingNonEmpty(existing.label, record.label) as string,
+                        description: mergeIncomingNonEmpty(existing.description, record.description) as string,
+                        slug: mergeIncomingNonEmpty(existing.slug, record.slug) as string,
+                        data: mergeIncomingNonEmpty(existing.data, record.data),
+                        attrs: withImportProvenance(
+                            mergeIncomingNonEmpty(existing.attrs, incomingDocument.attrs),
+                            record.provenance
+                        ),
+                    }
+                    : incomingDocument
+                if (action === ***REMOVED***merge***REMOVED*** && mergeStrategy === ***REMOVED***postgrest-rpc***REMOVED***) {
+                    await persistence.mergeRpc(existing.uuid, document, signal)
+                } else {
+                    await persistence.patch(existing.uuid, document, signal)
+                }
+                results.push({ recordKey, action, status: ***REMOVED***imported***REMOVED***, documentUuid: existing.uuid })
+            }
+        } catch (error) {
+            results.push({
+                recordKey,
+                action,
+                status: ***REMOVED***failed***REMOVED***,
+                error: error instanceof Error ? error.message : String(error),
+            })
+        }
+    }
+
+    return { ...plan, executionStatus: ***REMOVED***ready***REMOVED***, executionResults: results }
+}
 
 export const discoverImportAllSource = async ({
     source,
@@ -96,6 +219,37 @@ type ExistingDocumentFetcher = (options: {
     signal?: AbortSignal
 }) => Promise<IDocument[]>
 
+export const refreshImportAllSourceReconciliation = async ({
+    plan,
+    recordKeys,
+    objectTypeUuid,
+    token,
+    signal,
+    fetchExisting,
+}: {
+    plan: ImportAllSourcePlan
+    recordKeys: ReadonlySet<string>
+    objectTypeUuid: string
+    token: string
+    signal: AbortSignal
+    fetchExisting: ExistingDocumentFetcher
+}): Promise<ImportAllSourcePlan> => {
+    const records = plan.records.filter((record) => recordKeys.has(importAllRecordKey(record)))
+    const existingDocuments = records.length > 0
+        ? await fetchExisting({ records, objectTypeUuid, token, signal })
+        : []
+    const refreshed = reconcileImportRecords(records, existingDocuments)
+    const refreshedByKey = new Map(
+        refreshed.map((reconciliation) => [importAllRecordKey(reconciliation.record), reconciliation])
+    )
+    return {
+        ...plan,
+        reconciliations: plan.reconciliations.map((reconciliation) =>
+            refreshedByKey.get(importAllRecordKey(reconciliation.record)) ?? reconciliation
+        ),
+    }
+}
+
 export type ImportAllRecordValidator = (
     schema: JSONSchema6,
     record: CanonicalImportRecord
@@ -110,24 +264,37 @@ export const prepareImportAllSource = async ({
     signal,
     validator,
     fetchExisting,
+    batchSize = 10,
+    onProgress,
 }: {
     source: ImportAllPlanSource
     plan: ImportAllSourcePlan
-    schema: JSONSchema6
-    objectTypeUuid: string
+    schema?: JSONSchema6
+    objectTypeUuid?: string
     token: string
     signal: AbortSignal
-    validator: ImportAllRecordValidator
+    validator?: ImportAllRecordValidator
     fetchExisting: ExistingDocumentFetcher
+    batchSize?: number
+    onProgress?: (completed: number, total: number) => void
 }): Promise<ImportAllSourcePlan> => {
     try {
-        const loadResults = await Promise.allSettled(
-            plan.candidates.map((candidate) => source.sourceAdapter.load({
-                candidate,
-                detailRoot: source.sourceAdapter.defaultDetailRoot,
-                signal,
-            }))
-        )
+        const loadResults: PromiseSettledResult<CanonicalImportRecord>[] = []
+        const total = plan.candidates.length
+        onProgress?.(0, total)
+        for (let index = 0; index < total; index += Math.max(1, batchSize)) {
+            const batch = plan.candidates.slice(index, index + Math.max(1, batchSize))
+            const results = await Promise.allSettled(
+                batch.map((candidate) => source.sourceAdapter.load({
+                    candidate,
+                    detailRoot: source.sourceAdapter.defaultDetailRoot,
+                    signal,
+                }))
+            )
+            loadResults.push(...results)
+            onProgress?.(loadResults.length, total)
+            await new Promise<void>((resolve) => setTimeout(resolve, 0))
+        }
         if (signal.aborted) throw new DOMException(***REMOVED***Preparation cancelled***REMOVED***, ***REMOVED***AbortError***REMOVED***)
 
         const loadErrors = loadResults.filter(
@@ -144,21 +311,27 @@ export const prepareImportAllSource = async ({
         )
         const validationResults = records.map((record) => ({
             record,
-            ...validator(schema, record),
+            ...(schema && validator
+                ? validator(schema, record)
+                : { isValid: true, errors: [] }),
         }))
         const validRecords = validationResults
             .filter(({ isValid }) => isValid)
             .map(({ record }) => record)
-        const existingDocuments = validRecords.length > 0
+        const existingDocuments = validRecords.length > 0 && objectTypeUuid
             ? await fetchExisting({ records: validRecords, objectTypeUuid, token, signal })
             : []
 
         return {
             ...plan,
             preparationStatus: ***REMOVED***ready***REMOVED***,
+            preparationCompleted: records.length,
+            preparationTotal: records.length,
             records,
             validationResults,
-            reconciliations: reconcileImportRecords(validRecords, existingDocuments),
+            reconciliations: objectTypeUuid
+                ? reconcileImportRecords(validRecords, existingDocuments)
+                : [],
             error: undefined,
         }
     } catch (error) {
@@ -166,6 +339,8 @@ export const prepareImportAllSource = async ({
         return {
             ...plan,
             preparationStatus: ***REMOVED***error***REMOVED***,
+            preparationCompleted: 0,
+            preparationTotal: plan.candidates.length,
             records: [],
             validationResults: [],
             reconciliations: [],

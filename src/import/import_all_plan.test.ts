@@ -2,10 +2,14 @@ import { describe, expect, it, vi } from ***REMOVED***vitest***REMOVED***
 import {
     createImportAllSourcePlan,
     discoverImportAllSource,
+    executeImportAllSource,
+    importAllRecordKey,
+    refreshImportAllSourceReconciliation,
     prepareImportAllSource,
     summarizeImportAllPlan,
 } from ***REMOVED***./import_all_plan***REMOVED***
 import type { ImportAllPlanSource } from ***REMOVED***./import_all_plan***REMOVED***
+import type { IDocument } from ***REMOVED***@/types/types***REMOVED***
 
 const source = (discover = vi.fn().mockResolvedValue([])): ImportAllPlanSource => ({
     type: ***REMOVED***source-a***REMOVED***,
@@ -121,5 +125,186 @@ describe(***REMOVED***Import All discovery plan***REMOVED***, () => {
         expect(prepared.reconciliations).toEqual([
             expect.objectContaining({ status: ***REMOVED***new***REMOVED***, action: ***REMOVED***create***REMOVED*** }),
         ])
+    })
+
+    it(***REMOVED***executes valid records using defaults and per-record overrides***REMOVED***, async () => {
+        const configuredSource = source()
+        const newRecord = {
+            uuid: ***REMOVED***1***REMOVED***, slug: ***REMOVED***new***REMOVED***, label: ***REMOVED***New***REMOVED***, data: { value: 1 },
+            attrs: {}, description: ***REMOVED******REMOVED***, sourceData: {},
+            provenance: { sourceId: ***REMOVED***source-a***REMOVED***, externalId: ***REMOVED***1***REMOVED*** },
+        }
+        const existingRecord = {
+            ...newRecord, uuid: ***REMOVED***2***REMOVED***, slug: ***REMOVED***existing***REMOVED***, label: ***REMOVED***Incoming***REMOVED***,
+            provenance: { sourceId: ***REMOVED***source-a***REMOVED***, externalId: ***REMOVED***2***REMOVED*** },
+        }
+        const invalidRecord = {
+            ...newRecord, uuid: ***REMOVED***3***REMOVED***, slug: ***REMOVED***invalid***REMOVED***,
+            provenance: { sourceId: ***REMOVED***source-a***REMOVED***, externalId: ***REMOVED***3***REMOVED*** },
+        }
+        const ambiguousRecord = {
+            ...newRecord, uuid: ***REMOVED***4***REMOVED***, slug: ***REMOVED***ambiguous***REMOVED***,
+            provenance: { sourceId: ***REMOVED***source-a***REMOVED***, externalId: ***REMOVED***4***REMOVED*** },
+        }
+        const existing = {
+            uuid: ***REMOVED***existing-uuid***REMOVED***, object_type_uuid: ***REMOVED***type-1***REMOVED***, slug: ***REMOVED***existing***REMOVED***,
+            label: ***REMOVED***Existing***REMOVED***, description: ***REMOVED***Keep***REMOVED***, data: { old: true }, attrs: {},
+        } as IDocument
+        const post = vi.fn().mockResolvedValue({ uuid: ***REMOVED***created-uuid***REMOVED*** })
+        const patch = vi.fn().mockResolvedValue({})
+        const mergeRpc = vi.fn().mockResolvedValue({})
+        const fetchBySlug = vi.fn().mockResolvedValue(undefined)
+        const plan = {
+            ...createImportAllSourcePlan(configuredSource),
+            records: [newRecord, existingRecord, invalidRecord, ambiguousRecord],
+            validationResults: [
+                { record: newRecord, isValid: true, errors: [] },
+                { record: existingRecord, isValid: true, errors: [] },
+                { record: invalidRecord, isValid: false, errors: [***REMOVED***bad***REMOVED***] },
+                { record: ambiguousRecord, isValid: true, errors: [] },
+            ],
+            reconciliations: [
+                { record: newRecord, status: ***REMOVED***new***REMOVED*** as const, action: ***REMOVED***create***REMOVED*** as const, existingDocuments: [] },
+                { record: existingRecord, status: ***REMOVED***conflicting***REMOVED*** as const, existingDocuments: [existing] },
+                { record: invalidRecord, status: ***REMOVED***new***REMOVED*** as const, action: ***REMOVED***create***REMOVED*** as const, existingDocuments: [] },
+                { record: ambiguousRecord, status: ***REMOVED***ambiguous***REMOVED*** as const, existingDocuments: [existing] },
+            ],
+            defaultConflictAction: ***REMOVED***ignore***REMOVED*** as const,
+            conflictActions: { [importAllRecordKey(existingRecord)]: ***REMOVED***merge***REMOVED*** as const },
+        }
+
+        const executed = await executeImportAllSource({
+            plan,
+            objectTypeUuid: ***REMOVED***type-1***REMOVED***,
+            signal: new AbortController().signal,
+            mergeStrategy: ***REMOVED***client-patch***REMOVED***,
+            persistence: { post, patch, mergeRpc, fetchBySlug },
+        })
+
+        expect(post).toHaveBeenCalledTimes(1)
+        expect(patch).toHaveBeenCalledWith(***REMOVED***existing-uuid***REMOVED***, expect.objectContaining({ data: { old: true, value: 1 } }), expect.any(AbortSignal))
+        expect(mergeRpc).not.toHaveBeenCalled()
+        expect(fetchBySlug).toHaveBeenCalledWith(***REMOVED***new***REMOVED***, ***REMOVED***type-1***REMOVED***, expect.any(AbortSignal))
+        expect(executed.executionResults.map(({ status }) => status)).toEqual([
+            ***REMOVED***imported***REMOVED***, ***REMOVED***imported***REMOVED***, ***REMOVED***blocked***REMOVED***, ***REMOVED***blocked***REMOVED***,
+        ])
+        expect(executed.executionResults[0].documentUuid).toBe(***REMOVED***created-uuid***REMOVED***)
+    })
+
+    it(***REMOVED***records a late create conflict without writing over it***REMOVED***, async () => {
+        const configuredSource = source()
+        const record = {
+            uuid: ***REMOVED***1***REMOVED***, slug: ***REMOVED***late***REMOVED***, label: ***REMOVED***Late***REMOVED***, data: {}, attrs: {}, description: ***REMOVED******REMOVED***, sourceData: {},
+            provenance: { sourceId: ***REMOVED***source-a***REMOVED***, externalId: ***REMOVED***1***REMOVED*** },
+        }
+        const plan = {
+            ...createImportAllSourcePlan(configuredSource),
+            records: [record],
+            validationResults: [{ record, isValid: true, errors: [] }],
+            reconciliations: [{ record, status: ***REMOVED***new***REMOVED*** as const, action: ***REMOVED***create***REMOVED*** as const, existingDocuments: [] }],
+        }
+        const post = vi.fn()
+        const executed = await executeImportAllSource({
+            plan,
+            objectTypeUuid: ***REMOVED***type-1***REMOVED***,
+            signal: new AbortController().signal,
+            mergeStrategy: ***REMOVED***client-patch***REMOVED***,
+            persistence: {
+                post,
+                patch: vi.fn(),
+                mergeRpc: vi.fn(),
+                fetchBySlug: vi.fn().mockResolvedValue({ uuid: ***REMOVED***already-there***REMOVED*** }),
+            },
+        })
+
+        expect(post).not.toHaveBeenCalled()
+        expect(executed.executionResults[0]).toMatchObject({ status: ***REMOVED***failed***REMOVED***, action: ***REMOVED***create***REMOVED*** })
+    })
+
+    it(***REMOVED***executes only selected record keys for retry***REMOVED***, async () => {
+        const configuredSource = source()
+        const records = [***REMOVED***1***REMOVED***, ***REMOVED***2***REMOVED***].map((externalId) => ({
+            uuid: externalId,
+            slug: `record-${externalId}`,
+            label: externalId,
+            data: {},
+            attrs: {},
+            description: ***REMOVED******REMOVED***,
+            sourceData: {},
+            provenance: { sourceId: ***REMOVED***source-a***REMOVED***, externalId },
+        }))
+        const plan = {
+            ...createImportAllSourcePlan(configuredSource),
+            records,
+            validationResults: records.map((record) => ({ record, isValid: true, errors: [] })),
+            reconciliations: records.map((record) => ({
+                record,
+                status: ***REMOVED***new***REMOVED*** as const,
+                action: ***REMOVED***create***REMOVED*** as const,
+                existingDocuments: [],
+            })),
+        }
+        const post = vi.fn().mockResolvedValue({})
+        const executed = await executeImportAllSource({
+            plan,
+            objectTypeUuid: ***REMOVED***type-1***REMOVED***,
+            signal: new AbortController().signal,
+            mergeStrategy: ***REMOVED***client-patch***REMOVED***,
+            recordKeys: new Set([importAllRecordKey(records[1])]),
+            persistence: {
+                post,
+                patch: vi.fn(),
+                mergeRpc: vi.fn(),
+                fetchBySlug: vi.fn().mockResolvedValue(undefined),
+            },
+        })
+
+        expect(post).toHaveBeenCalledTimes(1)
+        expect(post.mock.calls[0][0]).toEqual(expect.objectContaining({ slug: ***REMOVED***record-2***REMOVED*** }))
+        expect(executed.executionResults).toHaveLength(1)
+        expect(executed.executionResults[0].recordKey).toBe(importAllRecordKey(records[1]))
+    })
+
+    it(***REMOVED***refreshes reconciliation only for selected retry records***REMOVED***, async () => {
+        const configuredSource = source()
+        const records = [***REMOVED***1***REMOVED***, ***REMOVED***2***REMOVED***].map((externalId) => ({
+            uuid: externalId,
+            slug: `record-${externalId}`,
+            label: externalId,
+            data: { value: externalId },
+            attrs: {},
+            description: ***REMOVED******REMOVED***,
+            sourceData: {},
+            provenance: { sourceId: ***REMOVED***source-a***REMOVED***, externalId },
+        }))
+        const plan = {
+            ...createImportAllSourcePlan(configuredSource),
+            records,
+            validationResults: records.map((record) => ({ record, isValid: true, errors: [] })),
+            reconciliations: records.map((record) => ({
+                record,
+                status: ***REMOVED***conflicting***REMOVED*** as const,
+                action: ***REMOVED***overwrite***REMOVED*** as const,
+                existingDocuments: [],
+            })),
+        }
+        const existing = {
+            uuid: ***REMOVED***existing-1***REMOVED***, object_type_uuid: ***REMOVED***type-1***REMOVED***, slug: ***REMOVED***record-1***REMOVED***, label: ***REMOVED***1***REMOVED***,
+            description: ***REMOVED******REMOVED***, data: { value: ***REMOVED***record-1***REMOVED*** }, attrs: {},
+        } as IDocument
+        const fetchExisting = vi.fn().mockResolvedValue([existing])
+
+        const refreshed = await refreshImportAllSourceReconciliation({
+            plan,
+            recordKeys: new Set([importAllRecordKey(records[0])]),
+            objectTypeUuid: ***REMOVED***type-1***REMOVED***,
+            token: ***REMOVED***token***REMOVED***,
+            signal: new AbortController().signal,
+            fetchExisting,
+        })
+
+        expect(fetchExisting).toHaveBeenCalledWith(expect.objectContaining({ records: [records[0]] }))
+        expect(refreshed.reconciliations[0]).toMatchObject({ status: ***REMOVED***conflicting***REMOVED*** })
+        expect(refreshed.reconciliations[1]).toMatchObject({ status: ***REMOVED***conflicting***REMOVED***, action: ***REMOVED***overwrite***REMOVED*** })
     })
 })

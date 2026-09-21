@@ -93,10 +93,19 @@ export type ImportLoadOptions = {
     signal?: AbortSignal
 }
 
+export type ImportRelationshipRule = {
+    parentObjectTypeSlug: string
+    childObjectTypeSlug: string
+    parentMatchField?: string
+    childMatchField?: string
+    predicate: string
+}
+
 export type ImportSourceAdapter = {
     id: string
     defaultImportUrl: string
     defaultDetailRoot?: string
+    relationshipRules?: ImportRelationshipRule[]
     discover: (options: ImportDiscoveryOptions) => Promise<ImportCandidate[]>
     load: (options: ImportLoadOptions) => Promise<CanonicalImportRecord>
 }

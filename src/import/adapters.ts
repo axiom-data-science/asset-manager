@@ -24,6 +24,7 @@ export type RemoteImportAdapterOptions = {
     discover: LegacyDiscover
     load: LegacyLoad
     getExternalId?: (candidate: IDocumentImport) => string
+    relationshipRules?: ImportSourceAdapter[***REMOVED***relationshipRules***REMOVED***]
 }
 
 export const createRemoteImportAdapter = ({
@@ -33,10 +34,12 @@ export const createRemoteImportAdapter = ({
     discover,
     load,
     getExternalId = (candidate) => candidate.uuid,
+    relationshipRules,
 }: RemoteImportAdapterOptions): ImportSourceAdapter => ({
     id,
     defaultImportUrl,
     defaultDetailRoot,
+    relationshipRules,
     discover: async (options) => {
         const candidates = await discover(options)
         return candidates.map((candidate) => ({

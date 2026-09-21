@@ -66,6 +66,15 @@ const importConfigs: IImportPageProps[] = [
       discover: oikosModels,
       defaultDetailRoot: 'UNUSED',
       load: oikosModel,
+      relationshipRules: [
+        {
+          parentObjectTypeSlug: 'oikos_model',
+          childObjectTypeSlug: 'oikos_model_variable',
+          parentMatchField: 'slug',
+          childMatchField: 'modelSlug',
+          predicate: 'has_parent',
+        }
+      ]
     }),
     label: 'Oikos Model',
     type: 'oikos_model',
@@ -81,7 +90,8 @@ const importConfigs: IImportPageProps[] = [
     }),
     label: 'Oikos Model Variable',
     type: 'oikos_model_variable',
-    icon: Grid2X2Plus
+    icon: Grid2X2Plus,
+
   },
   {
     sourceAdapter: createRemoteImportAdapter({
@@ -105,7 +115,7 @@ const importConfigs: IImportPageProps[] = [
       }),
       discover: oikosVectorLayers,
       defaultDetailRoot: OIKOS_URL_ROOT,
-      load: oikosLayer,
+      load: oikosLayer
     }),
     label: 'Oikos Vector Layer',
     type: 'oikos_vector_layer',
@@ -122,6 +132,15 @@ const importConfigs: IImportPageProps[] = [
       discover: oikosVectorLayerGroups,
       defaultDetailRoot: OIKOS_URL_ROOT,
       load: oikosLayerGroup,
+      relationshipRules: [
+        {
+          parentObjectTypeSlug: 'oikos_layer_group',
+          childObjectTypeSlug: 'oikos_vector_layer',
+          parentMatchField: 'slug',
+          childMatchField: 'layerGroupSlug',
+          predicate: 'has_parent',
+        }
+      ]
     }),
     label: 'Oikos Vector Layer Group',
     type: 'oikos_vector_layer_group',

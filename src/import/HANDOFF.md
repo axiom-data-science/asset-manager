@@ -21,6 +21,17 @@ The implementation plan and remaining work are tracked in `src/import/TODO.md`.
 - Cancellation reaches source requests and document writes.
 - Row failures remain selected and visible for retry.
 
+### CSV imports
+
+- `/import/csv` reuses the existing CSV file uploader and parser.
+- The uploaded filename supplies the default object-type slug and label. For example, `test-metadata.csv` becomes `test-metadata` and `Test Metadata`.
+- CSV rows are previewed before import and can be mapped to label, slug, external ID, description, and document-data columns.
+- CSV rows are discovered and canonical-loaded immediately after continuing; the remote-source preload step is skipped because the file is already local.
+- CSV imports use the shared type selection, schema validation, reconciliation, and persistence workflow.
+- Generated schemas can be edited, saved manually, or created automatically with the filename-derived type/schema names.
+- Automatic creation checks the intended object-type slug first. Existing types are not overwritten; users can select the existing type and its default schema instead.
+- The import records workflow is presented as a compact step flow: type/validate, then import for CSV; remote sources retain preload, type/validate, and import.
+
 ### Duplicate reconciliation
 
 - Import provenance is stored in `document.attrs.import` as `source_id` and `external_id`.
@@ -122,15 +133,31 @@ src/import/relationship_planning.test.ts
 npm run build  # passed
 ```
 
+Additional focused validation during CSV work:
+
+```text
+src/import/csv_adapter.test.ts
+src/import/importState.test.ts
+# 4 tests passed
+npm run build  # passed; existing Vite quicktype/browser and chunk-size warnings remain
+```
+
+Live CSV checks still needed:
+
+- Upload a new CSV, confirm filename-derived type/schema naming, generate a schema, and use `Create automatically`.
+- Upload the same filename again and confirm the intended-slug warning blocks duplicate creation.
+- Choose the existing type and confirm its default schema is loaded and validation can proceed.
+- Change each CSV mapping and confirm the resulting document fields match the selected columns.
+
 ## Next implementation step
 
-Investigate missing relationships reported during UI testing:
+After the live CSV checks, continue with:
 
-1. Compare planned ready links with persisted link results.
-2. Check missing parents, source identity fields, predicates, and selected-source coverage.
-3. Add focused tests for the observed missing case.
-4. Then implement the concise Import All Errors view/tab.
-5. Keep CSV next after relationship coverage is understood; XLS/XLSX remains deferred.
+1. Skip additional CSV steps when filename, mappings, and an existing type/schema make them unnecessary.
+2. Refactor the single-item import UI and debug object-type creation state refresh/failures.
+3. Add multiple spreadsheet sources in one session with dependency-ordered parent/child imports.
+4. Investigate the known relationship ordering issue: children loaded before parents may not create links.
+5. Keep XLS/XLSX deferred until the multi-source CSV adapter shape is proven.
 
 After execution is stable, implement relationship planning, then CSV through the shared adapter API. XLS/XLSX remains deferred until the CSV adapter API is proven.
 

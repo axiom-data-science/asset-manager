@@ -2,9 +2,10 @@
 
 ## Working agreements
 
-- [ ] Keep import behavior behind source-neutral contracts rather than adding source-specific page logic.
-- [ ] Add or update Vitest tests with each behavioral change.
+- [x] Keep import behavior behind source-neutral contracts rather than adding source-specific page logic.
+- [x] Add or update Vitest tests with each behavioral change.
 - [ ] Keep changes under `src/import` unless sharing existing behavior avoids duplication.
+- **Outside import:** CSV route and navigation require `src/App.tsx` and `src/components/app-sidebar.tsx` changes.
 - [ ] Mark every proposed change outside `src/import` with an **Outside import** note before implementation.
 - [ ] Complete remote-source and CSV workflows before adding XLS/XLSX support.
 - [ ] Add XLS/XLSX only through the same adapter API used by CSV.
@@ -16,8 +17,8 @@
   - **Outside import:** `package.json`, lockfile, and likely `vite.config.ts` or a test config.
 - [ ] Add unit tests for source adapters, canonical record conversion, validation, reconciliation, and merge behavior as those modules are introduced.
 - [ ] Add focused tests for the existing CSV parser before connecting it to imports.
-- [ ] Fix Import All status keys so they use source `type` values rather than array indexes.
-- [ ] Remove render-time timers and fabricated results from Import All.
+- [x] Fix Import All status keys so they use source `type` values rather than array indexes.
+- [x] Remove render-time timers and fabricated results from Import All.
 - [x] Use the edited detail-root URL for preload and import requests.
 - [x] Reset import state before a new source load so stale records are not displayed.
 - [x] Surface remote loading errors in the import UI.
@@ -29,7 +30,7 @@
 - [x] Allow missing-type sources to prepare records for schema inference before type creation.
 - [x] Add one-click automatic type creation from prepared records with enums removed.
 - [x] Add page-level automatic creation for all missing types, bypassing the setup modal.
-- [ ] Surface Import All errors in one concise user-facing view, possibly an Errors tab.
+- [x] Surface Import All errors in one concise user-facing view, implemented as an Errors tab.
 - [x] Batch Import All preparation requests and show per-source progress.
 - [x] Yield between preparation batches so progress can repaint while sources load.
 - [x] Show a `Pending type` placeholder for sources without a type.
@@ -38,7 +39,9 @@
 
 ### UI simplification
 
-- Replace the current three loosely coupled tabs with a step-based flow: Source, Type and Schema, Validate, Review, Import.
+- [x] Replace the current loosely coupled import tabs with a visible step-based flow: Preload records, Choose type and validate, Import.
+- [ ] Refactor single-item import to simplify the UI and remove unnecessary nested workflow controls.
+- [ ] Debug object-type creation in the simplified single-item import flow, including type/schema state refresh and failure reporting.
 - Keep endpoint overrides and batch tuning in an advanced settings disclosure.
 - Show a compact source summary after a step is complete instead of keeping all controls visible.
 - Open type setup from Import All in a focused modal showing only type selection, schema setup, and the return action.
@@ -118,7 +121,7 @@
 - [x] Validate prepared records against each matching type***REMOVED***s default schema.
 - [x] Run duplicate reconciliation for valid prepared records without writing documents.
 - [x] Apply per-source bulk conflict defaults and exceptional row overrides during execution.
-- [ ] Expand the prepared plan from counts, source errors, validation, and conflicts to include relationship dependencies.
+- [x] Expand the prepared plan from counts, source errors, validation, and conflicts to include relationship dependencies.
 - [x] Require source discovery and plan review before execution.
 - [ ] Execute sources in dependency order when relationships require it.
 - [x] Preserve per-source and per-record execution results for retry review.
@@ -164,11 +167,12 @@ Suggested next step: should I start relationship planning and persistence next? 
 
 ### Follow-up tasks from current UI testing
 
-- [ ] Investigate missing relationships reported after Import All execution.
+- [ ] Investigate missing relationships reported after Import All execution. (Deferred by current work decision.)
+  - Related records must be loaded in dependency order; loading a child before its parent can prevent the relationship from being created.
   - Compare `relationships ready`, `relationship blockers`, and persisted link results.
   - Check missing parents, identity-field mismatches, predicate lookup, and source coverage.
   - Add focused tests for the observed missing case before changing matching behavior.
-- [ ] Add a concise Import All error view, possibly an Errors tab.
+- [x] Add a concise Import All error view as an Errors tab.
   - Include source discovery, preparation, validation, document, and relationship errors.
   - Keep per-source and per-record context, with retry actions where available.
 
@@ -223,17 +227,21 @@ Suggested next step: should I move on to the CSV import adapter? Reply `yes` to 
 
 ## 7. Add CSV through the common adapter API
 
-- [ ] Add a CSV file source adapter using `src/lib/csv.ts`.
+- [x] Add a CSV file source adapter using `src/lib/csv.ts`.
   - **Outside import:** reuse the parser as-is initially; parser changes require dedicated tests because other features may consume it later.
-- [ ] Add file selection, encoding/error handling, and a parsed preview.
-- [ ] Add header-row and column mapping controls.
-- [ ] Map columns to label, slug, description, external ID, and document data.
-- [ ] Allow existing-type selection or type/schema creation from CSV rows.
+- [x] Add file selection, encoding/error handling, and a parsed preview using the existing file uploader.
+- [x] Add header-row and column mapping controls.
+- [x] Add a dedicated CSV mapping step for label, description, slug, external ID, and document data fields.
+- [x] Skip the CSV preload step because uploaded rows are already available as canonical records.
+- [ ] Skip additional CSV steps when filename, headers, mappings, and an existing type/schema provide enough information to proceed safely.
+- [x] Allow existing-type selection or automatic type/schema creation from CSV rows. The filename supplies the default type/schema name, and existing intended slugs are checked before creation.
 - [ ] Support sample, selected, and full validation.
-- [ ] Run CSV records through the same reconciliation, review, persistence, and relationship phases as remote records.
-- [ ] Allow multiple CSV files in one import session.
+- [x] Run CSV records through the same reconciliation, review, and persistence phases as remote records.
+- [ ] Allow multiple CSV files in one import session, treating each spreadsheet as a source row with its own type and mapping.
 - [ ] Support parent/child joins between uploaded CSV files using object-type rules with per-file overrides.
-- [ ] Add parser and adapter tests for quoted cells, duplicate/blank headers, dates, numbers, missing columns, large files, and malformed input.
+- [ ] Resolve multi-spreadsheet imports in dependency order so parent spreadsheets are loaded before related child spreadsheets.
+- [ ] Preserve cross-spreadsheet identity and relationship diagnostics when a parent file is missing, duplicated, or loaded out of order.
+- [ ] Add parser and adapter tests for quoted cells, duplicate/blank headers, dates, numbers, missing columns, large files, and malformed input. (Adapter coverage started; parser edge-case coverage remains.)
 
 ### UI simplification
 

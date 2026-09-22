@@ -1,4 +1,13 @@
-import { ChartBarBig, Grid2X2, Grid2X2Plus, Layers2, Layers3, LayersPlus, Ship, Thermometer } from 'lucide-react'
+import {
+  ChartBarBig,
+  Grid2X2,
+  Grid2X2Plus,
+  Layers2,
+  Layers3,
+  LayersPlus,
+  Ship,
+  Thermometer,
+} from 'lucide-react'
 import type { IImportPageProps } from './pages/import_records_page_impl'
 import type { JSONSchema6 } from 'json-schema'
 import oikosLayerSchema from './schemas/oikos_layer.schema.json'
@@ -45,7 +54,7 @@ const importConfigs: IImportPageProps[] = [
     }),
     label: 'Moving Platform',
     type: 'moving_platform',
-    icon: Ship
+    icon: Ship,
   },
   {
     sourceAdapter: createRemoteImportAdapter({
@@ -61,7 +70,7 @@ const importConfigs: IImportPageProps[] = [
     }),
     label: 'Sensor Station',
     type: 'sensor_station',
-    icon: Thermometer
+    icon: Thermometer,
   },
   {
     sourceAdapter: createRemoteImportAdapter({
@@ -77,12 +86,12 @@ const importConfigs: IImportPageProps[] = [
           parentMatchField: 'slug',
           childMatchField: 'modelSlug',
           predicate: 'has_parent',
-        }
-      ]
+        },
+      ],
     }),
     label: 'Oikos Model',
     type: 'oikos_model',
-    icon: Grid2X2
+    icon: Grid2X2,
   },
   {
     sourceAdapter: createRemoteImportAdapter({
@@ -95,7 +104,6 @@ const importConfigs: IImportPageProps[] = [
     label: 'Oikos Model Variable',
     type: 'oikos_model_variable',
     icon: Grid2X2Plus,
-
   },
   {
     sourceAdapter: createRemoteImportAdapter({
@@ -107,7 +115,7 @@ const importConfigs: IImportPageProps[] = [
     }),
     label: 'Binner Record',
     type: 'binner_record',
-    icon: ChartBarBig
+    icon: ChartBarBig,
   },
   {
     sourceAdapter: createRemoteImportAdapter({
@@ -120,11 +128,11 @@ const importConfigs: IImportPageProps[] = [
       discover: oikosVectorLayers,
       defaultDetailRoot: OIKOS_URL_ROOT,
       load: oikosLayer,
-      schema: oikosLayerSchema as JSONSchema6
+      schema: oikosLayerSchema as JSONSchema6,
     }),
     label: 'Oikos Vector Layer',
     type: 'oikos_vector_layer',
-    icon: Layers2
+    icon: Layers2,
   },
   {
     sourceAdapter: createRemoteImportAdapter({
@@ -145,12 +153,12 @@ const importConfigs: IImportPageProps[] = [
           parentMatchField: 'id',
           childMatchField: 'layer_group_id',
           predicate: 'has_parent',
-        }
-      ]
+        },
+      ],
     }),
     label: 'Oikos Vector Layer Group',
     type: 'oikos_vector_layer_group',
-    icon: Layers3
+    icon: Layers3,
   },
   {
     sourceAdapter: createRemoteImportAdapter({
@@ -168,17 +176,19 @@ const importConfigs: IImportPageProps[] = [
         {
           parentObjectTypeSlug: 'oikos_vector_module',
           childObjectTypeSlug: 'oikos_vector_layer_group',
-          parentMatchField: 'id',
-          childMatchField: 'module_id',
+          parentMatchField: 'uuid',
+          childMatchField: 'module_uuid',
           predicate: 'has_parent',
-        }
-      ]
+        },
+      ],
     }),
     label: 'Oikos  Module',
     type: 'oikos_vector_module',
-    icon: LayersPlus
+    icon: LayersPlus,
   },
 ]
 
-export const importConfigsByKey = Object.fromEntries(importConfigs.map((config) => [config.type, config]))
+export const importConfigsByKey = Object.fromEntries(
+  importConfigs.map((config) => [config.type, config])
+)
 export default importConfigs

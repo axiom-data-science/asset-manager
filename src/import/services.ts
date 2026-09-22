@@ -1,37 +1,60 @@
-import type { IDocumentImport, IFullDocForImport, ISearchRecord } from "@/import/types"
-import { omit } from "lodash"
+import type { IDocumentImport, IFullDocForImport, ISearchRecord } from '@/import/types'
+import { omit } from 'lodash'
 import { oikos } from '@axdspub/axiom-ui-data-services'
 
 const searchURLRoot = 'https://search.axds.co/v2/search'
 
-export const searchURL = ({ type = 'sensor_station', count = 10, portal_id = -1 }: { type: string, count: number, portal_id: number }): string => {
-    return `${searchURLRoot}?portalId=${portal_id}&page=1&pageSize=${count}&type=${type}`
+export const searchURL = ({
+  type = 'sensor_station',
+  count = 10,
+  portal_id = -1,
+}: {
+  type: string
+  count: number
+  portal_id: number
+}): string => {
+  return `${searchURLRoot}?portalId=${portal_id}&page=1&pageSize=${count}&type=${type}`
 }
 
-const getSearchResults = async<T = unknown>({ url, signal }: { url: string, signal?: AbortSignal }): Promise<ISearchRecord<T>[]> => {
-    const response = await (await (fetch(url, {
-        signal,
-        headers: {
-            'content-type': 'application/json',
-            accept: 'application/json',
-        },
-    }))).json()
-    return response.results
-}
-
-
-export const searchDocs = async ({ url, signal }: { url: string, signal?: AbortSignal }): Promise<IDocumentImport[]> => {
-    const results = await getSearchResults<{ layers: { type: string, uuid: string }[] }>({ url, signal })
-    return results?.map((item: ISearchRecord<{ layers: { type: string, uuid: string }[] }>) => {
-        return {
-            uuid: item.type === 'sensor_station' ? item.id : item.uuid,
-            slug: `${item.id}`,
-            label: item.label,
-            data: item.source ?? item.data,
-            partial: !item.source
-
-        }
+const getSearchResults = async <T = unknown>({
+  url,
+  signal,
+}: {
+  url: string
+  signal?: AbortSignal
+}): Promise<ISearchRecord<T>[]> => {
+  const response = await (
+    await fetch(url, {
+      signal,
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json',
+      },
     })
+  ).json()
+  return response.results
+}
+
+export const searchDocs = async ({
+  url,
+  signal,
+}: {
+  url: string
+  signal?: AbortSignal
+}): Promise<IDocumentImport[]> => {
+  const results = await getSearchResults<{ layers: { type: string; uuid: string }[] }>({
+    url,
+    signal,
+  })
+  return results?.map((item: ISearchRecord<{ layers: { type: string; uuid: string }[] }>) => {
+    return {
+      uuid: item.type === 'sensor_station' ? item.id : item.uuid,
+      slug: `${item.id}`,
+      label: item.label,
+      data: item.source ?? item.data,
+      partial: !item.source,
+    }
+  })
 }
 
 const BINNINATOR_ROOT = 'https://binning-service.srv.axds.co'
@@ -39,209 +62,302 @@ const BINNINATOR_ROOT = 'https://binning-service.srv.axds.co'
 export const binninatorRoot = BINNINATOR_ROOT
 export const defaultBinninatorRecordsURL = `${BINNINATOR_ROOT}/source/h3-me`
 
-export const binninatorRecords = async ({ url = `${BINNINATOR_ROOT}/source/h3-me`, signal }: { url: string, signal?: AbortSignal }): Promise<IDocumentImport[]> => {
-    const urls = Array.isArray(url) ? url : [url]
-    const all: string[] = await Promise.all(urls.map(async (u) => {
-        const d = await (await fetch(u, { signal })).json()
-        return d.metadata.dataset_uuids
-    }))
-    return all.flat().map((uuid: string) => {
-        return {
-            slug: `${uuid}`,
-            uuid,
-            label: uuid,
-            data: {},
-            partial: true
-        }
+export const binninatorRecords = async ({
+  url = `${BINNINATOR_ROOT}/source/h3-me`,
+  signal,
+}: {
+  url: string
+  signal?: AbortSignal
+}): Promise<IDocumentImport[]> => {
+  const urls = Array.isArray(url) ? url : [url]
+  const all: string[] = await Promise.all(
+    urls.map(async (u) => {
+      const d = await (await fetch(u, { signal })).json()
+      return d.metadata.dataset_uuids
     })
+  )
+  return all.flat().map((uuid: string) => {
+    return {
+      slug: `${uuid}`,
+      uuid,
+      label: uuid,
+      data: {},
+      partial: true,
+    }
+  })
 }
 
+export const oikosVectorLayerGroups = async ({
+  url,
+  signal,
+}: {
+  url: string
+  signal?: AbortSignal
+}): Promise<IDocumentImport[]> => {
+  const results = await getSearchResults<{ layers: { type: string; uuid: string }[] }>({
+    url: `${url}&verbose=true`,
+    signal,
+  })
+  const layerGroups = results.filter((item) => {
+    const layers = item.source.layers.filter((layer) => layer.type === 'VECTOR')
+    return layers.length > 0
+  })
 
-
-export const oikosVectorLayerGroups = async ({ url, signal }: { url: string, signal?: AbortSignal }): Promise<IDocumentImport[]> => {
-    const results = await getSearchResults<{ layers: { type: string, uuid: string }[] }>({ url: `${url}&verbose=true`, signal })
-    const layerGroups = results.filter(item => {
-        const layers = item.source.layers.filter(layer => layer.type === 'VECTOR')
-        return layers.length > 0
-    })
-
-    return layerGroups.map((item: ISearchRecord<{ layers: { type: string, uuid: string }[] }>) => {
-        return {
-            slug: `${item.id}`,
-            uuid: item.uuid,
-            label: item.label,
-            data: item.source ?? item.data,
-            partial: !item.source
-        }
-    })
+  return layerGroups.map((item: ISearchRecord<{ layers: { type: string; uuid: string }[] }>) => {
+    return {
+      slug: `${item.id}`,
+      uuid: item.uuid,
+      label: item.label,
+      data: item.source ?? item.data,
+      partial: !item.source,
+    }
+  })
 }
 
-export const oikosVectorModules = async ({ url, signal }: { url: string, signal?: AbortSignal }): Promise<IDocumentImport[]> => {
-    const layerGroups = await oikosVectorLayerGroups({ url, signal })
-    return layerGroups.map((item: IDocumentImport) => {
-        const data = item.data as { module_uuid: string, module_label: string }
-        return {
-            slug: `${data.module_uuid}`,
-            label: data.module_label,
-            uuid: data.module_uuid,
-            data: {
-                uuid: data.module_uuid,
-                label: data.module_label
-            },
-            partial: true
-        }
-    })
+export const oikosVectorModules = async ({
+  url,
+  signal,
+}: {
+  url: string
+  signal?: AbortSignal
+}): Promise<IDocumentImport[]> => {
+  const layerGroups = await oikosVectorLayerGroups({ url, signal })
+  const modules = new Map<string, IDocumentImport>()
+  for (const item of layerGroups) {
+    const data = item.data as { module_uuid: string; module_label: string }
+    if (!modules.has(data.module_uuid)) {
+      modules.set(data.module_uuid, {
+        slug: `${data.module_uuid}`,
+        label: data.module_label,
+        uuid: data.module_uuid,
+        data: {
+          uuid: data.module_uuid,
+          label: data.module_label,
+        },
+        partial: true,
+      })
+    }
+  }
+  return [...modules.values()]
 }
 
-
-export const oikosVectorLayers = async ({ url, signal }: { url: string, signal?: AbortSignal }): Promise<IDocumentImport[]> => {
-    const results = await getSearchResults<{ layers: { type: string, label: string, uuid: string, id: number }[] }>({ url: `${url}&verbose=true`, signal })
-    const layerGroups = results.filter(item => {
-        const layers = item.source.layers.filter(layer => layer.type === 'VECTOR')
-        return layers.length > 0
+export const oikosVectorLayers = async ({
+  url,
+  signal,
+}: {
+  url: string
+  signal?: AbortSignal
+}): Promise<IDocumentImport[]> => {
+  const results = await getSearchResults<{
+    layers: { type: string; label: string; uuid: string; id: number }[]
+  }>({ url: `${url}&verbose=true`, signal })
+  const layerGroups = results.filter((item) => {
+    const layers = item.source.layers.filter((layer) => layer.type === 'VECTOR')
+    return layers.length > 0
+  })
+  return layerGroups
+    .flatMap((item) =>
+      item.source.layers
+        .filter((layer) => layer.type === 'VECTOR')
+        .map((layer) => ({ layer, layer_group_id: item.id }))
+    )
+    .map(({ layer, layer_group_id }) => {
+      return {
+        slug: `${layer.id}`,
+        uuid: layer.uuid,
+        label: layer.label,
+        data: { ...layer, layer_group_id },
+      }
     })
-    return layerGroups.flatMap(item => item.source.layers
-        .filter(layer => layer.type === 'VECTOR')
-        .map(layer => ({ layer, layer_group_id: item.id })))
-        .map(({ layer, layer_group_id }) => {
-            return {
-                slug: `${layer.id}`,
-                uuid: layer.uuid,
-                label: layer.label,
-                data: { ...layer, layer_group_id }
-            }
-        })
 }
-
 
 export const OIKOS_URL_ROOT = 'https://oikos.axds.co/rest'
 export const defaultOikosModelsURL = `${OIKOS_URL_ROOT}/modelinfo`
 
-export const oikosModels = async ({ url, signal }: { url?: string, signal?: AbortSignal }): Promise<IDocumentImport[]> => {
-    const u = url || defaultOikosModelsURL
-    const j = await (await fetch(u, {
-        signal, headers: {
-            'content-type': 'application/json',
-            accept: 'application/json',
-        }
-    })).json()
-    return j.map((model: { uuid: string, slug: string, label: string, description: string }) => {
-        return {
-            slug: `${model.slug}`,
-            uuid: model.uuid,
-            label: model.label,
-            description: model.description,
-            data: omit(model, 'modelVariables')
-        }
+export const oikosModels = async ({
+  url,
+  signal,
+}: {
+  url?: string
+  signal?: AbortSignal
+}): Promise<IDocumentImport[]> => {
+  const u = url || defaultOikosModelsURL
+  const j = await (
+    await fetch(u, {
+      signal,
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json',
+      },
     })
+  ).json()
+  return j.map((model: { uuid: string; slug: string; label: string; description: string }) => {
+    return {
+      slug: `${model.slug}`,
+      uuid: model.uuid,
+      label: model.label,
+      description: model.description,
+      data: omit(model, 'modelVariables'),
+    }
+  })
 }
 
-export const oikosModelVariables = async ({ url, signal }: { url: string, signal?: AbortSignal }): Promise<IDocumentImport[]> => {
-    const u = url || `${OIKOS_URL_ROOT}/modelinfo`
-    const j = await (await fetch(u, {
-        signal, headers: {
-            'content-type': 'application/json',
-            accept: 'application/json',
-        }
-    })).json()
-    return j.map((model: { uuid: string, slug: string, label: string, modelVariables: { label: string, uuid: string } & Record<string, unknown>[] }) => {
-        return model.modelVariables.map(v => ({
-            ...v,
-            modelSlug: model.slug
+export const oikosModelVariables = async ({
+  url,
+  signal,
+}: {
+  url: string
+  signal?: AbortSignal
+}): Promise<IDocumentImport[]> => {
+  const u = url || `${OIKOS_URL_ROOT}/modelinfo`
+  const j = await (
+    await fetch(u, {
+      signal,
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json',
+      },
+    })
+  ).json()
+  return j
+    .map(
+      (model: {
+        uuid: string
+        slug: string
+        label: string
+        modelVariables: { label: string; uuid: string } & Record<string, unknown>[]
+      }) => {
+        return model.modelVariables.map((v) => ({
+          ...v,
+          modelSlug: model.slug,
         }))
-    }).flat().map((variable: { label: string, uuid: string } & Record<string, unknown>) => {
-        return {
-            slug: `${variable.modelSlug}_${variable.variableName}`,
-            uuid: variable.uuid,
-            label: variable.label,
-            data: variable
-        }
+      }
+    )
+    .flat()
+    .map((variable: { label: string; uuid: string } & Record<string, unknown>) => {
+      return {
+        slug: `${variable.modelSlug}_${variable.variableName}`,
+        uuid: variable.uuid,
+        label: variable.label,
+        data: variable,
+      }
     })
 }
 
 // DETAIL REQUESTS
 
-export const binninatorMetadata = async ({ doc, url, signal }: { doc: IDocumentImport, url?: string, signal?: AbortSignal }): Promise<IFullDocForImport> => {
-    const uuid = doc.uuid
-    if (!uuid && !url) throw new Error('Must provide either uuid or url')
-    const u = url || `${BINNINATOR_ROOT}/${uuid}/metadata`
-    const d = await (await fetch(u, { signal })).json()
-    return {
-        slug: `binner:${uuid.replaceAll('-', '_')}`,
-        label: uuid,
-        description: '',
-        data: d.metadata,
-        attrs: {}
-    }
+export const binninatorMetadata = async ({
+  doc,
+  url,
+  signal,
+}: {
+  doc: IDocumentImport
+  url?: string
+  signal?: AbortSignal
+}): Promise<IFullDocForImport> => {
+  const uuid = doc.uuid
+  if (!uuid && !url) throw new Error('Must provide either uuid or url')
+  const u = url || `${BINNINATOR_ROOT}/${uuid}/metadata`
+  const d = await (await fetch(u, { signal })).json()
+  return {
+    slug: `binner:${uuid.replaceAll('-', '_')}`,
+    label: uuid,
+    description: '',
+    data: d.metadata,
+    attrs: {},
+  }
 }
 
-
-export const oikosModelVariable = async ({ doc }: { doc: IDocumentImport, url?: string, serviceRoot?: string, signal?: AbortSignal }): Promise<IFullDocForImport> => {
-    return {
-        slug: doc.slug,
-        label: doc.label,
-        description: '',
-        data: doc.data,
-        attrs: {}
-    }
+export const oikosModelVariable = async ({
+  doc,
+}: {
+  doc: IDocumentImport
+  url?: string
+  serviceRoot?: string
+  signal?: AbortSignal
+}): Promise<IFullDocForImport> => {
+  return {
+    slug: doc.slug,
+    label: doc.label,
+    description: '',
+    data: doc.data,
+    attrs: {},
+  }
 }
 
-export const oikosModel = async ({ doc }: { doc: IDocumentImport, url?: string, serviceRoot?: string, signal?: AbortSignal }): Promise<IFullDocForImport> => {
-    return {
-        slug: `${doc.slug}`,
-        label: doc.label,
-        description: doc.description ?? '',
-        data: doc.data,
-        attrs: {}
-    }
+export const oikosModel = async ({
+  doc,
+}: {
+  doc: IDocumentImport
+  url?: string
+  serviceRoot?: string
+  signal?: AbortSignal
+}): Promise<IFullDocForImport> => {
+  return {
+    slug: `${doc.slug}`,
+    label: doc.label,
+    description: doc.description ?? '',
+    data: doc.data,
+    attrs: {},
+  }
 }
 
+export const oikosLayer = async ({
+  doc,
+  serviceRoot = OIKOS_URL_ROOT,
+  signal,
+}: {
+  doc: IDocumentImport
+  serviceRoot?: string
+  signal?: AbortSignal
+}): Promise<IFullDocForImport> => {
+  const layer = await oikos.services.fetchLayer({
+    uuid: doc.uuid,
+    signal,
+    baseUrl: serviceRoot,
+  })
+  const discoveredData =
+    doc.data !== null && typeof doc.data === 'object' ? (doc.data as Record<string, unknown>) : {}
 
-export const oikosLayer = async ({ doc, serviceRoot = OIKOS_URL_ROOT, signal }: { doc: IDocumentImport, serviceRoot?: string, signal?: AbortSignal }): Promise<IFullDocForImport> => {
-
-    const layer = await oikos.services.fetchLayer({
-        uuid: doc.uuid,
-        signal,
-        baseUrl: serviceRoot
-    })
-    const discoveredData =
-        doc.data !== null && typeof doc.data === 'object'
-            ? doc.data as Record<string, unknown>
-            : {}
-
-    return {
-        slug: doc.slug,
-        label: layer.label,
-        description: layer.description ?? '',
-        data: {
-            ...layer,
-            ...('layer_group_id' in discoveredData
-                ? { layer_group_id: discoveredData.layer_group_id }
-                : {}),
-        },
-        attrs: {}
-    }
-
-
+  return {
+    slug: doc.slug,
+    label: layer.label,
+    description: layer.description ?? '',
+    data: {
+      ...layer,
+      ...('layer_group_id' in discoveredData
+        ? { layer_group_id: discoveredData.layer_group_id }
+        : {}),
+    },
+    attrs: {},
+  }
 }
 
-export const oikosLayerGroup = async ({ doc, serviceRoot = OIKOS_URL_ROOT, signal }: { doc: IDocumentImport, url?: string, serviceRoot?: string, signal?: AbortSignal }): Promise<IFullDocForImport> => {
+export const oikosLayerGroup = async ({
+  doc,
+  serviceRoot = OIKOS_URL_ROOT,
+  signal,
+}: {
+  doc: IDocumentImport
+  url?: string
+  serviceRoot?: string
+  signal?: AbortSignal
+}): Promise<IFullDocForImport> => {
+  const layerGroup = await oikos.services.fetchLayerGroup({
+    uuid: doc.uuid,
+    signal,
+    baseUrl: serviceRoot,
+  })
 
-    const layerGroup = await oikos.services.fetchLayerGroup({
-        uuid: doc.uuid,
-        signal,
-        baseUrl: serviceRoot
-    })
+  return {
+    slug: doc.slug,
+    label: layerGroup.label,
+    description: layerGroup.description ?? '',
+    data: layerGroup,
+    attrs: {},
+  }
 
-    return {
-        slug: doc.slug,
-        label: layerGroup.label,
-        description: layerGroup.description ?? '',
-        data: layerGroup,
-        attrs: {}
-    }
-
-    /* const uuid = doc.uuid
+  /* const uuid = doc.uuid
     if (!uuid && !url) throw new Error('Must provide either uuid or url')
     const u = url || `${serviceRoot}/layer-group?uuid=${uuid}`
     const j = await (await fetch(u, {
@@ -259,26 +375,31 @@ export const oikosLayerGroup = async ({ doc, serviceRoot = OIKOS_URL_ROOT, signa
     } */
 }
 
+export const oikosModule = async ({
+  doc,
+  serviceRoot = OIKOS_URL_ROOT,
+  signal,
+}: {
+  doc: IDocumentImport
+  url?: string
+  serviceRoot?: string
+  signal?: AbortSignal
+}): Promise<IFullDocForImport> => {
+  const module = await oikos.services.fetchModule({
+    uuid: doc.uuid,
+    signal,
+    baseUrl: serviceRoot,
+  })
 
+  return {
+    slug: doc.slug,
+    label: module.label,
+    description: module.description ?? '',
+    data: module,
+    attrs: {},
+  }
 
-
-export const oikosModule = async ({ doc, serviceRoot = OIKOS_URL_ROOT, signal }: { doc: IDocumentImport, url?: string, serviceRoot?: string, signal?: AbortSignal }): Promise<IFullDocForImport> => {
-
-    const module = await oikos.services.fetchModule({
-        uuid: doc.uuid,
-        signal,
-        baseUrl: serviceRoot
-    })
-
-    return {
-        slug: doc.slug,
-        label: module.label,
-        description: module.description ?? '',
-        data: module,
-        attrs: {}
-    }
-
-    /* const uuid = doc.uuid
+  /* const uuid = doc.uuid
     if (!uuid && !url) throw new Error('Must provide either uuid or url')
     const u = url || `${serviceRoot}/module?uuid=${uuid}`
     const j = await (await fetch(u, {
@@ -301,40 +422,62 @@ export const oikosModule = async ({ doc, serviceRoot = OIKOS_URL_ROOT, signal }:
     } */
 }
 
-
 export const SENSORS_ROOT = 'https://sensors.axds.co/api'
 
-export const sensorStation = async ({ doc, url, serviceRoot = SENSORS_ROOT, signal }: { doc: IDocumentImport, url?: string, serviceRoot?: string, signal?: AbortSignal }): Promise<IFullDocForImport> => {
-    const uuid = doc.uuid
-    if (!uuid && !url) throw new Error('Must provide either uuid or url')
-    if (!url && isNaN(Number(uuid))) throw new Error('uuid must be a number - use station id, not uuid')
-    const u = url || `${serviceRoot}/metadata/filter/custom?filter=${encodeURIComponent(JSON.stringify({ "stations": [uuid] }))}`
-    const j = await (await fetch(u, { signal })).json()
-    const station = j?.data?.stations?.[0]
-    return {
-        slug: doc.slug.replace('sensor_station:', ''),
-        label: station.label,
-        description: '',
-        data: station,
-        attrs: {}
-    }
+export const sensorStation = async ({
+  doc,
+  url,
+  serviceRoot = SENSORS_ROOT,
+  signal,
+}: {
+  doc: IDocumentImport
+  url?: string
+  serviceRoot?: string
+  signal?: AbortSignal
+}): Promise<IFullDocForImport> => {
+  const uuid = doc.uuid
+  if (!uuid && !url) throw new Error('Must provide either uuid or url')
+  if (!url && isNaN(Number(uuid)))
+    throw new Error('uuid must be a number - use station id, not uuid')
+  const u =
+    url ||
+    `${serviceRoot}/metadata/filter/custom?filter=${encodeURIComponent(JSON.stringify({ stations: [uuid] }))}`
+  const j = await (await fetch(u, { signal })).json()
+  const station = j?.data?.stations?.[0]
+  return {
+    slug: doc.slug.replace('sensor_station:', ''),
+    label: station.label,
+    description: '',
+    data: station,
+    attrs: {},
+  }
 }
 
 export const PLATFORM_ROOT = 'https://platforms.axds.co'
 
-export const movingPlatform = async ({ doc, url, serviceRoot = PLATFORM_ROOT, signal }: { doc: IDocumentImport, url?: string, serviceRoot?: string, signal?: AbortSignal }): Promise<IFullDocForImport> => {
-    const uuid = doc.uuid
-    if (!uuid && !url) throw new Error('Must provide either uuid or url')
-    const u = url || `${serviceRoot}/platforms/${uuid}`
-    const j = await (await fetch(u, { signal })).json()
-    return {
-        slug: doc.slug,
-        label: j.base.attributes.title,
-        description: j.base.attributes.summary ?? '',
-        data: {
-            ...j,
-            uuid: j.base.attributes.packrat_uuid
-        },
-        attrs: {}
-    }
+export const movingPlatform = async ({
+  doc,
+  url,
+  serviceRoot = PLATFORM_ROOT,
+  signal,
+}: {
+  doc: IDocumentImport
+  url?: string
+  serviceRoot?: string
+  signal?: AbortSignal
+}): Promise<IFullDocForImport> => {
+  const uuid = doc.uuid
+  if (!uuid && !url) throw new Error('Must provide either uuid or url')
+  const u = url || `${serviceRoot}/platforms/${uuid}`
+  const j = await (await fetch(u, { signal })).json()
+  return {
+    slug: doc.slug,
+    label: j.base.attributes.title,
+    description: j.base.attributes.summary ?? '',
+    data: {
+      ...j,
+      uuid: j.base.attributes.packrat_uuid,
+    },
+    attrs: {},
+  }
 }

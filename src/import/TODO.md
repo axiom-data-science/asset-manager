@@ -33,6 +33,9 @@
 - [x] Surface Import All errors in one concise user-facing view, implemented as an Errors tab.
 - [x] Batch Import All preparation requests and show per-source progress.
 - [x] Yield between preparation batches so progress can repaint while sources load.
+- [x] Show overall and per-source execution progress while Import All writes documents.
+- [x] Batch Import All document writes in groups of 10 with a 100 ms abort-aware pause between batches.
+- [x] Remove leftover `debugger` statements from Import All execution.
 - [x] Show a `Pending type` placeholder for sources without a type.
 - [x] Show prepared records in the type-setup dialog.
 - [x] Render per-source changed-record actions in a right-side `react-virtuoso` list.
@@ -71,6 +74,7 @@
 - [ ] Ensure newly created types and schemas are immediately available to the active session.
   - **Outside import:** reuse the existing object-type creation service/component if possible; changes under `src/manage/object_type` require regression checks for normal type creation.
 - [ ] Allow validation of all, selected, or sampled records.
+- [ ] Update `@axdspub/axiom-ui-forms` `schemaHelpers.validateAgainstSchema` to return a consistent validation-error array (`[]` for valid values), update its TypeScript declaration, and add library tests for primitive and nested schema violations. After releasing that update, switch `oikos_schemas.test.ts` to the shared helper and remove the temporary direct `ajv` test dependency.
 - [x] Prevent invalid records from being imported by default.
 - [x] Allow users with appropriate permissions to explicitly include invalid records.
 - [ ] Remove or reconcile enum controls with Quicktype***REMOVED***s current `no-enums` configuration.
@@ -202,6 +206,9 @@ Suggested next step: should I investigate the missing relationships first? Reply
 - [x] Check for an existing relationship before creating or retrying a link.
 - [x] Verify database protection for duplicate relationships.
   - Confirmed unique constraint on `from_document_uuid`, `to_document_uuid`, and `predicate_uuid`.
+- [x] Deduplicate equivalent backend and source-adapter relationship rules before planning.
+- [x] Deduplicate Oikos module candidates repeated across layer groups.
+- [x] Match Oikos module UUIDs to layer-group `module_uuid` values.
 
 ### Completed item verification: relationship planning and persistence foundation
 
@@ -235,6 +242,12 @@ Suggested next step: should I move on to the CSV import adapter? Reply `yes` to 
 - [ ] Support source selection in either order without losing relationship planning or persistence.
 - [ ] Verify layer/layer-group relationships across first import, repeat import, partial existing data, and retryable failures.
 - [ ] Carry the chosen relationship behavior into the multi-file CSV import design.
+
+### Import All execution follow-up
+
+- [x] Add overall and per-source progress bars during document execution.
+- [x] Batch document writes while preserving per-record results and failed-record retry behavior.
+- [ ] Verify progress bars, batch pacing, cancellation, and retry behavior in the authenticated UI.
 
 ## 7. Add CSV through the common adapter API
 

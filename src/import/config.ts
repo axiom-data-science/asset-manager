@@ -1,5 +1,9 @@
 import { ChartBarBig, Grid2X2, Grid2X2Plus, Layers2, Layers3, LayersPlus, Ship, Thermometer } from ***REMOVED***lucide-react***REMOVED***
 import type { IImportPageProps } from ***REMOVED***./pages/import_records_page_impl***REMOVED***
+import type { JSONSchema6 } from ***REMOVED***json-schema***REMOVED***
+import oikosLayerSchema from ***REMOVED***./schemas/oikos_layer.schema.json***REMOVED***
+import oikosLayerGroupSchema from ***REMOVED***./schemas/oikos_layer_group.schema.json***REMOVED***
+import oikosModuleSchema from ***REMOVED***./schemas/oikos_module.schema.json***REMOVED***
 import { createRemoteImportAdapter } from ***REMOVED***./adapters***REMOVED***
 import {
   binninatorMetadata,
@@ -115,7 +119,8 @@ const importConfigs: IImportPageProps[] = [
       }),
       discover: oikosVectorLayers,
       defaultDetailRoot: OIKOS_URL_ROOT,
-      load: oikosLayer
+      load: oikosLayer,
+      schema: oikosLayerSchema as JSONSchema6
     }),
     label: ***REMOVED***Oikos Vector Layer***REMOVED***,
     type: ***REMOVED***oikos_vector_layer***REMOVED***,
@@ -132,12 +137,13 @@ const importConfigs: IImportPageProps[] = [
       discover: oikosVectorLayerGroups,
       defaultDetailRoot: OIKOS_URL_ROOT,
       load: oikosLayerGroup,
+      schema: oikosLayerGroupSchema as JSONSchema6,
       relationshipRules: [
         {
-          parentObjectTypeSlug: ***REMOVED***oikos_layer_group***REMOVED***,
+          parentObjectTypeSlug: ***REMOVED***oikos_vector_layer_group***REMOVED***,
           childObjectTypeSlug: ***REMOVED***oikos_vector_layer***REMOVED***,
-          parentMatchField: ***REMOVED***slug***REMOVED***,
-          childMatchField: ***REMOVED***layerGroupSlug***REMOVED***,
+          parentMatchField: ***REMOVED***id***REMOVED***,
+          childMatchField: ***REMOVED***layer_group_id***REMOVED***,
           predicate: ***REMOVED***has_parent***REMOVED***,
         }
       ]
@@ -157,6 +163,16 @@ const importConfigs: IImportPageProps[] = [
       discover: oikosVectorModules,
       defaultDetailRoot: OIKOS_URL_ROOT,
       load: oikosModule,
+      schema: oikosModuleSchema as JSONSchema6,
+      relationshipRules: [
+        {
+          parentObjectTypeSlug: ***REMOVED***oikos_vector_module***REMOVED***,
+          childObjectTypeSlug: ***REMOVED***oikos_vector_layer_group***REMOVED***,
+          parentMatchField: ***REMOVED***id***REMOVED***,
+          childMatchField: ***REMOVED***module_id***REMOVED***,
+          predicate: ***REMOVED***has_parent***REMOVED***,
+        }
+      ]
     }),
     label: ***REMOVED***Oikos  Module***REMOVED***,
     type: ***REMOVED***oikos_vector_module***REMOVED***,

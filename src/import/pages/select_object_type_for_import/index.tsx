@@ -64,11 +64,13 @@ export const SelectObjectTypeForImportTab = ({
   type,
   sourceId,
   label,
+  sourceSchema,
 }: {
   documents: CanonicalImportRecord[]
   type: string
   sourceId: string
   label?: string
+  sourceSchema?: JSONSchema6
 }): ReactElement => {
   const [contextState] = useAtom(contextStateAtom)
   const [createObjectTypeFromData, setCreateObjectTypeFromData] = useAtom(
@@ -79,15 +81,23 @@ export const SelectObjectTypeForImportTab = ({
   const [, requestContextReload] = useAtom(requestContextReloadAtom)
   const [isCreatingAutomatically, setIsCreatingAutomatically] = useState(false)
   const [automaticCreateError, setAutomaticCreateError] = useState<string>()
+  const [automaticallyCreatedTypeUuid, setAutomaticallyCreatedTypeUuid] = useState<string>()
   const schema = session.schema
   const selectedObjectType = session.selectedObjectType
   const intendedObjectType = contextState.object_type_by_slug[type]
+  const createdTypeIsAvailable =
+    automaticallyCreatedTypeUuid !== undefined &&
+    intendedObjectType?.uuid === automaticallyCreatedTypeUuid
   const initializedTypeRef = useRef<string | null>(null)
 
   const { data, isLoading, error } = useQuery({
     enabled: createObjectTypeFromData && documents.length > 0,
     queryKey: [***REMOVED***eval-object-types***REMOVED***, documents],
     queryFn: async () => {
+      if (sourceSchema) {
+        setSchema(sourceSchema)
+        return sourceSchema
+      }
       const ob = await quicktypeJSON(
         ***REMOVED***json-schema***REMOVED***,
         ***REMOVED***test***REMOVED***,
@@ -132,6 +142,7 @@ export const SelectObjectTypeForImportTab = ({
         token: auth.user.access_token,
       })
       setSelectedObjectType(newObjectType)
+      setAutomaticallyCreatedTypeUuid(newObjectType.uuid)
       requestContextReload()
     } catch (error) {
       setAutomaticCreateError(error instanceof Error ? error.message : String(error))
@@ -211,7 +222,15 @@ export const SelectObjectTypeForImportTab = ({
           )}
           {createObjectTypeFromData && (
             <>
-              {intendedObjectType && (
+              {createdTypeIsAvailable ? (
+                <div
+                  className="border border-green-300 bg-green-50 p-3 text-sm text-green-900"
+                  role="status"
+                >
+                  Object type <strong>{type}</strong> was created successfully and is now selected
+                  for this import.
+                </div>
+              ) : intendedObjectType ? (
                 <div
                   className="border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
                   role="alert"
@@ -231,7 +250,7 @@ export const SelectObjectTypeForImportTab = ({
                     Use existing type
                   </Button>
                 </div>
-              )}
+              ) : null}
               <ViewWithLoader isLoading={isLoading} error={error} data={data}>
                 {data && (
                   <>
@@ -494,12 +513,12 @@ const SelectObjectTypeForImport = ({
                     result.status === ***REMOVED***fulfilled***REMOVED***
                       ? { stage: ***REMOVED***loaded***REMOVED*** }
                       : {
-                          stage: ***REMOVED***failed***REMOVED***,
-                          error:
-                            result.reason instanceof Error
-                              ? result.reason.message
-                              : String(result.reason),
-                        }
+                        stage: ***REMOVED***failed***REMOVED***,
+                        error:
+                          result.reason instanceof Error
+                            ? result.reason.message
+                            : String(result.reason),
+                      }
                   )
                 }}
                 includeRandomSelector={true}

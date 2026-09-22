@@ -1,5 +1,6 @@
 import type { IDocumentImport, IFullDocForImport, ISearchRecord } from "@/import/types"
 import { omit } from "lodash"
+import { oikos } from ***REMOVED***@axdspub/axiom-ui-data-services***REMOVED***
 
 const searchURLRoot = ***REMOVED***https://search.axds.co/v2/search***REMOVED***
 
@@ -99,15 +100,17 @@ export const oikosVectorLayers = async ({ url, signal }: { url: string, signal?:
         const layers = item.source.layers.filter(layer => layer.type === ***REMOVED***VECTOR***REMOVED***)
         return layers.length > 0
     })
-    const layers = layerGroups.map(item => item.source.layers.filter(layer => layer.type === ***REMOVED***VECTOR***REMOVED***)).flat()
-    return layers.map((layer) => {
-        return {
-            slug: `${layer.id}`,
-            uuid: layer.uuid,
-            label: layer.label,
-            data: layer
-        }
-    })
+    return layerGroups.flatMap(item => item.source.layers
+        .filter(layer => layer.type === ***REMOVED***VECTOR***REMOVED***)
+        .map(layer => ({ layer, layerGroupId: item.id })))
+        .map(({ layer, layerGroupId }) => {
+            return {
+                slug: `${layer.id}`,
+                uuid: layer.uuid,
+                label: layer.label,
+                data: { ...layer, layerGroupId }
+            }
+        })
 }
 
 
@@ -194,8 +197,35 @@ export const oikosModel = async ({ doc }: { doc: IDocumentImport, url?: string, 
 }
 
 
-export const oikosLayer = async ({ doc, url, serviceRoot = OIKOS_URL_ROOT, signal }: { doc: IDocumentImport, url?: string, serviceRoot?: string, signal?: AbortSignal }): Promise<IFullDocForImport> => {
-    const uuid = doc.uuid
+export const oikosLayer = async ({ doc, serviceRoot = OIKOS_URL_ROOT, signal }: { doc: IDocumentImport, serviceRoot?: string, signal?: AbortSignal }): Promise<IFullDocForImport> => {
+
+    const layer = await oikos.services.fetchLayer({
+        uuid: doc.uuid,
+        signal,
+        baseUrl: serviceRoot
+    })
+    const discoveredData =
+        doc.data !== null && typeof doc.data === ***REMOVED***object***REMOVED***
+            ? doc.data as Record<string, unknown>
+            : {}
+
+    return {
+        slug: doc.slug,
+        label: layer.label,
+        description: layer.description ?? ***REMOVED******REMOVED***,
+        data: {
+            ...layer,
+                        ...(***REMOVED***layer_group_id***REMOVED*** in discoveredData
+                                ? { layer_group_id: discoveredData.layer_group_id }
+                                : ***REMOVED***layerGroupId***REMOVED*** in discoveredData
+                                    ? { layerGroupId: discoveredData.layerGroupId }
+                  : {}),
+        },
+        attrs: {}
+    }
+
+
+    /* const uuid = doc.uuid
     if (!uuid && !url) throw new Error(***REMOVED***Must provide either uuid or url***REMOVED***)
     const u = url || `${serviceRoot}/layer?uuid=${uuid}`
     const j = await (await fetch(u, {
@@ -208,13 +238,31 @@ export const oikosLayer = async ({ doc, url, serviceRoot = OIKOS_URL_ROOT, signa
         slug: doc.slug,
         label: j.label,
         description: j.description,
-        data: j,
+        data: {
+            ...j,
+            ...(***REMOVED***layerGroupId***REMOVED*** in doc.data ? { layerGroupId: doc.data.layerGroupId } : {}),
+        },
         attrs: {}
-    }
+    } */
 }
 
-export const oikosLayerGroup = async ({ doc, url, serviceRoot = OIKOS_URL_ROOT, signal }: { doc: IDocumentImport, url?: string, serviceRoot?: string, signal?: AbortSignal }): Promise<IFullDocForImport> => {
-    const uuid = doc.uuid
+export const oikosLayerGroup = async ({ doc, serviceRoot = OIKOS_URL_ROOT, signal }: { doc: IDocumentImport, url?: string, serviceRoot?: string, signal?: AbortSignal }): Promise<IFullDocForImport> => {
+
+    const layerGroup = await oikos.services.fetchLayerGroup({
+        uuid: doc.uuid,
+        signal,
+        baseUrl: serviceRoot
+    })
+
+    return {
+        slug: doc.slug,
+        label: layerGroup.label,
+        description: layerGroup.description ?? ***REMOVED******REMOVED***,
+        data: layerGroup,
+        attrs: {}
+    }
+
+    /* const uuid = doc.uuid
     if (!uuid && !url) throw new Error(***REMOVED***Must provide either uuid or url***REMOVED***)
     const u = url || `${serviceRoot}/layer-group?uuid=${uuid}`
     const j = await (await fetch(u, {
@@ -229,14 +277,29 @@ export const oikosLayerGroup = async ({ doc, url, serviceRoot = OIKOS_URL_ROOT, 
         description: j.description,
         data: j,
         attrs: {}
-    }
+    } */
 }
 
 
 
 
-export const oikosModule = async ({ doc, url, serviceRoot = OIKOS_URL_ROOT, signal }: { doc: IDocumentImport, url?: string, serviceRoot?: string, signal?: AbortSignal }): Promise<IFullDocForImport> => {
-    const uuid = doc.uuid
+export const oikosModule = async ({ doc, serviceRoot = OIKOS_URL_ROOT, signal }: { doc: IDocumentImport, url?: string, serviceRoot?: string, signal?: AbortSignal }): Promise<IFullDocForImport> => {
+
+    const module = await oikos.services.fetchModule({
+        uuid: doc.uuid,
+        signal,
+        baseUrl: serviceRoot
+    })
+
+    return {
+        slug: doc.slug,
+        label: module.label,
+        description: module.description ?? ***REMOVED******REMOVED***,
+        data: module,
+        attrs: {}
+    }
+
+    /* const uuid = doc.uuid
     if (!uuid && !url) throw new Error(***REMOVED***Must provide either uuid or url***REMOVED***)
     const u = url || `${serviceRoot}/module?uuid=${uuid}`
     const j = await (await fetch(u, {
@@ -256,7 +319,7 @@ export const oikosModule = async ({ doc, url, serviceRoot = OIKOS_URL_ROOT, sign
             stickyLayerGroups: (j.stickyLayerGroups as Array<{ uuid: string }>).map(lg => lg.uuid)
         },
         attrs: {}
-    }
+    } */
 }
 
 

@@ -1,4 +1,5 @@
 import type { IDocument } from "@/types/types"
+import type { JSONSchema6 } from ***REMOVED***json-schema***REMOVED***
 
 export type IDocumentImport<T = unknown> = {
     data: T
@@ -106,6 +107,7 @@ export type ImportSourceAdapter = {
     defaultImportUrl: string
     defaultDetailRoot?: string
     relationshipRules?: ImportRelationshipRule[]
+    schema?: JSONSchema6
     discover: (options: ImportDiscoveryOptions) => Promise<ImportCandidate[]>
     load: (options: ImportLoadOptions) => Promise<CanonicalImportRecord>
 }

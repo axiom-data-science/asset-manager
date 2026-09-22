@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from ***REMOVED***vitest***REMOVED***
 import {
   createImportAllSourcePlan,
+  collectImportDocumentUuids,
   collectImportAllErrors,
   discoverImportAllSource,
   executeImportAllSource,
@@ -24,6 +25,66 @@ const source = (discover = vi.fn().mockResolvedValue([])): ImportAllPlanSource =
 })
 
 describe(***REMOVED***Import All discovery plan***REMOVED***, () => {
+  it(***REMOVED***collects relationship document UUIDs from execution results***REMOVED***, () => {
+    const configuredSource = source()
+    const record = {
+      uuid: ***REMOVED***1***REMOVED***,
+      slug: ***REMOVED***one***REMOVED***,
+      label: ***REMOVED***One***REMOVED***,
+      data: {},
+      attrs: {},
+      description: ***REMOVED******REMOVED***,
+      sourceData: {},
+      provenance: { sourceId: ***REMOVED***source-a***REMOVED***, externalId: ***REMOVED***1***REMOVED*** },
+    }
+    const plan = {
+      ...createImportAllSourcePlan(configuredSource),
+      type: ***REMOVED***children***REMOVED***,
+      records: [record],
+      executionResults: [{ recordKey: ***REMOVED***source-a:1***REMOVED***, status: ***REMOVED***imported***REMOVED*** as const, documentUuid: ***REMOVED***document-1***REMOVED*** }],
+    }
+
+    const documentUuids = collectImportDocumentUuids({
+      executedPlans: [plan],
+      objectTypesBySlug: { children: { uuid: ***REMOVED***child-type***REMOVED***, slug: ***REMOVED***children***REMOVED*** } },
+    })
+
+    expect(documentUuids.get(***REMOVED***child-type:source-a:1***REMOVED***)).toBe(***REMOVED***document-1***REMOVED***)
+  })
+
+  it(***REMOVED***collects existing UUIDs even when execution results are ignored***REMOVED***, () => {
+    const configuredSource = source()
+    const record = {
+      uuid: ***REMOVED***1***REMOVED***,
+      slug: ***REMOVED***one***REMOVED***,
+      label: ***REMOVED***One***REMOVED***,
+      data: {},
+      attrs: {},
+      description: ***REMOVED******REMOVED***,
+      sourceData: {},
+      provenance: { sourceId: ***REMOVED***source-a***REMOVED***, externalId: ***REMOVED***1***REMOVED*** },
+    }
+    const plan = {
+      ...createImportAllSourcePlan(configuredSource),
+      type: ***REMOVED***children***REMOVED***,
+      records: [record],
+      reconciliations: [{
+        record,
+        status: ***REMOVED***exact***REMOVED*** as const,
+        action: ***REMOVED***ignore***REMOVED*** as const,
+        existingDocuments: [{ uuid: ***REMOVED***existing-document-1***REMOVED*** } as IDocument],
+      }],
+      executionResults: [{ recordKey: ***REMOVED***source-a:1***REMOVED***, status: ***REMOVED***ignored***REMOVED*** as const }],
+    }
+
+    const documentUuids = collectImportDocumentUuids({
+      executedPlans: [plan],
+      objectTypesBySlug: { children: { uuid: ***REMOVED***child-type***REMOVED***, slug: ***REMOVED***children***REMOVED*** } },
+    })
+
+    expect(documentUuids.get(***REMOVED***child-type:source-a:1***REMOVED***)).toBe(***REMOVED***existing-document-1***REMOVED***)
+  })
+
   it(***REMOVED***collects source, validation, document, and relationship errors***REMOVED***, () => {
     const configuredSource = source()
     const record = {
@@ -440,6 +501,36 @@ describe(***REMOVED***Import All discovery plan***REMOVED***, () => {
     expect(refreshed.reconciliations[1]).toMatchObject({
       status: ***REMOVED***conflicting***REMOVED***,
       action: ***REMOVED***overwrite***REMOVED***,
+    })
+  })
+
+  it(***REMOVED***populates an empty reconciliation plan after a type is created***REMOVED***, async () => {
+    const configuredSource = source()
+    const record = {
+      uuid: ***REMOVED***1***REMOVED***,
+      slug: ***REMOVED***record-1***REMOVED***,
+      label: ***REMOVED***Record 1***REMOVED***,
+      data: { value: 1 },
+      attrs: {},
+      description: ***REMOVED******REMOVED***,
+      sourceData: {},
+      provenance: { sourceId: ***REMOVED***source-a***REMOVED***, externalId: ***REMOVED***1***REMOVED*** },
+    }
+    const plan = { ...createImportAllSourcePlan(configuredSource), records: [record] }
+
+    const refreshed = await refreshImportAllSourceReconciliation({
+      plan,
+      recordKeys: new Set([importAllRecordKey(record)]),
+      objectTypeUuid: ***REMOVED***type-1***REMOVED***,
+      token: ***REMOVED***token***REMOVED***,
+      signal: new AbortController().signal,
+      fetchExisting: vi.fn().mockResolvedValue([]),
+    })
+
+    expect(refreshed.reconciliations).toHaveLength(1)
+    expect(refreshed.reconciliations[0]).toMatchObject({
+      status: ***REMOVED***new***REMOVED***,
+      action: ***REMOVED***create***REMOVED***,
     })
   })
 })

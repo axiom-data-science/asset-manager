@@ -13,6 +13,7 @@ import type {
   ImportRelationshipPersistenceResult,
   ImportRelationshipPlan,
 } from ***REMOVED***./relationship_planning***REMOVED***
+import { relationshipDocumentKey } from ***REMOVED***./relationship_planning***REMOVED***
 
 export type ImportAllDiscoveryStatus = ***REMOVED***idle***REMOVED*** | ***REMOVED***loading***REMOVED*** | ***REMOVED***ready***REMOVED*** | ***REMOVED***error***REMOVED***
 export type ImportAllPreparationStatus = ***REMOVED***idle***REMOVED*** | ***REMOVED***loading***REMOVED*** | ***REMOVED***ready***REMOVED*** | ***REMOVED***error***REMOVED***
@@ -162,6 +163,61 @@ export const createImportAllSourcePlan = (source: ImportAllPlanSource): ImportAl
 export const importAllRecordKey = (record: CanonicalImportRecord): string =>
   `${record.provenance.sourceId}:${record.provenance.externalId}`
 
+export const collectImportDocumentUuids = ({
+  executedPlans,
+  objectTypesBySlug,
+}: {
+  executedPlans: ImportAllSourcePlan[]
+  objectTypesBySlug: Record<string, { uuid: string; slug: string } | undefined>
+}): Map<string, string> => {
+  const documentUuids = new Map<string, string>()
+
+  for (const plan of executedPlans) {
+    const objectType = objectTypesBySlug[plan.type]
+    if (!objectType) continue
+    const recordsByKey = new Map(plan.records.map((record) => [importAllRecordKey(record), record]))
+    const reconciliationsByKey = new Map(
+      plan.reconciliations.map((reconciliation) => [
+        importAllRecordKey(reconciliation.record),
+        reconciliation,
+      ])
+    )
+
+    for (const reconciliation of plan.reconciliations) {
+      const existingUuid = reconciliation.existingDocuments[0]?.uuid
+      if (!existingUuid) continue
+      const record = reconciliation.record
+      documentUuids.set(
+        relationshipDocumentKey({
+          record,
+          objectTypeUuid: objectType.uuid,
+          objectTypeSlug: objectType.slug,
+        }),
+        existingUuid
+      )
+    }
+
+    for (const result of plan.executionResults) {
+      const record = recordsByKey.get(result.recordKey)
+      if (!record) continue
+      const reconciliation = reconciliationsByKey.get(result.recordKey)
+      const uuid = result.documentUuid ?? reconciliation?.existingDocuments[0]?.uuid
+      if (uuid) {
+        documentUuids.set(
+          relationshipDocumentKey({
+            record,
+            objectTypeUuid: objectType.uuid,
+            objectTypeSlug: objectType.slug,
+          }),
+          uuid
+        )
+      }
+    }
+  }
+
+  return documentUuids
+}
+
 type ImportAllPersistence = {
   post: (
     document: Omit<IDocument, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>,
@@ -191,6 +247,16 @@ export const executeImportAllSource = async ({
   persistence: ImportAllPersistence
   recordKeys?: ReadonlySet<string>
 }): Promise<ImportAllSourcePlan> => {
+  console.log(***REMOVED***[Import All] document execution started***REMOVED***, {
+    sourceId: plan.sourceId,
+    type: plan.type,
+    records: plan.records.length,
+    reconciliations: plan.reconciliations.length,
+    objectTypeUuid,
+  })
+  // Intentional breakpoint for live Import All execution diagnostics.
+  // eslint-disable-next-line no-debugger
+  debugger;
   const validationByKey = new Map(
     plan.validationResults.map((result) => [importAllRecordKey(result.record), result])
   )
@@ -212,8 +278,21 @@ export const executeImportAllSource = async ({
         : reconciliation.status === ***REMOVED***exact***REMOVED***
           ? ***REMOVED***ignore***REMOVED***
           : (plan.conflictActions[recordKey] ?? plan.defaultConflictAction)
+    console.log(***REMOVED***[Import All] document action selected***REMOVED***, {
+      sourceId: plan.sourceId,
+      recordKey,
+      slug: reconciliation.record.slug,
+      reconciliationStatus: reconciliation.status,
+      action,
+      existingUuid: reconciliation.existingDocuments[0]?.uuid,
+    })
     if (action === ***REMOVED***ignore***REMOVED***) {
-      results.push({ recordKey, action, status: ***REMOVED***ignored***REMOVED*** })
+      results.push({
+        recordKey,
+        action,
+        status: ***REMOVED***ignored***REMOVED***,
+        documentUuid: reconciliation.existingDocuments[0]?.uuid,
+      })
       continue
     }
 
@@ -229,9 +308,24 @@ export const executeImportAllSource = async ({
       } as Omit<IDocument, ***REMOVED***uuid***REMOVED*** | ***REMOVED***created_at***REMOVED*** | ***REMOVED***updated_at***REMOVED***>
 
       if (action === ***REMOVED***create***REMOVED***) {
+        console.log(***REMOVED***[Import All] checking for late document conflict***REMOVED***, {
+          sourceId: plan.sourceId,
+          recordKey,
+          slug: record.slug,
+          objectTypeUuid,
+        })
         const existing = await persistence.fetchBySlug(record.slug, objectTypeUuid, signal)
         if (existing)
           throw new Error(`Document "${record.slug}" already exists. Return to duplicate check.`)
+        console.log(***REMOVED***[Import All] about to POST document***REMOVED***, {
+          sourceId: plan.sourceId,
+          recordKey,
+          slug: record.slug,
+          objectTypeUuid,
+        })
+        // Intentional breakpoint immediately before document creation.
+        // eslint-disable-next-line no-debugger
+        debugger;
         const created = await persistence.post(incomingDocument, signal)
         results.push({ recordKey, action, status: ***REMOVED***imported***REMOVED***, documentUuid: created.uuid })
       } else {
@@ -240,18 +334,18 @@ export const executeImportAllSource = async ({
         const document =
           action === ***REMOVED***merge***REMOVED***
             ? {
-                label: mergeIncomingNonEmpty(existing.label, record.label) as string,
-                description: mergeIncomingNonEmpty(
-                  existing.description,
-                  record.description
-                ) as string,
-                slug: mergeIncomingNonEmpty(existing.slug, record.slug) as string,
-                data: mergeIncomingNonEmpty(existing.data, record.data),
-                attrs: withImportProvenance(
-                  mergeIncomingNonEmpty(existing.attrs, incomingDocument.attrs),
-                  record.provenance
-                ),
-              }
+              label: mergeIncomingNonEmpty(existing.label, record.label) as string,
+              description: mergeIncomingNonEmpty(
+                existing.description,
+                record.description
+              ) as string,
+              slug: mergeIncomingNonEmpty(existing.slug, record.slug) as string,
+              data: mergeIncomingNonEmpty(existing.data, record.data),
+              attrs: withImportProvenance(
+                mergeIncomingNonEmpty(existing.attrs, incomingDocument.attrs),
+                record.provenance
+              ),
+            }
             : incomingDocument
         if (action === ***REMOVED***merge***REMOVED*** && mergeStrategy === ***REMOVED***postgrest-rpc***REMOVED***) {
           await persistence.mergeRpc(existing.uuid, document, signal)
@@ -343,12 +437,24 @@ export const refreshImportAllSourceReconciliation = async ({
   const refreshedByKey = new Map(
     refreshed.map((reconciliation) => [importAllRecordKey(reconciliation.record), reconciliation])
   )
+  const selectedKeys = new Set(records.map((record) => importAllRecordKey(record)))
+  const existingByKey = new Map(
+    plan.reconciliations.map((reconciliation) => [
+      importAllRecordKey(reconciliation.record),
+      reconciliation,
+    ])
+  )
   return {
     ...plan,
-    reconciliations: plan.reconciliations.map(
-      (reconciliation) =>
-        refreshedByKey.get(importAllRecordKey(reconciliation.record)) ?? reconciliation
-    ),
+    reconciliations: plan.records.flatMap((record) => {
+      const key = importAllRecordKey(record)
+      if (selectedKeys.has(key)) {
+        const reconciliation = refreshedByKey.get(key)
+        return reconciliation ? [reconciliation] : []
+      }
+      const reconciliation = existingByKey.get(key)
+      return reconciliation ? [reconciliation] : []
+    }),
   }
 }
 

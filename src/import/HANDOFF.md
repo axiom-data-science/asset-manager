@@ -68,6 +68,11 @@ The implementation plan and remaining work are tracked in `src/import/TODO.md`.
 - Relationship execution checks for an existing child-to-parent link before posting, so repeat runs do not create another link when the existing row is readable.
 - Database duplicate protection is verified: `UNIQUE("from_document_uuid", "to_document_uuid", "predicate_uuid")`.
 - The Import All page uses source adapter relationship rules, including the Oikos model-to-model-variable rule.
+- Oikos layer, layer-group, and module adapters have standalone static schemas under `src/import/schemas`; these schemas are detailed but self-contained and do not use `$ref`.
+- Oikos layer and layer-group relationship identities preserve numeric IDs through discovery and full loading.
+- Numeric relationship fields are normalized for matching, and Import All now refreshes incomplete reconciliation rows after type creation so the first Execute click can proceed.
+- Prepare review can load records before missing types exist; execution remains blocked until reconciliation is available.
+- Import All source rows reserve a right-side activity area with tabs for import activity and changed records. Activity entries show discovery/loading/validation/execution state, document links, and errors.
 
 Relationship UI note: the individual source `Import Records` tab only checks document duplicates. Relationship counts and link results appear on `Import All Sources` after execution, when matching parent and child records are included in the same plan.
 
@@ -142,6 +147,15 @@ src/import/importState.test.ts
 npm run build  # passed; existing Vite quicktype/browser and chunk-size warnings remain
 ```
 
+Today***REMOVED***s additional validation:
+
+```text
+src/import/import_all_plan.test.ts
+src/import/relationship_planning.test.ts
+# 21 focused tests passed
+npm run build  # passed; existing Vite browser-externalization and chunk-size warnings remain
+```
+
 Live CSV checks still needed:
 
 - Upload a new CSV, confirm filename-derived type/schema naming, generate a schema, and use `Create automatically`.
@@ -151,15 +165,21 @@ Live CSV checks still needed:
 
 ## Next implementation step
 
-After the live CSV checks, continue with:
+Next session, refine relationship imports for existing remote source types before adding CSV relationships:
 
-1. Skip additional CSV steps when filename, mappings, and an existing type/schema make them unnecessary.
-2. Refactor the single-item import UI and debug object-type creation state refresh/failures.
-3. Add multiple spreadsheet sources in one session with dependency-ordered parent/child imports.
-4. Investigate the known relationship ordering issue: children loaded before parents may not create links.
-5. Keep XLS/XLSX deferred until the multi-source CSV adapter shape is proven.
+1. Decide between grouping related sources into one dependency-aware import task and resolving counterpart documents during creation.
+2. Implement the chosen approach so parent/child imports work when both documents are new, when one already exists, and when sources are selected in either order.
+3. Verify layer/layer-group relationships in the UI, including first import, repeat import, partial existing data, and failed/retried links.
+4. Add the same relationship model to multiple CSV sources.
 
-After execution is stable, implement relationship planning, then CSV through the shared adapter API. XLS/XLSX remains deferred until the CSV adapter API is proven.
+After relationship behavior is stable, continue with:
+
+5. Skip additional CSV steps when filename, mappings, and an existing type/schema make them unnecessary.
+6. Add multiple spreadsheet sources in one session with dependency-ordered parent/child imports.
+7. Refactor the single-item import UI and debug object-type creation state refresh/failures.
+8. Keep XLS/XLSX deferred until the multi-source CSV adapter shape is proven.
+
+The relationship ordering investigation is now part of the next relationship-design task rather than a separate deferred item.
 
 ## Changes outside `src/import`
 

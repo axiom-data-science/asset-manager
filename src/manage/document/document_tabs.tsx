@@ -145,6 +145,7 @@ const DocumentTabs = ({
       document
     ) */
 
+  const selectedTab = queryParams.get(***REMOVED***tab***REMOVED***) ?? ***REMOVED***parent***REMOVED***
 
   const tabs: ITab[] = [
     {
@@ -156,12 +157,11 @@ const DocumentTabs = ({
       id: ***REMOVED***related***REMOVED***,
       label: ***REMOVED***Related Documents***REMOVED***,
       disabled: !document,
-      content: document
+      content: document && selectedTab === ***REMOVED***related***REMOVED***
         ? <RelatedDocuments document={document} objectType={objectType} /> : <></>,
     }
   ]
 
-  const selectedTab = queryParams.get(***REMOVED***tab***REMOVED***) ?? ***REMOVED***parent***REMOVED***
   objectType.data?.expected_child_types?.forEach((ect, index) => {
     const tab = `ec-${index}`
     tabs.push({
@@ -170,11 +170,13 @@ const DocumentTabs = ({
       disabled: !document,
       content: document && (
         <div className="flex flex-col gap-2 p-4 text-left">
-          <ExpectedChildTypeSelector
-            parentDocument={document}
-            objectType={objectType}
-            createViewPath={`/create-document/${document.uuid}/${ect.predicate ?? ***REMOVED***has_parent***REMOVED***}/expected-predicate/:object_type_uuid/object_type?tab=${tab}`}
-          />
+          {selectedTab === tab && (
+            <ExpectedChildTypeSelector
+              parentDocument={document}
+              objectType={objectType}
+              createViewPath={`/create-document/${document.uuid}/${ect.predicate ?? ***REMOVED***has_parent***REMOVED***}/expected-predicate/:object_type_uuid/object_type?tab=${tab}`}
+            />
+          )}
           {ExpectedChildView && (
             <div className="flex flex-col gap-2p-4 text-left">{ExpectedChildView}</div>
           )}

@@ -123,7 +123,7 @@
 - [x] Apply per-source bulk conflict defaults and exceptional row overrides during execution.
 - [x] Expand the prepared plan from counts, source errors, validation, and conflicts to include relationship dependencies.
 - [x] Require source discovery and plan review before execution.
-- [ ] Execute sources in dependency order when relationships require it.
+- [ ] Execute related sources through a dependency-aware task or resolve counterpart documents during creation; choose and implement one approach.
 - [x] Preserve per-source and per-record execution results for retry review.
 - [x] Remove the current mock results and simulated completion behavior.
 - [ ] Add a simple one-button import path for prepared sources.
@@ -190,7 +190,7 @@ Suggested next step: should I investigate the missing relationships first? Reply
 - [x] Support provenance identity by default and source-adapter match fields.
 - [x] Classify ready, missing-parent, ambiguous-parent, and invalid-rule plans before writes.
 - [x] Allow source adapters to define relationship rules without changing the backend object-type contract.
-- [ ] Resolve relationships from canonical external identities before execution.
+- [x] Resolve relationships from canonical external identities before execution for the current Import All plan.
 - [ ] Detect missing parents, ambiguous matches, cardinality violations, and cycles during review.
 - [ ] Persist documents first and retain the resulting document UUID map.
 - [x] Persist documents first and retain the resulting document UUID map.
@@ -225,6 +225,15 @@ Suggested next step: should I move on to the CSV import adapter? Reply `yes` to 
 - Focus the user on unresolved and invalid links instead of listing every successful match.
 - Keep source overrides adjacent to the relationship rule they replace.
 
+### Next relationship design decision
+
+- [ ] Decide whether related remote sources should be grouped into one dependency-aware import task or whether each document creation should resolve an already-created counterpart.
+- [ ] Support first imports where both parent and child documents are new.
+- [ ] Support imports where only the parent or only the child already exists.
+- [ ] Support source selection in either order without losing relationship planning or persistence.
+- [ ] Verify layer/layer-group relationships across first import, repeat import, partial existing data, and retryable failures.
+- [ ] Carry the chosen relationship behavior into the multi-file CSV import design.
+
 ## 7. Add CSV through the common adapter API
 
 - [x] Add a CSV file source adapter using `src/lib/csv.ts`.
@@ -237,6 +246,8 @@ Suggested next step: should I move on to the CSV import adapter? Reply `yes` to 
 - [x] Allow existing-type selection or automatic type/schema creation from CSV rows. The filename supplies the default type/schema name, and existing intended slugs are checked before creation.
 - [ ] Support sample, selected, and full validation.
 - [x] Run CSV records through the same reconciliation, review, and persistence phases as remote records.
+- [x] Derive filename-based type slugs with underscores to satisfy the database slug constraint.
+- [x] Add `public/test-metadata.csv` as a local UI verification fixture.
 - [ ] Allow multiple CSV files in one import session, treating each spreadsheet as a source row with its own type and mapping.
 - [ ] Support parent/child joins between uploaded CSV files using object-type rules with per-file overrides.
 - [ ] Resolve multi-spreadsheet imports in dependency order so parent spreadsheets are loaded before related child spreadsheets.

@@ -105,6 +105,26 @@ describe(***REMOVED***Import relationship planning***REMOVED***, () => {
         expect(plans[0]).toMatchObject({ status: ***REMOVED***ready***REMOVED***, predicate: ***REMOVED***belongs_to***REMOVED*** })
     })
 
+    it(***REMOVED***matches configured identities when payload fields are numbers***REMOVED***, () => {
+        const parent = candidate(***REMOVED***source***REMOVED***, ***REMOVED***parent-1***REMOVED***, ***REMOVED***parent-type***REMOVED***, ***REMOVED***parents***REMOVED***, { id: 17 })
+        const child = candidate(***REMOVED***source***REMOVED***, ***REMOVED***child-1***REMOVED***, ***REMOVED***child-type***REMOVED***, ***REMOVED***children***REMOVED***, { parentId: 17 })
+        const plans = planImportRelationships({
+            parentObjectTypes: new Map([
+                [***REMOVED***parent-type***REMOVED***, objectType(***REMOVED***parent-type***REMOVED***, ***REMOVED***parents***REMOVED***, [])],
+            ]),
+            candidates: [parent, child],
+            relationshipRules: [{
+                parentObjectTypeSlug: ***REMOVED***parents***REMOVED***,
+                childObjectTypeSlug: ***REMOVED***children***REMOVED***,
+                parentMatchField: ***REMOVED***id***REMOVED***,
+                childMatchField: ***REMOVED***parentId***REMOVED***,
+                predicate: ***REMOVED***belongs_to***REMOVED***,
+            }],
+        })
+
+        expect(plans[0]).toMatchObject({ status: ***REMOVED***ready***REMOVED***, predicate: ***REMOVED***belongs_to***REMOVED*** })
+    })
+
     it(***REMOVED***reports a missing parent when only child records are imported***REMOVED***, () => {
         const child = candidate(***REMOVED***source***REMOVED***, ***REMOVED***parent-1***REMOVED***, ***REMOVED***child-type***REMOVED***, ***REMOVED***children***REMOVED***)
         const plans = planImportRelationships({
@@ -222,5 +242,33 @@ describe(***REMOVED***Import relationship planning***REMOVED***, () => {
 
         expect(results).toEqual([{ relationshipKey: ***REMOVED***child-type:source:parent-1:belongs_to***REMOVED***, status: ***REMOVED***existing***REMOVED*** }])
         expect(post).not.toHaveBeenCalled()
+    })
+
+    it(***REMOVED***reports which relationship UUID is unavailable***REMOVED***, async () => {
+        const parent = candidate(***REMOVED***source***REMOVED***, ***REMOVED***parent-1***REMOVED***, ***REMOVED***parent-type***REMOVED***, ***REMOVED***parents***REMOVED***)
+        const child = candidate(***REMOVED***source***REMOVED***, ***REMOVED***parent-1***REMOVED***, ***REMOVED***child-type***REMOVED***, ***REMOVED***children***REMOVED***)
+        const plans = planImportRelationships({
+            parentObjectTypes: new Map([
+                [***REMOVED***parent-type***REMOVED***, objectType(***REMOVED***parent-type***REMOVED***, ***REMOVED***parents***REMOVED***, [{
+                    object_type_slug: ***REMOVED***children***REMOVED***,
+                    to_parent_predicate: ***REMOVED***belongs_to***REMOVED***,
+                }])],
+            ]),
+            candidates: [parent, child],
+        })
+
+        const results = await persistImportRelationships({
+            plans,
+            documentUuids: new Map(),
+            predicateUuids: new Map([[***REMOVED***belongs_to***REMOVED***, ***REMOVED***predicate-1***REMOVED***]]),
+            signal: new AbortController().signal,
+            post: vi.fn(),
+        })
+
+        expect(results).toEqual([{
+            relationshipKey: ***REMOVED***child-type:source:parent-1:belongs_to***REMOVED***,
+            status: ***REMOVED***blocked***REMOVED***,
+            error: ***REMOVED***UUID unavailable for child document, parent document***REMOVED***,
+        }])
     })
 })

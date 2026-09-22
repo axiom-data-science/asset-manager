@@ -18,7 +18,7 @@ describe(***REMOVED***createCSVImportAdapter***REMOVED***, () => {
   })
 
   it(***REMOVED***derives readable type and schema names from a filename***REMOVED***, () => {
-    expect(csvFileNameToTypeSlug(***REMOVED***Test Metadata 2026.csv***REMOVED***)).toBe(***REMOVED***test-metadata-2026***REMOVED***)
+    expect(csvFileNameToTypeSlug(***REMOVED***Test Metadata 2026.csv***REMOVED***)).toBe(***REMOVED***test_metadata_2026***REMOVED***)
     expect(csvFileNameToTypeLabel(***REMOVED***Test Metadata 2026.csv***REMOVED***)).toBe(***REMOVED***Test Metadata 2026***REMOVED***)
     expect(csvFileNameToTypeSlug(***REMOVED***.csv***REMOVED***)).toBe(***REMOVED***csv-import***REMOVED***)
   })

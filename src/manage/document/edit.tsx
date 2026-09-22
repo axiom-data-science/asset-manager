@@ -29,6 +29,24 @@ import ShareDocument from ***REMOVED***@/components/custom/share-document***REMO
 import DocumentTabs from ***REMOVED***./document_tabs***REMOVED***
 import StateSelector from ***REMOVED***@/manage/custom_inputs/state_selector***REMOVED***
 
+const isComplexSchema = (schema: unknown): boolean => {
+  const pending: Array<{ value: unknown; depth: number }> = [{ value: schema, depth: 0 }]
+  let nodeCount = 0
+
+  while (pending.length > 0) {
+    const current = pending.pop()
+    if (!current || current.value === null || typeof current.value !== ***REMOVED***object***REMOVED***) continue
+    nodeCount += 1
+    if (current.depth > 12 || nodeCount > 500) return true
+
+    Object.values(current.value as Record<string, unknown>).forEach((value) => {
+      pending.push({ value, depth: current.depth + 1 })
+    })
+  }
+
+  return false
+}
+
 const DocumentLockStatus = ({
   document,
   className,
@@ -239,33 +257,38 @@ const EditDocumentForm = ({
   const fieldConfigJSON =
     fieldConfigs?.map((fc) => fc.fields_override_config.config as unknown as IFormFieldOverride) ??
     []
-  const dataForm = (
+  const hasConfiguredForm =
     assetForm?.use_form_config === true &&
-      assetForm?.form_config !== undefined &&
-      assetForm?.form_config !== null
-      ? assetForm.form_config
-      : assetForm?.schema_override_config !== undefined || fieldConfigJSON !== undefined
-        ? omit(
-          schemaToFormUtils.overridesAndSchemaToFormObject({
-            schema: schema.json_schema,
-            formOverrides: assetForm?.schema_override_config
-              ? [assetForm?.schema_override_config as IFormOverride]
-              : undefined,
-            formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
-          }),
-          ***REMOVED***label***REMOVED***
-        )
-        : schemaToFormUtils.schemaToFormObject(schema.json_schema)
-  ) as IForm
+    assetForm.form_config !== undefined &&
+    assetForm.form_config !== null
+  const complexSchema = isComplexSchema(schema.json_schema)
+  const dataForm = hasConfiguredForm || !complexSchema
+    ? (
+      hasConfiguredForm
+        ? assetForm.form_config
+        : assetForm?.schema_override_config !== undefined || fieldConfigJSON !== undefined
+          ? omit(
+            schemaToFormUtils.overridesAndSchemaToFormObject({
+              schema: schema.json_schema,
+              formOverrides: assetForm?.schema_override_config
+                ? [assetForm?.schema_override_config as IFormOverride]
+                : undefined,
+              formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
+            }),
+            ***REMOVED***label***REMOVED***
+          )
+          : schemaToFormUtils.schemaToFormObject(schema.json_schema)
+    ) as IForm
+    : undefined
 
   const isUsingDataForm = !!(
-    dataForm.fields?.length ||
-    dataForm.pages?.length ||
-    dataForm.wizard_steps?.length ||
-    dataForm.tabs?.length
+    dataForm?.fields?.length ||
+    dataForm?.pages?.length ||
+    dataForm?.wizard_steps?.length ||
+    dataForm?.tabs?.length
   )
 
-  const form = isUsingDataForm ? dataForm : defaultForm
+  const form = isUsingDataForm && dataForm ? dataForm : defaultForm
 
   const [formValues, setFormValues] = useState<IFormValues>({
     ...(isUsingDataForm ? (document.data as JSON) : document),
@@ -313,6 +336,11 @@ const EditDocumentForm = ({
         </div>
       </h1>
       <Errors errors={errors} />
+      {complexSchema && !hasConfiguredForm && (
+        <div className="border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          This schema is too complex for generated fields, so the document data is shown as JSON.
+        </div>
+      )}
       <FormCreator
         form={{
           ...form,

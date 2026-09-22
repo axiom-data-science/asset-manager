@@ -75,10 +75,10 @@ const SidebarCollapsibleSection = ({
   closeByDefault?: boolean
   actions: Array<
     | {
-        name: string
-        url: string
-        icon: React.ComponentType
-      }
+      name: string
+      url: string
+      icon: React.ComponentType
+    }
     | undefined
   >
 }) => {
@@ -193,21 +193,11 @@ export function AppSidebar() {
       ],
     },
     {
-      label: ***REMOVED***Schemas***REMOVED***,
+      label: ***REMOVED***Types and schemas***REMOVED***,
       icon: Network,
       requiresAdmin: true,
       closeByDefault: true,
       actions: [
-        {
-          name: ***REMOVED***List schemas***REMOVED***,
-          icon: List,
-          url: ***REMOVED***/object_schema***REMOVED***,
-        },
-        {
-          name: ***REMOVED***Create schema***REMOVED***,
-          icon: Plus,
-          url: ***REMOVED***/object_schema/create***REMOVED***,
-        },
         {
           name: ***REMOVED***List types***REMOVED***,
           icon: List,
@@ -217,6 +207,16 @@ export function AppSidebar() {
           name: ***REMOVED***Create type***REMOVED***,
           icon: Plus,
           url: ***REMOVED***/object_type/create***REMOVED***,
+        },
+        {
+          name: ***REMOVED***List schemas***REMOVED***,
+          icon: List,
+          url: ***REMOVED***/object_schema***REMOVED***,
+        },
+        {
+          name: ***REMOVED***Create schema***REMOVED***,
+          icon: Plus,
+          url: ***REMOVED***/object_schema/create***REMOVED***,
         },
       ],
     },

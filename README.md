@@ -2,7 +2,7 @@
 
 Asset Manager is a React and TypeScript web application for creating, editing, importing, and organizing asset metadata. It provides a shared interface for managing schema backed documents. One or more curated forms can be created per schema, or the schema can be used to present a default form.
 
-The application uses OpenID Connect (OIDC) for authentication and uses Asset Docs (link), a basic [PostREST](https://docs.postgrest.org) instance with row level security rules defined for documents.
+The application uses OpenID Connect (OIDC) for authentication and uses Asset Docs (link), a  [PostREST](https://docs.postgrest.org) instance with added row level security rules and helper functions (rpc).
 
 ## Features
 
@@ -51,14 +51,6 @@ npm run dev
 
 ## Docker
 
-Build and start the production-style container with Docker Compose:
-
-```sh
-docker compose up --build
-```
-
-The application is available at `http://localhost:9797`.
-
 Docker Compose passes the following host environment variables into the container and maps them to the runtime `TWOWOLVES_*` names used by the Nginx entrypoint:
 
 | Host variable | Purpose |
@@ -95,7 +87,6 @@ src/
 	state/                Shared Jotai state
 	App.tsx               Application routes and providers
 public/                 Static files and sample metadata
-docker/                 Nginx configuration and runtime env injection
 ```
 
 ## Testing and validation
@@ -112,6 +103,6 @@ The test suite includes import adapters, CSV handling, reconciliation, relations
 
 ## Configuration notes
 
-Configuration values have defaults in `src/config/config.ts`, but the default OIDC client ID is intentionally invalid and the default API URL points to `http://localhost:3345`. Set environment variables for any real deployment.
-
-For Docker deployments, the image is built once and runtime values are substituted into the generated JavaScript by the Nginx entrypoint. This makes it possible to use the same image across environments without rebuilding the frontend.
+- Configuration values have defaults in `src/config/config.ts`, but the default OIDC client ID is intentionally invalid. 
+- The default API URL points to `http://localhost:3345`.
+- For Docker deployments, the image is built once and runtime values are substituted into the generated JavaScript by the Nginx entrypoint. This makes it possible to use the same image across environments without rebuilding the frontend.

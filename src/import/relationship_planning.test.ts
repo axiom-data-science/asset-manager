@@ -120,6 +120,33 @@ describe(***REMOVED***Import relationship planning***REMOVED***, () => {
     expect(plans[0]).toMatchObject({ status: ***REMOVED***ready***REMOVED***, predicate: ***REMOVED***belongs_to***REMOVED*** })
   })
 
+  it(***REMOVED***joins parent and child records from different CSV source IDs***REMOVED***, () => {
+    const parent = candidate(***REMOVED***departments.csv-1***REMOVED***, ***REMOVED***department-1***REMOVED***, ***REMOVED***department-type***REMOVED***, ***REMOVED***departments***REMOVED***, {
+      code: ***REMOVED***D-1***REMOVED***,
+    })
+    const child = candidate(***REMOVED***assets.csv-2***REMOVED***, ***REMOVED***asset-1***REMOVED***, ***REMOVED***asset-type***REMOVED***, ***REMOVED***assets***REMOVED***, {
+      department_code: ***REMOVED***D-1***REMOVED***,
+    })
+
+    const plans = planImportRelationships({
+      parentObjectTypes: new Map([[***REMOVED***department-type***REMOVED***, objectType(***REMOVED***department-type***REMOVED***, ***REMOVED***departments***REMOVED***, [])]]),
+      candidates: [parent, child],
+      relationshipRules: [{
+        parentObjectTypeSlug: ***REMOVED***departments***REMOVED***,
+        childObjectTypeSlug: ***REMOVED***assets***REMOVED***,
+        parentMatchField: ***REMOVED***code***REMOVED***,
+        childMatchField: ***REMOVED***department_code***REMOVED***,
+        predicate: ***REMOVED***belongs_to***REMOVED***,
+      }],
+    })
+
+    expect(plans).toMatchObject([{
+      status: ***REMOVED***ready***REMOVED***,
+      parent: { record: { provenance: { sourceId: ***REMOVED***departments.csv-1***REMOVED*** } } },
+      child: { record: { provenance: { sourceId: ***REMOVED***assets.csv-2***REMOVED*** } } },
+    }])
+  })
+
   it(***REMOVED***deduplicates equivalent backend and adapter relationship rules***REMOVED***, () => {
     const parent = candidate(***REMOVED***source***REMOVED***, ***REMOVED***parent-1***REMOVED***, ***REMOVED***parent-type***REMOVED***, ***REMOVED***parents***REMOVED***, { code: ***REMOVED***A-1***REMOVED*** })
     const child = candidate(***REMOVED***source***REMOVED***, ***REMOVED***child-1***REMOVED***, ***REMOVED***child-type***REMOVED***, ***REMOVED***children***REMOVED***, { parentCode: ***REMOVED***A-1***REMOVED*** })

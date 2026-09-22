@@ -14,6 +14,24 @@ export type CSVImportAdapterOptions = {
   label?: string
   text: string
   mapping?: CSVImportMapping
+  relationshipRules?: ImportSourceAdapter[***REMOVED***relationshipRules***REMOVED***]
+  relationshipFields?: string[]
+}
+
+export const isCSVImportMappingComplete = (
+  headers: string[],
+  mapping: CSVImportMapping
+): boolean => {
+  const mappedColumns = new Set(
+    [
+      mapping.label,
+      mapping.slug,
+      mapping.externalId,
+      mapping.description,
+      ...(mapping.dataColumns ?? []),
+    ].filter((column): column is string => Boolean(column))
+  )
+  return headers.every((header) => mappedColumns.has(header))
 }
 
 const findHeader = (headers: string[], names: string[]): string | undefined => {
@@ -90,20 +108,22 @@ const createCandidate = (
 
 const createRecord = (
   candidate: ImportCandidate,
-  mapping: CSVImportMapping
+  mapping: CSVImportMapping,
+  relationshipFields: string[]
 ): CanonicalImportRecord => {
   const description = rowValue(
     candidate.data as Record<string, string | number>,
     mapping.description
   )
   const dataColumns = mapping.dataColumns
-  const data = dataColumns
+  const columns = new Set([...(dataColumns ?? []), ...relationshipFields])
+  const data = columns.size > 0
     ? Object.fromEntries(
-      dataColumns.map((key) => [
-        key,
-        (candidate.data as Record<string, string | number>)[key] ?? ***REMOVED******REMOVED***,
-      ])
-    )
+        [...columns].map((key) => [
+          key,
+          (candidate.data as Record<string, string | number>)[key] ?? ***REMOVED******REMOVED***,
+        ])
+      )
     : candidate.data
   return {
     uuid: candidate.uuid,
@@ -121,6 +141,8 @@ export const createCSVImportAdapter = ({
   id,
   text,
   mapping = {},
+  relationshipRules,
+  relationshipFields = [],
 }: CSVImportAdapterOptions): ImportSourceAdapter => {
   let parsed: ParsedCSV | undefined
   const getParsed = () => {
@@ -131,9 +153,10 @@ export const createCSVImportAdapter = ({
   return {
     id,
     defaultImportUrl: `csv://${id}`,
+    relationshipRules,
     discover: async () =>
       getParsed().data.map((row, index) => createCandidate(row, index, id, mapping)),
-    load: async ({ candidate }) => createRecord(candidate, mapping),
+    load: async ({ candidate }) => createRecord(candidate, mapping, relationshipFields),
   }
 }
 

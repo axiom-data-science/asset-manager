@@ -2,6 +2,7 @@ import { describe, expect, it } from ***REMOVED***vitest***REMOVED***
 import {
   createCSVImportAdapter,
   inferCSVImportMapping,
+  isCSVImportMappingComplete,
   csvFileNameToTypeLabel,
   csvFileNameToTypeSlug,
 } from ***REMOVED***./csv_adapter***REMOVED***
@@ -21,6 +22,14 @@ describe(***REMOVED***createCSVImportAdapter***REMOVED***, () => {
     expect(csvFileNameToTypeSlug(***REMOVED***Test Metadata 2026.csv***REMOVED***)).toBe(***REMOVED***test_metadata_2026***REMOVED***)
     expect(csvFileNameToTypeLabel(***REMOVED***Test Metadata 2026.csv***REMOVED***)).toBe(***REMOVED***Test Metadata 2026***REMOVED***)
     expect(csvFileNameToTypeSlug(***REMOVED***.csv***REMOVED***)).toBe(***REMOVED***csv-import***REMOVED***)
+  })
+
+  it(***REMOVED***reports whether every CSV header is mapped***REMOVED***, () => {
+    const headers = [***REMOVED***id***REMOVED***, ***REMOVED***name***REMOVED***, ***REMOVED***category***REMOVED***]
+    const mapping = inferCSVImportMapping(headers)
+
+    expect(isCSVImportMappingComplete(headers, mapping)).toBe(true)
+    expect(isCSVImportMappingComplete(headers, { ...mapping, dataColumns: [] })).toBe(false)
   })
 
   it(***REMOVED***discovers rows with stable provenance and loads canonical records***REMOVED***, async () => {
@@ -52,6 +61,33 @@ describe(***REMOVED***createCSVImportAdapter***REMOVED***, () => {
       sourceData: candidates[0].data,
       provenance: candidates[0].provenance,
     })
+  })
+
+  it(***REMOVED***forwards relationship rules and preserves configured join fields***REMOVED***, async () => {
+    const relationshipRules = [{
+      parentObjectTypeSlug: ***REMOVED***departments***REMOVED***,
+      childObjectTypeSlug: ***REMOVED***assets***REMOVED***,
+      parentMatchField: ***REMOVED***code***REMOVED***,
+      childMatchField: ***REMOVED***department_code***REMOVED***,
+      predicate: ***REMOVED***belongs_to***REMOVED***,
+    }]
+    const adapter = createCSVImportAdapter({
+      id: ***REMOVED***assets-source-1***REMOVED***,
+      text: `id,label,department_code
+    asset-1,Asset One,D-1`,
+      mapping: { externalId: ***REMOVED***id***REMOVED***, label: ***REMOVED***label***REMOVED*** },
+      relationshipRules,
+      relationshipFields: [***REMOVED***department_code***REMOVED***],
+    })
+
+    const [candidate] = await adapter.discover({
+      url: adapter.defaultImportUrl,
+      signal: new AbortController().signal,
+    })
+    const record = await adapter.load({ candidate })
+
+    expect(adapter.relationshipRules).toEqual(relationshipRules)
+    expect(record.data).toEqual({ department_code: ***REMOVED***D-1***REMOVED*** })
   })
 
   it(***REMOVED***falls back to row identity and a readable label and slug***REMOVED***, async () => {

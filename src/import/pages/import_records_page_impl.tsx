@@ -22,6 +22,7 @@ import SelectObjectTypeForImport from ***REMOVED***./select_object_type_for_impo
 import { SelectObjectTypeForImportTab } from ***REMOVED***./select_object_type_for_import/index.tsx***REMOVED***
 import {
   filterImportEligibleRecords,
+  canSkipImportTypeStep,
   isValidationComplete,
   useImportSession,
 } from ***REMOVED***@/import/state/importState***REMOVED***
@@ -206,11 +207,13 @@ const RemoteSourceImport = ({
 
 export type IImportPageProps = {
   type: string
+  objectTypeSlug?: string
   label: string
   pluralLabel?: string
   sourceAdapter?: ImportSourceAdapter
   objectType?: IObjectType
   csvSource?: boolean
+  startAtImport?: boolean
   icon: ForwardRefExoticComponent<Omit<LucideProps, ***REMOVED***ref***REMOVED***> & RefAttributes<SVGSVGElement>>
 }
 
@@ -218,12 +221,15 @@ const ImportRecordsPage = ({
   label,
   pluralLabel,
   type,
+  objectTypeSlug,
   sourceAdapter,
   csvSource = false,
+  startAtImport = false,
   // objectType
 }: IImportPageProps): ReactElement => {
   pluralLabel = pluralLabel || `${label}s`
   const sourceId = sourceAdapter?.id ?? type
+  const typeSlug = objectTypeSlug ?? type
   const {
     session,
     clearReconciliations,
@@ -267,30 +273,32 @@ const ImportRecordsPage = ({
   )
 
   const auth = useAuth()
-  const [selectedTab, setSelectedTab] = useState(csvSource ? ***REMOVED***type***REMOVED*** : ***REMOVED***records***REMOVED***)
+  const [selectedTab, setSelectedTab] = useState(
+    startAtImport && canSkipImportTypeStep(session) ? ***REMOVED***import***REMOVED*** : csvSource ? ***REMOVED***type***REMOVED*** : ***REMOVED***records***REMOVED***
+  )
   const [activeDetailRoot, setActiveDetailRoot] = useState(sourceAdapter?.defaultDetailRoot)
   const getFullDoc = sourceAdapter
     ? ({
-      doc,
-      signal,
-      serviceRoot,
-    }: {
-      doc: IDocumentImport
-      signal?: AbortSignal
-      serviceRoot?: string
-    }) =>
-      sourceAdapter.load({ candidate: doc as ImportCandidate, signal, detailRoot: serviceRoot })
+        doc,
+        signal,
+        serviceRoot,
+      }: {
+        doc: IDocumentImport
+        signal?: AbortSignal
+        serviceRoot?: string
+      }) =>
+        sourceAdapter.load({ candidate: doc as ImportCandidate, signal, detailRoot: serviceRoot })
     : (d: { doc: IDocumentImport }) =>
-      Promise.resolve({
-        uuid: d.doc.uuid,
-        slug: d.doc.slug,
-        label: d.doc.label,
-        data: d.doc.data,
-        attrs: {},
-        description: d.doc.description,
-        provenance: { sourceId: type, externalId: d.doc.uuid },
-        sourceData: d.doc.data,
-      } as CanonicalImportRecord)
+        Promise.resolve({
+          uuid: d.doc.uuid,
+          slug: d.doc.slug,
+          label: d.doc.label,
+          data: d.doc.data,
+          attrs: {},
+          description: d.doc.description,
+          provenance: { sourceId: type, externalId: d.doc.uuid },
+          sourceData: d.doc.data,
+        } as CanonicalImportRecord)
 
   /* const state = useMemo<***REMOVED***idle***REMOVED*** | ***REMOVED***loading***REMOVED*** | ***REMOVED***success***REMOVED*** | ***REMOVED***error***REMOVED***>(() => {
                 if (!activeUrl) return ***REMOVED***idle***REMOVED***
@@ -360,12 +368,12 @@ const ImportRecordsPage = ({
               tabs={[
                 ...(!csvSource
                   ? [
-                    {
-                      id: ***REMOVED***records***REMOVED***,
-                      label: ***REMOVED***Available Records***REMOVED***,
-                      content: <ListRecords documents={previewRecordsToImport} />,
-                    },
-                  ]
+                      {
+                        id: ***REMOVED***records***REMOVED***,
+                        label: ***REMOVED***Available Records***REMOVED***,
+                        content: <ListRecords documents={previewRecordsToImport} />,
+                      },
+                    ]
                   : []),
                 {
                   id: ***REMOVED***type***REMOVED***,
@@ -373,7 +381,7 @@ const ImportRecordsPage = ({
                   content: csvSource ? (
                     <SelectObjectTypeForImportTab
                       documents={session.records}
-                      type={type}
+                      type={typeSlug}
                       sourceId={sourceId}
                       label={label}
                       sourceSchema={sourceAdapter?.schema}
@@ -384,7 +392,7 @@ const ImportRecordsPage = ({
                       getFullDoc={getFullDoc}
                       detailRoot={activeDetailRoot}
                       label={label}
-                      type={type}
+                      type={typeSlug}
                       sourceId={sourceId}
                     />
                   ),
@@ -547,24 +555,24 @@ const ImportRecordsPage = ({
                               const document =
                                 reconciliation.action === ***REMOVED***merge***REMOVED***
                                   ? {
-                                    label: mergeIncomingNonEmpty(
-                                      existingDocument.label,
-                                      doc.label
-                                    ) as string,
-                                    description: mergeIncomingNonEmpty(
-                                      existingDocument.description,
-                                      doc.description
-                                    ) as string,
-                                    slug: mergeIncomingNonEmpty(
-                                      existingDocument.slug,
-                                      doc.slug
-                                    ) as string,
-                                    data: mergeIncomingNonEmpty(existingDocument.data, doc.data),
-                                    attrs: withImportProvenance(
-                                      mergeIncomingNonEmpty(existingDocument.attrs, doc.attrs),
-                                      doc.provenance
-                                    ),
-                                  }
+                                      label: mergeIncomingNonEmpty(
+                                        existingDocument.label,
+                                        doc.label
+                                      ) as string,
+                                      description: mergeIncomingNonEmpty(
+                                        existingDocument.description,
+                                        doc.description
+                                      ) as string,
+                                      slug: mergeIncomingNonEmpty(
+                                        existingDocument.slug,
+                                        doc.slug
+                                      ) as string,
+                                      data: mergeIncomingNonEmpty(existingDocument.data, doc.data),
+                                      attrs: withImportProvenance(
+                                        mergeIncomingNonEmpty(existingDocument.attrs, doc.attrs),
+                                        doc.provenance
+                                      ),
+                                    }
                                   : docToSave
                               await patchDocument({
                                 uuid: existingDocument.uuid,
@@ -588,10 +596,10 @@ const ImportRecordsPage = ({
                               result.status === ***REMOVED***fulfilled***REMOVED***
                                 ? { stage: ***REMOVED***imported***REMOVED*** }
                                 : {
-                                  stage: ***REMOVED***failed***REMOVED***,
-                                  error: error?.message,
-                                  errorKind: error?.kind,
-                                }
+                                    stage: ***REMOVED***failed***REMOVED***,
+                                    error: error?.message,
+                                    errorKind: error?.kind,
+                                  }
                             )
                           }}
                           onIgnoreConflict={(record) => setConflictAction(record, ***REMOVED***ignore***REMOVED***)}

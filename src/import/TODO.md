@@ -73,7 +73,7 @@
 - [ ] Keep inferred schemas editable before type creation.
 - [ ] Ensure newly created types and schemas are immediately available to the active session.
   - **Outside import:** reuse the existing object-type creation service/component if possible; changes under `src/manage/object_type` require regression checks for normal type creation.
-- [ ] Allow validation of all, selected, or sampled records.
+- [x] Allow validation of all, selected, or sampled records; keep Import blocked for records that have not been validated.
 - [ ] Update `@axdspub/axiom-ui-forms` `schemaHelpers.validateAgainstSchema` to return a consistent validation-error array (`[]` for valid values), update its TypeScript declaration, and add library tests for primitive and nested schema violations. After releasing that update, switch `oikos_schemas.test.ts` to the shared helper and remove the temporary direct `ajv` test dependency.
 - [x] Prevent invalid records from being imported by default.
 - [x] Allow users with appropriate permissions to explicitly include invalid records.
@@ -263,8 +263,10 @@ Suggested next step: should I move on to the CSV import adapter? Reply `yes` to 
 - [x] Run CSV records through the same reconciliation, review, and persistence phases as remote records.
 - [x] Derive filename-based type slugs with underscores to satisfy the database slug constraint.
 - [x] Add `public/test-metadata.csv` as a local UI verification fixture.
-- [ ] Allow multiple CSV files in one import session, treating each spreadsheet as a source row with its own type and mapping.
+- [x] Allow multiple CSV files in one import session, treating each spreadsheet as a source row with its own type and mapping. Each uploaded source uses a unique session ID while retaining its filename-derived object-type slug.
 - [ ] Support parent/child joins between uploaded CSV files using object-type rules with per-file overrides.
+  - [x] Add CSV adapter support for relationship rules and explicit join fields, with cross-source planner tests.
+  - [ ] Submit all uploaded CSV sources to one shared relationship plan and persistence phase.
 - [ ] Resolve multi-spreadsheet imports in dependency order so parent spreadsheets are loaded before related child spreadsheets.
 - [ ] Preserve cross-spreadsheet identity and relationship diagnostics when a parent file is missing, duplicated, or loaded out of order.
 - [ ] Add parser and adapter tests for quoted cells, duplicate/blank headers, dates, numbers, missing columns, large files, and malformed input. (Adapter coverage started; parser edge-case coverage remains.)
@@ -274,6 +276,8 @@ Suggested next step: should I move on to the CSV import adapter? Reply `yes` to 
 - Treat each uploaded file as a source row rather than opening a separate CSV-only workflow.
 - Infer mappings and types, showing only uncertain mappings for confirmation.
 - Reuse the standard records, validation, conflict, relationship, and review screens.
+- [ ] When CSV validation fails because of an incorrect first-step mapping, allow mapping edits and revalidation in the same view, or provide field-by-field guidance about the expected mapping.
+- [ ] Clean up the CSV preview layout for smaller and narrower browser windows; remove overlapping content and reduce the multiple nested vertical scrollbars.
 
 ### Completed item verification: Import All type setup dialog
 

@@ -19,6 +19,9 @@ export type ImportAllDiscoveryStatus = ***REMOVED***idle***REMOVED*** | ***REMOV
 export type ImportAllPreparationStatus = ***REMOVED***idle***REMOVED*** | ***REMOVED***loading***REMOVED*** | ***REMOVED***ready***REMOVED*** | ***REMOVED***error***REMOVED***
 export type ImportAllExecutionStatus = ***REMOVED***idle***REMOVED*** | ***REMOVED***loading***REMOVED*** | ***REMOVED***ready***REMOVED*** | ***REMOVED***error***REMOVED***
 
+export const IMPORT_ALL_EXECUTION_BATCH_SIZE = 10
+export const IMPORT_ALL_EXECUTION_DELAY_MS = 100
+
 export type ImportAllExecutionResult = {
   recordKey: string
   action?: ImportConflictAction
@@ -44,6 +47,8 @@ export type ImportAllSourcePlan = {
   preparationCompleted: number
   preparationTotal: number
   executionStatus: ImportAllExecutionStatus
+  executionCompleted: number
+  executionTotal: number
   defaultConflictAction: Exclude<ImportConflictAction, ***REMOVED***create***REMOVED***>
   conflictActions: Record<string, Exclude<ImportConflictAction, ***REMOVED***create***REMOVED***>>
   candidates: ImportCandidate[]
@@ -151,6 +156,8 @@ export const createImportAllSourcePlan = (source: ImportAllPlanSource): ImportAl
   preparationCompleted: 0,
   preparationTotal: 0,
   executionStatus: ***REMOVED***idle***REMOVED***,
+  executionCompleted: 0,
+  executionTotal: 0,
   defaultConflictAction: ***REMOVED***ignore***REMOVED***,
   conflictActions: {},
   candidates: [],
@@ -239,6 +246,9 @@ export const executeImportAllSource = async ({
   mergeStrategy,
   persistence,
   recordKeys,
+  batchSize = IMPORT_ALL_EXECUTION_BATCH_SIZE,
+  delayMsBetweenBatches = IMPORT_ALL_EXECUTION_DELAY_MS,
+  onProgress,
 }: {
   plan: ImportAllSourcePlan
   objectTypeUuid: string
@@ -246,6 +256,9 @@ export const executeImportAllSource = async ({
   mergeStrategy: ImportMergeStrategy
   persistence: ImportAllPersistence
   recordKeys?: ReadonlySet<string>
+  batchSize?: number
+  delayMsBetweenBatches?: number
+  onProgress?: (completed: number, total: number) => void
 }): Promise<ImportAllSourcePlan> => {
   console.log(***REMOVED***[Import All] document execution started***REMOVED***, {
     sourceId: plan.sourceId,
@@ -254,22 +267,42 @@ export const executeImportAllSource = async ({
     reconciliations: plan.reconciliations.length,
     objectTypeUuid,
   })
-  // Intentional breakpoint for live Import All execution diagnostics.
-  // eslint-disable-next-line no-debugger
-  debugger;
   const validationByKey = new Map(
     plan.validationResults.map((result) => [importAllRecordKey(result.record), result])
   )
   const results: ImportAllExecutionResult[] = []
+  const reconciliations = plan.reconciliations.filter((reconciliation) => {
+    const recordKey = importAllRecordKey(reconciliation.record)
+    return !recordKeys || recordKeys.has(recordKey)
+  })
+  const total = reconciliations.length
+  let completed = 0
 
-  for (const reconciliation of plan.reconciliations) {
+  const waitBetweenBatches = async () => {
+    if (delayMsBetweenBatches <= 0) return
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(resolve, delayMsBetweenBatches)
+      const abort = () => {
+        clearTimeout(timeout)
+        reject(new DOMException(***REMOVED***Execution cancelled***REMOVED***, ***REMOVED***AbortError***REMOVED***))
+      }
+      if (signal.aborted) {
+        abort()
+        return
+      }
+      signal.addEventListener(***REMOVED***abort***REMOVED***, abort, { once: true })
+      setTimeout(() => signal.removeEventListener(***REMOVED***abort***REMOVED***, abort), delayMsBetweenBatches)
+    })
+  }
+
+  const executeReconciliation = async (
+    reconciliation: ImportReconciliation
+  ): Promise<ImportAllExecutionResult> => {
     if (signal.aborted) throw new DOMException(***REMOVED***Execution cancelled***REMOVED***, ***REMOVED***AbortError***REMOVED***)
     const recordKey = importAllRecordKey(reconciliation.record)
-    if (recordKeys && !recordKeys.has(recordKey)) continue
     const validation = validationByKey.get(recordKey)
     if (!validation?.isValid || reconciliation.status === ***REMOVED***ambiguous***REMOVED***) {
-      results.push({ recordKey, status: ***REMOVED***blocked***REMOVED***, action: reconciliation.action })
-      continue
+      return { recordKey, status: ***REMOVED***blocked***REMOVED***, action: reconciliation.action }
     }
 
     const action =
@@ -287,13 +320,12 @@ export const executeImportAllSource = async ({
       existingUuid: reconciliation.existingDocuments[0]?.uuid,
     })
     if (action === ***REMOVED***ignore***REMOVED***) {
-      results.push({
+      return {
         recordKey,
         action,
         status: ***REMOVED***ignored***REMOVED***,
         documentUuid: reconciliation.existingDocuments[0]?.uuid,
-      })
-      continue
+      }
     }
 
     try {
@@ -323,17 +355,15 @@ export const executeImportAllSource = async ({
           slug: record.slug,
           objectTypeUuid,
         })
-        // Intentional breakpoint immediately before document creation.
-        // eslint-disable-next-line no-debugger
-        debugger;
         const created = await persistence.post(incomingDocument, signal)
-        results.push({ recordKey, action, status: ***REMOVED***imported***REMOVED***, documentUuid: created.uuid })
-      } else {
-        const existing = reconciliation.existingDocuments[0]
-        if (!existing) throw new Error(***REMOVED***Existing document was not found***REMOVED***)
-        const document =
-          action === ***REMOVED***merge***REMOVED***
-            ? {
+        return { recordKey, action, status: ***REMOVED***imported***REMOVED***, documentUuid: created.uuid }
+      }
+
+      const existing = reconciliation.existingDocuments[0]
+      if (!existing) throw new Error(***REMOVED***Existing document was not found***REMOVED***)
+      const document =
+        action === ***REMOVED***merge***REMOVED***
+          ? {
               label: mergeIncomingNonEmpty(existing.label, record.label) as string,
               description: mergeIncomingNonEmpty(
                 existing.description,
@@ -346,25 +376,43 @@ export const executeImportAllSource = async ({
                 record.provenance
               ),
             }
-            : incomingDocument
-        if (action === ***REMOVED***merge***REMOVED*** && mergeStrategy === ***REMOVED***postgrest-rpc***REMOVED***) {
-          await persistence.mergeRpc(existing.uuid, document, signal)
-        } else {
-          await persistence.patch(existing.uuid, document, signal)
-        }
-        results.push({ recordKey, action, status: ***REMOVED***imported***REMOVED***, documentUuid: existing.uuid })
+          : incomingDocument
+      if (action === ***REMOVED***merge***REMOVED*** && mergeStrategy === ***REMOVED***postgrest-rpc***REMOVED***) {
+        await persistence.mergeRpc(existing.uuid, document, signal)
+      } else {
+        await persistence.patch(existing.uuid, document, signal)
       }
+      return { recordKey, action, status: ***REMOVED***imported***REMOVED***, documentUuid: existing.uuid }
     } catch (error) {
-      results.push({
+      return {
         recordKey,
         action,
         status: ***REMOVED***failed***REMOVED***,
         error: error instanceof Error ? error.message : String(error),
-      })
+      }
     }
   }
 
-  return { ...plan, executionStatus: ***REMOVED***ready***REMOVED***, executionResults: results }
+  for (let start = 0; start < reconciliations.length; start += Math.max(1, batchSize)) {
+    const batch = reconciliations.slice(start, start + Math.max(1, batchSize))
+    const batchResults = await Promise.all(
+      batch.map(async (reconciliation) => {
+        const result = await executeReconciliation(reconciliation)
+        onProgress?.(++completed, total)
+        return result
+      })
+    )
+    results.push(...batchResults)
+    if (start + batch.length < reconciliations.length) await waitBetweenBatches()
+  }
+
+  return {
+    ...plan,
+    executionStatus: ***REMOVED***ready***REMOVED***,
+    executionCompleted: total,
+    executionTotal: total,
+    executionResults: results,
+  }
 }
 
 export const discoverImportAllSource = async ({

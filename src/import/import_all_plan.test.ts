@@ -41,7 +41,9 @@ describe(***REMOVED***Import All discovery plan***REMOVED***, () => {
       ...createImportAllSourcePlan(configuredSource),
       type: ***REMOVED***children***REMOVED***,
       records: [record],
-      executionResults: [{ recordKey: ***REMOVED***source-a:1***REMOVED***, status: ***REMOVED***imported***REMOVED*** as const, documentUuid: ***REMOVED***document-1***REMOVED*** }],
+      executionResults: [
+        { recordKey: ***REMOVED***source-a:1***REMOVED***, status: ***REMOVED***imported***REMOVED*** as const, documentUuid: ***REMOVED***document-1***REMOVED*** },
+      ],
     }
 
     const documentUuids = collectImportDocumentUuids({
@@ -68,12 +70,14 @@ describe(***REMOVED***Import All discovery plan***REMOVED***, () => {
       ...createImportAllSourcePlan(configuredSource),
       type: ***REMOVED***children***REMOVED***,
       records: [record],
-      reconciliations: [{
-        record,
-        status: ***REMOVED***exact***REMOVED*** as const,
-        action: ***REMOVED***ignore***REMOVED*** as const,
-        existingDocuments: [{ uuid: ***REMOVED***existing-document-1***REMOVED*** } as IDocument],
-      }],
+      reconciliations: [
+        {
+          record,
+          status: ***REMOVED***exact***REMOVED*** as const,
+          action: ***REMOVED***ignore***REMOVED*** as const,
+          existingDocuments: [{ uuid: ***REMOVED***existing-document-1***REMOVED*** } as IDocument],
+        },
+      ],
       executionResults: [{ recordKey: ***REMOVED***source-a:1***REMOVED***, status: ***REMOVED***ignored***REMOVED*** as const }],
     }
 
@@ -83,6 +87,97 @@ describe(***REMOVED***Import All discovery plan***REMOVED***, () => {
     })
 
     expect(documentUuids.get(***REMOVED***child-type:source-a:1***REMOVED***)).toBe(***REMOVED***existing-document-1***REMOVED***)
+  })
+
+  it.each([
+    [***REMOVED***both documents are new***REMOVED***, false, false],
+    [***REMOVED***the parent already exists***REMOVED***, true, false],
+    [***REMOVED***the child already exists***REMOVED***, false, true],
+    [***REMOVED***both documents already exist***REMOVED***, true, true],
+  ])(***REMOVED***collects UUIDs when %s***REMOVED***, (_caseName, parentExists, childExists) => {
+    const parentSource = source()
+    const childSource = source()
+    const parentRecord = {
+      uuid: ***REMOVED***parent-1***REMOVED***,
+      slug: ***REMOVED***parent-1***REMOVED***,
+      label: ***REMOVED***Parent***REMOVED***,
+      data: {},
+      attrs: {},
+      description: ***REMOVED******REMOVED***,
+      sourceData: {},
+      provenance: { sourceId: ***REMOVED***parent-source***REMOVED***, externalId: ***REMOVED***parent-1***REMOVED*** },
+    }
+    const childRecord = {
+      uuid: ***REMOVED***child-1***REMOVED***,
+      slug: ***REMOVED***child-1***REMOVED***,
+      label: ***REMOVED***Child***REMOVED***,
+      data: {},
+      attrs: {},
+      description: ***REMOVED******REMOVED***,
+      sourceData: {},
+      provenance: { sourceId: ***REMOVED***child-source***REMOVED***, externalId: ***REMOVED***child-1***REMOVED*** },
+    }
+    const parentPlan = {
+      ...createImportAllSourcePlan({ ...parentSource, type: ***REMOVED***parents***REMOVED*** }),
+      records: [parentRecord],
+      reconciliations: parentExists
+        ? [
+            {
+              record: parentRecord,
+              status: ***REMOVED***exact***REMOVED*** as const,
+              action: ***REMOVED***ignore***REMOVED*** as const,
+              existingDocuments: [{ uuid: ***REMOVED***existing-parent***REMOVED*** } as IDocument],
+            },
+          ]
+        : [],
+      executionResults: parentExists
+        ? []
+        : [
+            {
+              recordKey: ***REMOVED***parent-source:parent-1***REMOVED***,
+              status: ***REMOVED***imported***REMOVED*** as const,
+              documentUuid: ***REMOVED***new-parent***REMOVED***,
+            },
+          ],
+    }
+    const childPlan = {
+      ...createImportAllSourcePlan({ ...childSource, type: ***REMOVED***children***REMOVED*** }),
+      records: [childRecord],
+      reconciliations: childExists
+        ? [
+            {
+              record: childRecord,
+              status: ***REMOVED***exact***REMOVED*** as const,
+              action: ***REMOVED***ignore***REMOVED*** as const,
+              existingDocuments: [{ uuid: ***REMOVED***existing-child***REMOVED*** } as IDocument],
+            },
+          ]
+        : [],
+      executionResults: childExists
+        ? []
+        : [
+            {
+              recordKey: ***REMOVED***child-source:child-1***REMOVED***,
+              status: ***REMOVED***imported***REMOVED*** as const,
+              documentUuid: ***REMOVED***new-child***REMOVED***,
+            },
+          ],
+    }
+
+    const documentUuids = collectImportDocumentUuids({
+      executedPlans: [childPlan, parentPlan],
+      objectTypesBySlug: {
+        parents: { uuid: ***REMOVED***parent-type***REMOVED***, slug: ***REMOVED***parents***REMOVED*** },
+        children: { uuid: ***REMOVED***child-type***REMOVED***, slug: ***REMOVED***children***REMOVED*** },
+      },
+    })
+
+    expect(documentUuids.get(***REMOVED***parent-type:parent-source:parent-1***REMOVED***)).toBe(
+      parentExists ? ***REMOVED***existing-parent***REMOVED*** : ***REMOVED***new-parent***REMOVED***
+    )
+    expect(documentUuids.get(***REMOVED***child-type:child-source:child-1***REMOVED***)).toBe(
+      childExists ? ***REMOVED***existing-child***REMOVED*** : ***REMOVED***new-child***REMOVED***
+    )
   })
 
   it(***REMOVED***collects source, validation, document, and relationship errors***REMOVED***, () => {
@@ -451,6 +546,62 @@ describe(***REMOVED***Import All discovery plan***REMOVED***, () => {
     expect(post.mock.calls[0][0]).toEqual(expect.objectContaining({ slug: ***REMOVED***record-2***REMOVED*** }))
     expect(executed.executionResults).toHaveLength(1)
     expect(executed.executionResults[0].recordKey).toBe(importAllRecordKey(records[1]))
+  })
+
+  it(***REMOVED***batches document writes and reports progress for each settled record***REMOVED***, async () => {
+    const configuredSource = source()
+    const records = [***REMOVED***1***REMOVED***, ***REMOVED***2***REMOVED***, ***REMOVED***3***REMOVED***].map((externalId) => ({
+      uuid: externalId,
+      slug: `record-${externalId}`,
+      label: externalId,
+      data: {},
+      attrs: {},
+      description: ***REMOVED******REMOVED***,
+      sourceData: {},
+      provenance: { sourceId: ***REMOVED***source-a***REMOVED***, externalId },
+    }))
+    const plan = {
+      ...createImportAllSourcePlan(configuredSource),
+      records,
+      validationResults: records.map((record) => ({ record, isValid: true, errors: [] })),
+      reconciliations: records.map((record) => ({
+        record,
+        status: ***REMOVED***new***REMOVED*** as const,
+        action: ***REMOVED***create***REMOVED*** as const,
+        existingDocuments: [],
+      })),
+    }
+    let activeWrites = 0
+    let maximumActiveWrites = 0
+    const post = vi.fn(async () => {
+      activeWrites += 1
+      maximumActiveWrites = Math.max(maximumActiveWrites, activeWrites)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      activeWrites -= 1
+      return { uuid: ***REMOVED***created-uuid***REMOVED*** } as IDocument
+    })
+    const progress: number[] = []
+
+    const executed = await executeImportAllSource({
+      plan,
+      objectTypeUuid: ***REMOVED***type-1***REMOVED***,
+      signal: new AbortController().signal,
+      mergeStrategy: ***REMOVED***client-patch***REMOVED***,
+      batchSize: 2,
+      delayMsBetweenBatches: 0,
+      onProgress: (completed) => progress.push(completed),
+      persistence: {
+        post,
+        patch: vi.fn(),
+        mergeRpc: vi.fn(),
+        fetchBySlug: vi.fn().mockResolvedValue(undefined),
+      },
+    })
+
+    expect(maximumActiveWrites).toBe(2)
+    expect(post).toHaveBeenCalledTimes(3)
+    expect(progress).toEqual([1, 2, 3])
+    expect(executed).toMatchObject({ executionCompleted: 3, executionTotal: 3 })
   })
 
   it(***REMOVED***refreshes reconciliation only for selected retry records***REMOVED***, async () => {

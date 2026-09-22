@@ -112,7 +112,9 @@ const ImportActivity = ({ plan }: { plan: ImportAllSourcePlan }): ReactElement =
             const reconciliation = reconciliationByKey.get(key)
             const execution = executionByKey.get(key)
             const uuid = execution?.documentUuid ?? reconciliation?.existingDocuments[0]?.uuid
-            const documentLink = uuid ?? (execution?.status === ***REMOVED***failed***REMOVED*** ? record?.slug ?? candidate.slug : undefined)
+            const documentLink =
+              uuid ??
+              (execution?.status === ***REMOVED***failed***REMOVED*** ? (record?.slug ?? candidate.slug) : undefined)
             const status = execution
               ? execution.status
               : validation && !validation.isValid
@@ -129,7 +131,10 @@ const ImportActivity = ({ plan }: { plan: ImportAllSourcePlan }): ReactElement =
                 <div className="flex items-start justify-between gap-2 text-xs text-gray-600">
                   <span>{status}</span>
                   {documentLink && execution && execution.status !== ***REMOVED***blocked***REMOVED*** && (
-                    <Link className="shrink-0 text-blue-700 hover:underline" to={`/document/edit/${documentLink}`}>
+                    <Link
+                      className="shrink-0 text-blue-700 hover:underline"
+                      to={`/document/edit/${documentLink}`}
+                    >
                       Open document
                     </Link>
                   )}
@@ -344,10 +349,10 @@ const ImportAllPage = (): ReactElement => {
           const objectType = context.object_type_by_slug[plan.type]
           return objectType
             ? plan.records.map((record) => ({
-              record,
-              objectTypeUuid: objectType.uuid,
-              objectTypeSlug: objectType.slug,
-            }))
+                record,
+                objectTypeUuid: objectType.uuid,
+                objectTypeSlug: objectType.slug,
+              }))
             : []
         }),
       }),
@@ -377,6 +382,13 @@ const ImportAllPage = (): ReactElement => {
       sources: preparingPlans.length,
       completed: preparingPlans.reduce((total, plan) => total + plan.preparationCompleted, 0),
       total: preparingPlans.reduce((total, plan) => total + plan.preparationTotal, 0),
+    }
+  }, [planList])
+  const executionProgress = useMemo(() => {
+    const executingPlans = planList.filter(({ executionTotal }) => executionTotal > 0)
+    return {
+      completed: executingPlans.reduce((total, plan) => total + plan.executionCompleted, 0),
+      total: executingPlans.reduce((total, plan) => total + plan.executionTotal, 0),
     }
   }, [planList])
   const missingTypes = enabledPlans.filter((plan) => !context.object_type_by_slug[plan.type])
@@ -490,15 +502,15 @@ const ImportAllPage = (): ReactElement => {
           sourceId,
           plan.enabled
             ? {
-              ...plan,
-              status: ***REMOVED***loading***REMOVED***,
-              preparationStatus: ***REMOVED***idle***REMOVED***,
-              candidates: [],
-              records: [],
-              validationResults: [],
-              reconciliations: [],
-              error: undefined,
-            }
+                ...plan,
+                status: ***REMOVED***loading***REMOVED***,
+                preparationStatus: ***REMOVED***idle***REMOVED***,
+                candidates: [],
+                records: [],
+                validationResults: [],
+                reconciliations: [],
+                error: undefined,
+              }
             : plan,
         ])
       )
@@ -540,11 +552,11 @@ const ImportAllPage = (): ReactElement => {
           sourceId,
           plan.status === ***REMOVED***loading***REMOVED*** || plan.preparationStatus === ***REMOVED***loading***REMOVED***
             ? {
-              ...plan,
-              status: plan.status === ***REMOVED***loading***REMOVED*** ? ***REMOVED***idle***REMOVED*** : plan.status,
-              preparationStatus:
-                plan.preparationStatus === ***REMOVED***loading***REMOVED*** ? ***REMOVED***idle***REMOVED*** : plan.preparationStatus,
-            }
+                ...plan,
+                status: plan.status === ***REMOVED***loading***REMOVED*** ? ***REMOVED***idle***REMOVED*** : plan.status,
+                preparationStatus:
+                  plan.preparationStatus === ***REMOVED***loading***REMOVED*** ? ***REMOVED***idle***REMOVED*** : plan.preparationStatus,
+              }
             : plan,
         ])
       )
@@ -578,10 +590,10 @@ const ImportAllPage = (): ReactElement => {
               sourceId,
               plan.enabled && plan.status === ***REMOVED***ready***REMOVED***
                 ? {
-                  ...plan,
-                  preparationStatus: ***REMOVED***error***REMOVED***,
-                  error: `Could not refresh object types and schemas: ${error instanceof Error ? error.message : String(error)}`,
-                }
+                    ...plan,
+                    preparationStatus: ***REMOVED***error***REMOVED***,
+                    error: `Could not refresh object types and schemas: ${error instanceof Error ? error.message : String(error)}`,
+                  }
                 : plan,
             ])
           )
@@ -600,14 +612,14 @@ const ImportAllPage = (): ReactElement => {
           sourceId,
           plan.enabled && plan.status === ***REMOVED***ready***REMOVED***
             ? {
-              ...plan,
-              preparationStatus: ***REMOVED***loading***REMOVED***,
-              preparationCompleted: 0,
-              preparationTotal: plan.candidates.length,
-              executionStatus: ***REMOVED***idle***REMOVED***,
-              executionResults: [],
-              error: undefined,
-            }
+                ...plan,
+                preparationStatus: ***REMOVED***loading***REMOVED***,
+                preparationCompleted: 0,
+                preparationTotal: plan.candidates.length,
+                executionStatus: ***REMOVED***idle***REMOVED***,
+                executionResults: [],
+                error: undefined,
+              }
             : plan,
         ])
       )
@@ -681,9 +693,16 @@ const ImportAllPage = (): ReactElement => {
         Object.entries(current).map(([sourceId, plan]) => [
           sourceId,
           plan.enabled &&
-            plan.preparationStatus === ***REMOVED***ready***REMOVED*** &&
-            (!recordKeysBySource || recordKeysBySource[plan.sourceId] !== undefined)
-            ? { ...plan, executionStatus: ***REMOVED***loading***REMOVED***, error: undefined }
+          plan.preparationStatus === ***REMOVED***ready***REMOVED*** &&
+          (!recordKeysBySource || recordKeysBySource[plan.sourceId] !== undefined)
+            ? {
+                ...plan,
+                executionStatus: ***REMOVED***loading***REMOVED***,
+                executionCompleted: 0,
+                executionTotal:
+                  recordKeysBySource?.[plan.sourceId]?.size ?? plan.reconciliations.length,
+                error: undefined,
+              }
             : plan,
         ])
       )
@@ -705,16 +724,18 @@ const ImportAllPage = (): ReactElement => {
         try {
           const recordKeys = recordKeysBySource?.[plan.sourceId]
           const needsReconciliation = plan.reconciliations.length !== plan.records.length
-          const executionPlan = recordKeys || needsReconciliation
-            ? await refreshImportAllSourceReconciliation({
-              plan,
-              recordKeys: recordKeys ?? new Set(plan.records.map((record) => importAllRecordKey(record))),
-              objectTypeUuid: objectType.uuid,
-              token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
-              signal: controller.signal,
-              fetchExisting: fetchExistingImportDocuments,
-            })
-            : plan
+          const executionPlan =
+            recordKeys || needsReconciliation
+              ? await refreshImportAllSourceReconciliation({
+                  plan,
+                  recordKeys:
+                    recordKeys ?? new Set(plan.records.map((record) => importAllRecordKey(record))),
+                  objectTypeUuid: objectType.uuid,
+                  token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
+                  signal: controller.signal,
+                  fetchExisting: fetchExistingImportDocuments,
+                })
+              : plan
           const executed = await executeImportAllSource({
             plan: executionPlan,
             objectTypeUuid: objectType.uuid,
@@ -741,6 +762,14 @@ const ImportAllPage = (): ReactElement => {
                   token: auth.user?.access_token ?? ***REMOVED******REMOVED***,
                   signal,
                 }),
+            },
+            onProgress: (completed, total) => {
+              if (!controller.signal.aborted) {
+                updatePlan(plan.sourceId, {
+                  executionCompleted: completed,
+                  executionTotal: total,
+                })
+              }
             },
           })
           executedPlans.push(executed)
@@ -787,7 +816,9 @@ const ImportAllPage = (): ReactElement => {
         const documentsBySlug = new Map(documents.map((document) => [document.slug, document]))
         const documentsByExternalId = new Map(
           documents
-            .map((document) => [getDocumentImportProvenance(document)?.external_id, document] as const)
+            .map(
+              (document) => [getDocumentImportProvenance(document)?.external_id, document] as const
+            )
             .filter(([externalId]) => externalId !== undefined)
         )
         for (const record of executed.records) {
@@ -882,6 +913,11 @@ const ImportAllPage = (): ReactElement => {
               <span className="text-blue-700">
                 Preparing {preparationProgress.completed} of {preparationProgress.total} records
                 across {preparationProgress.sources} sources
+              </span>
+            )}
+            {isExecuting && executionProgress.total > 0 && (
+              <span className="text-blue-700">
+                Importing {executionProgress.completed} of {executionProgress.total} records
               </span>
             )}
           </div>
@@ -1027,6 +1063,14 @@ const ImportAllPage = (): ReactElement => {
           <div className="mt-2 text-sm text-red-700" role="alert">
             Could not create missing types: {missingTypeCreationError}
           </div>
+        )}
+        {isExecuting && executionProgress.total > 0 && (
+          <progress
+            className="mt-3 h-2 w-full accent-blue-600"
+            max={executionProgress.total}
+            value={executionProgress.completed}
+            aria-label="Overall import progress"
+          />
         )}
       </section>
 
@@ -1248,91 +1292,102 @@ const ImportAllPage = (): ReactElement => {
                         },
                         ...(hasChangedRecords
                           ? [
-                            {
-                              id: ***REMOVED***changed***REMOVED***,
-                              label: `Changed records (${plan.reconciliations.filter(({ status }) => status === ***REMOVED***conflicting***REMOVED***).length})`,
-                              content: (
-                                <div className="border bg-white p-2 text-sm shadow-sm">
-                                  <div className="flex justify-end border-b px-1 pb-2">
-                                    <select
-                                      aria-label="Apply conflict action to all changed records"
-                                      defaultValue=""
-                                      onChange={(event) => {
-                                        const action = event.target.value as ***REMOVED***ignore***REMOVED*** | ***REMOVED***overwrite***REMOVED*** | ***REMOVED***merge***REMOVED***
-                                        if (!action) return
-                                        const conflictActions = Object.fromEntries(
-                                          plan.reconciliations
-                                            .filter(({ status }) => status === ***REMOVED***conflicting***REMOVED***)
-                                            .map(({ record }) => [importAllRecordKey(record), action])
-                                        )
-                                        updatePlan(plan.sourceId, {
-                                          conflictActions,
-                                          executionStatus: ***REMOVED***idle***REMOVED***,
-                                          executionResults: [],
-                                        })
-                                        event.target.value = ***REMOVED******REMOVED***
+                              {
+                                id: ***REMOVED***changed***REMOVED***,
+                                label: `Changed records (${plan.reconciliations.filter(({ status }) => status === ***REMOVED***conflicting***REMOVED***).length})`,
+                                content: (
+                                  <div className="border bg-white p-2 text-sm shadow-sm">
+                                    <div className="flex justify-end border-b px-1 pb-2">
+                                      <select
+                                        aria-label="Apply conflict action to all changed records"
+                                        defaultValue=""
+                                        onChange={(event) => {
+                                          const action = event.target.value as
+                                            ***REMOVED***ignore***REMOVED*** | ***REMOVED***overwrite***REMOVED*** | ***REMOVED***merge***REMOVED***
+                                          if (!action) return
+                                          const conflictActions = Object.fromEntries(
+                                            plan.reconciliations
+                                              .filter(({ status }) => status === ***REMOVED***conflicting***REMOVED***)
+                                              .map(({ record }) => [
+                                                importAllRecordKey(record),
+                                                action,
+                                              ])
+                                          )
+                                          updatePlan(plan.sourceId, {
+                                            conflictActions,
+                                            executionStatus: ***REMOVED***idle***REMOVED***,
+                                            executionResults: [],
+                                          })
+                                          event.target.value = ***REMOVED******REMOVED***
+                                        }}
+                                        className="ml-auto border px-2 py-1"
+                                      >
+                                        <option value="">Apply to all...</option>
+                                        <option value="ignore">Ignore all</option>
+                                        <option value="overwrite">Overwrite all</option>
+                                        <option value="merge">Merge all</option>
+                                      </select>
+                                    </div>
+                                    <TableVirtuoso
+                                      className="w-full overflow-y-auto"
+                                      style={{ height: 280 }}
+                                      components={{
+                                        Table: (props) => (
+                                          <table {...props} className="w-full table-fixed" />
+                                        ),
                                       }}
-                                      className="ml-auto border px-2 py-1"
-                                    >
-                                      <option value="">Apply to all...</option>
-                                      <option value="ignore">Ignore all</option>
-                                      <option value="overwrite">Overwrite all</option>
-                                      <option value="merge">Merge all</option>
-                                    </select>
+                                      data={plan.reconciliations.filter(
+                                        ({ status }) => status === ***REMOVED***conflicting***REMOVED***
+                                      )}
+                                      itemContent={(_, item) => {
+                                        const key = importAllRecordKey(item.record)
+                                        return (
+                                          <td className="w-full p-0">
+                                            <label className="flex w-full items-center gap-2 border-b px-2 py-1.5">
+                                              <span className="min-w-0 flex-1 truncate">
+                                                {item.existingDocuments[0]?.uuid ? (
+                                                  <Link
+                                                    className="text-blue-700 hover:underline"
+                                                    to={`/document/edit/${item.existingDocuments[0].uuid}`}
+                                                  >
+                                                    {item.record.label}
+                                                  </Link>
+                                                ) : (
+                                                  item.record.label
+                                                )}
+                                              </span>
+                                              <select
+                                                aria-label={`Conflict action for ${item.record.label}`}
+                                                value={
+                                                  plan.conflictActions[key] ??
+                                                  plan.defaultConflictAction
+                                                }
+                                                onChange={(event) =>
+                                                  updatePlan(plan.sourceId, {
+                                                    conflictActions: {
+                                                      ...plan.conflictActions,
+                                                      [key]: event.target
+                                                        .value as typeof plan.defaultConflictAction,
+                                                    },
+                                                    executionStatus: ***REMOVED***idle***REMOVED***,
+                                                    executionResults: [],
+                                                  })
+                                                }
+                                                className="ml-auto shrink-0 border px-2 py-1"
+                                              >
+                                                <option value="ignore">Ignore</option>
+                                                <option value="overwrite">Overwrite</option>
+                                                <option value="merge">Merge</option>
+                                              </select>
+                                            </label>
+                                          </td>
+                                        )
+                                      }}
+                                    />
                                   </div>
-                                  <TableVirtuoso
-                                    className="w-full overflow-y-auto"
-                                    style={{ height: 280 }}
-                                    components={{
-                                      Table: (props) => <table {...props} className="w-full table-fixed" />,
-                                    }}
-                                    data={plan.reconciliations.filter(({ status }) => status === ***REMOVED***conflicting***REMOVED***)}
-                                    itemContent={(_, item) => {
-                                      const key = importAllRecordKey(item.record)
-                                      return (
-                                        <td className="w-full p-0">
-                                          <label className="flex w-full items-center gap-2 border-b px-2 py-1.5">
-                                            <span className="min-w-0 flex-1 truncate">
-                                              {item.existingDocuments[0]?.uuid ? (
-                                                <Link
-                                                  className="text-blue-700 hover:underline"
-                                                  to={`/document/edit/${item.existingDocuments[0].uuid}`}
-                                                >
-                                                  {item.record.label}
-                                                </Link>
-                                              ) : (
-                                                item.record.label
-                                              )}
-                                            </span>
-                                            <select
-                                              aria-label={`Conflict action for ${item.record.label}`}
-                                              value={plan.conflictActions[key] ?? plan.defaultConflictAction}
-                                              onChange={(event) =>
-                                                updatePlan(plan.sourceId, {
-                                                  conflictActions: {
-                                                    ...plan.conflictActions,
-                                                    [key]: event.target
-                                                      .value as typeof plan.defaultConflictAction,
-                                                  },
-                                                  executionStatus: ***REMOVED***idle***REMOVED***,
-                                                  executionResults: [],
-                                                })
-                                              }
-                                              className="ml-auto shrink-0 border px-2 py-1"
-                                            >
-                                              <option value="ignore">Ignore</option>
-                                              <option value="overwrite">Overwrite</option>
-                                              <option value="merge">Merge</option>
-                                            </select>
-                                          </label>
-                                        </td>
-                                      )
-                                    }}
-                                  />
-                                </div>
-                              ),
-                            },
-                          ]
+                                ),
+                              },
+                            ]
                           : []),
                       ]}
                     />
@@ -1342,6 +1397,19 @@ const ImportAllPage = (): ReactElement => {
                 {plan.executionStatus !== ***REMOVED***idle***REMOVED*** && (
                   <div className="mt-3 flex flex-wrap gap-3 text-sm">
                     <span>Execution: {plan.executionStatus}</span>
+                    {plan.executionTotal > 0 && (
+                      <span className="flex min-w-52 flex-1 items-center gap-2">
+                        <progress
+                          className="h-2 min-w-32 flex-1 accent-blue-600"
+                          max={plan.executionTotal}
+                          value={plan.executionCompleted}
+                          aria-label={`${plan.label} import progress`}
+                        />
+                        <span>
+                          {plan.executionCompleted} of {plan.executionTotal}
+                        </span>
+                      </span>
+                    )}
                     {plan.executionResults.length > 0 && (
                       <>
                         <span>

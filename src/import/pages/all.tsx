@@ -578,10 +578,10 @@ const ImportAllPage = (): ReactElement => {
               sourceId,
               plan.enabled && plan.status === 'ready'
                 ? {
-                    ...plan,
-                    preparationStatus: 'error',
-                    error: `Could not refresh object types and schemas: ${error instanceof Error ? error.message : String(error)}`,
-                  }
+                  ...plan,
+                  preparationStatus: 'error',
+                  error: `Could not refresh object types and schemas: ${error instanceof Error ? error.message : String(error)}`,
+                }
                 : plan,
             ])
           )

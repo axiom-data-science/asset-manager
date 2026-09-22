@@ -102,13 +102,13 @@ export const oikosVectorLayers = async ({ url, signal }: { url: string, signal?:
     })
     return layerGroups.flatMap(item => item.source.layers
         .filter(layer => layer.type === 'VECTOR')
-        .map(layer => ({ layer, layerGroupId: item.id })))
-        .map(({ layer, layerGroupId }) => {
+        .map(layer => ({ layer, layer_group_id: item.id })))
+        .map(({ layer, layer_group_id }) => {
             return {
                 slug: `${layer.id}`,
                 uuid: layer.uuid,
                 label: layer.label,
-                data: { ...layer, layerGroupId }
+                data: { ...layer, layer_group_id }
             }
         })
 }
@@ -215,35 +215,14 @@ export const oikosLayer = async ({ doc, serviceRoot = OIKOS_URL_ROOT, signal }: 
         description: layer.description ?? '',
         data: {
             ...layer,
-                        ...('layer_group_id' in discoveredData
-                                ? { layer_group_id: discoveredData.layer_group_id }
-                                : 'layerGroupId' in discoveredData
-                                    ? { layerGroupId: discoveredData.layerGroupId }
-                  : {}),
+            ...('layer_group_id' in discoveredData
+                ? { layer_group_id: discoveredData.layer_group_id }
+                : {}),
         },
         attrs: {}
     }
 
 
-    /* const uuid = doc.uuid
-    if (!uuid && !url) throw new Error('Must provide either uuid or url')
-    const u = url || `${serviceRoot}/layer?uuid=${uuid}`
-    const j = await (await fetch(u, {
-        signal, headers: {
-            'content-type': 'application/json',
-            accept: 'application/json'
-        }
-    })).json()
-    return {
-        slug: doc.slug,
-        label: j.label,
-        description: j.description,
-        data: {
-            ...j,
-            ...('layerGroupId' in doc.data ? { layerGroupId: doc.data.layerGroupId } : {}),
-        },
-        attrs: {}
-    } */
 }
 
 export const oikosLayerGroup = async ({ doc, serviceRoot = OIKOS_URL_ROOT, signal }: { doc: IDocumentImport, url?: string, serviceRoot?: string, signal?: AbortSignal }): Promise<IFullDocForImport> => {

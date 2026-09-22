@@ -37,7 +37,7 @@ describe('Oikos vector layer imports', () => {
         const candidates = await oikosVectorLayers({ url: 'https://example.test/search' })
         const record = await oikosLayer({ doc: candidates[0], serviceRoot: 'https://example.test' })
 
-        expect(candidates[0].data).toMatchObject({ id: 42, layerGroupId: 'group-17' })
-        expect(record.data).toMatchObject({ label: 'Layer 42', layerGroupId: 'group-17' })
+        expect(candidates[0].data).toMatchObject({ id: 42, layer_group_id: 'group-17' })
+        expect(record.data).toMatchObject({ label: 'Layer 42', layer_group_id: 'group-17' })
     })
 })

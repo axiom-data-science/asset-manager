@@ -120,6 +120,33 @@ describe('Import relationship planning', () => {
     expect(plans[0]).toMatchObject({ status: 'ready', predicate: 'belongs_to' })
   })
 
+  it('joins parent and child records from different CSV source IDs', () => {
+    const parent = candidate('departments.csv-1', 'department-1', 'department-type', 'departments', {
+      code: 'D-1',
+    })
+    const child = candidate('assets.csv-2', 'asset-1', 'asset-type', 'assets', {
+      department_code: 'D-1',
+    })
+
+    const plans = planImportRelationships({
+      parentObjectTypes: new Map([['department-type', objectType('department-type', 'departments', [])]]),
+      candidates: [parent, child],
+      relationshipRules: [{
+        parentObjectTypeSlug: 'departments',
+        childObjectTypeSlug: 'assets',
+        parentMatchField: 'code',
+        childMatchField: 'department_code',
+        predicate: 'belongs_to',
+      }],
+    })
+
+    expect(plans).toMatchObject([{
+      status: 'ready',
+      parent: { record: { provenance: { sourceId: 'departments.csv-1' } } },
+      child: { record: { provenance: { sourceId: 'assets.csv-2' } } },
+    }])
+  })
+
   it('deduplicates equivalent backend and adapter relationship rules', () => {
     const parent = candidate('source', 'parent-1', 'parent-type', 'parents', { code: 'A-1' })
     const child = candidate('source', 'child-1', 'child-type', 'children', { parentCode: 'A-1' })

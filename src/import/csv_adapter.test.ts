@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   createCSVImportAdapter,
   inferCSVImportMapping,
+  isCSVImportMappingComplete,
   csvFileNameToTypeLabel,
   csvFileNameToTypeSlug,
 } from './csv_adapter'
@@ -21,6 +22,14 @@ describe('createCSVImportAdapter', () => {
     expect(csvFileNameToTypeSlug('Test Metadata 2026.csv')).toBe('test_metadata_2026')
     expect(csvFileNameToTypeLabel('Test Metadata 2026.csv')).toBe('Test Metadata 2026')
     expect(csvFileNameToTypeSlug('.csv')).toBe('csv-import')
+  })
+
+  it('reports whether every CSV header is mapped', () => {
+    const headers = ['id', 'name', 'category']
+    const mapping = inferCSVImportMapping(headers)
+
+    expect(isCSVImportMappingComplete(headers, mapping)).toBe(true)
+    expect(isCSVImportMappingComplete(headers, { ...mapping, dataColumns: [] })).toBe(false)
   })
 
   it('discovers rows with stable provenance and loads canonical records', async () => {
@@ -52,6 +61,33 @@ describe('createCSVImportAdapter', () => {
       sourceData: candidates[0].data,
       provenance: candidates[0].provenance,
     })
+  })
+
+  it('forwards relationship rules and preserves configured join fields', async () => {
+    const relationshipRules = [{
+      parentObjectTypeSlug: 'departments',
+      childObjectTypeSlug: 'assets',
+      parentMatchField: 'code',
+      childMatchField: 'department_code',
+      predicate: 'belongs_to',
+    }]
+    const adapter = createCSVImportAdapter({
+      id: 'assets-source-1',
+      text: `id,label,department_code
+    asset-1,Asset One,D-1`,
+      mapping: { externalId: 'id', label: 'label' },
+      relationshipRules,
+      relationshipFields: ['department_code'],
+    })
+
+    const [candidate] = await adapter.discover({
+      url: adapter.defaultImportUrl,
+      signal: new AbortController().signal,
+    })
+    const record = await adapter.load({ candidate })
+
+    expect(adapter.relationshipRules).toEqual(relationshipRules)
+    expect(record.data).toEqual({ department_code: 'D-1' })
   })
 
   it('falls back to row identity and a readable label and slug', async () => {

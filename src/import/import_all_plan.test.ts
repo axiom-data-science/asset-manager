@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   createImportAllSourcePlan,
+  collectImportDocumentUuids,
   collectImportAllErrors,
   discoverImportAllSource,
   executeImportAllSource,
@@ -24,6 +25,66 @@ const source = (discover = vi.fn().mockResolvedValue([])): ImportAllPlanSource =
 })
 
 describe('Import All discovery plan', () => {
+  it('collects relationship document UUIDs from execution results', () => {
+    const configuredSource = source()
+    const record = {
+      uuid: '1',
+      slug: 'one',
+      label: 'One',
+      data: {},
+      attrs: {},
+      description: '',
+      sourceData: {},
+      provenance: { sourceId: 'source-a', externalId: '1' },
+    }
+    const plan = {
+      ...createImportAllSourcePlan(configuredSource),
+      type: 'children',
+      records: [record],
+      executionResults: [{ recordKey: 'source-a:1', status: 'imported' as const, documentUuid: 'document-1' }],
+    }
+
+    const documentUuids = collectImportDocumentUuids({
+      executedPlans: [plan],
+      objectTypesBySlug: { children: { uuid: 'child-type', slug: 'children' } },
+    })
+
+    expect(documentUuids.get('child-type:source-a:1')).toBe('document-1')
+  })
+
+  it('collects existing UUIDs even when execution results are ignored', () => {
+    const configuredSource = source()
+    const record = {
+      uuid: '1',
+      slug: 'one',
+      label: 'One',
+      data: {},
+      attrs: {},
+      description: '',
+      sourceData: {},
+      provenance: { sourceId: 'source-a', externalId: '1' },
+    }
+    const plan = {
+      ...createImportAllSourcePlan(configuredSource),
+      type: 'children',
+      records: [record],
+      reconciliations: [{
+        record,
+        status: 'exact' as const,
+        action: 'ignore' as const,
+        existingDocuments: [{ uuid: 'existing-document-1' } as IDocument],
+      }],
+      executionResults: [{ recordKey: 'source-a:1', status: 'ignored' as const }],
+    }
+
+    const documentUuids = collectImportDocumentUuids({
+      executedPlans: [plan],
+      objectTypesBySlug: { children: { uuid: 'child-type', slug: 'children' } },
+    })
+
+    expect(documentUuids.get('child-type:source-a:1')).toBe('existing-document-1')
+  })
+
   it('collects source, validation, document, and relationship errors', () => {
     const configuredSource = source()
     const record = {
@@ -440,6 +501,36 @@ describe('Import All discovery plan', () => {
     expect(refreshed.reconciliations[1]).toMatchObject({
       status: 'conflicting',
       action: 'overwrite',
+    })
+  })
+
+  it('populates an empty reconciliation plan after a type is created', async () => {
+    const configuredSource = source()
+    const record = {
+      uuid: '1',
+      slug: 'record-1',
+      label: 'Record 1',
+      data: { value: 1 },
+      attrs: {},
+      description: '',
+      sourceData: {},
+      provenance: { sourceId: 'source-a', externalId: '1' },
+    }
+    const plan = { ...createImportAllSourcePlan(configuredSource), records: [record] }
+
+    const refreshed = await refreshImportAllSourceReconciliation({
+      plan,
+      recordKeys: new Set([importAllRecordKey(record)]),
+      objectTypeUuid: 'type-1',
+      token: 'token',
+      signal: new AbortController().signal,
+      fetchExisting: vi.fn().mockResolvedValue([]),
+    })
+
+    expect(refreshed.reconciliations).toHaveLength(1)
+    expect(refreshed.reconciliations[0]).toMatchObject({
+      status: 'new',
+      action: 'create',
     })
   })
 })

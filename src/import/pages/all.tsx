@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, type ReactElement } from 'react'
 import { Check, CircleAlert, LoaderCircle, Search, ShieldCheck, Square, X } from 'lucide-react'
-import { Checkbox, Input } from '@axdspub/axiom-ui-utilities'
+import { Checkbox, Input, Tabs } from '@axdspub/axiom-ui-utilities'
 import { schemaToFormUtils, type IFormValues } from '@axdspub/axiom-ui-forms'
 import { Button } from '@/components/ui/button'
 import contextStateAtom from '@/state/contextStateAtom'
@@ -10,6 +10,7 @@ import type { ImportSourceAdapter } from '../types'
 import type { IImportPageProps } from './import_records_page_impl'
 import {
   createImportAllSourcePlan,
+  collectImportDocumentUuids,
   collectImportAllErrors,
   discoverImportAllSource,
   executeImportAllSource,
@@ -21,10 +22,13 @@ import {
   type ImportAllSourcePlan,
 } from '../import_all_plan'
 import { fetchExistingImportDocuments } from '../reconciliation_service'
+import { getDocumentImportProvenance } from '../reconciliation'
 import { useAuth } from '@/auth/useAuth'
 import { omit } from 'lodash-es'
 import type { JSONSchema6 } from 'json-schema'
 import { postDocument, patchDocument } from '@/manage/document/services'
+import { fetchObjectTypes } from '@/manage/object_type/services'
+import { fetchObjectSchemas } from '@/manage/object_schema/services'
 import { mergeImportDocumentViaRpc, fetchExistingDocumentBySlug } from '../reconciliation_service'
 import { IMPORT_MERGE_RPC } from '@/config/config'
 import {
@@ -38,6 +42,7 @@ import {
 import { postRelationship } from '@/manage/relationship/services'
 import { fetchRelationships } from '@/manage/relationship/services'
 import { TableVirtuoso } from 'react-virtuoso'
+import { Link } from 'react-router-dom'
 import {
   Dialog,
   DialogContent,
@@ -81,6 +86,67 @@ const statusIcon = (status: ImportAllSourcePlan['status']) => {
   return <Square className="text-gray-400" size={14} />
 }
 
+const ImportActivity = ({ plan }: { plan: ImportAllSourcePlan }): ReactElement => {
+  const recordsByKey = new Map(plan.records.map((record) => [importAllRecordKey(record), record]))
+  const validationByKey = new Map(
+    plan.validationResults.map((result) => [importAllRecordKey(result.record), result])
+  )
+  const reconciliationByKey = new Map(
+    plan.reconciliations.map((reconciliation) => [
+      importAllRecordKey(reconciliation.record),
+      reconciliation,
+    ])
+  )
+  const executionByKey = new Map(plan.executionResults.map((result) => [result.recordKey, result]))
+
+  return (
+    <div className="border bg-white p-2 text-sm shadow-sm">
+      <div className="max-h-72 overflow-y-auto">
+        {plan.candidates.length === 0 ? (
+          <span className="text-gray-500">Waiting for discovery...</span>
+        ) : (
+          plan.candidates.map((candidate) => {
+            const key = `${candidate.provenance.sourceId}:${candidate.provenance.externalId}`
+            const record = recordsByKey.get(key)
+            const validation = validationByKey.get(key)
+            const reconciliation = reconciliationByKey.get(key)
+            const execution = executionByKey.get(key)
+            const uuid = execution?.documentUuid ?? reconciliation?.existingDocuments[0]?.uuid
+            const documentLink = uuid ?? (execution?.status === 'failed' ? record?.slug ?? candidate.slug : undefined)
+            const status = execution
+              ? execution.status
+              : validation && !validation.isValid
+                ? 'invalid'
+                : reconciliation?.status === 'conflicting'
+                  ? 'changed'
+                  : record
+                    ? 'loaded'
+                    : 'discovered'
+
+            return (
+              <div key={key} className="border-b py-1.5 last:border-b-0">
+                <div className="truncate font-medium">{candidate.label}</div>
+                <div className="flex items-start justify-between gap-2 text-xs text-gray-600">
+                  <span>{status}</span>
+                  {documentLink && execution && execution.status !== 'blocked' && (
+                    <Link className="shrink-0 text-blue-700 hover:underline" to={`/document/edit/${documentLink}`}>
+                      Open document
+                    </Link>
+                  )}
+                </div>
+                {execution?.error && <div className="text-xs text-red-700">{execution.error}</div>}
+                {validation && !validation.isValid && (
+                  <div className="text-xs text-red-700">{validation.errors.join('; ')}</div>
+                )}
+              </div>
+            )
+          })
+        )}
+      </div>
+    </div>
+  )
+}
+
 const validateRecord = (schema: JSONSchema6, record: ImportAllSourcePlan['records'][number]) => {
   const errors = schemaToFormUtils.validateAgainstSchema(
     omit(schema as Record<string, unknown>, '$schema'),
@@ -108,7 +174,7 @@ const createAutomaticType = async ({
   )
   const generatedSchema = JSON.parse(generated.lines.join('\n')) as JSONSchema6
   const enumPaths = findEnumProperties(generatedSchema).map(({ path }) => path)
-  const schema = removeAllEnumAtPath(generatedSchema, enumPaths)
+  const schema = source.sourceAdapter.schema ?? removeAllEnumAtPath(generatedSchema, enumPaths)
   const objectType = await postObjectType({
     object_type: {
       category: 'document',
@@ -278,10 +344,10 @@ const ImportAllPage = (): ReactElement => {
           const objectType = context.object_type_by_slug[plan.type]
           return objectType
             ? plan.records.map((record) => ({
-                record,
-                objectTypeUuid: objectType.uuid,
-                objectTypeSlug: objectType.slug,
-              }))
+              record,
+              objectTypeUuid: objectType.uuid,
+              objectTypeSlug: objectType.slug,
+            }))
             : []
         }),
       }),
@@ -424,15 +490,15 @@ const ImportAllPage = (): ReactElement => {
           sourceId,
           plan.enabled
             ? {
-                ...plan,
-                status: 'loading',
-                preparationStatus: 'idle',
-                candidates: [],
-                records: [],
-                validationResults: [],
-                reconciliations: [],
-                error: undefined,
-              }
+              ...plan,
+              status: 'loading',
+              preparationStatus: 'idle',
+              candidates: [],
+              records: [],
+              validationResults: [],
+              reconciliations: [],
+              error: undefined,
+            }
             : plan,
         ])
       )
@@ -474,11 +540,11 @@ const ImportAllPage = (): ReactElement => {
           sourceId,
           plan.status === 'loading' || plan.preparationStatus === 'loading'
             ? {
-                ...plan,
-                status: plan.status === 'loading' ? 'idle' : plan.status,
-                preparationStatus:
-                  plan.preparationStatus === 'loading' ? 'idle' : plan.preparationStatus,
-              }
+              ...plan,
+              status: plan.status === 'loading' ? 'idle' : plan.status,
+              preparationStatus:
+                plan.preparationStatus === 'loading' ? 'idle' : plan.preparationStatus,
+            }
             : plan,
         ])
       )
@@ -495,20 +561,53 @@ const ImportAllPage = (): ReactElement => {
       ({ enabled, status }) => enabled && status === 'ready'
     )
 
+    let freshObjectTypes = Object.values(context.object_type_by_slug)
+    let freshObjectSchemas = Object.values(context.object_schema_defaults_by_object_type_uuid)
+    try {
+      const [objectTypes, objectSchemas] = await Promise.all([
+        fetchObjectTypes({ token: auth.user?.access_token ?? '', signal: controller.signal }),
+        fetchObjectSchemas({ token: auth.user?.access_token ?? '', signal: controller.signal }),
+      ])
+      freshObjectTypes = objectTypes
+      freshObjectSchemas = objectSchemas.filter((schema) => schema.is_type_default)
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        setPlans((current) =>
+          Object.fromEntries(
+            Object.entries(current).map(([sourceId, plan]) => [
+              sourceId,
+              plan.enabled && plan.status === 'ready'
+                ? {
+                    ...plan,
+                    preparationStatus: 'error',
+                    error: `Could not refresh object types and schemas: ${error instanceof Error ? error.message : String(error)}`,
+                  }
+                : plan,
+            ])
+          )
+        )
+      }
+      return
+    }
+    const objectTypesBySlug = Object.fromEntries(freshObjectTypes.map((type) => [type.slug, type]))
+    const defaultSchemasByTypeUuid = Object.fromEntries(
+      freshObjectSchemas.map((schema) => [schema.object_type_uuid, schema])
+    )
+
     setPlans((current) =>
       Object.fromEntries(
         Object.entries(current).map(([sourceId, plan]) => [
           sourceId,
           plan.enabled && plan.status === 'ready'
             ? {
-                ...plan,
-                preparationStatus: 'loading',
-                preparationCompleted: 0,
-                preparationTotal: plan.candidates.length,
-                executionStatus: 'idle',
-                executionResults: [],
-                error: undefined,
-              }
+              ...plan,
+              preparationStatus: 'loading',
+              preparationCompleted: 0,
+              preparationTotal: plan.candidates.length,
+              executionStatus: 'idle',
+              executionResults: [],
+              error: undefined,
+            }
             : plan,
         ])
       )
@@ -517,12 +616,11 @@ const ImportAllPage = (): ReactElement => {
     await Promise.all(
       selected.map(async (plan) => {
         const source = sourcesById[plan.sourceId]
-        const objectType = context.object_type_by_slug[plan.type]
+        const objectType = objectTypesBySlug[plan.type]
         const schema = objectType
-          ? context.object_schema_defaults_by_object_type_uuid[objectType.uuid]?.json_schema
+          ? defaultSchemasByTypeUuid[objectType.uuid]?.json_schema
           : undefined
         if (!source) return
-
         try {
           const prepared = await prepareImportAllSource({
             source: source as ImportAllPlanSource,
@@ -559,19 +657,32 @@ const ImportAllPage = (): ReactElement => {
     controllerRef.current?.abort()
     const controller = new AbortController()
     controllerRef.current = controller
+    setRelationshipResults([])
+    relationshipRetryRef.current = null
     const selected = Object.values(plans).filter(
       ({ sourceId, enabled, preparationStatus }) =>
         enabled &&
         preparationStatus === 'ready' &&
         (!recordKeysBySource || recordKeysBySource[sourceId] !== undefined)
     )
+    console.log('[Import All] selected sources for execution', {
+      sources: selected.map((plan) => ({
+        sourceId: plan.sourceId,
+        type: plan.type,
+        enabled: plan.enabled,
+        preparationStatus: plan.preparationStatus,
+        records: plan.records.length,
+        reconciliations: plan.reconciliations.length,
+      })),
+      retry: recordKeysBySource !== undefined,
+    })
     setPlans((current) =>
       Object.fromEntries(
         Object.entries(current).map(([sourceId, plan]) => [
           sourceId,
           plan.enabled &&
-          plan.preparationStatus === 'ready' &&
-          (!recordKeysBySource || recordKeysBySource[plan.sourceId] !== undefined)
+            plan.preparationStatus === 'ready' &&
+            (!recordKeysBySource || recordKeysBySource[plan.sourceId] !== undefined)
             ? { ...plan, executionStatus: 'loading', error: undefined }
             : plan,
         ])
@@ -582,18 +693,27 @@ const ImportAllPage = (): ReactElement => {
     await Promise.all(
       selected.map(async (plan) => {
         const objectType = context.object_type_by_slug[plan.type]
-        if (!objectType) return
+        if (!objectType) {
+          if (!controller.signal.aborted) {
+            updatePlan(plan.sourceId, {
+              executionStatus: 'error',
+              error: `Object type "${plan.type}" was not available when execution started. Prepare the plan again.`,
+            })
+          }
+          return
+        }
         try {
           const recordKeys = recordKeysBySource?.[plan.sourceId]
-          const executionPlan = recordKeys
+          const needsReconciliation = plan.reconciliations.length !== plan.records.length
+          const executionPlan = recordKeys || needsReconciliation
             ? await refreshImportAllSourceReconciliation({
-                plan,
-                recordKeys,
-                objectTypeUuid: objectType.uuid,
-                token: auth.user?.access_token ?? '',
-                signal: controller.signal,
-                fetchExisting: fetchExistingImportDocuments,
-              })
+              plan,
+              recordKeys: recordKeys ?? new Set(plan.records.map((record) => importAllRecordKey(record))),
+              objectTypeUuid: objectType.uuid,
+              token: auth.user?.access_token ?? '',
+              signal: controller.signal,
+              fetchExisting: fetchExistingImportDocuments,
+            })
             : plan
           const executed = await executeImportAllSource({
             plan: executionPlan,
@@ -646,21 +766,43 @@ const ImportAllPage = (): ReactElement => {
     )
 
     if (!recordKeysBySource && !controller.signal.aborted) {
-      const documentUuids = new Map<string, string>()
+      if (executedPlans.length !== selected.length) {
+        setRelationshipResults([])
+        if (controllerRef.current === controller) controllerRef.current = null
+        return
+      }
+      const documentUuids = collectImportDocumentUuids({
+        executedPlans,
+        objectTypesBySlug: context.object_type_by_slug,
+      })
       for (const executed of executedPlans) {
         const objectType = context.object_type_by_slug[executed.type]
         if (!objectType) continue
-        for (const reconciliation of executed.reconciliations) {
-          const key = relationshipDocumentKey({
-            record: reconciliation.record,
-            objectTypeUuid: objectType.uuid,
-            objectTypeSlug: objectType.slug,
-          })
-          const result = executed.executionResults.find(
-            ({ recordKey }) => recordKey === importAllRecordKey(reconciliation.record)
+        const documents = await fetchExistingImportDocuments({
+          records: executed.records,
+          objectTypeUuid: objectType.uuid,
+          token: auth.user?.access_token ?? '',
+          signal: controller.signal,
+        })
+        const documentsBySlug = new Map(documents.map((document) => [document.slug, document]))
+        const documentsByExternalId = new Map(
+          documents
+            .map((document) => [getDocumentImportProvenance(document)?.external_id, document] as const)
+            .filter(([externalId]) => externalId !== undefined)
+        )
+        for (const record of executed.records) {
+          const document =
+            documentsByExternalId.get(record.provenance.externalId) ??
+            documentsBySlug.get(record.slug)
+          if (!document) continue
+          documentUuids.set(
+            relationshipDocumentKey({
+              record,
+              objectTypeUuid: objectType.uuid,
+              objectTypeSlug: objectType.slug,
+            }),
+            document.uuid
           )
-          const uuid = result?.documentUuid ?? reconciliation.existingDocuments[0]?.uuid
-          if (uuid) documentUuids.set(key, uuid)
         }
       }
       const predicateUuids = new Map(
@@ -934,15 +1076,13 @@ const ImportAllPage = (): ReactElement => {
             const plan = plans[source.sourceAdapter.id]
             const objectType = context.object_type_by_slug[source.type]
             const Icon = source.icon
+            const hasChangedRecords =
+              plan.preparationStatus === 'ready' &&
+              plan.reconciliations.some(({ status }) => status === 'conflicting')
             return (
               <section
                 key={source.sourceAdapter.id}
-                className={`relative border-b px-5 py-4 pr-[min(36rem,calc(100%-2rem))] ${
-                  plan.preparationStatus === 'ready' &&
-                  plan.reconciliations.some(({ status }) => status === 'conflicting')
-                    ? 'lg:min-h-112'
-                    : ''
-                } ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                className={`relative border-b px-5 py-4 lg:pr-104 ${plan.enabled ? 'lg:min-h-96' : ''} ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
               >
                 <div className="grid grid-cols-[minmax(15rem,1fr)_9rem_11rem_auto] items-center gap-4">
                   <div className="flex min-w-0 items-center gap-3">
@@ -1094,84 +1234,110 @@ const ImportAllPage = (): ReactElement => {
                   </div>
                 )}
 
-                {plan.preparationStatus === 'ready' &&
-                  plan.reconciliations.some(({ status }) => status === 'conflicting') && (
-                    <div className="absolute right-4 top-4 mt-0 w-[min(34rem,calc(100%-2rem))] border bg-white p-4 text-sm shadow-sm">
-                      <div className="flex items-center justify-between border-b px-2 pb-3">
-                        <strong>
-                          Changed records (
-                          {
-                            plan.reconciliations.filter(({ status }) => status === 'conflicting')
-                              .length
-                          }
-                          )
-                        </strong>
-                        <select
-                          aria-label="Apply conflict action to all changed records"
-                          defaultValue=""
-                          onChange={(event) => {
-                            const action = event.target.value as 'ignore' | 'overwrite' | 'merge'
-                            if (!action) return
-                            const conflictActions = Object.fromEntries(
-                              plan.reconciliations
-                                .filter(({ status }) => status === 'conflicting')
-                                .map(({ record }) => [importAllRecordKey(record), action])
-                            )
-                            updatePlan(plan.sourceId, {
-                              conflictActions,
-                              executionStatus: 'idle',
-                              executionResults: [],
-                            })
-                            event.target.value = ''
-                          }}
-                          className="ml-auto border px-2 py-1"
-                        >
-                          <option value="">Apply to all...</option>
-                          <option value="ignore">Ignore all</option>
-                          <option value="overwrite">Overwrite all</option>
-                          <option value="merge">Merge all</option>
-                        </select>
-                      </div>
-                      <TableVirtuoso
-                        className="w-full overflow-y-auto"
-                        style={{ height: 320 }}
-                        components={{
-                          Table: (props) => <table {...props} className="w-full table-fixed" />,
-                        }}
-                        data={plan.reconciliations.filter(({ status }) => status === 'conflicting')}
-                        itemContent={(_, item) => {
-                          const key = importAllRecordKey(item.record)
-                          return (
-                            <td className="w-full p-0">
-                              <label className="flex w-full items-center gap-2 border-b px-3 py-2">
-                                <span className="min-w-0 flex-1 truncate">{item.record.label}</span>
-                                <select
-                                  aria-label={`Conflict action for ${item.record.label}`}
-                                  value={plan.conflictActions[key] ?? plan.defaultConflictAction}
-                                  onChange={(event) =>
-                                    updatePlan(plan.sourceId, {
-                                      conflictActions: {
-                                        ...plan.conflictActions,
-                                        [key]: event.target
-                                          .value as typeof plan.defaultConflictAction,
-                                      },
-                                      executionStatus: 'idle',
-                                      executionResults: [],
-                                    })
-                                  }
-                                  className="ml-auto shrink-0 border px-2 py-1"
-                                >
-                                  <option value="ignore">Ignore</option>
-                                  <option value="overwrite">Overwrite</option>
-                                  <option value="merge">Merge</option>
-                                </select>
-                              </label>
-                            </td>
-                          )
-                        }}
-                      />
-                    </div>
-                  )}
+                {plan.enabled && (
+                  <div className="absolute right-4 top-4 mt-0 w-96">
+                    <Tabs
+                      className="gap-0!"
+                      navClassName="mb-0"
+                      defaultContentClassName="p-0"
+                      tabs={[
+                        {
+                          id: 'activity',
+                          label: 'Import activity',
+                          content: <ImportActivity plan={plan} />,
+                        },
+                        ...(hasChangedRecords
+                          ? [
+                            {
+                              id: 'changed',
+                              label: `Changed records (${plan.reconciliations.filter(({ status }) => status === 'conflicting').length})`,
+                              content: (
+                                <div className="border bg-white p-2 text-sm shadow-sm">
+                                  <div className="flex justify-end border-b px-1 pb-2">
+                                    <select
+                                      aria-label="Apply conflict action to all changed records"
+                                      defaultValue=""
+                                      onChange={(event) => {
+                                        const action = event.target.value as 'ignore' | 'overwrite' | 'merge'
+                                        if (!action) return
+                                        const conflictActions = Object.fromEntries(
+                                          plan.reconciliations
+                                            .filter(({ status }) => status === 'conflicting')
+                                            .map(({ record }) => [importAllRecordKey(record), action])
+                                        )
+                                        updatePlan(plan.sourceId, {
+                                          conflictActions,
+                                          executionStatus: 'idle',
+                                          executionResults: [],
+                                        })
+                                        event.target.value = ''
+                                      }}
+                                      className="ml-auto border px-2 py-1"
+                                    >
+                                      <option value="">Apply to all...</option>
+                                      <option value="ignore">Ignore all</option>
+                                      <option value="overwrite">Overwrite all</option>
+                                      <option value="merge">Merge all</option>
+                                    </select>
+                                  </div>
+                                  <TableVirtuoso
+                                    className="w-full overflow-y-auto"
+                                    style={{ height: 280 }}
+                                    components={{
+                                      Table: (props) => <table {...props} className="w-full table-fixed" />,
+                                    }}
+                                    data={plan.reconciliations.filter(({ status }) => status === 'conflicting')}
+                                    itemContent={(_, item) => {
+                                      const key = importAllRecordKey(item.record)
+                                      return (
+                                        <td className="w-full p-0">
+                                          <label className="flex w-full items-center gap-2 border-b px-2 py-1.5">
+                                            <span className="min-w-0 flex-1 truncate">
+                                              {item.existingDocuments[0]?.uuid ? (
+                                                <Link
+                                                  className="text-blue-700 hover:underline"
+                                                  to={`/document/edit/${item.existingDocuments[0].uuid}`}
+                                                >
+                                                  {item.record.label}
+                                                </Link>
+                                              ) : (
+                                                item.record.label
+                                              )}
+                                            </span>
+                                            <select
+                                              aria-label={`Conflict action for ${item.record.label}`}
+                                              value={plan.conflictActions[key] ?? plan.defaultConflictAction}
+                                              onChange={(event) =>
+                                                updatePlan(plan.sourceId, {
+                                                  conflictActions: {
+                                                    ...plan.conflictActions,
+                                                    [key]: event.target
+                                                      .value as typeof plan.defaultConflictAction,
+                                                  },
+                                                  executionStatus: 'idle',
+                                                  executionResults: [],
+                                                })
+                                              }
+                                              className="ml-auto shrink-0 border px-2 py-1"
+                                            >
+                                              <option value="ignore">Ignore</option>
+                                              <option value="overwrite">Overwrite</option>
+                                              <option value="merge">Merge</option>
+                                            </select>
+                                          </label>
+                                        </td>
+                                      )
+                                    }}
+                                  />
+                                </div>
+                              ),
+                            },
+                          ]
+                          : []),
+                      ]}
+                    />
+                  </div>
+                )}
 
                 {plan.executionStatus !== 'idle' && (
                   <div className="mt-3 flex flex-wrap gap-3 text-sm">

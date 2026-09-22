@@ -4,6 +4,7 @@ import type {
     IFullDocForImport,
     ImportSourceAdapter,
 } from './types'
+import type { JSONSchema6 } from 'json-schema'
 
 type LegacyDiscover = (options: {
     url: string
@@ -25,6 +26,7 @@ export type RemoteImportAdapterOptions = {
     load: LegacyLoad
     getExternalId?: (candidate: IDocumentImport) => string
     relationshipRules?: ImportSourceAdapter['relationshipRules']
+    schema?: JSONSchema6
 }
 
 export const createRemoteImportAdapter = ({
@@ -35,11 +37,13 @@ export const createRemoteImportAdapter = ({
     load,
     getExternalId = (candidate) => candidate.uuid,
     relationshipRules,
+    schema,
 }: RemoteImportAdapterOptions): ImportSourceAdapter => ({
     id,
     defaultImportUrl,
     defaultDetailRoot,
     relationshipRules,
+    schema,
     discover: async (options) => {
         const candidates = await discover(options)
         return candidates.map((candidate) => ({

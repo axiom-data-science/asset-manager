@@ -105,6 +105,26 @@ describe('Import relationship planning', () => {
         expect(plans[0]).toMatchObject({ status: 'ready', predicate: 'belongs_to' })
     })
 
+    it('matches configured identities when payload fields are numbers', () => {
+        const parent = candidate('source', 'parent-1', 'parent-type', 'parents', { id: 17 })
+        const child = candidate('source', 'child-1', 'child-type', 'children', { parentId: 17 })
+        const plans = planImportRelationships({
+            parentObjectTypes: new Map([
+                ['parent-type', objectType('parent-type', 'parents', [])],
+            ]),
+            candidates: [parent, child],
+            relationshipRules: [{
+                parentObjectTypeSlug: 'parents',
+                childObjectTypeSlug: 'children',
+                parentMatchField: 'id',
+                childMatchField: 'parentId',
+                predicate: 'belongs_to',
+            }],
+        })
+
+        expect(plans[0]).toMatchObject({ status: 'ready', predicate: 'belongs_to' })
+    })
+
     it('reports a missing parent when only child records are imported', () => {
         const child = candidate('source', 'parent-1', 'child-type', 'children')
         const plans = planImportRelationships({
@@ -222,5 +242,33 @@ describe('Import relationship planning', () => {
 
         expect(results).toEqual([{ relationshipKey: 'child-type:source:parent-1:belongs_to', status: 'existing' }])
         expect(post).not.toHaveBeenCalled()
+    })
+
+    it('reports which relationship UUID is unavailable', async () => {
+        const parent = candidate('source', 'parent-1', 'parent-type', 'parents')
+        const child = candidate('source', 'parent-1', 'child-type', 'children')
+        const plans = planImportRelationships({
+            parentObjectTypes: new Map([
+                ['parent-type', objectType('parent-type', 'parents', [{
+                    object_type_slug: 'children',
+                    to_parent_predicate: 'belongs_to',
+                }])],
+            ]),
+            candidates: [parent, child],
+        })
+
+        const results = await persistImportRelationships({
+            plans,
+            documentUuids: new Map(),
+            predicateUuids: new Map([['belongs_to', 'predicate-1']]),
+            signal: new AbortController().signal,
+            post: vi.fn(),
+        })
+
+        expect(results).toEqual([{
+            relationshipKey: 'child-type:source:parent-1:belongs_to',
+            status: 'blocked',
+            error: 'UUID unavailable for child document, parent document',
+        }])
     })
 })

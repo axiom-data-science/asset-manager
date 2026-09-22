@@ -43,14 +43,14 @@ export const csvFileNameToTypeSlug = (fileName: string): string => {
   const slug = baseName
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
   return slug || 'csv-import'
 }
 
 export const csvFileNameToTypeLabel = (fileName: string): string =>
   csvFileNameToTypeSlug(fileName)
-    .split('-')
+    .split('_')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ')
 
@@ -99,11 +99,11 @@ const createRecord = (
   const dataColumns = mapping.dataColumns
   const data = dataColumns
     ? Object.fromEntries(
-        dataColumns.map((key) => [
-          key,
-          (candidate.data as Record<string, string | number>)[key] ?? '',
-        ])
-      )
+      dataColumns.map((key) => [
+        key,
+        (candidate.data as Record<string, string | number>)[key] ?? '',
+      ])
+    )
     : candidate.data
   return {
     uuid: candidate.uuid,

@@ -1,5 +1,9 @@
 import { ChartBarBig, Grid2X2, Grid2X2Plus, Layers2, Layers3, LayersPlus, Ship, Thermometer } from 'lucide-react'
 import type { IImportPageProps } from './pages/import_records_page_impl'
+import type { JSONSchema6 } from 'json-schema'
+import oikosLayerSchema from './schemas/oikos_layer.schema.json'
+import oikosLayerGroupSchema from './schemas/oikos_layer_group.schema.json'
+import oikosModuleSchema from './schemas/oikos_module.schema.json'
 import { createRemoteImportAdapter } from './adapters'
 import {
   binninatorMetadata,
@@ -115,7 +119,8 @@ const importConfigs: IImportPageProps[] = [
       }),
       discover: oikosVectorLayers,
       defaultDetailRoot: OIKOS_URL_ROOT,
-      load: oikosLayer
+      load: oikosLayer,
+      schema: oikosLayerSchema as JSONSchema6
     }),
     label: 'Oikos Vector Layer',
     type: 'oikos_vector_layer',
@@ -132,12 +137,13 @@ const importConfigs: IImportPageProps[] = [
       discover: oikosVectorLayerGroups,
       defaultDetailRoot: OIKOS_URL_ROOT,
       load: oikosLayerGroup,
+      schema: oikosLayerGroupSchema as JSONSchema6,
       relationshipRules: [
         {
-          parentObjectTypeSlug: 'oikos_layer_group',
+          parentObjectTypeSlug: 'oikos_vector_layer_group',
           childObjectTypeSlug: 'oikos_vector_layer',
-          parentMatchField: 'slug',
-          childMatchField: 'layerGroupSlug',
+          parentMatchField: 'id',
+          childMatchField: 'layer_group_id',
           predicate: 'has_parent',
         }
       ]
@@ -157,6 +163,16 @@ const importConfigs: IImportPageProps[] = [
       discover: oikosVectorModules,
       defaultDetailRoot: OIKOS_URL_ROOT,
       load: oikosModule,
+      schema: oikosModuleSchema as JSONSchema6,
+      relationshipRules: [
+        {
+          parentObjectTypeSlug: 'oikos_vector_module',
+          childObjectTypeSlug: 'oikos_vector_layer_group',
+          parentMatchField: 'id',
+          childMatchField: 'module_id',
+          predicate: 'has_parent',
+        }
+      ]
     }),
     label: 'Oikos  Module',
     type: 'oikos_vector_module',

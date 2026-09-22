@@ -75,10 +75,10 @@ const SidebarCollapsibleSection = ({
   closeByDefault?: boolean
   actions: Array<
     | {
-        name: string
-        url: string
-        icon: React.ComponentType
-      }
+      name: string
+      url: string
+      icon: React.ComponentType
+    }
     | undefined
   >
 }) => {
@@ -193,21 +193,11 @@ export function AppSidebar() {
       ],
     },
     {
-      label: 'Schemas',
+      label: 'Types and schemas',
       icon: Network,
       requiresAdmin: true,
       closeByDefault: true,
       actions: [
-        {
-          name: 'List schemas',
-          icon: List,
-          url: '/object_schema',
-        },
-        {
-          name: 'Create schema',
-          icon: Plus,
-          url: '/object_schema/create',
-        },
         {
           name: 'List types',
           icon: List,
@@ -217,6 +207,16 @@ export function AppSidebar() {
           name: 'Create type',
           icon: Plus,
           url: '/object_type/create',
+        },
+        {
+          name: 'List schemas',
+          icon: List,
+          url: '/object_schema',
+        },
+        {
+          name: 'Create schema',
+          icon: Plus,
+          url: '/object_schema/create',
         },
       ],
     },

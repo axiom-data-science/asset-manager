@@ -18,7 +18,7 @@ describe('createCSVImportAdapter', () => {
   })
 
   it('derives readable type and schema names from a filename', () => {
-    expect(csvFileNameToTypeSlug('Test Metadata 2026.csv')).toBe('test-metadata-2026')
+    expect(csvFileNameToTypeSlug('Test Metadata 2026.csv')).toBe('test_metadata_2026')
     expect(csvFileNameToTypeLabel('Test Metadata 2026.csv')).toBe('Test Metadata 2026')
     expect(csvFileNameToTypeSlug('.csv')).toBe('csv-import')
   })

@@ -46,6 +46,7 @@ const readPath = (value: unknown, path?: string): unknown => {
 const identity = (candidate: ImportRelationshipCandidate, field?: string): string => {
     const fieldValue = readPath(candidate.record.data, field)
     if (typeof fieldValue === 'string' && fieldValue.length > 0) return fieldValue
+    if (typeof fieldValue === 'number' && Number.isFinite(fieldValue)) return String(fieldValue)
     return `${candidate.record.provenance.sourceId}:${candidate.record.provenance.externalId}`
 }
 
@@ -168,7 +169,16 @@ export const persistImportRelationships = async ({
         const parentUuid = documentUuids.get(relationshipDocumentKey(plan.parent))
         const predicateUuid = predicateUuids.get(plan.predicate)
         if (!childUuid || !parentUuid || !predicateUuid) {
-            results.push({ relationshipKey, status: 'blocked', error: 'Document or predicate UUID is unavailable' })
+            const missing = [
+                !childUuid ? 'child document' : undefined,
+                !parentUuid ? 'parent document' : undefined,
+                !predicateUuid ? `predicate "${plan.predicate}"` : undefined,
+            ].filter((value): value is string => value !== undefined)
+            results.push({
+                relationshipKey,
+                status: 'blocked',
+                error: `UUID unavailable for ${missing.join(', ')}`,
+            })
             continue
         }
         const relationship = {

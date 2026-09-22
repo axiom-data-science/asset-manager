@@ -37,7 +37,7 @@ describe(***REMOVED***Oikos vector layer imports***REMOVED***, () => {
         const candidates = await oikosVectorLayers({ url: ***REMOVED***https://example.test/search***REMOVED*** })
         const record = await oikosLayer({ doc: candidates[0], serviceRoot: ***REMOVED***https://example.test***REMOVED*** })
 
-        expect(candidates[0].data).toMatchObject({ id: 42, layerGroupId: ***REMOVED***group-17***REMOVED*** })
-        expect(record.data).toMatchObject({ label: ***REMOVED***Layer 42***REMOVED***, layerGroupId: ***REMOVED***group-17***REMOVED*** })
+        expect(candidates[0].data).toMatchObject({ id: 42, layer_group_id: ***REMOVED***group-17***REMOVED*** })
+        expect(record.data).toMatchObject({ label: ***REMOVED***Layer 42***REMOVED***, layer_group_id: ***REMOVED***group-17***REMOVED*** })
     })
 })

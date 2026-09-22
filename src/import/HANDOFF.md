@@ -70,6 +70,7 @@ The implementation plan and remaining work are tracked in `src/import/TODO.md`.
 - The Import All page uses source adapter relationship rules, including the Oikos model-to-model-variable rule.
 - Oikos layer, layer-group, and module adapters have standalone static schemas under `src/import/schemas`; these schemas are detailed but self-contained and do not use `$ref`.
 - Oikos layer and layer-group relationship identities preserve numeric IDs through discovery and full loading.
+- Oikos service payloads use snake_case at the import boundary; vector layers preserve `layer_group_id`, matching the current `@axdspub/axiom-ui-data-services` shape. Static Oikos schemas contain no camelCase property names.
 - Numeric relationship fields are normalized for matching, and Import All now refreshes incomplete reconciliation rows after type creation so the first Execute click can proceed.
 - Prepare review can load records before missing types exist; execution remains blocked until reconciliation is available.
 - Import All source rows reserve a right-side activity area with tabs for import activity and changed records. Activity entries show discovery/loading/validation/execution state, document links, and errors.
@@ -152,7 +153,7 @@ Today***REMOVED***s additional validation:
 ```text
 src/import/import_all_plan.test.ts
 src/import/relationship_planning.test.ts
-# 21 focused tests passed
+# 22 focused tests passed, including the Oikos service identity regression
 npm run build  # passed; existing Vite browser-externalization and chunk-size warnings remain
 ```
 

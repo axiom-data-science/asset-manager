@@ -191,6 +191,8 @@ Suggested next step: should I investigate the missing relationships first? Reply
 - [x] Classify ready, missing-parent, ambiguous-parent, and invalid-rule plans before writes.
 - [x] Allow source adapters to define relationship rules without changing the backend object-type contract.
 - [x] Resolve relationships from canonical external identities before execution for the current Import All plan.
+- [x] Normalize Oikos service payloads to snake_case at the import boundary, including `layer_group_id` for layer/group matching.
+- [x] Add self-contained static Oikos schemas for layers, layer groups, and modules.
 - [ ] Detect missing parents, ambiguous matches, cardinality violations, and cycles during review.
 - [ ] Persist documents first and retain the resulting document UUID map.
 - [x] Persist documents first and retain the resulting document UUID map.

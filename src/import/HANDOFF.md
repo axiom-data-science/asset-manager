@@ -80,6 +80,15 @@ The implementation plan and remaining work are tracked in `src/import/TODO.md`.
 - Oikos module candidates are deduplicated by UUID, and module-to-layer-group matching uses module UUIDs.
 - All leftover `debugger` statements were removed from Import All execution.
 
+### Multi-file CSV work
+
+- `/import/csv` supports multiple uploaded files as independent source rows.
+- Each uploaded file retains its own preview, mapping, adapter, validation state, and import session.
+- Upload source IDs are unique for the lifetime of the page, even when a source is removed and another file is added.
+- CSV adapters can carry relationship rules and preserve explicitly configured join fields in canonical record data.
+- Cross-source relationship planning is covered by focused tests, but uploaded CSV sources are not yet submitted to one shared relationship plan and persistence phase.
+- The preview is bounded for narrower windows and the mapping section no longer overlaps it; additional scrollbar cleanup remains open.
+
 Relationship UI note: the individual source `Import Records` tab only checks document duplicates. Relationship counts and link results appear on `Import All Sources` after execution, when matching parent and child records are included in the same plan.
 
 ## Known issue: hidden or late duplicate conflicts
@@ -174,12 +183,25 @@ src/import/reconciliation_service.test.ts
 npm run build  # passed; existing Vite browser-externalization and chunk-size warnings remain
 ```
 
+Current CSV and relationship validation:
+
+```text
+src/import/csv_adapter.test.ts
+src/import/relationship_planning.test.ts
+src/import/state/importState.test.ts
+# 27 tests passed
+npm run build  # passed; existing Vite browser-externalization and chunk-size warnings remain
+```
+
 Live CSV checks still needed:
 
 - Upload a new CSV, confirm filename-derived type/schema naming, generate a schema, and use `Create automatically`.
 - Upload the same filename again and confirm the intended-slug warning blocks duplicate creation.
 - Choose the existing type and confirm its default schema is loaded and validation can proceed.
 - Change each CSV mapping and confirm the resulting document fields match the selected columns.
+- Upload multiple CSV files, switch between source rows, and confirm each mapping and import session remains isolated.
+- Confirm invalid CSV records can be diagnosed by revising the mapping and validating again without leaving the validation workflow.
+- Check the preview at short and narrow browser sizes for overlapping sections and unnecessary nested vertical scrollbars.
 
 ## Next implementation step
 
@@ -195,8 +217,10 @@ After live Import All verification, continue with:
 5. Apply the upstream `@axdspub/axiom-ui-forms` schema-helper update, then switch `oikos_schemas.test.ts` back to the shared helper and remove temporary Ajv test support.
 6. Skip additional CSV steps when filename, mappings, and an existing type/schema make them unnecessary.
 7. Add multiple spreadsheet sources in one session with dependency-ordered parent/child imports.
-8. Refactor the single-item import UI and debug object-type creation state refresh/failures.
-9. Keep XLS/XLSX deferred until the multi-source CSV adapter shape is proven.
+8. Submit uploaded CSV sources to one shared relationship plan and persistence phase.
+9. Refine CSV mapping guidance and same-view revalidation for invalid records.
+10. Refactor the single-item import UI and debug object-type creation state refresh/failures.
+11. Keep XLS/XLSX deferred until the multi-source CSV adapter shape is proven.
 
 The relationship ordering investigation is now part of the next relationship-design task rather than a separate deferred item.
 

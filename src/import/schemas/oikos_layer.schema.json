@@ -71,7 +71,7 @@
     "zoom_extent_max_x": { "type": ["number", "null"] },
     "zoom_extent_max_y": { "type": ["number", "null"] },
     "layer_subtype_id": { "type": ["integer", "null"] },
-    "layer_group_id": { "type": "integer" },
+    "layer_group_id": { "type": ["integer", "string"] },
     "parameter_id": { "type": ["integer", "null"] },
     "data_provider_id": { "type": ["integer", "null"] },
     "times": {

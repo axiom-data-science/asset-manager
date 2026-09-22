@@ -33,7 +33,7 @@
     "data_provider_descriptions": { "type": "array", "items": { "type": "string" } },
     "has_metadata": { "type": "boolean" },
     "layer_type_id": { "type": ["integer", "null"] },
-    "module_id": { "type": "integer" },
+    "module_id": { "type": ["integer", "string"] },
     "module_uuid": { "type": "string" },
     "module_label": { "type": "string" },
     "module_description": { "type": ["string", "null"] },

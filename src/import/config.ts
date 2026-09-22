@@ -1,4 +1,13 @@
-import { ChartBarBig, Grid2X2, Grid2X2Plus, Layers2, Layers3, LayersPlus, Ship, Thermometer } from ***REMOVED***lucide-react***REMOVED***
+import {
+  ChartBarBig,
+  Grid2X2,
+  Grid2X2Plus,
+  Layers2,
+  Layers3,
+  LayersPlus,
+  Ship,
+  Thermometer,
+} from ***REMOVED***lucide-react***REMOVED***
 import type { IImportPageProps } from ***REMOVED***./pages/import_records_page_impl***REMOVED***
 import type { JSONSchema6 } from ***REMOVED***json-schema***REMOVED***
 import oikosLayerSchema from ***REMOVED***./schemas/oikos_layer.schema.json***REMOVED***
@@ -45,7 +54,7 @@ const importConfigs: IImportPageProps[] = [
     }),
     label: ***REMOVED***Moving Platform***REMOVED***,
     type: ***REMOVED***moving_platform***REMOVED***,
-    icon: Ship
+    icon: Ship,
   },
   {
     sourceAdapter: createRemoteImportAdapter({
@@ -61,7 +70,7 @@ const importConfigs: IImportPageProps[] = [
     }),
     label: ***REMOVED***Sensor Station***REMOVED***,
     type: ***REMOVED***sensor_station***REMOVED***,
-    icon: Thermometer
+    icon: Thermometer,
   },
   {
     sourceAdapter: createRemoteImportAdapter({
@@ -77,12 +86,12 @@ const importConfigs: IImportPageProps[] = [
           parentMatchField: ***REMOVED***slug***REMOVED***,
           childMatchField: ***REMOVED***modelSlug***REMOVED***,
           predicate: ***REMOVED***has_parent***REMOVED***,
-        }
-      ]
+        },
+      ],
     }),
     label: ***REMOVED***Oikos Model***REMOVED***,
     type: ***REMOVED***oikos_model***REMOVED***,
-    icon: Grid2X2
+    icon: Grid2X2,
   },
   {
     sourceAdapter: createRemoteImportAdapter({
@@ -95,7 +104,6 @@ const importConfigs: IImportPageProps[] = [
     label: ***REMOVED***Oikos Model Variable***REMOVED***,
     type: ***REMOVED***oikos_model_variable***REMOVED***,
     icon: Grid2X2Plus,
-
   },
   {
     sourceAdapter: createRemoteImportAdapter({
@@ -107,7 +115,7 @@ const importConfigs: IImportPageProps[] = [
     }),
     label: ***REMOVED***Binner Record***REMOVED***,
     type: ***REMOVED***binner_record***REMOVED***,
-    icon: ChartBarBig
+    icon: ChartBarBig,
   },
   {
     sourceAdapter: createRemoteImportAdapter({
@@ -120,11 +128,11 @@ const importConfigs: IImportPageProps[] = [
       discover: oikosVectorLayers,
       defaultDetailRoot: OIKOS_URL_ROOT,
       load: oikosLayer,
-      schema: oikosLayerSchema as JSONSchema6
+      schema: oikosLayerSchema as JSONSchema6,
     }),
     label: ***REMOVED***Oikos Vector Layer***REMOVED***,
     type: ***REMOVED***oikos_vector_layer***REMOVED***,
-    icon: Layers2
+    icon: Layers2,
   },
   {
     sourceAdapter: createRemoteImportAdapter({
@@ -145,12 +153,12 @@ const importConfigs: IImportPageProps[] = [
           parentMatchField: ***REMOVED***id***REMOVED***,
           childMatchField: ***REMOVED***layer_group_id***REMOVED***,
           predicate: ***REMOVED***has_parent***REMOVED***,
-        }
-      ]
+        },
+      ],
     }),
     label: ***REMOVED***Oikos Vector Layer Group***REMOVED***,
     type: ***REMOVED***oikos_vector_layer_group***REMOVED***,
-    icon: Layers3
+    icon: Layers3,
   },
   {
     sourceAdapter: createRemoteImportAdapter({
@@ -168,17 +176,19 @@ const importConfigs: IImportPageProps[] = [
         {
           parentObjectTypeSlug: ***REMOVED***oikos_vector_module***REMOVED***,
           childObjectTypeSlug: ***REMOVED***oikos_vector_layer_group***REMOVED***,
-          parentMatchField: ***REMOVED***id***REMOVED***,
-          childMatchField: ***REMOVED***module_id***REMOVED***,
+          parentMatchField: ***REMOVED***uuid***REMOVED***,
+          childMatchField: ***REMOVED***module_uuid***REMOVED***,
           predicate: ***REMOVED***has_parent***REMOVED***,
-        }
-      ]
+        },
+      ],
     }),
     label: ***REMOVED***Oikos  Module***REMOVED***,
     type: ***REMOVED***oikos_vector_module***REMOVED***,
-    icon: LayersPlus
+    icon: LayersPlus,
   },
 ]
 
-export const importConfigsByKey = Object.fromEntries(importConfigs.map((config) => [config.type, config]))
+export const importConfigsByKey = Object.fromEntries(
+  importConfigs.map((config) => [config.type, config])
+)
 export default importConfigs

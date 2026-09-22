@@ -74,6 +74,11 @@ The implementation plan and remaining work are tracked in `src/import/TODO.md`.
 - Numeric relationship fields are normalized for matching, and Import All now refreshes incomplete reconciliation rows after type creation so the first Execute click can proceed.
 - Prepare review can load records before missing types exist; execution remains blocked until reconciliation is available.
 - Import All source rows reserve a right-side activity area with tabs for import activity and changed records. Activity entries show discovery/loading/validation/execution state, document links, and errors.
+- Import All shows overall and per-source execution progress while documents are being written.
+- Import All document writes run in batches of 10 with a 100 ms abort-aware pause between batches; per-record failures remain available for retry.
+- Equivalent backend and adapter relationship rules are deduplicated before planning.
+- Oikos module candidates are deduplicated by UUID, and module-to-layer-group matching uses module UUIDs.
+- All leftover `debugger` statements were removed from Import All execution.
 
 Relationship UI note: the individual source `Import Records` tab only checks document duplicates. Relationship counts and link results appear on `Import All Sources` after execution, when matching parent and child records are included in the same plan.
 
@@ -101,10 +106,10 @@ Without configuration, client deep merge plus authenticated PATCH remains the de
 
 ## Validation
 
-Last verified during this work:
+Latest verification during this work:
 
 ```text
-npm test       # 29 tests passed
+npm test       # currently reports 66 passed and 1 pre-existing empty-suite failure in src/import/oikos_relationships.test.ts
 npm run build  # passed
 npm run lint   # fails on existing repository lint issues listed below
 ```
@@ -157,6 +162,18 @@ src/import/relationship_planning.test.ts
 npm run build  # passed; existing Vite browser-externalization and chunk-size warnings remain
 ```
 
+Latest focused validation:
+
+```text
+src/import/import_all_plan.test.ts
+src/import/relationship_planning.test.ts
+src/import/services.test.ts
+src/import/reconciliation.test.ts
+src/import/reconciliation_service.test.ts
+# 42 tests passed
+npm run build  # passed; existing Vite browser-externalization and chunk-size warnings remain
+```
+
 Live CSV checks still needed:
 
 - Upload a new CSV, confirm filename-derived type/schema naming, generate a schema, and use `Create automatically`.
@@ -166,25 +183,27 @@ Live CSV checks still needed:
 
 ## Next implementation step
 
-Next session, refine relationship imports for existing remote source types before adding CSV relationships:
+Next session, verify the latest Import All behavior with authenticated PostgREST and configured Oikos sources:
 
-1. Decide between grouping related sources into one dependency-aware import task and resolving counterpart documents during creation.
-2. Implement the chosen approach so parent/child imports work when both documents are new, when one already exists, and when sources are selected in either order.
-3. Verify layer/layer-group relationships in the UI, including first import, repeat import, partial existing data, and failed/retried links.
-4. Add the same relationship model to multiple CSV sources.
+1. Confirm overall and per-source execution progress updates while Import All runs.
+2. Confirm batched document writes, the short pause between batches, cancellation, and failed-record retry.
+3. Verify Oikos model/model-variable and module/layer-group/layer relationships, including first import, repeat import, partial existing data, and failed/retried links.
+4. Confirm duplicate relationship rules do not produce duplicate plans or unnecessary writes.
 
-After relationship behavior is stable, continue with:
+After live Import All verification, continue with:
 
-5. Skip additional CSV steps when filename, mappings, and an existing type/schema make them unnecessary.
-6. Add multiple spreadsheet sources in one session with dependency-ordered parent/child imports.
-7. Refactor the single-item import UI and debug object-type creation state refresh/failures.
-8. Keep XLS/XLSX deferred until the multi-source CSV adapter shape is proven.
+5. Apply the upstream `@axdspub/axiom-ui-forms` schema-helper update, then switch `oikos_schemas.test.ts` back to the shared helper and remove temporary Ajv test support.
+6. Skip additional CSV steps when filename, mappings, and an existing type/schema make them unnecessary.
+7. Add multiple spreadsheet sources in one session with dependency-ordered parent/child imports.
+8. Refactor the single-item import UI and debug object-type creation state refresh/failures.
+9. Keep XLS/XLSX deferred until the multi-source CSV adapter shape is proven.
 
 The relationship ordering investigation is now part of the next relationship-design task rather than a separate deferred item.
 
 ## Changes outside `src/import`
 
 - `package.json` and `package-lock.json`: Vitest and the test script.
+- `package.json` and `package-lock.json`: temporary Ajv and happy-dom test dependencies for standalone schema fixtures.
 - `vitest.config.ts`: test configuration.
 - `src/config/config.ts`: optional import merge RPC runtime setting.
 

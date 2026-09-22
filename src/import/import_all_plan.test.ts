@@ -41,7 +41,9 @@ describe('Import All discovery plan', () => {
       ...createImportAllSourcePlan(configuredSource),
       type: 'children',
       records: [record],
-      executionResults: [{ recordKey: 'source-a:1', status: 'imported' as const, documentUuid: 'document-1' }],
+      executionResults: [
+        { recordKey: 'source-a:1', status: 'imported' as const, documentUuid: 'document-1' },
+      ],
     }
 
     const documentUuids = collectImportDocumentUuids({
@@ -68,12 +70,14 @@ describe('Import All discovery plan', () => {
       ...createImportAllSourcePlan(configuredSource),
       type: 'children',
       records: [record],
-      reconciliations: [{
-        record,
-        status: 'exact' as const,
-        action: 'ignore' as const,
-        existingDocuments: [{ uuid: 'existing-document-1' } as IDocument],
-      }],
+      reconciliations: [
+        {
+          record,
+          status: 'exact' as const,
+          action: 'ignore' as const,
+          existingDocuments: [{ uuid: 'existing-document-1' } as IDocument],
+        },
+      ],
       executionResults: [{ recordKey: 'source-a:1', status: 'ignored' as const }],
     }
 
@@ -83,6 +87,97 @@ describe('Import All discovery plan', () => {
     })
 
     expect(documentUuids.get('child-type:source-a:1')).toBe('existing-document-1')
+  })
+
+  it.each([
+    ['both documents are new', false, false],
+    ['the parent already exists', true, false],
+    ['the child already exists', false, true],
+    ['both documents already exist', true, true],
+  ])('collects UUIDs when %s', (_caseName, parentExists, childExists) => {
+    const parentSource = source()
+    const childSource = source()
+    const parentRecord = {
+      uuid: 'parent-1',
+      slug: 'parent-1',
+      label: 'Parent',
+      data: {},
+      attrs: {},
+      description: '',
+      sourceData: {},
+      provenance: { sourceId: 'parent-source', externalId: 'parent-1' },
+    }
+    const childRecord = {
+      uuid: 'child-1',
+      slug: 'child-1',
+      label: 'Child',
+      data: {},
+      attrs: {},
+      description: '',
+      sourceData: {},
+      provenance: { sourceId: 'child-source', externalId: 'child-1' },
+    }
+    const parentPlan = {
+      ...createImportAllSourcePlan({ ...parentSource, type: 'parents' }),
+      records: [parentRecord],
+      reconciliations: parentExists
+        ? [
+            {
+              record: parentRecord,
+              status: 'exact' as const,
+              action: 'ignore' as const,
+              existingDocuments: [{ uuid: 'existing-parent' } as IDocument],
+            },
+          ]
+        : [],
+      executionResults: parentExists
+        ? []
+        : [
+            {
+              recordKey: 'parent-source:parent-1',
+              status: 'imported' as const,
+              documentUuid: 'new-parent',
+            },
+          ],
+    }
+    const childPlan = {
+      ...createImportAllSourcePlan({ ...childSource, type: 'children' }),
+      records: [childRecord],
+      reconciliations: childExists
+        ? [
+            {
+              record: childRecord,
+              status: 'exact' as const,
+              action: 'ignore' as const,
+              existingDocuments: [{ uuid: 'existing-child' } as IDocument],
+            },
+          ]
+        : [],
+      executionResults: childExists
+        ? []
+        : [
+            {
+              recordKey: 'child-source:child-1',
+              status: 'imported' as const,
+              documentUuid: 'new-child',
+            },
+          ],
+    }
+
+    const documentUuids = collectImportDocumentUuids({
+      executedPlans: [childPlan, parentPlan],
+      objectTypesBySlug: {
+        parents: { uuid: 'parent-type', slug: 'parents' },
+        children: { uuid: 'child-type', slug: 'children' },
+      },
+    })
+
+    expect(documentUuids.get('parent-type:parent-source:parent-1')).toBe(
+      parentExists ? 'existing-parent' : 'new-parent'
+    )
+    expect(documentUuids.get('child-type:child-source:child-1')).toBe(
+      childExists ? 'existing-child' : 'new-child'
+    )
   })
 
   it('collects source, validation, document, and relationship errors', () => {
@@ -451,6 +546,62 @@ describe('Import All discovery plan', () => {
     expect(post.mock.calls[0][0]).toEqual(expect.objectContaining({ slug: 'record-2' }))
     expect(executed.executionResults).toHaveLength(1)
     expect(executed.executionResults[0].recordKey).toBe(importAllRecordKey(records[1]))
+  })
+
+  it('batches document writes and reports progress for each settled record', async () => {
+    const configuredSource = source()
+    const records = ['1', '2', '3'].map((externalId) => ({
+      uuid: externalId,
+      slug: `record-${externalId}`,
+      label: externalId,
+      data: {},
+      attrs: {},
+      description: '',
+      sourceData: {},
+      provenance: { sourceId: 'source-a', externalId },
+    }))
+    const plan = {
+      ...createImportAllSourcePlan(configuredSource),
+      records,
+      validationResults: records.map((record) => ({ record, isValid: true, errors: [] })),
+      reconciliations: records.map((record) => ({
+        record,
+        status: 'new' as const,
+        action: 'create' as const,
+        existingDocuments: [],
+      })),
+    }
+    let activeWrites = 0
+    let maximumActiveWrites = 0
+    const post = vi.fn(async () => {
+      activeWrites += 1
+      maximumActiveWrites = Math.max(maximumActiveWrites, activeWrites)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      activeWrites -= 1
+      return { uuid: 'created-uuid' } as IDocument
+    })
+    const progress: number[] = []
+
+    const executed = await executeImportAllSource({
+      plan,
+      objectTypeUuid: 'type-1',
+      signal: new AbortController().signal,
+      mergeStrategy: 'client-patch',
+      batchSize: 2,
+      delayMsBetweenBatches: 0,
+      onProgress: (completed) => progress.push(completed),
+      persistence: {
+        post,
+        patch: vi.fn(),
+        mergeRpc: vi.fn(),
+        fetchBySlug: vi.fn().mockResolvedValue(undefined),
+      },
+    })
+
+    expect(maximumActiveWrites).toBe(2)
+    expect(post).toHaveBeenCalledTimes(3)
+    expect(progress).toEqual([1, 2, 3])
+    expect(executed).toMatchObject({ executionCompleted: 3, executionTotal: 3 })
   })
 
   it('refreshes reconciliation only for selected retry records', async () => {

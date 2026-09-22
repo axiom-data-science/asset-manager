@@ -99,7 +99,8 @@ const CSVSourceEditor = ({
         <div className="mb-3">
           <h2 className="font-semibold">Map CSV fields</h2>
           <p className="text-sm text-gray-600">
-            Confirm which columns become document fields. Unmapped columns remain in document data when selected below.
+            Confirm which columns become document fields. Unmapped columns remain in document data
+            when selected below.
           </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -138,7 +139,9 @@ const CSVSourceEditor = ({
               >
                 <option value="">Not mapped</option>
                 {source.parsed.headers.map((header) => (
-                  <option key={header.key} value={header.key}>{header.key}</option>
+                  <option key={header.key} value={header.key}>
+                    {header.key}
+                  </option>
                 ))}
               </select>
             </label>
@@ -212,9 +215,9 @@ const CSVImportPage = (): ReactElement => {
   }
 
   const updateSource = (sourceId: string, update: Partial<CSVImportSource>) => {
-    setSources((current) => current.map((source) =>
-      source.sourceId === sourceId ? { ...source, ...update } : source
-    ))
+    setSources((current) =>
+      current.map((source) => (source.sourceId === sourceId ? { ...source, ...update } : source))
+    )
   }
 
   const continueToRecords = async () => {
@@ -228,7 +231,9 @@ const CSVImportPage = (): ReactElement => {
         signal: new AbortController().signal,
       })
       activeSession.setCandidates(candidates)
-      const records = await Promise.all(candidates.map((candidate) => activeSource.adapter.load({ candidate })))
+      const records = await Promise.all(
+        candidates.map((candidate) => activeSource.adapter.load({ candidate }))
+      )
       activeSession.setRecords(records)
       const existingType = contextState.object_type_by_slug[activeSource.typeSlug]
       const existingSchema = existingType
@@ -242,16 +247,21 @@ const CSVImportPage = (): ReactElement => {
       if (canStartAtImport && existingType && existingSchema) {
         activeSession.setSelectedObjectType(existingType)
         activeSession.setSchema(existingSchema)
-        activeSession.setValidationResults(records.map((record) => {
-          const errors = schemaToFormUtils.validateAgainstSchema(
-            omit(existingSchema as Record<string, unknown>, ***REMOVED***$schema***REMOVED***),
-            record.data as IFormValues
-          )
-          return {
-            record,
-            result: { isValid: !errors?.length, errors: errors?.map((error) => error.message) ?? [] },
-          }
-        }))
+        activeSession.setValidationResults(
+          records.map((record) => {
+            const errors = schemaToFormUtils.validateAgainstSchema(
+              omit(existingSchema as Record<string, unknown>, ***REMOVED***$schema***REMOVED***),
+              record.data as IFormValues
+            )
+            return {
+              record,
+              result: {
+                isValid: !errors?.length,
+                errors: errors?.map((error) => error.message) ?? [],
+              },
+            }
+          })
+        )
       }
       updateSource(activeSource.sourceId, { startAtImport: canStartAtImport })
       setStep(***REMOVED***records***REMOVED***)
@@ -270,7 +280,9 @@ const CSVImportPage = (): ReactElement => {
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
                 <h1 className="text-2xl font-bold">Import CSV files</h1>
-                <p className="text-sm text-gray-600">{sourceCountLabel}. Each file keeps its own mapping and import session.</p>
+                <p className="text-sm text-gray-600">
+                  {sourceCountLabel}. Each file keeps its own mapping and import session.
+                </p>
               </div>
               <FileSpreadsheet size={22} />
             </div>
@@ -281,7 +293,8 @@ const CSVImportPage = (): ReactElement => {
               onChange={() => undefined}
               acceptFileTypes={[***REMOVED***csv***REMOVED***, ***REMOVED***text/csv***REMOVED***]}
               onFileUploaded={(fileData, csvData, uploadedFileName) => {
-                if (typeof fileData === ***REMOVED***string***REMOVED*** && csvData && uploadedFileName) addSource(fileData, csvData, uploadedFileName)
+                if (typeof fileData === ***REMOVED***string***REMOVED*** && csvData && uploadedFileName)
+                  addSource(fileData, csvData, uploadedFileName)
               }}
             />
           </section>
@@ -292,19 +305,28 @@ const CSVImportPage = (): ReactElement => {
               <div className="flex flex-col gap-2">
                 {sources.map((source) => (
                   <div key={source.sourceId} className="flex items-center gap-2 border px-3 py-2">
-                    <Button size="xs" variant={activeSourceId === source.sourceId ? ***REMOVED***default***REMOVED*** : ***REMOVED***outline***REMOVED***} onClick={() => setActiveSourceId(source.sourceId)}>
+                    <Button
+                      size="xs"
+                      variant={activeSourceId === source.sourceId ? ***REMOVED***default***REMOVED*** : ***REMOVED***outline***REMOVED***}
+                      onClick={() => setActiveSourceId(source.sourceId)}
+                    >
                       {source.fileName}
                     </Button>
-                    <span className="text-xs text-gray-600">{source.parsed.data.length} rows, type {source.typeSlug}</span>
+                    <span className="text-xs text-gray-600">
+                      {source.parsed.data.length} rows, type {source.typeSlug}
+                    </span>
                     <Button
                       size="xs"
                       variant="outline"
                       className="ml-auto"
                       aria-label={`Remove ${source.fileName}`}
                       onClick={() => {
-                        const remaining = sources.filter(({ sourceId }) => sourceId !== source.sourceId)
+                        const remaining = sources.filter(
+                          ({ sourceId }) => sourceId !== source.sourceId
+                        )
                         setSources(remaining)
-                        if (activeSourceId === source.sourceId) setActiveSourceId(remaining[0]?.sourceId ?? null)
+                        if (activeSourceId === source.sourceId)
+                          setActiveSourceId(remaining[0]?.sourceId ?? null)
                       }}
                     >
                       <X size={14} />
@@ -316,7 +338,10 @@ const CSVImportPage = (): ReactElement => {
           )}
 
           {activeSource && (
-            <CSVSourceEditor source={activeSource} onChange={(update) => updateSource(activeSource.sourceId, update)} />
+            <CSVSourceEditor
+              source={activeSource}
+              onChange={(update) => updateSource(activeSource.sourceId, update)}
+            />
           )}
           {activeSource && (
             <div className="flex justify-end border-t pt-4">
@@ -326,7 +351,11 @@ const CSVImportPage = (): ReactElement => {
               </Button>
             </div>
           )}
-          {loadError && <div className="text-sm text-red-700" role="alert">Could not load CSV records: {loadError}</div>}
+          {loadError && (
+            <div className="text-sm text-red-700" role="alert">
+              Could not load CSV records: {loadError}
+            </div>
+          )}
         </div>
       )}
 
@@ -335,9 +364,13 @@ const CSVImportPage = (): ReactElement => {
           <div className="mb-2 flex shrink-0 items-center justify-between gap-3 border-b pb-2">
             <div>
               <h1 className="text-lg font-semibold">Import {activeSource.fileName}</h1>
-              <span className="text-sm text-gray-600">{activeSource.parsed.data.length} records loaded</span>
+              <span className="text-sm text-gray-600">
+                {activeSource.parsed.data.length} records loaded
+              </span>
             </div>
-            <Button size="xs" variant="outline" onClick={() => setStep(***REMOVED***upload***REMOVED***)}>Back to CSV sources</Button>
+            <Button size="xs" variant="outline" onClick={() => setStep(***REMOVED***upload***REMOVED***)}>
+              Back to CSV sources
+            </Button>
           </div>
           <div className="min-h-0 flex-1 overflow-hidden">
             <ImportRecordsPage

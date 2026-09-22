@@ -117,14 +117,15 @@ const createRecord = (
   )
   const dataColumns = mapping.dataColumns
   const columns = new Set([...(dataColumns ?? []), ...relationshipFields])
-  const data = columns.size > 0
-    ? Object.fromEntries(
-        [...columns].map((key) => [
-          key,
-          (candidate.data as Record<string, string | number>)[key] ?? ***REMOVED******REMOVED***,
-        ])
-      )
-    : candidate.data
+  const data =
+    columns.size > 0
+      ? Object.fromEntries(
+          [...columns].map((key) => [
+            key,
+            (candidate.data as Record<string, string | number>)[key] ?? ***REMOVED******REMOVED***,
+          ])
+        )
+      : candidate.data
   return {
     uuid: candidate.uuid,
     label: candidate.label,

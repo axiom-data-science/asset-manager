@@ -64,13 +64,15 @@ describe(***REMOVED***createCSVImportAdapter***REMOVED***, () => {
   })
 
   it(***REMOVED***forwards relationship rules and preserves configured join fields***REMOVED***, async () => {
-    const relationshipRules = [{
-      parentObjectTypeSlug: ***REMOVED***departments***REMOVED***,
-      childObjectTypeSlug: ***REMOVED***assets***REMOVED***,
-      parentMatchField: ***REMOVED***code***REMOVED***,
-      childMatchField: ***REMOVED***department_code***REMOVED***,
-      predicate: ***REMOVED***belongs_to***REMOVED***,
-    }]
+    const relationshipRules = [
+      {
+        parentObjectTypeSlug: ***REMOVED***departments***REMOVED***,
+        childObjectTypeSlug: ***REMOVED***assets***REMOVED***,
+        parentMatchField: ***REMOVED***code***REMOVED***,
+        childMatchField: ***REMOVED***department_code***REMOVED***,
+        predicate: ***REMOVED***belongs_to***REMOVED***,
+      },
+    ]
     const adapter = createCSVImportAdapter({
       id: ***REMOVED***assets-source-1***REMOVED***,
       text: `id,label,department_code

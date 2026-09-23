@@ -11,11 +11,28 @@
 - [ ] Add XLS/XLSX only through the same adapter API used by CSV.
 - [ ] Prefer a guided, reviewable workflow over exposing every setting on one screen.
 
+## Future import workflow direction
+
+- [ ] Build one shared wizard shell for remote, Import All, and CSV imports, using the Import All layout as the starting pattern.
+- [ ] Show clear wizard steps at the top of every import flow, with the current step visibly active and completed steps summarized.
+- [ ] Place diagnostics, progress, errors, and settings for the current step directly beneath the wizard navigation.
+- [ ] Keep advanced settings available without letting them dominate the primary step workflow.
+
+### CSV wizard direction
+
+- [ ] Refactor single-file CSV import into `Upload`, `Map fields`, and `Import` steps by default.
+- [ ] For multi-file CSV import, use `Upload`, `Map fields`, `Set relationships`, and `Import` steps.
+- [ ] Make object-type selection and creation automatic by default when filename, mapping, and an existing type/schema provide enough information.
+- [ ] Offer an option at the beginning to make object-type setup an explicit wizard step when automatic setup is not appropriate.
+- [ ] Keep all uploaded CSV files in the same wizard session and import them together from the final `Import` step.
+- [ ] Show per-file diagnostics and settings beneath the active wizard step without sending the user back to the beginning to configure another file.
+
 ## 1. Establish tests and stabilize the current workflow
 
 - [x] Install and configure Vitest with a `test` script and shared test setup.
   - **Outside import:** `package.json`, lockfile, and likely `vite.config.ts` or a test config.
 - [ ] Add unit tests for source adapters, canonical record conversion, validation, reconciliation, and merge behavior as those modules are introduced.
+- [x] Populate `src/import/oikos_relationships.test.ts` with Oikos-specific relationship regression tests.
 - [ ] Add focused tests for the existing CSV parser before connecting it to imports.
 - [x] Fix Import All status keys so they use source `type` values rather than array indexes.
 - [x] Remove render-time timers and fabricated results from Import All.
@@ -24,6 +41,8 @@
 - [x] Surface remote loading errors in the import UI.
 - [x] Forward cancellation through both source loading and document persistence where supported.
   - **Outside import:** `src/manage/document/services.ts` may need an optional `AbortSignal`; preserve existing callers.
+- [x] Allow users to cancel Import All discovery, preparation, and execution without rolling back completed writes.
+- [x] Verify the Import All cancel action in the authenticated UI during discovery, preparation, document execution, and relationship persistence; completed writes remain visible and later work stops.
 - [x] Show per-record persistence errors and failed counts.
 - [x] Add a top-level select/unselect-all control to Import All Sources.
 - [x] Open missing-type setup from Import All in a focused dialog using the shared type/schema and type-creation components.
@@ -34,7 +53,10 @@
 - [x] Batch Import All preparation requests and show per-source progress.
 - [x] Yield between preparation batches so progress can repaint while sources load.
 - [x] Show overall and per-source execution progress while Import All writes documents.
+- [x] Show overall and per-source preparation progress while Import All loads records.
 - [x] Batch Import All document writes in groups of 10 with a 100 ms abort-aware pause between batches.
+- [x] Verify in the authenticated UI that Import All uses the intended batching and pauses during document and relationship work.
+- [ ] Verify retry progress for failed relationship links.
 - [x] Remove leftover `debugger` statements from Import All execution.
 - [x] Show a `Pending type` placeholder for sources without a type.
 - [x] Show prepared records in the type-setup dialog.
@@ -45,6 +67,8 @@
 - [x] Replace the current loosely coupled import tabs with a visible step-based flow: Preload records, Choose type and validate, Import.
 - [ ] Refactor single-item import to simplify the UI and remove unnecessary nested workflow controls.
 - [ ] Debug object-type creation in the simplified single-item import flow, including type/schema state refresh and failure reporting.
+- [x] Keep selected Import All data-source rows at their compact height until `Discover selected` is pressed; do not expand a selected row before discovery begins.
+  - UI verification still needed: select sources without discovering and confirm their rows stay compact, then confirm the workspace expands after discovery begins.
 - Keep endpoint overrides and batch tuning in an advanced settings disclosure.
 - Show a compact source summary after a step is complete instead of keeping all controls visible.
 - Open type setup from Import All in a focused modal showing only type selection, schema setup, and the return action.
@@ -74,7 +98,7 @@
 - [ ] Ensure newly created types and schemas are immediately available to the active session.
   - **Outside import:** reuse the existing object-type creation service/component if possible; changes under `src/manage/object_type` require regression checks for normal type creation.
 - [x] Allow validation of all, selected, or sampled records; keep Import blocked for records that have not been validated.
-- [ ] Update `@axdspub/axiom-ui-forms` `schemaHelpers.validateAgainstSchema` to return a consistent validation-error array (`[]` for valid values), update its TypeScript declaration, and add library tests for primitive and nested schema violations. After releasing that update, switch `oikos_schemas.test.ts` to the shared helper and remove the temporary direct `ajv` test dependency.
+- [x] Update `@axdspub/axiom-ui-forms` `schemaHelpers.validateAgainstSchema` to return a consistent validation-error array (`[]` for valid values), update its TypeScript declaration, and add library tests for primitive and nested schema violations. Switch `oikos_schemas.test.ts` to the shared helper and remove the temporary direct `ajv` test dependency.
 - [x] Prevent invalid records from being imported by default.
 - [x] Allow users with appropriate permissions to explicitly include invalid records.
 - [ ] Remove or reconcile enum controls with Quicktype's current `no-enums` configuration.
@@ -247,26 +271,18 @@ Suggested next step: should I move on to the CSV import adapter? Reply `yes` to 
 
 - [x] Add overall and per-source progress bars during document execution.
 - [x] Batch document writes while preserving per-record results and failed-record retry behavior.
+- [x] Batch relationship writes with abort-aware pauses while preserving independent per-link results.
+- [x] Show relationship persistence progress alongside document import progress in Import All.
 - [ ] Verify progress bars, batch pacing, cancellation, and retry behavior in the authenticated UI.
 
 ## 7. Add CSV through the common adapter API
 
-- [x] Add a CSV file source adapter using `src/lib/csv.ts`.
   - **Outside import:** reuse the parser as-is initially; parser changes require dedicated tests because other features may consume it later.
-- [x] Add file selection, encoding/error handling, and a parsed preview using the existing file uploader.
-- [x] Add header-row and column mapping controls.
-- [x] Add a dedicated CSV mapping step for label, description, slug, external ID, and document data fields.
-- [x] Skip the CSV preload step because uploaded rows are already available as canonical records.
-- [ ] Skip additional CSV steps when filename, headers, mappings, and an existing type/schema provide enough information to proceed safely.
-- [x] Allow existing-type selection or automatic type/schema creation from CSV rows. The filename supplies the default type/schema name, and existing intended slugs are checked before creation.
-- [ ] Support sample, selected, and full validation.
-- [x] Run CSV records through the same reconciliation, review, and persistence phases as remote records.
-- [x] Derive filename-based type slugs with underscores to satisfy the database slug constraint.
-- [x] Add `public/test-metadata.csv` as a local UI verification fixture.
-- [x] Allow multiple CSV files in one import session, treating each spreadsheet as a source row with its own type and mapping. Each uploaded source uses a unique session ID while retaining its filename-derived object-type slug.
-- [ ] Support parent/child joins between uploaded CSV files using object-type rules with per-file overrides.
   - [x] Add CSV adapter support for relationship rules and explicit join fields, with cross-source planner tests.
-  - [ ] Submit all uploaded CSV sources to one shared relationship plan and persistence phase.
+- [x] Expose per-file relationship-field selection in the CSV mapping view and preserve selected fields in canonical records.
+- [x] Add a per-file relationship-rule editor for child source, parent field, child field, and predicate.
+  - [x] Submit all uploaded CSV sources to one shared relationship plan and persistence phase.
+    - UI verification still needed: upload related CSV files, navigate to Import All, and confirm both sources appear in one plan with shared relationship counts and link results.
 - [ ] Resolve multi-spreadsheet imports in dependency order so parent spreadsheets are loaded before related child spreadsheets.
 - [ ] Preserve cross-spreadsheet identity and relationship diagnostics when a parent file is missing, duplicated, or loaded out of order.
 - [ ] Add parser and adapter tests for quoted cells, duplicate/blank headers, dates, numbers, missing columns, large files, and malformed input. (Adapter coverage started; parser edge-case coverage remains.)

@@ -118,7 +118,7 @@ Without configuration, client deep merge plus authenticated PATCH remains the de
 Latest verification during this work:
 
 ```text
-npm test       # currently reports 66 passed and 1 pre-existing empty-suite failure in src/import/oikos_relationships.test.ts
+npm test       # latest full-suite result should be rerun after the Oikos relationship tests were added
 npm run build  # passed
 npm run lint   # fails on existing repository lint issues listed below
 ```
@@ -205,29 +205,29 @@ Live CSV checks still needed:
 
 ## Next implementation step
 
-Next session, verify the latest Import All behavior with authenticated PostgREST and configured Oikos sources:
+Live Import All verification is complete for preparation, document execution, relationship linking, progress visualization, batching, pauses, and cancellation. Failed relationship-link retry remains unverified.
 
-1. Confirm overall and per-source execution progress updates while Import All runs.
-2. Confirm batched document writes, the short pause between batches, cancellation, and failed-record retry.
-3. Verify Oikos model/model-variable and module/layer-group/layer relationships, including first import, repeat import, partial existing data, and failed/retried links.
-4. Confirm duplicate relationship rules do not produce duplicate plans or unnecessary writes.
+The next design task is a shared wizard shell. Import All is the closest existing workflow and should provide the initial structure:
 
-After live Import All verification, continue with:
+1. Put clear steps at the top of every import flow.
+2. Place current-step diagnostics, progress, errors, and settings directly beneath the wizard navigation.
+3. Keep advanced settings available without crowding the primary workflow.
 
-5. Apply the upstream `@axdspub/axiom-ui-forms` schema-helper update, then switch `oikos_schemas.test.ts` back to the shared helper and remove temporary Ajv test support.
-6. Skip additional CSV steps when filename, mappings, and an existing type/schema make them unnecessary.
-7. Add multiple spreadsheet sources in one session with dependency-ordered parent/child imports.
-8. Submit uploaded CSV sources to one shared relationship plan and persistence phase.
-9. Refine CSV mapping guidance and same-view revalidation for invalid records.
-10. Refactor the single-item import UI and debug object-type creation state refresh/failures.
-11. Keep XLS/XLSX deferred until the multi-source CSV adapter shape is proven.
+For CSV, the target flow is conditional:
+
+1. Single file: `Upload` -> `Map fields` -> `Import`.
+2. Multiple files: `Upload` -> `Map fields` -> `Set relationships` -> `Import`.
+3. Object-type setup should happen automatically by default, with an option at the beginning to make it an explicit step.
+4. All uploaded files should remain in one session and be imported together from the final step.
+
+Before or alongside the wizard work, verify failed relationship-link retry when a suitable failure scenario is available.
 
 The relationship ordering investigation is now part of the next relationship-design task rather than a separate deferred item.
 
 ## Changes outside `src/import`
 
 - `package.json` and `package-lock.json`: Vitest and the test script.
-- `package.json` and `package-lock.json`: temporary Ajv and happy-dom test dependencies for standalone schema fixtures.
+- `package.json` and `package-lock.json`: Vitest/test configuration and removal of the temporary direct Ajv dependency; Ajv remains transitively installed.
 - `vitest.config.ts`: test configuration.
 - `src/config/config.ts`: optional import merge RPC runtime setting.
 

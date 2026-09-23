@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState, type ReactElement } from 'react'
-import { Check, CircleAlert, LoaderCircle, Search, ShieldCheck, Square, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
+import { Check, CircleAlert, FileSpreadsheet, LoaderCircle, Search, ShieldCheck, Square, X } from 'lucide-react'
 import { Checkbox, Input, Tabs } from '@axdspub/axiom-ui-utilities'
 import { schemaToFormUtils, type IFormValues } from '@axdspub/axiom-ui-forms'
 import { Button } from '@/components/ui/button'
@@ -54,6 +54,7 @@ import CreateObjectType from '@/manage/object_type/create'
 import { SelectObjectTypeForImportTab } from './select_object_type_for_import'
 import { requestContextReloadAtom } from '@/state/contextStateAtom'
 import { useImportSession } from '@/import/state/importState'
+import { uploadedImportSourcesAtom } from '@/import/state/uploadedImportSources'
 import { postObjectType } from '@/manage/object_type/services'
 import { postObjectSchema } from '@/manage/object_schema/services'
 import {
@@ -67,15 +68,11 @@ const configuredSources = importConfigs.filter(
     config.sourceAdapter !== undefined
 )
 
-const sourcesById = Object.fromEntries(
-  configuredSources.map((source) => [source.sourceAdapter.id, source])
-)
-
-const initialPlans = (): Record<string, ImportAllSourcePlan> =>
+const initialPlans = (sources: ImportAllPlanSource[]): Record<string, ImportAllSourcePlan> =>
   Object.fromEntries(
-    configuredSources.map((source) => [
+    sources.map((source) => [
       source.sourceAdapter.id,
-      createImportAllSourcePlan(source as ImportAllPlanSource),
+      createImportAllSourcePlan(source),
     ])
   )
 
@@ -306,14 +303,37 @@ const TypeSetupDialog = ({
 
 const ImportAllPage = (): ReactElement => {
   const [context] = useAtom(contextStateAtom)
+  const [uploadedSources] = useAtom(uploadedImportSourcesAtom)
   const [, requestContextReload] = useAtom(requestContextReloadAtom)
   const auth = useAuth()
-  const [plans, setPlans] = useState(initialPlans)
+  const allSources = useMemo(
+    () => [
+      ...configuredSources,
+      ...uploadedSources.map((source) => ({ ...source, icon: FileSpreadsheet })),
+    ],
+    [uploadedSources]
+  )
+  const sourcesById = useMemo(
+    () => Object.fromEntries(allSources.map((source) => [source.sourceAdapter.id, source])),
+    [allSources]
+  )
+  const [plans, setPlans] = useState(() => initialPlans(allSources))
+  useEffect(() => {
+    setPlans((current) =>
+      Object.fromEntries(
+        allSources.map((source) => [
+          source.sourceAdapter.id,
+          current[source.sourceAdapter.id] ?? createImportAllSourcePlan(source),
+        ])
+      )
+    )
+  }, [allSources])
   const [loadAllRecords, setLoadAllRecords] = useState(false)
   const [recordLimit, setRecordLimit] = useState(100)
   const [relationshipResults, setRelationshipResults] = useState<
     ImportRelationshipPersistenceResult[]
   >([])
+  const [relationshipProgress, setRelationshipProgress] = useState({ completed: 0, total: 0 })
   const [isPersistingRelationships, setIsPersistingRelationships] = useState(false)
   const [typeSetupSourceId, setTypeSetupSourceId] = useState<string | null>(null)
   const [isCreatingMissingTypes, setIsCreatingMissingTypes] = useState(false)
@@ -349,10 +369,10 @@ const ImportAllPage = (): ReactElement => {
           const objectType = context.object_type_by_slug[plan.type]
           return objectType
             ? plan.records.map((record) => ({
-                record,
-                objectTypeUuid: objectType.uuid,
-                objectTypeSlug: objectType.slug,
-              }))
+              record,
+              objectTypeUuid: objectType.uuid,
+              objectTypeSlug: objectType.slug,
+            }))
             : []
         }),
       }),
@@ -370,6 +390,7 @@ const ImportAllPage = (): ReactElement => {
   const isDiscovering = planList.some(({ status }) => status === 'loading')
   const isPreparing = planList.some(({ preparationStatus }) => preparationStatus === 'loading')
   const isExecuting = planList.some(({ executionStatus }) => executionStatus === 'loading')
+  const isImportActive = isDiscovering || isPreparing || isExecuting || isPersistingRelationships
   const enabledPlans = planList.filter(({ enabled }) => enabled)
   const typeSetupPlan = typeSetupSourceId ? plans[typeSetupSourceId] : undefined
   const typeSetupSource = typeSetupSourceId ? sourcesById[typeSetupSourceId] : undefined
@@ -439,13 +460,17 @@ const ImportAllPage = (): ReactElement => {
   const persistRelationships = async (plans: ImportRelationshipPlan[]) => {
     const retryContext = relationshipRetryRef.current
     if (!retryContext) return
+    controllerRef.current?.abort()
+    const controller = new AbortController()
+    controllerRef.current = controller
     setIsPersistingRelationships(true)
+    setRelationshipProgress({ completed: 0, total: plans.length })
     try {
       const results = await persistImportRelationships({
         plans,
         documentUuids: retryContext.documentUuids,
         predicateUuids: retryContext.predicateUuids,
-        signal: controllerRef.current?.signal ?? new AbortController().signal,
+        signal: controller.signal,
         post: (relationship, signal) =>
           postRelationship({
             relationship,
@@ -475,6 +500,7 @@ const ImportAllPage = (): ReactElement => {
               },
             })
           ).length > 0,
+        onProgress: (completed, total) => setRelationshipProgress({ completed, total }),
       })
       setRelationshipResults((current) => [
         ...current.filter(
@@ -485,6 +511,7 @@ const ImportAllPage = (): ReactElement => {
       ])
     } finally {
       setIsPersistingRelationships(false)
+      if (controllerRef.current === controller) controllerRef.current = null
     }
   }
 
@@ -493,6 +520,7 @@ const ImportAllPage = (): ReactElement => {
     const controller = new AbortController()
     controllerRef.current = controller
     setRelationshipResults([])
+    setRelationshipProgress({ completed: 0, total: 0 })
     relationshipRetryRef.current = null
     const selected = Object.values(plans).filter(({ enabled }) => enabled)
 
@@ -502,15 +530,15 @@ const ImportAllPage = (): ReactElement => {
           sourceId,
           plan.enabled
             ? {
-                ...plan,
-                status: 'loading',
-                preparationStatus: 'idle',
-                candidates: [],
-                records: [],
-                validationResults: [],
-                reconciliations: [],
-                error: undefined,
-              }
+              ...plan,
+              status: 'loading',
+              preparationStatus: 'idle',
+              candidates: [],
+              records: [],
+              validationResults: [],
+              reconciliations: [],
+              error: undefined,
+            }
             : plan,
         ])
       )
@@ -551,12 +579,14 @@ const ImportAllPage = (): ReactElement => {
         Object.entries(current).map(([sourceId, plan]) => [
           sourceId,
           plan.status === 'loading' || plan.preparationStatus === 'loading'
+            || plan.executionStatus === 'loading'
             ? {
-                ...plan,
-                status: plan.status === 'loading' ? 'idle' : plan.status,
-                preparationStatus:
-                  plan.preparationStatus === 'loading' ? 'idle' : plan.preparationStatus,
-              }
+              ...plan,
+              status: plan.status === 'loading' ? 'idle' : plan.status,
+              preparationStatus:
+                plan.preparationStatus === 'loading' ? 'idle' : plan.preparationStatus,
+              executionStatus: plan.executionStatus === 'loading' ? 'idle' : plan.executionStatus,
+            }
             : plan,
         ])
       )
@@ -568,6 +598,7 @@ const ImportAllPage = (): ReactElement => {
     const controller = new AbortController()
     controllerRef.current = controller
     setRelationshipResults([])
+    setRelationshipProgress({ completed: 0, total: 0 })
     relationshipRetryRef.current = null
     const selected = Object.values(plans).filter(
       ({ enabled, status }) => enabled && status === 'ready'
@@ -590,10 +621,10 @@ const ImportAllPage = (): ReactElement => {
               sourceId,
               plan.enabled && plan.status === 'ready'
                 ? {
-                    ...plan,
-                    preparationStatus: 'error',
-                    error: `Could not refresh object types and schemas: ${error instanceof Error ? error.message : String(error)}`,
-                  }
+                  ...plan,
+                  preparationStatus: 'error',
+                  error: `Could not refresh object types and schemas: ${error instanceof Error ? error.message : String(error)}`,
+                }
                 : plan,
             ])
           )
@@ -612,14 +643,14 @@ const ImportAllPage = (): ReactElement => {
           sourceId,
           plan.enabled && plan.status === 'ready'
             ? {
-                ...plan,
-                preparationStatus: 'loading',
-                preparationCompleted: 0,
-                preparationTotal: plan.candidates.length,
-                executionStatus: 'idle',
-                executionResults: [],
-                error: undefined,
-              }
+              ...plan,
+              preparationStatus: 'loading',
+              preparationCompleted: 0,
+              preparationTotal: plan.candidates.length,
+              executionStatus: 'idle',
+              executionResults: [],
+              error: undefined,
+            }
             : plan,
         ])
       )
@@ -693,16 +724,16 @@ const ImportAllPage = (): ReactElement => {
         Object.entries(current).map(([sourceId, plan]) => [
           sourceId,
           plan.enabled &&
-          plan.preparationStatus === 'ready' &&
-          (!recordKeysBySource || recordKeysBySource[plan.sourceId] !== undefined)
+            plan.preparationStatus === 'ready' &&
+            (!recordKeysBySource || recordKeysBySource[plan.sourceId] !== undefined)
             ? {
-                ...plan,
-                executionStatus: 'loading',
-                executionCompleted: 0,
-                executionTotal:
-                  recordKeysBySource?.[plan.sourceId]?.size ?? plan.reconciliations.length,
-                error: undefined,
-              }
+              ...plan,
+              executionStatus: 'loading',
+              executionCompleted: 0,
+              executionTotal:
+                recordKeysBySource?.[plan.sourceId]?.size ?? plan.reconciliations.length,
+              error: undefined,
+            }
             : plan,
         ])
       )
@@ -727,14 +758,14 @@ const ImportAllPage = (): ReactElement => {
           const executionPlan =
             recordKeys || needsReconciliation
               ? await refreshImportAllSourceReconciliation({
-                  plan,
-                  recordKeys:
-                    recordKeys ?? new Set(plan.records.map((record) => importAllRecordKey(record))),
-                  objectTypeUuid: objectType.uuid,
-                  token: auth.user?.access_token ?? '',
-                  signal: controller.signal,
-                  fetchExisting: fetchExistingImportDocuments,
-                })
+                plan,
+                recordKeys:
+                  recordKeys ?? new Set(plan.records.map((record) => importAllRecordKey(record))),
+                objectTypeUuid: objectType.uuid,
+                token: auth.user?.access_token ?? '',
+                signal: controller.signal,
+                fetchExisting: fetchExistingImportDocuments,
+              })
               : plan
           const executed = await executeImportAllSource({
             plan: executionPlan,
@@ -876,6 +907,7 @@ const ImportAllPage = (): ReactElement => {
               },
             })
           ).length > 0,
+        onProgress: (completed, total) => setRelationshipProgress({ completed, total }),
       })
       relationshipRetryRef.current = {
         plans: relationshipPlans,
@@ -920,6 +952,11 @@ const ImportAllPage = (): ReactElement => {
                 Importing {executionProgress.completed} of {executionProgress.total} records
               </span>
             )}
+            {relationshipProgress.total > 0 && (
+              <span className="text-blue-700">
+                Linking {relationshipProgress.completed} of {relationshipProgress.total} relationships
+              </span>
+            )}
           </div>
         </div>
         <Checkbox
@@ -962,7 +999,7 @@ const ImportAllPage = (): ReactElement => {
             if (Number.isInteger(parsed) && parsed >= 0) setRecordLimit(parsed)
           }}
         />
-        {isDiscovering || isPreparing || isExecuting ? (
+        {isImportActive ? (
           <Button variant="destructive" onClick={cancelDiscovery}>
             <X size={16} /> Cancel
           </Button>
@@ -994,7 +1031,7 @@ const ImportAllPage = (): ReactElement => {
         </Button>
         <Button
           disabled={
-            isDiscovering || isPreparing || isExecuting || !reviewReady || !auth.user?.access_token
+            isImportActive || !reviewReady || !auth.user?.access_token
           }
           onClick={() => executeSelected()}
         >
@@ -1064,12 +1101,28 @@ const ImportAllPage = (): ReactElement => {
             Could not create missing types: {missingTypeCreationError}
           </div>
         )}
+        {isPreparing && preparationProgress.total > 0 && (
+          <progress
+            className="mt-3 h-2 w-full bg-gray-100 accent-blue-600"
+            max={preparationProgress.total}
+            value={preparationProgress.completed}
+            aria-label="Overall preparation progress"
+          />
+        )}
         {isExecuting && executionProgress.total > 0 && (
           <progress
-            className="mt-3 h-2 w-full accent-blue-600"
+            className="mt-3 h-2 w-full bg-gray-100 accent-blue-600"
             max={executionProgress.total}
             value={executionProgress.completed}
             aria-label="Overall import progress"
+          />
+        )}
+        {relationshipProgress.total > 0 && (
+          <progress
+            className="mt-3 h-2 w-full bg-slate-100 [&::-webkit-progress-bar]:bg-slate-100 accent-white"
+            max={relationshipProgress.total}
+            value={relationshipProgress.completed}
+            aria-label="Relationship import progress"
           />
         )}
       </section>
@@ -1126,7 +1179,7 @@ const ImportAllPage = (): ReactElement => {
             return (
               <section
                 key={source.sourceAdapter.id}
-                className={`relative border-b px-5 py-4 lg:pr-104 ${plan.enabled ? 'lg:min-h-96' : ''} ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                className={`relative border-b px-5 py-4 lg:pr-104 ${plan.enabled ? (plan.status !== 'idle' ? 'lg:min-h-96' : 'lg:min-h-32') : ''} ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
               >
                 <div className="grid grid-cols-[minmax(15rem,1fr)_9rem_11rem_auto] items-center gap-4">
                   <div className="flex min-w-0 items-center gap-3">
@@ -1239,9 +1292,19 @@ const ImportAllPage = (): ReactElement => {
                       {statusIcon(plan.preparationStatus)} Preparation: {plan.preparationStatus}
                     </span>
                     {plan.preparationStatus === 'loading' && (
-                      <span>
-                        {plan.preparationCompleted} of {plan.preparationTotal} records loaded
-                      </span>
+                      <>
+                        <span>
+                          {plan.preparationCompleted} of {plan.preparationTotal} records loaded
+                        </span>
+                        {plan.preparationTotal > 0 && (
+                          <progress
+                            className="h-2 min-w-32 flex-1 bg-gray-100 accent-blue-600"
+                            max={plan.preparationTotal}
+                            value={plan.preparationCompleted}
+                            aria-label={`${plan.label} preparation progress`}
+                          />
+                        )}
+                      </>
                     )}
                     {plan.preparationStatus === 'ready' && (
                       <>
@@ -1292,102 +1355,102 @@ const ImportAllPage = (): ReactElement => {
                         },
                         ...(hasChangedRecords
                           ? [
-                              {
-                                id: 'changed',
-                                label: `Changed records (${plan.reconciliations.filter(({ status }) => status === 'conflicting').length})`,
-                                content: (
-                                  <div className="border bg-white p-2 text-sm shadow-sm">
-                                    <div className="flex justify-end border-b px-1 pb-2">
-                                      <select
-                                        aria-label="Apply conflict action to all changed records"
-                                        defaultValue=""
-                                        onChange={(event) => {
-                                          const action = event.target.value as
-                                            'ignore' | 'overwrite' | 'merge'
-                                          if (!action) return
-                                          const conflictActions = Object.fromEntries(
-                                            plan.reconciliations
-                                              .filter(({ status }) => status === 'conflicting')
-                                              .map(({ record }) => [
-                                                importAllRecordKey(record),
-                                                action,
-                                              ])
-                                          )
-                                          updatePlan(plan.sourceId, {
-                                            conflictActions,
-                                            executionStatus: 'idle',
-                                            executionResults: [],
-                                          })
-                                          event.target.value = ''
-                                        }}
-                                        className="ml-auto border px-2 py-1"
-                                      >
-                                        <option value="">Apply to all...</option>
-                                        <option value="ignore">Ignore all</option>
-                                        <option value="overwrite">Overwrite all</option>
-                                        <option value="merge">Merge all</option>
-                                      </select>
-                                    </div>
-                                    <TableVirtuoso
-                                      className="w-full overflow-y-auto"
-                                      style={{ height: 280 }}
-                                      components={{
-                                        Table: (props) => (
-                                          <table {...props} className="w-full table-fixed" />
-                                        ),
-                                      }}
-                                      data={plan.reconciliations.filter(
-                                        ({ status }) => status === 'conflicting'
-                                      )}
-                                      itemContent={(_, item) => {
-                                        const key = importAllRecordKey(item.record)
-                                        return (
-                                          <td className="w-full p-0">
-                                            <label className="flex w-full items-center gap-2 border-b px-2 py-1.5">
-                                              <span className="min-w-0 flex-1 truncate">
-                                                {item.existingDocuments[0]?.uuid ? (
-                                                  <Link
-                                                    className="text-blue-700 hover:underline"
-                                                    to={`/document/edit/${item.existingDocuments[0].uuid}`}
-                                                  >
-                                                    {item.record.label}
-                                                  </Link>
-                                                ) : (
-                                                  item.record.label
-                                                )}
-                                              </span>
-                                              <select
-                                                aria-label={`Conflict action for ${item.record.label}`}
-                                                value={
-                                                  plan.conflictActions[key] ??
-                                                  plan.defaultConflictAction
-                                                }
-                                                onChange={(event) =>
-                                                  updatePlan(plan.sourceId, {
-                                                    conflictActions: {
-                                                      ...plan.conflictActions,
-                                                      [key]: event.target
-                                                        .value as typeof plan.defaultConflictAction,
-                                                    },
-                                                    executionStatus: 'idle',
-                                                    executionResults: [],
-                                                  })
-                                                }
-                                                className="ml-auto shrink-0 border px-2 py-1"
-                                              >
-                                                <option value="ignore">Ignore</option>
-                                                <option value="overwrite">Overwrite</option>
-                                                <option value="merge">Merge</option>
-                                              </select>
-                                            </label>
-                                          </td>
+                            {
+                              id: 'changed',
+                              label: `Changed records (${plan.reconciliations.filter(({ status }) => status === 'conflicting').length})`,
+                              content: (
+                                <div className="border bg-white p-2 text-sm shadow-sm">
+                                  <div className="flex justify-end border-b px-1 pb-2">
+                                    <select
+                                      aria-label="Apply conflict action to all changed records"
+                                      defaultValue=""
+                                      onChange={(event) => {
+                                        const action = event.target.value as
+                                          'ignore' | 'overwrite' | 'merge'
+                                        if (!action) return
+                                        const conflictActions = Object.fromEntries(
+                                          plan.reconciliations
+                                            .filter(({ status }) => status === 'conflicting')
+                                            .map(({ record }) => [
+                                              importAllRecordKey(record),
+                                              action,
+                                            ])
                                         )
+                                        updatePlan(plan.sourceId, {
+                                          conflictActions,
+                                          executionStatus: 'idle',
+                                          executionResults: [],
+                                        })
+                                        event.target.value = ''
                                       }}
-                                    />
+                                      className="ml-auto border px-2 py-1"
+                                    >
+                                      <option value="">Apply to all...</option>
+                                      <option value="ignore">Ignore all</option>
+                                      <option value="overwrite">Overwrite all</option>
+                                      <option value="merge">Merge all</option>
+                                    </select>
                                   </div>
-                                ),
-                              },
-                            ]
+                                  <TableVirtuoso
+                                    className="w-full overflow-y-auto"
+                                    style={{ height: 280 }}
+                                    components={{
+                                      Table: (props) => (
+                                        <table {...props} className="w-full table-fixed" />
+                                      ),
+                                    }}
+                                    data={plan.reconciliations.filter(
+                                      ({ status }) => status === 'conflicting'
+                                    )}
+                                    itemContent={(_, item) => {
+                                      const key = importAllRecordKey(item.record)
+                                      return (
+                                        <td className="w-full p-0">
+                                          <label className="flex w-full items-center gap-2 border-b px-2 py-1.5">
+                                            <span className="min-w-0 flex-1 truncate">
+                                              {item.existingDocuments[0]?.uuid ? (
+                                                <Link
+                                                  className="text-blue-700 hover:underline"
+                                                  to={`/document/edit/${item.existingDocuments[0].uuid}`}
+                                                >
+                                                  {item.record.label}
+                                                </Link>
+                                              ) : (
+                                                item.record.label
+                                              )}
+                                            </span>
+                                            <select
+                                              aria-label={`Conflict action for ${item.record.label}`}
+                                              value={
+                                                plan.conflictActions[key] ??
+                                                plan.defaultConflictAction
+                                              }
+                                              onChange={(event) =>
+                                                updatePlan(plan.sourceId, {
+                                                  conflictActions: {
+                                                    ...plan.conflictActions,
+                                                    [key]: event.target
+                                                      .value as typeof plan.defaultConflictAction,
+                                                  },
+                                                  executionStatus: 'idle',
+                                                  executionResults: [],
+                                                })
+                                              }
+                                              className="ml-auto shrink-0 border px-2 py-1"
+                                            >
+                                              <option value="ignore">Ignore</option>
+                                              <option value="overwrite">Overwrite</option>
+                                              <option value="merge">Merge</option>
+                                            </select>
+                                          </label>
+                                        </td>
+                                      )
+                                    }}
+                                  />
+                                </div>
+                              ),
+                            },
+                          ]
                           : []),
                       ]}
                     />
@@ -1400,7 +1463,7 @@ const ImportAllPage = (): ReactElement => {
                     {plan.executionTotal > 0 && (
                       <span className="flex min-w-52 flex-1 items-center gap-2">
                         <progress
-                          className="h-2 min-w-32 flex-1 accent-blue-600"
+                          className="h-2 min-w-32 flex-1 bg-gray-100 accent-blue-600"
                           max={plan.executionTotal}
                           value={plan.executionCompleted}
                           aria-label={`${plan.label} import progress`}

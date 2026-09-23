@@ -1,0 +1,3 @@
+label,slug,external_id,description,code,category
+North Station,north-station,RP-001,Parent record for the north group,NORTH,weather
+South Station,south-station,RP-002,Parent record for the south group,SOUTH,weather

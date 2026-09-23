@@ -122,46 +122,46 @@ describe('Import All discovery plan', () => {
       records: [parentRecord],
       reconciliations: parentExists
         ? [
-            {
-              record: parentRecord,
-              status: 'exact' as const,
-              action: 'ignore' as const,
-              existingDocuments: [{ uuid: 'existing-parent' } as IDocument],
-            },
-          ]
+          {
+            record: parentRecord,
+            status: 'exact' as const,
+            action: 'ignore' as const,
+            existingDocuments: [{ uuid: 'existing-parent' } as IDocument],
+          },
+        ]
         : [],
       executionResults: parentExists
         ? []
         : [
-            {
-              recordKey: 'parent-source:parent-1',
-              status: 'imported' as const,
-              documentUuid: 'new-parent',
-            },
-          ],
+          {
+            recordKey: 'parent-source:parent-1',
+            status: 'imported' as const,
+            documentUuid: 'new-parent',
+          },
+        ],
     }
     const childPlan = {
       ...createImportAllSourcePlan({ ...childSource, type: 'children' }),
       records: [childRecord],
       reconciliations: childExists
         ? [
-            {
-              record: childRecord,
-              status: 'exact' as const,
-              action: 'ignore' as const,
-              existingDocuments: [{ uuid: 'existing-child' } as IDocument],
-            },
-          ]
+          {
+            record: childRecord,
+            status: 'exact' as const,
+            action: 'ignore' as const,
+            existingDocuments: [{ uuid: 'existing-child' } as IDocument],
+          },
+        ]
         : [],
       executionResults: childExists
         ? []
         : [
-            {
-              recordKey: 'child-source:child-1',
-              status: 'imported' as const,
-              documentUuid: 'new-child',
-            },
-          ],
+          {
+            recordKey: 'child-source:child-1',
+            status: 'imported' as const,
+            documentUuid: 'new-child',
+          },
+        ],
     }
 
     const documentUuids = collectImportDocumentUuids({
@@ -602,6 +602,56 @@ describe('Import All discovery plan', () => {
     expect(post).toHaveBeenCalledTimes(3)
     expect(progress).toEqual([1, 2, 3])
     expect(executed).toMatchObject({ executionCompleted: 3, executionTotal: 3 })
+  })
+
+  it('stops before the next batch when execution is aborted', async () => {
+    const configuredSource = source()
+    const records = ['1', '2'].map((externalId) => ({
+      uuid: externalId,
+      slug: `record-${externalId}`,
+      label: externalId,
+      data: {},
+      attrs: {},
+      description: '',
+      sourceData: {},
+      provenance: { sourceId: 'source-a', externalId },
+    }))
+    const plan = {
+      ...createImportAllSourcePlan(configuredSource),
+      records,
+      validationResults: records.map((record) => ({ record, isValid: true, errors: [] })),
+      reconciliations: records.map((record) => ({
+        record,
+        status: 'new' as const,
+        action: 'create' as const,
+        existingDocuments: [],
+      })),
+    }
+    const controller = new AbortController()
+    const post = vi.fn(async (document: Omit<IDocument, 'uuid' | 'created_at' | 'updated_at'>) => {
+      if (document.slug === 'record-1') controller.abort()
+      return { uuid: 'created-uuid' } as IDocument
+    })
+
+    await expect(
+      executeImportAllSource({
+        plan,
+        objectTypeUuid: 'type-1',
+        signal: controller.signal,
+        mergeStrategy: 'client-patch',
+        batchSize: 1,
+        delayMsBetweenBatches: 0,
+        persistence: {
+          post,
+          patch: vi.fn(),
+          mergeRpc: vi.fn(),
+          fetchBySlug: vi.fn().mockResolvedValue(undefined),
+        },
+      })
+    ).rejects.toThrow('Execution cancelled')
+
+    expect(post).toHaveBeenCalledTimes(1)
+    expect(post.mock.calls[0][0]).toEqual(expect.objectContaining({ slug: 'record-1' }))
   })
 
   it('refreshes reconciliation only for selected retry records', async () => {

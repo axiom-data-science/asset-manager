@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactElement } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { FileSpreadsheet, X } from 'lucide-react'
 import { schemaToFormUtils, type IFieldInputProps, type IFormValues } from '@axdspub/axiom-ui-forms'
 import type { ParsedCSV } from '@/lib/csv'
@@ -11,13 +11,14 @@ import {
   isCSVImportMappingComplete,
 } from '../csv_adapter'
 import type { CSVImportMapping } from '../csv_adapter'
-import type { ImportSourceAdapter } from '../types'
+import type { ImportRelationshipRule, ImportSourceAdapter } from '../types'
 import ImportRecordsPage from './index'
 import { Button } from '@/components/ui/button'
 import { useImportSession } from '../state/importState'
 import contextStateAtom from '@/state/contextStateAtom'
 import { useAtom } from 'jotai'
 import { omit } from 'lodash-es'
+import { uploadedImportSourcesAtom } from '../state/uploadedImportSources'
 
 const csvField = {
   id: 'csv-file',
@@ -32,6 +33,8 @@ type CSVImportSource = {
   fileText: string
   parsed: ParsedCSV
   mapping: CSVImportMapping
+  relationshipFields: string[]
+  relationshipRule?: ImportRelationshipRule
   adapter: ImportSourceAdapter
   startAtImport: boolean
 }
@@ -41,20 +44,31 @@ const createSourceId = (typeSlug: string, sourceNumber: number): string =>
 
 const CSVSourceEditor = ({
   source,
+  sources,
   onChange,
 }: {
   source: CSVImportSource
+  sources: CSVImportSource[]
   onChange: (update: Partial<CSVImportSource>) => void
 }): ReactElement => {
+  const rebuildAdapter = (
+    mapping: CSVImportMapping,
+    relationshipFields: string[],
+    relationshipRule?: ImportRelationshipRule
+  ) =>
+    createCSVImportAdapter({
+      id: source.sourceId,
+      label: csvFileNameToTypeLabel(source.fileName),
+      text: source.fileText,
+      mapping,
+      relationshipFields,
+      relationshipRules: relationshipRule ? [relationshipRule] : undefined,
+    })
+
   const updateMapping = (mapping: CSVImportMapping) => {
     onChange({
       mapping,
-      adapter: createCSVImportAdapter({
-        id: source.sourceId,
-        label: csvFileNameToTypeLabel(source.fileName),
-        text: source.fileText,
-        mapping,
-      }),
+      adapter: rebuildAdapter(mapping, source.relationshipFields, source.relationshipRule),
       startAtImport: false,
     })
   }
@@ -92,6 +106,181 @@ const CSVSourceEditor = ({
               ))}
             </tbody>
           </table>
+        </div>
+      </section>
+
+      <section className="min-w-0 shrink-0 border-b pb-4" aria-label="CSV relationship fields">
+        <div className="mb-3">
+          <h2 className="font-semibold">Relationship fields</h2>
+          <p className="text-sm text-gray-600">
+            Select columns used to match this CSV source to a related parent or child type.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+          {source.parsed.headers.map((header) => {
+            const selected = source.relationshipFields.includes(header.key)
+            return (
+              <label key={header.key} className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={selected}
+                  onChange={(event) => {
+                    const relationshipFields = new Set(source.relationshipFields)
+                    if (event.target.checked) relationshipFields.add(header.key)
+                    else relationshipFields.delete(header.key)
+                    const nextRelationshipFields = Array.from(relationshipFields)
+                    onChange({
+                      relationshipFields: nextRelationshipFields,
+                      adapter: rebuildAdapter(
+                        source.mapping,
+                        nextRelationshipFields,
+                        source.relationshipRule
+                      ),
+                      startAtImport: false,
+                    })
+                  }}
+                />
+                {header.key}
+              </label>
+            )
+          })}
+        </div>
+      </section>
+
+      <section className="min-w-0 shrink-0 border-b pb-4" aria-label="CSV relationship rule">
+        <div className="mb-3">
+          <h2 className="font-semibold">Relationship rule</h2>
+          <p className="text-sm text-gray-600">
+            Configure this CSV as the parent of another uploaded CSV source.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium">Child CSV</span>
+            <select
+              value={source.relationshipRule?.childObjectTypeSlug ?? ''}
+              onChange={(event) => {
+                const child = sources.find(
+                  (candidate) => candidate.typeSlug === event.target.value
+                )
+                const childObjectTypeSlug = child?.typeSlug
+                const relationshipRule = childObjectTypeSlug
+                  ? {
+                      parentObjectTypeSlug: source.typeSlug,
+                      childObjectTypeSlug,
+                      parentMatchField: source.relationshipRule?.parentMatchField ?? '',
+                      childMatchField: source.relationshipRule?.childMatchField ?? '',
+                      predicate: source.relationshipRule?.predicate || 'has_parent',
+                    }
+                  : undefined
+                onChange({
+                  relationshipRule,
+                  adapter: rebuildAdapter(
+                    source.mapping,
+                    source.relationshipFields,
+                    relationshipRule
+                  ),
+                  startAtImport: false,
+                })
+              }}
+              className="border px-2 py-1"
+            >
+              <option value="">No relationship rule</option>
+              {sources
+                .filter((candidate) => candidate.sourceId !== source.sourceId)
+                .map((candidate) => (
+                  <option key={candidate.sourceId} value={candidate.typeSlug}>
+                    {candidate.fileName}
+                  </option>
+                ))}
+            </select>
+          </label>
+          {source.relationshipRule && (
+            <>
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-medium">Parent field</span>
+                <select
+                  value={source.relationshipRule.parentMatchField ?? ''}
+                  onChange={(event) => {
+                    const relationshipRule = {
+                      ...source.relationshipRule!,
+                      parentMatchField: event.target.value,
+                    }
+                    onChange({
+                      relationshipRule,
+                      adapter: rebuildAdapter(
+                        source.mapping,
+                        source.relationshipFields,
+                        relationshipRule
+                      ),
+                    })
+                  }}
+                  className="border px-2 py-1"
+                >
+                  <option value="">Select a field</option>
+                  {source.parsed.headers.map((header) => (
+                    <option key={header.key} value={header.key}>
+                      {header.key}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-medium">Child field</span>
+                <select
+                  value={source.relationshipRule.childMatchField ?? ''}
+                  onChange={(event) => {
+                    const relationshipRule = {
+                      ...source.relationshipRule!,
+                      childMatchField: event.target.value,
+                    }
+                    onChange({
+                      relationshipRule,
+                      adapter: rebuildAdapter(
+                        source.mapping,
+                        source.relationshipFields,
+                        relationshipRule
+                      ),
+                    })
+                  }}
+                  className="border px-2 py-1"
+                >
+                  <option value="">Select a field</option>
+                  {sources
+                    .find(
+                      (candidate) =>
+                        candidate.typeSlug === source.relationshipRule?.childObjectTypeSlug
+                    )
+                    ?.parsed.headers.map((header) => (
+                      <option key={header.key} value={header.key}>
+                        {header.key}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-medium">Predicate</span>
+                <input
+                  value={source.relationshipRule.predicate}
+                  onChange={(event) => {
+                    const relationshipRule = {
+                      ...source.relationshipRule!,
+                      predicate: event.target.value,
+                    }
+                    onChange({
+                      relationshipRule,
+                      adapter: rebuildAdapter(
+                        source.mapping,
+                        source.relationshipFields,
+                        relationshipRule
+                      ),
+                    })
+                  }}
+                  className="border px-2 py-1"
+                />
+              </label>
+            </>
+          )}
         </div>
       </section>
 
@@ -181,12 +370,23 @@ const CSVImportPage = (): ReactElement => {
   const [isLoadingRecords, setIsLoadingRecords] = useState(false)
   const [loadError, setLoadError] = useState<string>()
   const [contextState] = useAtom(contextStateAtom)
+  const [, setUploadedImportSources] = useAtom(uploadedImportSourcesAtom)
   const activeSource = sources.find((source) => source.sourceId === activeSourceId) ?? null
   const activeSession = useImportSession(activeSource?.sourceId ?? 'csv-upload')
   const sourceCountLabel = useMemo(
     () => `${sources.length} CSV source${sources.length === 1 ? '' : 's'}`,
     [sources.length]
   )
+
+  useEffect(() => {
+    setUploadedImportSources(
+      sources.map((source) => ({
+        type: source.typeSlug,
+        label: csvFileNameToTypeLabel(source.fileName),
+        sourceAdapter: source.adapter,
+      }))
+    )
+  }, [setUploadedImportSources, sources])
 
   const addSource = (fileData: string, parsed: ParsedCSV, fileName: string) => {
     const typeSlug = csvFileNameToTypeSlug(fileName)
@@ -206,6 +406,8 @@ const CSVImportPage = (): ReactElement => {
       fileText: fileData,
       parsed,
       mapping,
+      relationshipFields: [],
+      relationshipRule: undefined,
       adapter,
       startAtImport: false,
     }
@@ -340,6 +542,7 @@ const CSVImportPage = (): ReactElement => {
           {activeSource && (
             <CSVSourceEditor
               source={activeSource}
+              sources={sources}
               onChange={(update) => updateSource(activeSource.sourceId, update)}
             />
           )}

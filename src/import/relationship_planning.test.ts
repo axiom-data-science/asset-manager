@@ -269,6 +269,46 @@ describe('Import relationship planning', () => {
     )
   })
 
+  it('batches relationship writes', async () => {
+    const parents = ['1', '2', '3'].map((id) => candidate('source', id, 'parent-type', 'parents'))
+    const children = ['1', '2', '3'].map((id) => candidate('source', id, 'child-type', 'children'))
+    const plans = planImportRelationships({
+      parentObjectTypes: new Map([
+        [
+          'parent-type',
+          objectType('parent-type', 'parents', [
+            { object_type_slug: 'children', to_parent_predicate: 'belongs_to' },
+          ]),
+        ],
+      ]),
+      candidates: [...parents, ...children],
+    })
+    let activePosts = 0
+    let maximumActivePosts = 0
+    const post = vi.fn(async () => {
+      activePosts += 1
+      maximumActivePosts = Math.max(maximumActivePosts, activePosts)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      activePosts -= 1
+    })
+
+    const results = await persistImportRelationships({
+      plans,
+      documentUuids: new Map(
+        [...parents, ...children].map((item) => [relationshipDocumentKey(item), `${item.objectTypeUuid}-${item.record.provenance.externalId}`])
+      ),
+      predicateUuids: new Map([['belongs_to', 'predicate-1']]),
+      signal: new AbortController().signal,
+      post,
+      batchSize: 2,
+      delayMsBetweenBatches: 0,
+    })
+
+    expect(results).toHaveLength(3)
+    expect(maximumActivePosts).toBe(2)
+    expect(post).toHaveBeenCalledTimes(3)
+  })
+
   it.each([
     ['both documents are new', 'parent-document', 'child-document'],
     ['the parent already exists', 'existing-parent', 'child-document'],

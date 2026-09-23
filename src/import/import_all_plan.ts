@@ -20,7 +20,7 @@ export type ImportAllPreparationStatus = 'idle' | 'loading' | 'ready' | 'error'
 export type ImportAllExecutionStatus = 'idle' | 'loading' | 'ready' | 'error'
 
 export const IMPORT_ALL_EXECUTION_BATCH_SIZE = 10
-export const IMPORT_ALL_EXECUTION_DELAY_MS = 100
+export const IMPORT_ALL_EXECUTION_DELAY_MS = 500
 
 export type ImportAllExecutionResult = {
   recordKey: string

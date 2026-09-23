@@ -1,0 +1,4 @@
+label,slug,external_id,description,parent_code,measurement
+North Temperature,north-temperature,RC-001,Child linked to the north station,NORTH,18.4
+North Humidity,north-humidity,RC-002,Second child linked to the north station,NORTH,72
+South Temperature,south-temperature,RC-003,Child linked to the south station,SOUTH,16.9

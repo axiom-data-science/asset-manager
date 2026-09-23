@@ -148,6 +148,9 @@ export const importRelationshipKey = (plan: ImportRelationshipPlan): string =>
 export const relationshipDocumentKey = (candidate: ImportRelationshipCandidate): string =>
   `${candidate.objectTypeUuid}:${candidate.record.provenance.sourceId}:${candidate.record.provenance.externalId}`
 
+export const IMPORT_RELATIONSHIP_BATCH_SIZE = 10
+export const IMPORT_RELATIONSHIP_DELAY_MS = 100
+
 export const persistImportRelationships = async ({
   plans,
   documentUuids,
@@ -155,6 +158,9 @@ export const persistImportRelationships = async ({
   signal,
   post,
   findExisting,
+  batchSize = IMPORT_RELATIONSHIP_BATCH_SIZE,
+  delayMsBetweenBatches = IMPORT_RELATIONSHIP_DELAY_MS,
+  onProgress,
 }: {
   plans: ImportRelationshipPlan[]
   documentUuids: ReadonlyMap<string, string>
@@ -176,14 +182,18 @@ export const persistImportRelationships = async ({
     },
     signal: AbortSignal
   ) => Promise<boolean>
+  batchSize?: number
+  delayMsBetweenBatches?: number
+  onProgress?: (completed: number, total: number) => void
 }): Promise<ImportRelationshipPersistenceResult[]> => {
   const results: ImportRelationshipPersistenceResult[] = []
-  for (const plan of plans) {
+  let completed = 0
+  onProgress?.(0, plans.length)
+  const persistPlan = async (plan: ImportRelationshipPlan) => {
     const relationshipKey = importRelationshipKey(plan)
     if (signal.aborted) throw new DOMException('Relationship persistence cancelled', 'AbortError')
     if (plan.status !== 'ready' || !plan.parent) {
-      results.push({ relationshipKey, status: 'blocked', error: plan.reason })
-      continue
+      return { relationshipKey, status: 'blocked' as const, error: plan.reason }
     }
     const childUuid = documentUuids.get(relationshipDocumentKey(plan.child))
     const parentUuid = documentUuids.get(relationshipDocumentKey(plan.parent))
@@ -194,12 +204,11 @@ export const persistImportRelationships = async ({
         !parentUuid ? 'parent document' : undefined,
         !predicateUuid ? `predicate "${plan.predicate}"` : undefined,
       ].filter((value): value is string => value !== undefined)
-      results.push({
+      return {
         relationshipKey,
-        status: 'blocked',
+        status: 'blocked' as const,
         error: `UUID unavailable for ${missing.join(', ')}`,
-      })
-      continue
+      }
     }
     const relationship = {
       from_document_uuid: childUuid,
@@ -208,18 +217,47 @@ export const persistImportRelationships = async ({
     }
     try {
       if (findExisting && (await findExisting(relationship, signal))) {
-        results.push({ relationshipKey, status: 'existing' })
-        continue
+        return { relationshipKey, status: 'existing' as const }
       }
       await post(relationship, signal)
-      results.push({ relationshipKey, status: 'created' })
+      return { relationshipKey, status: 'created' as const }
     } catch (error) {
-      results.push({
+      return {
         relationshipKey,
-        status: 'failed',
+        status: 'failed' as const,
         error: error instanceof Error ? error.message : String(error),
-      })
+      }
     }
+  }
+
+  const waitBetweenBatches = async () => {
+    if (delayMsBetweenBatches <= 0) return
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(resolve, delayMsBetweenBatches)
+      const abort = () => {
+        clearTimeout(timeout)
+        reject(new DOMException('Relationship persistence cancelled', 'AbortError'))
+      }
+      if (signal.aborted) {
+        abort()
+        return
+      }
+      signal.addEventListener('abort', abort, { once: true })
+      setTimeout(() => signal.removeEventListener('abort', abort), delayMsBetweenBatches)
+    })
+  }
+
+  for (let start = 0; start < plans.length; start += Math.max(1, batchSize)) {
+    const batch = plans.slice(start, start + Math.max(1, batchSize))
+    const batchResults = await Promise.all(
+      batch.map(async (plan) => {
+        const result = await persistPlan(plan)
+        onProgress?.(++completed, plans.length)
+        return result
+      })
+    )
+    results.push(...batchResults)
+    if (start + batch.length < plans.length) await waitBetweenBatches()
   }
   return results
 }

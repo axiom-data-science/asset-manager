@@ -76,7 +76,7 @@
     "data_provider_id": { "type": ["integer", "null"] },
     "times": {
       "type": "array",
-      "items": { "type": "object", "additionalProperties": true }
+      "items": { "type": "string", "format": "date-time", "additionalProperties": true }
     }
   }
 }

@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@axdspub/axiom-ui-data-services": "^1.1.1-alpha.7",
-    "@axdspub/axiom-ui-forms": "^1.2.1-alpha.2",
+    "@axdspub/axiom-ui-forms": "^1.2.2-alpha.0",
     "@axdspub/axiom-ui-utilities": "^1.1.2-alpha.3",
     "@fontsource-variable/geist": "^5.2.9",
     "@tailwindcss/vite": "^4.2.1",
@@ -44,7 +44,6 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
-    "ajv": "^8.20.0",
     "eslint": "^9.39.3",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",

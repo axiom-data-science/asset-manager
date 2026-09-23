@@ -1,18 +1,21 @@
-import Ajv from 'ajv'
+// @vitest-environment happy-dom
+
 import { describe, expect, it } from 'vitest'
-import type { JSONSchema6 } from 'json-schema'
 import oikosLayerSchema from './oikos_layer.schema.json'
 import oikosLayerGroupSchema from './oikos_layer_group.schema.json'
 import oikosModuleSchema from './oikos_module.schema.json'
+import { schemaToFormUtils } from '@axdspub/axiom-ui-forms'
+import type { JSONSchema6 } from 'json-schema'
 
-const ajv = new Ajv({ allErrors: true, strict: false })
-
-const validate = (schema: unknown, value: unknown) => {
-  const { $schema, ...schemaWithoutMeta } = schema as JSONSchema6
-  void $schema
-  const validator = ajv.compile(schemaWithoutMeta as Record<string, unknown>)
-  return validator(value as never) ? undefined : (validator.errors ?? [])
+const withoutDraftMetadata = (schema: JSONSchema6): JSONSchema6 => {
+  const schemaWithoutMetadata = { ...schema }
+  delete schemaWithoutMetadata.$schema
+  return schemaWithoutMetadata
 }
+
+const layerSchema = withoutDraftMetadata(oikosLayerSchema as JSONSchema6)
+const layerGroupSchema = withoutDraftMetadata(oikosLayerGroupSchema as JSONSchema6)
+const moduleSchema = withoutDraftMetadata(oikosModuleSchema as JSONSchema6)
 
 const validLayer = {
   id: 101,
@@ -74,41 +77,49 @@ const validModule = {
 
 describe('Oikos import schemas', () => {
   it('accepts a representative layer payload', () => {
-    expect(validate(oikosLayerSchema, validLayer)).toBeUndefined()
+    expect(schemaToFormUtils.validateAgainstSchema(layerSchema, validLayer).length).toBe(0)
   })
 
   it('rejects invalid layer primitive types', () => {
     const invalidLayer = { ...validLayer, uuid: 101 }
 
-    expect(validate(oikosLayerSchema, invalidLayer)).toEqual(
-      expect.arrayContaining([expect.objectContaining({ instancePath: '/uuid', keyword: 'type' })])
+    expect(schemaToFormUtils.validateAgainstSchema(layerSchema, invalidLayer)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: 'uuid', message: expect.stringContaining('/uuid') }),
+      ])
     )
   })
 
   it('accepts a representative layer group payload', () => {
-    expect(validate(oikosLayerGroupSchema, validLayerGroup)).toBeUndefined()
+    expect(schemaToFormUtils.validateAgainstSchema(layerGroupSchema, validLayerGroup).length).toBe(0)
   })
 
   it('rejects invalid layer group primitive types', () => {
     const invalidLayerGroup = { ...validLayerGroup, module_uuid: 7 }
 
-    expect(validate(oikosLayerGroupSchema, invalidLayerGroup)).toEqual(
+    expect(schemaToFormUtils.validateAgainstSchema(layerGroupSchema, invalidLayerGroup)).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ instancePath: '/module_uuid', keyword: 'type' }),
+        expect.objectContaining({
+          field: 'module_uuid',
+          message: expect.stringContaining('/module_uuid'),
+        }),
       ])
     )
   })
 
   it('accepts a representative module payload', () => {
-    expect(validate(oikosModuleSchema, validModule)).toBeUndefined()
+    expect(schemaToFormUtils.validateAgainstSchema(moduleSchema, validModule).length).toBe(0)
   })
 
   it('rejects invalid module nested collection values', () => {
     const invalidModule = { ...validModule, tags: { domain: [7] } }
 
-    expect(validate(oikosModuleSchema, invalidModule)).toEqual(
+    expect(schemaToFormUtils.validateAgainstSchema(moduleSchema, invalidModule)).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ instancePath: '/tags/domain/0', keyword: 'type' }),
+        expect.objectContaining({
+          field: 'tags.domain.0',
+          message: expect.stringContaining('/tags/domain/0'),
+        }),
       ])
     )
   })

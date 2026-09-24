@@ -47,4 +47,36 @@ export const IMPORT_MERGE_RPC = twconfig(
   ''
 )
 
+export const IMPORT_FAIL_RELATIONSHIP_ONCE =
+  import.meta.env.DEV &&
+  twconfig(
+    '$TWOWOLVES_IMPORT_FAIL_RELATIONSHIP_ONCE',
+    'VITE_IMPORT_FAIL_RELATIONSHIP_ONCE',
+    'false'
+  ).toLowerCase() === 'true'
+
+export const IMPORT_RELATIONSHIP_TEST_MODE = import.meta.env.DEV
+  ? twconfig(
+    '$TWOWOLVES_IMPORT_RELATIONSHIP_TEST_MODE',
+    'VITE_IMPORT_RELATIONSHIP_TEST_MODE',
+    'off'
+  ).toLowerCase()
+  : 'off'
+
+export const IMPORT_RELATIONSHIP_TEST_PARENT_SLUG = import.meta.env.DEV
+  ? twconfig(
+    '$TWOWOLVES_IMPORT_RELATIONSHIP_TEST_PARENT_SLUG',
+    'VITE_IMPORT_RELATIONSHIP_TEST_PARENT_SLUG',
+    'relationship-test-parent'
+  )
+  : ''
+
+export const IMPORT_RELATIONSHIP_TEST_CHILD_SLUG = import.meta.env.DEV
+  ? twconfig(
+    '$TWOWOLVES_IMPORT_RELATIONSHIP_TEST_CHILD_SLUG',
+    'VITE_IMPORT_RELATIONSHIP_TEST_CHILD_SLUG',
+    'relationship-test-child'
+  )
+  : ''
+
 export const SITE_TITLE = twconfig('$TWOWOLVES_SITE_TITLE', 'VITE_SITE_TITLE', 'Asset Manager')

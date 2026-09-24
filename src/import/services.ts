@@ -191,12 +191,13 @@ export const oikosModels = async ({
       },
     })
   ).json()
-  return j.map((model: { uuid: string; slug: string; label: string; description: string }) => {
+  return j.map((model: { uuid: string; slug: string; label: string; description?: string, region?: string | null, groupUuid?: string | null }) => {
     return {
       slug: `${model.slug}`,
       uuid: model.uuid,
       label: model.label,
       description: model.description,
+      region: model.region,
       data: omit(model, 'modelVariables'),
     }
   })

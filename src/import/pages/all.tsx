@@ -30,7 +30,13 @@ import { postDocument, patchDocument } from '@/manage/document/services'
 import { fetchObjectTypes } from '@/manage/object_type/services'
 import { fetchObjectSchemas } from '@/manage/object_schema/services'
 import { mergeImportDocumentViaRpc, fetchExistingDocumentBySlug } from '../reconciliation_service'
-import { IMPORT_MERGE_RPC } from '@/config/config'
+import {
+  IMPORT_FAIL_RELATIONSHIP_ONCE,
+  IMPORT_MERGE_RPC,
+  IMPORT_RELATIONSHIP_TEST_CHILD_SLUG,
+  IMPORT_RELATIONSHIP_TEST_MODE,
+  IMPORT_RELATIONSHIP_TEST_PARENT_SLUG,
+} from '@/config/config'
 import {
   persistImportRelationships,
   planImportRelationships,
@@ -62,6 +68,7 @@ import {
   removeAllEnumAtPath,
 } from './select_object_type_for_import/schema_enum_utils'
 import { quicktypeJSON } from './select_object_type_for_import'
+import { ImportWizard } from '../components/import_wizard'
 
 const configuredSources = importConfigs.filter(
   (config): config is IImportPageProps & { sourceAdapter: ImportSourceAdapter } =>
@@ -177,14 +184,47 @@ const createAutomaticType = async ({
   const generatedSchema = JSON.parse(generated.lines.join('\n')) as JSONSchema6
   const enumPaths = findEnumProperties(generatedSchema).map(({ path }) => path)
   const schema = source.sourceAdapter.schema ?? removeAllEnumAtPath(generatedSchema, enumPaths)
-  const objectType = await postObjectType({
-    object_type: {
-      category: 'document',
-      label: source.label,
-      slug: source.type,
-    },
-    token,
-  })
+  let objectType
+  let reusedExistingType = false
+  try {
+    objectType = await postObjectType({
+      object_type: {
+        category: 'document',
+        label: source.label,
+        slug: source.type,
+      },
+      token,
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (
+      !/status:\s*409/i.test(message) ||
+      !/duplicate key value violates unique constraint\s+["']?object_type_slug_unique["']?/i.test(
+        message
+      )
+    ) {
+      throw error
+    }
+
+    const existingType = (
+      await fetchObjectTypes({
+        token,
+      })
+    ).find((candidate) => candidate.slug === source.type)
+    if (!existingType) throw error
+    objectType = existingType
+    reusedExistingType = true
+  }
+  if (reusedExistingType) {
+    const existingDefaultSchema = (
+      await fetchObjectSchemas({
+        token,
+      })
+    ).find(
+      (candidate) => candidate.object_type_uuid === objectType.uuid && candidate.is_type_default
+    )
+    if (existingDefaultSchema) return objectType
+  }
   await postObjectSchema({
     object_schema: {
       object_type_uuid: objectType.uuid,
@@ -339,12 +379,20 @@ const ImportAllPage = (): ReactElement => {
   const [isCreatingMissingTypes, setIsCreatingMissingTypes] = useState(false)
   const [missingTypeCreationError, setMissingTypeCreationError] = useState<string>()
   const [activeView, setActiveView] = useState<'plan' | 'errors'>('plan')
+  const [activeWizardStep, setActiveWizardStep] = useState('discover')
   const relationshipRetryRef = useRef<{
     plans: ImportRelationshipPlan[]
     documentUuids: Map<string, string>
     predicateUuids: Map<string, string>
   } | null>(null)
+  const relationshipFailureInjectedRef = useRef(false)
   const controllerRef = useRef<AbortController | null>(null)
+
+  const shouldInjectRelationshipFailure = () => {
+    if (!IMPORT_FAIL_RELATIONSHIP_ONCE || relationshipFailureInjectedRef.current) return false
+    relationshipFailureInjectedRef.current = true
+    return true
+  }
 
   const planList = useMemo(() => Object.values(plans), [plans])
   const summary = useMemo(() => summarizeImportAllPlan(planList), [planList])
@@ -368,11 +416,45 @@ const ImportAllPage = (): ReactElement => {
         candidates: planList.flatMap((plan) => {
           const objectType = context.object_type_by_slug[plan.type]
           return objectType
-            ? plan.records.map((record) => ({
-              record,
-              objectTypeUuid: objectType.uuid,
-              objectTypeSlug: objectType.slug,
-            }))
+            ? plan.records.map((record) => {
+              const isOikosParent = objectType.slug === 'oikos_model'
+              const isOikosChild = objectType.slug === 'oikos_model_variable'
+              const shouldOverrideParent =
+                isOikosParent &&
+                (IMPORT_RELATIONSHIP_TEST_MODE === 'match' ||
+                  IMPORT_RELATIONSHIP_TEST_MODE === 'ambiguous-parent')
+              const shouldOverrideChild =
+                isOikosChild &&
+                (IMPORT_RELATIONSHIP_TEST_MODE === 'match' ||
+                  IMPORT_RELATIONSHIP_TEST_MODE === 'missing-parent' ||
+                  IMPORT_RELATIONSHIP_TEST_MODE === 'ambiguous-parent')
+              const recordData =
+                record.data !== null && typeof record.data === 'object'
+                  ? record.data as Record<string, unknown>
+                  : {}
+              const data =
+                shouldOverrideParent || shouldOverrideChild
+                  ? {
+                    ...recordData,
+                    ...(shouldOverrideParent
+                      ? { slug: IMPORT_RELATIONSHIP_TEST_PARENT_SLUG }
+                      : {}),
+                    ...(shouldOverrideChild
+                      ? {
+                        modelSlug:
+                          IMPORT_RELATIONSHIP_TEST_MODE === 'missing-parent'
+                            ? IMPORT_RELATIONSHIP_TEST_CHILD_SLUG
+                            : IMPORT_RELATIONSHIP_TEST_PARENT_SLUG,
+                      }
+                      : {}),
+                  }
+                  : record.data
+              return {
+                record: data === record.data ? record : { ...record, data },
+                objectTypeUuid: objectType.uuid,
+                objectTypeSlug: objectType.slug,
+              }
+            })
             : []
         }),
       }),
@@ -424,6 +506,20 @@ const ImportAllPage = (): ReactElement => {
     enabledPlans.every(({ preparationStatus }) => preparationStatus === 'ready') &&
     missingTypes.length === 0 &&
     missingSchemas.length === 0
+  const reviewHasIssues =
+    summary.invalidRecords > 0 ||
+    summary.conflicts > 0 ||
+    relationshipPlans.some(({ status }) => status !== 'ready') ||
+    importErrors.length > 0
+
+  useEffect(() => {
+    if (isImportActive) return
+    if (reviewReady && !reviewHasIssues) {
+      setActiveWizardStep('import')
+    } else if (discoveryReady) {
+      setActiveWizardStep('review')
+    }
+  }, [discoveryReady, isImportActive, reviewHasIssues, reviewReady])
 
   const updatePlan = (sourceId: string, update: Partial<ImportAllSourcePlan>) => {
     setPlans((current) => ({
@@ -457,6 +553,11 @@ const ImportAllPage = (): ReactElement => {
     }
   }
 
+  const refreshTypesAndSchemas = () => {
+    setMissingTypeCreationError(undefined)
+    requestContextReload()
+  }
+
   const persistRelationships = async (plans: ImportRelationshipPlan[]) => {
     const retryContext = relationshipRetryRef.current
     if (!retryContext) return
@@ -471,12 +572,16 @@ const ImportAllPage = (): ReactElement => {
         documentUuids: retryContext.documentUuids,
         predicateUuids: retryContext.predicateUuids,
         signal: controller.signal,
-        post: (relationship, signal) =>
-          postRelationship({
+        post: async (relationship, signal) => {
+          if (shouldInjectRelationshipFailure()) {
+            throw new Error('Intentional relationship retry test failure')
+          }
+          return postRelationship({
             relationship,
             token: auth.user?.access_token ?? '',
             signal,
-          }),
+          })
+        },
         findExisting: async (relationship, signal) =>
           (
             await fetchRelationships({
@@ -516,6 +621,7 @@ const ImportAllPage = (): ReactElement => {
   }
 
   const discoverSelected = async () => {
+    setActiveWizardStep('discover')
     controllerRef.current?.abort()
     const controller = new AbortController()
     controllerRef.current = controller
@@ -594,6 +700,7 @@ const ImportAllPage = (): ReactElement => {
   }
 
   const prepareSelected = async () => {
+    setActiveWizardStep('review')
     controllerRef.current?.abort()
     const controller = new AbortController()
     controllerRef.current = controller
@@ -697,6 +804,7 @@ const ImportAllPage = (): ReactElement => {
   }
 
   const executeSelected = async (recordKeysBySource?: Record<string, ReadonlySet<string>>) => {
+    setActiveWizardStep('import')
     controllerRef.current?.abort()
     const controller = new AbortController()
     controllerRef.current = controller
@@ -878,12 +986,16 @@ const ImportAllPage = (): ReactElement => {
         documentUuids,
         predicateUuids,
         signal: controller.signal,
-        post: (relationship, signal) =>
-          postRelationship({
+        post: async (relationship, signal) => {
+          if (shouldInjectRelationshipFailure()) {
+            throw new Error('Intentional relationship retry test failure')
+          }
+          return postRelationship({
             relationship,
             token: auth.user?.access_token ?? '',
             signal,
-          }),
+          })
+        },
         findExisting: async (relationship, signal) =>
           (
             await fetchRelationships({
@@ -959,84 +1071,6 @@ const ImportAllPage = (): ReactElement => {
             )}
           </div>
         </div>
-        <Checkbox
-          id="import-all-sources"
-          testId="import-all-sources"
-          label="Select all sources"
-          value={allSourcesSelected}
-          onChange={(selected) =>
-            setPlans((current) =>
-              Object.fromEntries(
-                Object.entries(current).map(([sourceId, plan]) => [
-                  sourceId,
-                  {
-                    ...plan,
-                    enabled: selected,
-                    status: selected ? plan.status : 'idle',
-                    preparationStatus: selected ? plan.preparationStatus : 'idle',
-                  },
-                ])
-              )
-            )
-          }
-        />
-        <Checkbox
-          id="import-all-records"
-          testId="import-all-records"
-          label="All available records"
-          value={loadAllRecords}
-          onChange={setLoadAllRecords}
-        />
-        <Input
-          id="import-all-limit"
-          testId="import-all-limit"
-          label="Records per source"
-          size="xs"
-          disabled={loadAllRecords}
-          value={recordLimit.toString()}
-          onChange={(value) => {
-            const parsed = Number(value)
-            if (Number.isInteger(parsed) && parsed >= 0) setRecordLimit(parsed)
-          }}
-        />
-        {isImportActive ? (
-          <Button variant="destructive" onClick={cancelDiscovery}>
-            <X size={16} /> Cancel
-          </Button>
-        ) : (
-          <Button disabled={enabledPlans.length === 0} onClick={discoverSelected}>
-            <Search size={16} /> Discover selected
-          </Button>
-        )}
-        <Button
-          variant="outline"
-          disabled={isDiscovering || isPreparing || !discoveryReady || !auth.user?.access_token}
-          onClick={prepareSelected}
-        >
-          <ShieldCheck size={16} /> Prepare review
-        </Button>
-        <Button
-          variant="outline"
-          disabled={
-            isDiscovering ||
-            isPreparing ||
-            isCreatingMissingTypes ||
-            missingTypes.length === 0 ||
-            missingTypes.some((plan) => plan.records.length === 0) ||
-            !auth.user?.access_token
-          }
-          onClick={() => void createMissingTypes()}
-        >
-          {isCreatingMissingTypes ? 'Creating types...' : 'Create missing types'}
-        </Button>
-        <Button
-          disabled={
-            isImportActive || !reviewReady || !auth.user?.access_token
-          }
-          onClick={() => executeSelected()}
-        >
-          <Check size={16} /> Execute import
-        </Button>
       </header>
 
       <section className="border-b px-5 py-3" aria-label="Import plan status">
@@ -1071,34 +1105,23 @@ const ImportAllPage = (): ReactElement => {
                 {relationshipResults.filter(({ status }) => status === 'failed').length} link
                 failures
               </span>
-              {relationshipResults.some(({ status }) => status === 'failed') && (
-                <Button
-                  size="xs"
-                  variant="outline"
-                  disabled={isExecuting || isPersistingRelationships}
-                  onClick={() => {
-                    const failedKeys = new Set(
-                      relationshipResults
-                        .filter(({ status }) => status === 'failed')
-                        .map(({ relationshipKey }) => relationshipKey)
-                    )
-                    const failedPlans =
-                      relationshipRetryRef.current?.plans.filter((plan) =>
-                        failedKeys.has(importRelationshipKey(plan))
-                      ) ?? []
-                    void persistRelationships(failedPlans)
-                  }}
-                >
-                  Retry failed links
-                </Button>
-              )}
             </>
           )}
           {reviewReady && <span className="text-green-700">Ready for execution review</span>}
         </div>
         {missingTypeCreationError && (
-          <div className="mt-2 text-sm text-red-700" role="alert">
-            Could not create missing types: {missingTypeCreationError}
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-red-700" role="alert">
+            <span>Could not create missing types: {missingTypeCreationError}</span>
+            {/object_type_slug_unique/i.test(missingTypeCreationError) && (
+              <Button
+                size="xs"
+                variant="outline"
+                onClick={refreshTypesAndSchemas}
+                disabled={isCreatingMissingTypes}
+              >
+                Refresh types and schemas
+              </Button>
+            )}
           </div>
         )}
         {isPreparing && preparationProgress.total > 0 && (
@@ -1124,6 +1147,151 @@ const ImportAllPage = (): ReactElement => {
             value={relationshipProgress.completed}
             aria-label="Relationship import progress"
           />
+        )}
+      </section>
+
+      <ImportWizard
+        activeStep={activeWizardStep}
+        onStepChange={setActiveWizardStep}
+        steps={[
+          {
+            id: 'discover',
+            label: 'Discover sources',
+            completed: discoveryReady,
+          },
+          {
+            id: 'review',
+            label: 'Prepare and review',
+            completed: reviewReady,
+          },
+          {
+            id: 'import',
+            label: 'Import records',
+            disabled: !reviewReady,
+          },
+        ]}
+      />
+
+      <section className="border-b bg-slate-50 px-5 py-3" aria-label="Current import step actions">
+        {activeWizardStep === 'discover' && (
+          <div className="flex flex-wrap items-end gap-3">
+            <Checkbox
+              id="import-all-sources"
+              testId="import-all-sources"
+              label="Select all sources"
+              value={allSourcesSelected}
+              onChange={(selected) =>
+                setPlans((current) =>
+                  Object.fromEntries(
+                    Object.entries(current).map(([sourceId, plan]) => [
+                      sourceId,
+                      {
+                        ...plan,
+                        enabled: selected,
+                        status: selected ? plan.status : 'idle',
+                        preparationStatus: selected ? plan.preparationStatus : 'idle',
+                      },
+                    ])
+                  )
+                )
+              }
+            />
+            <Checkbox
+              id="import-all-records"
+              testId="import-all-records"
+              label="All available records"
+              value={loadAllRecords}
+              onChange={setLoadAllRecords}
+            />
+            <Input
+              id="import-all-limit"
+              testId="import-all-limit"
+              label="Records per source"
+              size="xs"
+              disabled={loadAllRecords}
+              value={recordLimit.toString()}
+              onChange={(value) => {
+                const parsed = Number(value)
+                if (Number.isInteger(parsed) && parsed >= 0) setRecordLimit(parsed)
+              }}
+            />
+            {isImportActive ? (
+              <Button variant="destructive" onClick={cancelDiscovery}>
+                <X size={16} /> Cancel
+              </Button>
+            ) : (
+              <Button disabled={enabledPlans.length === 0} onClick={discoverSelected}>
+                <Search size={16} /> Discover selected
+              </Button>
+            )}
+          </div>
+        )}
+        {activeWizardStep === 'review' && (
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              variant="outline"
+              disabled={isDiscovering || isPreparing || !discoveryReady || !auth.user?.access_token}
+              onClick={prepareSelected}
+            >
+              <ShieldCheck size={16} /> Prepare review
+            </Button>
+            <Button
+              variant="outline"
+              disabled={
+                isDiscovering ||
+                isPreparing ||
+                isCreatingMissingTypes ||
+                missingTypes.length === 0 ||
+                missingTypes.some((plan) => plan.records.length === 0) ||
+                !auth.user?.access_token
+              }
+              onClick={() => void createMissingTypes()}
+            >
+              {isCreatingMissingTypes ? 'Creating types...' : 'Create missing types'}
+            </Button>
+            <span
+              className={`inline-flex items-center gap-2 text-sm ${reviewHasIssues ? 'font-semibold text-amber-800' : 'text-gray-600'}`}
+            >
+              {reviewHasIssues && <CircleAlert size={16} />}
+              {reviewHasIssues
+                ? 'Resolve review issues below before moving to Import.'
+                : 'Review validation, duplicate conflicts, and relationship blockers below.'}
+            </span>
+          </div>
+        )}
+        {activeWizardStep === 'import' && (
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              disabled={isImportActive || !reviewReady || !auth.user?.access_token}
+              onClick={() => executeSelected()}
+            >
+              <Check size={16} /> Execute import
+            </Button>
+            {relationshipResults.some(({ status }) => status === 'failed') && (
+              <Button
+                size="xs"
+                variant="outline"
+                disabled={isExecuting || isPersistingRelationships}
+                onClick={() => {
+                  const failedKeys = new Set(
+                    relationshipResults
+                      .filter(({ status }) => status === 'failed')
+                      .map(({ relationshipKey }) => relationshipKey)
+                  )
+                  const failedPlans =
+                    relationshipRetryRef.current?.plans.filter((plan) =>
+                      failedKeys.has(importRelationshipKey(plan))
+                    ) ?? []
+                  void persistRelationships(failedPlans)
+                }}
+              >
+                Retry failed links
+              </Button>
+            )}
+            <span className="text-sm text-gray-600">
+              Documents run first, followed by ready relationship links.
+            </span>
+          </div>
         )}
       </section>
 
@@ -1173,6 +1341,28 @@ const ImportAllPage = (): ReactElement => {
             const plan = plans[source.sourceAdapter.id]
             const objectType = context.object_type_by_slug[source.type]
             const Icon = source.icon
+            const invalidCount = plan.validationResults.filter(({ isValid }) => !isValid).length
+            const conflictCount = plan.reconciliations.filter(
+              ({ status }) => status === 'conflicting' || status === 'ambiguous'
+            ).length
+            const relationshipBlockerCount = relationshipPlans.filter(({ child, parent, status }) =>
+              status !== 'ready' &&
+              (child.record.provenance.sourceId === plan.sourceId ||
+                parent?.record.provenance.sourceId === plan.sourceId)
+            ).length
+            const sourceAttention: string[] = []
+            if (!objectType && plan.records.length > 0) sourceAttention.push('type setup needed')
+            if (objectType && missingSchemas.some(({ sourceId }) => sourceId === plan.sourceId)) {
+              sourceAttention.push('schema setup needed')
+            }
+            if (invalidCount > 0) sourceAttention.push(`${invalidCount} invalid`)
+            if (conflictCount > 0) sourceAttention.push(`${conflictCount} duplicate conflicts`)
+            if (relationshipBlockerCount > 0) {
+              sourceAttention.push(`${relationshipBlockerCount} relationship blockers`)
+            }
+            if (plan.error || importErrors.some(({ sourceLabel }) => sourceLabel === source.label)) {
+              sourceAttention.push('source error')
+            }
             const hasChangedRecords =
               plan.preparationStatus === 'ready' &&
               plan.reconciliations.some(({ status }) => status === 'conflicting')
@@ -1199,6 +1389,12 @@ const ImportAllPage = (): ReactElement => {
                     <div className="min-w-0">
                       <strong className="block truncate text-sm">{source.label}</strong>
                       <span className="block truncate text-xs text-gray-500">{source.type}</span>
+                      {sourceAttention.length > 0 && (
+                        <span className="mt-1 flex items-center gap-1 text-xs font-semibold text-amber-800">
+                          <CircleAlert size={14} />
+                          {sourceAttention.join(', ')}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 text-sm">

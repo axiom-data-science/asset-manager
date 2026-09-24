@@ -37,6 +37,10 @@ VITE_OIDC_POST_LOGOUT_REDIRECT_URI=http://localhost:4422/loggedout
 VITE_OIDC_SCOPE=profile email entitlements
 VITE_APPS_API_BASE_URL=http://localhost:3345
 VITE_IMPORT_MERGE_RPC=
+VITE_IMPORT_FAIL_RELATIONSHIP_ONCE=false
+VITE_IMPORT_RELATIONSHIP_TEST_MODE=off
+VITE_IMPORT_RELATIONSHIP_TEST_PARENT_SLUG=relationship-test-parent
+VITE_IMPORT_RELATIONSHIP_TEST_CHILD_SLUG=relationship-test-child
 VITE_SITE_TITLE=Asset Manager
 ```
 
@@ -61,6 +65,10 @@ Docker Compose passes the following host environment variables into the containe
 | `VITE_OIDC_POST_LOGOUT_REDIRECT_URI` | Post-logout URL |
 | `VITE_OIDC_SCOPE` | OIDC scopes |
 | `VITE_APPS_API_BASE_URL` | Asset metadata API base URL |
+| `VITE_IMPORT_FAIL_RELATIONSHIP_ONCE` | Development-only one-shot relationship failure for retry UI testing |
+| `VITE_IMPORT_RELATIONSHIP_TEST_MODE` | Development-only relationship planning mode: `off`, `match`, `missing-parent`, or `ambiguous-parent` |
+| `VITE_IMPORT_RELATIONSHIP_TEST_PARENT_SLUG` | Parent slug used by the relationship planning test mode |
+| `VITE_IMPORT_RELATIONSHIP_TEST_CHILD_SLUG` | Child `modelSlug` used by the `missing-parent` relationship planning test mode |
 
 Set these variables in the shell or in a `.env` file next to `docker-compose.yml` before running Compose. The redirect URL must match the URL at which the container is exposed.
 

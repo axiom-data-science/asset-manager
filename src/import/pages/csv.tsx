@@ -19,6 +19,7 @@ import contextStateAtom from '@/state/contextStateAtom'
 import { useAtom } from 'jotai'
 import { omit } from 'lodash-es'
 import { uploadedImportSourcesAtom } from '../state/uploadedImportSources'
+import { ImportWizard } from '../components/import_wizard'
 
 const csvField = {
   id: 'csv-file',
@@ -46,10 +47,12 @@ const CSVSourceEditor = ({
   source,
   sources,
   onChange,
+  mode,
 }: {
   source: CSVImportSource
   sources: CSVImportSource[]
   onChange: (update: Partial<CSVImportSource>) => void
+  mode: 'mapping' | 'relationships'
 }): ReactElement => {
   const rebuildAdapter = (
     mapping: CSVImportMapping,
@@ -75,41 +78,43 @@ const CSVSourceEditor = ({
 
   return (
     <>
-      <section className="min-w-0 shrink-0 border-b pb-4" aria-label="CSV preview">
-        <div className="mb-3 flex flex-wrap items-baseline gap-3">
-          <h2 className="font-semibold">Preview</h2>
-          <span className="text-sm text-gray-600">
-            {source.parsed.data.length} rows, {source.parsed.headers.length} columns
-          </span>
-        </div>
-        <div className="max-w-full max-h-64 overflow-auto border">
-          <table className="w-full min-w-max text-left text-sm">
-            <thead className="sticky top-0 bg-gray-100">
-              <tr>
-                {source.parsed.headers.map((header) => (
-                  <th key={header.key} className="border-b px-3 py-2 font-medium">
-                    <div>{header.key}</div>
-                    <div className="text-xs font-normal text-gray-500">{header.type}</div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {source.parsed.data.slice(0, 25).map((row, rowIndex) => (
-                <tr key={rowIndex} className="border-b last:border-b-0">
+      {mode === 'mapping' && (
+        <section className="min-w-0 shrink-0 border-b pb-6 mb-4" aria-label="CSV preview">
+          <div className="mb-3 flex flex-wrap items-baseline gap-3">
+            <h2 className="font-semibold">Preview</h2>
+            <span className="text-sm text-gray-600">
+              {source.parsed.data.length} rows, {source.parsed.headers.length} columns
+            </span>
+          </div>
+          <div className="max-w-full max-h-64 overflow-auto border">
+            <table className="w-full min-w-max text-left text-sm">
+              <thead className="sticky top-0 bg-gray-100">
+                <tr>
                   {source.parsed.headers.map((header) => (
-                    <td key={header.key} className="max-w-64 truncate px-3 py-2">
-                      {String(row[header.key] ?? '')}
-                    </td>
+                    <th key={header.key} className="border-b px-3 py-2 font-medium">
+                      <div>{header.key}</div>
+                      <div className="text-xs font-normal text-gray-500">{header.type}</div>
+                    </th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+              </thead>
+              <tbody>
+                {source.parsed.data.slice(0, 25).map((row, rowIndex) => (
+                  <tr key={rowIndex} className="border-b last:border-b-0">
+                    {source.parsed.headers.map((header) => (
+                      <td key={header.key} className="max-w-64 truncate px-3 py-2">
+                        {String(row[header.key] ?? '')}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
-      <section className="min-w-0 shrink-0 border-b pb-4" aria-label="CSV relationship fields">
+      {mode === 'relationships' && <section className="min-w-0 shrink-0 border-b pb-6 mb-4" aria-label="CSV relationship fields">
         <div className="mb-3">
           <h2 className="font-semibold">Relationship fields</h2>
           <p className="text-sm text-gray-600">
@@ -145,9 +150,9 @@ const CSVSourceEditor = ({
             )
           })}
         </div>
-      </section>
+      </section>}
 
-      <section className="min-w-0 shrink-0 border-b pb-4" aria-label="CSV relationship rule">
+      {mode === 'relationships' && <section className="min-w-0 shrink-0 border-b pb-6 mb-4" aria-label="CSV relationship rule">
         <div className="mb-3">
           <h2 className="font-semibold">Relationship rule</h2>
           <p className="text-sm text-gray-600">
@@ -166,12 +171,12 @@ const CSVSourceEditor = ({
                 const childObjectTypeSlug = child?.typeSlug
                 const relationshipRule = childObjectTypeSlug
                   ? {
-                      parentObjectTypeSlug: source.typeSlug,
-                      childObjectTypeSlug,
-                      parentMatchField: source.relationshipRule?.parentMatchField ?? '',
-                      childMatchField: source.relationshipRule?.childMatchField ?? '',
-                      predicate: source.relationshipRule?.predicate || 'has_parent',
-                    }
+                    parentObjectTypeSlug: source.typeSlug,
+                    childObjectTypeSlug,
+                    parentMatchField: source.relationshipRule?.parentMatchField ?? '',
+                    childMatchField: source.relationshipRule?.childMatchField ?? '',
+                    predicate: source.relationshipRule?.predicate || 'has_parent',
+                  }
                   : undefined
                 onChange({
                   relationshipRule,
@@ -282,9 +287,9 @@ const CSVSourceEditor = ({
             </>
           )}
         </div>
-      </section>
+      </section>}
 
-      <section className="min-w-0 shrink-0 border-b pb-4" aria-label="CSV field mapping">
+      {mode === 'mapping' && <section className="min-w-0 shrink-0 border-b pb-6 mb-4" aria-label="CSV field mapping">
         <div className="mb-3">
           <h2 className="font-semibold">Map CSV fields</h2>
           <p className="text-sm text-gray-600">
@@ -356,7 +361,7 @@ const CSVSourceEditor = ({
             )
           })}
         </div>
-      </section>
+      </section>}
     </>
   )
 }
@@ -365,6 +370,8 @@ const CSVImportPage = (): ReactElement => {
   const [sources, setSources] = useState<CSVImportSource[]>([])
   const [activeSourceId, setActiveSourceId] = useState<string | null>(null)
   const [step, setStep] = useState<'upload' | 'records'>('upload')
+  const [activeWizardStep, setActiveWizardStep] = useState<'upload' | 'mapping' | 'import'>('upload')
+  const [uploadMultipleFiles, setUploadMultipleFiles] = useState(false)
   const [uploadKey, setUploadKey] = useState(0)
   const sourceSequence = useRef(0)
   const [isLoadingRecords, setIsLoadingRecords] = useState(false)
@@ -413,6 +420,7 @@ const CSVImportPage = (): ReactElement => {
     }
     setSources((current) => [...current, source])
     setActiveSourceId(sourceId)
+    if (!uploadMultipleFiles) setActiveWizardStep('mapping')
     setUploadKey((key) => key + 1)
   }
 
@@ -467,6 +475,7 @@ const CSVImportPage = (): ReactElement => {
       }
       updateSource(activeSource.sourceId, { startAtImport: canStartAtImport })
       setStep('records')
+      setActiveWizardStep('import')
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : String(error))
     } finally {
@@ -476,7 +485,33 @@ const CSVImportPage = (): ReactElement => {
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden p-4">
-      {step === 'upload' && (
+      <ImportWizard
+        activeStep={activeWizardStep}
+        onStepChange={(nextStep) => {
+          const next = nextStep as typeof activeWizardStep
+          if (next === 'import' && step !== 'records') return
+          if (next === 'mapping' && !activeSource) return
+          setActiveWizardStep(next)
+        }}
+        steps={[
+          {
+            id: 'upload',
+            label: 'Upload files',
+            completed: sources.length > 0,
+          },
+          {
+            id: 'mapping',
+            label: 'Map fields',
+            completed: step === 'records',
+          },
+          {
+            id: 'import',
+            label: 'Import records',
+            disabled: step !== 'records',
+          },
+        ]}
+      />
+      {activeWizardStep === 'upload' && (
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-auto">
           <section className="border-b pb-4">
             <div className="mb-3 flex items-center justify-between gap-3">
@@ -499,6 +534,14 @@ const CSVImportPage = (): ReactElement => {
                   addSource(fileData, csvData, uploadedFileName)
               }}
             />
+            <label className="mt-3 inline-flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={uploadMultipleFiles}
+                onChange={(event) => setUploadMultipleFiles(event.target.checked)}
+              />
+              Upload multiple files in this session
+            </label>
           </section>
 
           {sources.length > 0 && (
@@ -539,17 +582,88 @@ const CSVImportPage = (): ReactElement => {
             </section>
           )}
 
-          {activeSource && (
-            <CSVSourceEditor
-              source={activeSource}
-              sources={sources}
-              onChange={(update) => updateSource(activeSource.sourceId, update)}
-            />
+          {loadError && (
+            <div className="text-sm text-red-700" role="alert">
+              Could not load CSV records: {loadError}
+            </div>
           )}
-          {activeSource && (
+        </div>
+      )}
+
+      {activeWizardStep === 'mapping' && activeSource && (
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto">
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b pb-2">
+            <div>
+              <h1 className="text-lg font-semibold">{activeSource.fileName}</h1>
+              <span className="text-sm text-gray-600">
+                {activeSource.parsed.data.length} records, {sources.length} source{sources.length === 1 ? '' : 's'}
+              </span>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => setActiveWizardStep('upload')}>
+              Back to upload
+            </Button>
+          </div>
+          {activeWizardStep === 'mapping' && sources.length > 1 && (
+            <section className="border-b pb-4" aria-label="Uploaded CSV files">
+              <h2 className="mb-2 font-semibold">Uploaded CSV files</h2>
+              <div className="flex flex-col gap-2">
+                {sources.map((source) => (
+                  <details
+                    key={source.sourceId}
+                    className="border px-3 py-2"
+                    open={source.sourceId === activeSource.sourceId}
+                    onToggle={(event) => {
+                      if (event.currentTarget.open) setActiveSourceId(source.sourceId)
+                    }}
+                  >
+                    <summary className="cursor-pointer bg-slate-800 px-3 py-2 text-base font-semibold text-white">
+                      {source.fileName} · {source.parsed.data.length} rows ·{' '}
+                      {source.parsed.headers.length} columns
+                    </summary>
+                    <div className="mt-3 border-t pt-3">
+                      <CSVSourceEditor
+                        source={source}
+                        sources={sources}
+                        mode="mapping"
+                        onChange={(update) => updateSource(source.sourceId, update)}
+                      />
+                      <CSVSourceEditor
+                        source={source}
+                        sources={sources}
+                        mode="relationships"
+                        onChange={(update) => updateSource(source.sourceId, update)}
+                      />
+                    </div>
+                  </details>
+                ))}
+              </div>
+            </section>
+          )}
+          {sources.length === 1 ? (
+            <>
+              <CSVSourceEditor
+                source={activeSource}
+                sources={sources}
+                mode="mapping"
+                onChange={(update) => updateSource(activeSource.sourceId, update)}
+              />
+              <CSVSourceEditor
+                source={activeSource}
+                sources={sources}
+                mode="relationships"
+                onChange={(update) => updateSource(activeSource.sourceId, update)}
+              />
+            </>
+          ) : null}
+          {activeWizardStep === 'mapping' && (
             <div className="flex justify-end border-t pt-4">
-              <Button disabled={isLoadingRecords} onClick={() => void continueToRecords()}>
-                {isLoadingRecords ? 'Loading records...' : `Continue with ${activeSource.fileName}`}
+              <Button
+                disabled={isLoadingRecords}
+                onClick={() => {
+                  void continueToRecords()
+                }}
+              >
+                Continue to import
                 <FileSpreadsheet size={16} />
               </Button>
             </div>
@@ -562,7 +676,7 @@ const CSVImportPage = (): ReactElement => {
         </div>
       )}
 
-      {step === 'records' && activeSource && (
+      {activeWizardStep === 'import' && activeSource && (
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="mb-2 flex shrink-0 items-center justify-between gap-3 border-b pb-2">
             <div>
@@ -571,7 +685,7 @@ const CSVImportPage = (): ReactElement => {
                 {activeSource.parsed.data.length} records loaded
               </span>
             </div>
-            <Button size="xs" variant="outline" onClick={() => setStep('upload')}>
+            <Button size="xs" variant="outline" onClick={() => setActiveWizardStep('upload')}>
               Back to CSV sources
             </Button>
           </div>

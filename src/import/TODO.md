@@ -13,19 +13,23 @@
 
 ## Future import workflow direction
 
-- [ ] Build one shared wizard shell for remote, Import All, and CSV imports, using the Import All layout as the starting pattern.
-- [ ] Show clear wizard steps at the top of every import flow, with the current step visibly active and completed steps summarized.
-- [ ] Place diagnostics, progress, errors, and settings for the current step directly beneath the wizard navigation.
+- [x] Build a shared wizard shell for Import All and CSV imports, using the Import All layout as the starting pattern.
+- [x] Show clear wizard steps at the top of Import All and CSV flows, with the current step visibly active and completed steps summarized.
+- [x] Place current-step actions, diagnostics, progress, errors, and settings beneath the wizard navigation for Import All and CSV.
 - [ ] Keep advanced settings available without letting them dominate the primary step workflow.
 
 ### CSV wizard direction
 
-- [ ] Refactor single-file CSV import into `Upload`, `Map fields`, and `Import` steps by default.
-- [ ] For multi-file CSV import, use `Upload`, `Map fields`, `Set relationships`, and `Import` steps.
+- [x] Refactor single-file CSV import into `Upload`, `Map fields`, and `Import` steps by default.
+- [x] For multi-file CSV import, use `Upload`, `Map fields`, and `Import` steps, with relationship settings included in Map fields.
 - [ ] Make object-type selection and creation automatic by default when filename, mapping, and an existing type/schema provide enough information.
 - [ ] Offer an option at the beginning to make object-type setup an explicit wizard step when automatic setup is not appropriate.
-- [ ] Keep all uploaded CSV files in the same wizard session and import them together from the final `Import` step.
-- [ ] Show per-file diagnostics and settings beneath the active wizard step without sending the user back to the beginning to configure another file.
+- [x] Keep all uploaded CSV files in the same wizard session and import them together from the final `Import` step.
+- [x] Show per-file diagnostics and settings beneath the active wizard step without sending the user back to the beginning to configure another file.
+- [x] Add an explicit CSV upload mode checkbox so users can choose between single-file progression and keeping the Upload step active for multiple files.
+- [x] In the CSV mapping step, show compact information for every uploaded file with expandable previews and per-file mapping controls.
+- [x] Include relationship fields and relationship rules alongside each file's mapping and preview.
+- [ ] Add a type-specific CSV mapping step for imports where the user chooses an existing object type and maps CSV columns to its schema fields.
 
 ## 1. Establish tests and stabilize the current workflow
 
@@ -56,7 +60,7 @@
 - [x] Show overall and per-source preparation progress while Import All loads records.
 - [x] Batch Import All document writes in groups of 10 with a 100 ms abort-aware pause between batches.
 - [x] Verify in the authenticated UI that Import All uses the intended batching and pauses during document and relationship work.
-- [ ] Verify retry progress for failed relationship links.
+- [x] Verify retry progress for failed relationship links.
 - [x] Remove leftover `debugger` statements from Import All execution.
 - [x] Show a `Pending type` placeholder for sources without a type.
 - [x] Show prepared records in the type-setup dialog.
@@ -157,6 +161,8 @@
 - [ ] Add a simple one-button import path for prepared sources.
 - [ ] Decide whether automatic type creation is allowed when a source type is missing; prefer pre-populated types by default.
 - [x] Add an explicit page-level `Create missing types` action for prepared sources.
+- [x] Verify recovery when missing-type creation races with an existing object-type slug.
+  - Confirmed the UI can refresh types and schemas after `object_type_slug_unique` conflict and continue the prepared import workflow.
 - [ ] Add a simple one-button import path for prepared sources after type setup and review are complete.
 
 ### Completed item verification: controlled Import All execution
@@ -230,6 +236,10 @@ Suggested next step: should I investigate the missing relationships first? Reply
 - [x] Check for an existing relationship before creating or retrying a link.
 - [x] Verify database protection for duplicate relationships.
   - Confirmed unique constraint on `from_document_uuid`, `to_document_uuid`, and `predicate_uuid`.
+- [x] Verify duplicate relationship handling in the Import All UI.
+  - Repeated the same parent/child import and confirmed `100 links already existed` with no duplicate links created.
+- [x] Verify relationship planning behavior for ready, missing-parent, and ambiguous-parent cases in the authenticated Import All UI.
+  - Used the development-only Oikos relationship test modes to override parent `slug` and child `modelSlug` values in memory.
 - [x] Deduplicate equivalent backend and source-adapter relationship rules before planning.
 - [x] Deduplicate Oikos module candidates repeated across layer groups.
 - [x] Match Oikos module UUIDs to layer-group `module_uuid` values.
@@ -237,7 +247,11 @@ Suggested next step: should I investigate the missing relationships first? Reply
 ### Completed item verification: relationship planning and persistence foundation
 
 - Automated: `src/import/relationship_planning.test.ts` and Import All tests pass (15 tests); `npm run build` passes.
-- UI verification still needed:
+- UI verification completed:
+  - Confirmed a forced relationship-link failure appears in the Import All results and can be retried successfully without rerunning document imports.
+  - The development-only `VITE_IMPORT_FAIL_RELATIONSHIP_ONCE` switch was used to force the failure.
+  - Keep the switch unset or `false` during normal development and production use.
+  - Remaining checks:
   - Prepare parent and child sources whose external identities match and confirm the ready relationship count.
   - Prepare a child without a matching parent and confirm it appears as a relationship blocker.
   - Prepare duplicate parent identities and confirm the relationship is classified as ambiguous rather than written.

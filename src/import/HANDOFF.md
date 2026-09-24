@@ -31,6 +31,9 @@ The implementation plan and remaining work are tracked in `src/import/TODO.md`.
 - Generated schemas can be edited, saved manually, or created automatically with the filename-derived type/schema names.
 - Automatic creation checks the intended object-type slug first. Existing types are not overwritten; users can select the existing type and its default schema instead.
 - The import records workflow is presented as a compact step flow: type/validate, then import for CSV; remote sources retain preload, type/validate, and import.
+- CSV now has a shared wizard shell with `Upload files` -> `Map fields` -> `Import records` steps. Multiple-file mode keeps Upload active after each file is added.
+- The CSV Map fields step shows every uploaded file in expandable sections with compact previews, per-file field mappings, relationship fields, and relationship rules together.
+- CSV source labels use high-contrast dark headers, and mapping sections have increased spacing for readability.
 
 ### Duplicate reconciliation
 
@@ -60,6 +63,7 @@ The implementation plan and remaining work are tracked in `src/import/TODO.md`.
 - Import All preparation loads records in batches and reports per-source progress without requiring a type first.
 - Missing-type sources show `Pending type`; type setup reuses the shared schema/type UI and displays prepared records.
 - Import All has a page-level `Create missing types` action that generates a type and default schema from prepared records without opening the setup modal.
+- Missing-type creation recovers from an `object_type_slug_unique` race by reusing the existing type and default schema; the UI provides `Refresh types and schemas` when the conflict is surfaced.
 - Automatic type creation removes all enum constraints from the generated schema before saving the default schema.
 - Changed-record actions use a right-side virtualized list powered by `react-virtuoso`.
 - Relationship planning now reads `expected_child_types`, matches provenance identities by default, supports optional match paths, and surfaces ready or blocked plans before writes.
@@ -79,6 +83,9 @@ The implementation plan and remaining work are tracked in `src/import/TODO.md`.
 - Equivalent backend and adapter relationship rules are deduplicated before planning.
 - Oikos module candidates are deduplicated by UUID, and module-to-layer-group matching uses module UUIDs.
 - All leftover `debugger` statements were removed from Import All execution.
+- Import All and CSV share the reusable wizard navigation component. Import All task controls live under the active step, and clean review advances automatically to Import.
+- Import All remains on Review when invalid records, duplicate conflicts, relationship blockers, or import errors require attention. Source rows show matching alert indicators and highlighted attention text.
+- Missing-type creation handles an `object_type_slug_unique` race by reusing the existing type and default schema; the page offers `Refresh types and schemas` when the conflict is surfaced.
 
 ### Multi-file CSV work
 
@@ -205,20 +212,21 @@ Live CSV checks still needed:
 
 ## Next implementation step
 
-Live Import All verification is complete for preparation, document execution, relationship linking, progress visualization, batching, pauses, and cancellation. Failed relationship-link retry remains unverified.
+Live Import All verification is complete for preparation, document execution, relationship linking, duplicate relationship handling, relationship planning blockers, progress visualization, batching, pauses, cancellation, and failed relationship-link retry. Repeating the same parent/child import reported `100 links already existed` without creating duplicates. Relationship planning was verified for ready, missing-parent, and ambiguous-parent cases using the development-only Oikos test modes. The retry check used `VITE_IMPORT_FAIL_RELATIONSHIP_ONCE`; keep all relationship test switches unset or `false`/`off` during normal development and production use.
 
-The next design task is a shared wizard shell. Import All is the closest existing workflow and should provide the initial structure:
+The shared wizard shell and initial Import All/CSV integration are now implemented. The next design task is type-specific CSV mapping and shared multi-file persistence:
 
-1. Put clear steps at the top of every import flow.
-2. Place current-step diagnostics, progress, errors, and settings directly beneath the wizard navigation.
-3. Keep advanced settings available without crowding the primary workflow.
+1. Let users choose an existing object type for a CSV source when filename-based type inference is not appropriate.
+2. Map CSV columns to the selected type's schema fields and validate before import.
+3. Submit all uploaded CSV sources to one shared relationship plan and persistence phase.
 
-For CSV, the target flow is conditional:
+For CSV, the current flow is:
 
 1. Single file: `Upload` -> `Map fields` -> `Import`.
-2. Multiple files: `Upload` -> `Map fields` -> `Set relationships` -> `Import`.
-3. Object-type setup should happen automatically by default, with an option at the beginning to make it an explicit step.
-4. All uploaded files should remain in one session and be imported together from the final step.
+2. Multiple files: `Upload` -> `Map fields` -> `Import`, with relationship settings shown alongside each file's mapping and preview.
+3. All uploaded files remain in one session and can be mapped without returning to a separate file-selection step.
+
+Live CSV verification remains needed for the wizard transitions, mapping all files in one pass, relationship configuration, narrow-window layout, and shared Import All persistence.
 
 Before or alongside the wizard work, verify failed relationship-link retry when a suitable failure scenario is available.
 

@@ -28,6 +28,11 @@ The implementation plan and remaining work are tracked in `src/import/TODO.md`.
 - CSV rows are previewed before import and can be mapped to label, slug, external ID, description, and document-data columns.
 - CSV rows are discovered and canonical-loaded immediately after continuing; the remote-source preload step is skipped because the file is already local.
 - CSV imports use the shared type selection, schema validation, reconciliation, and persistence workflow.
+- CSV sources can choose an existing object type and its default schema instead of relying only on filename-based type inference.
+- CSV mapping uses one table for document roles, data inclusion, and schema-field mapping.
+- Schema mapping options show field titles, IDs, and nested or array-item paths; a schema field can be selected by only one CSV column.
+- Nested and array-item schema mappings are emitted as structured canonical document data.
+- Schema-field autocomplete options use a custom view with a red required asterisk, bold title, and smaller path.
 - Generated schemas can be edited, saved manually, or created automatically with the filename-derived type/schema names.
 - Automatic creation checks the intended object-type slug first. Existing types are not overwritten; users can select the existing type and its default schema instead.
 - The import records workflow is presented as a compact step flow: type/validate, then import for CSV; remote sources retain preload, type/validate, and import.
@@ -214,11 +219,11 @@ Live CSV checks still needed:
 
 Live Import All verification is complete for preparation, document execution, relationship linking, duplicate relationship handling, relationship planning blockers, progress visualization, batching, pauses, cancellation, and failed relationship-link retry. Repeating the same parent/child import reported `100 links already existed` without creating duplicates. Relationship planning was verified for ready, missing-parent, and ambiguous-parent cases using the development-only Oikos test modes. The retry check used `VITE_IMPORT_FAIL_RELATIONSHIP_ONCE`; keep all relationship test switches unset or `false`/`off` during normal development and production use.
 
-The shared wizard shell and initial Import All/CSV integration are now implemented. The next design task is type-specific CSV mapping and shared multi-file persistence:
+The shared wizard shell, type-specific CSV mapping, and initial Import All/CSV integration are now implemented. The next work is live CSV verification and any fixes found there:
 
-1. Let users choose an existing object type for a CSV source when filename-based type inference is not appropriate.
-2. Map CSV columns to the selected type's schema fields and validate before import.
-3. Submit all uploaded CSV sources to one shared relationship plan and persistence phase.
+1. Verify existing-type selection and default-schema loading.
+2. Verify the unified mapping table, unique schema-field selection, and nested/array field paths.
+3. Verify related CSV files appear in one shared relationship plan and persistence phase.
 
 For CSV, the current flow is:
 
@@ -226,7 +231,13 @@ For CSV, the current flow is:
 2. Multiple files: `Upload` -> `Map fields` -> `Import`, with relationship settings shown alongside each file's mapping and preview.
 3. All uploaded files remain in one session and can be mapped without returning to a separate file-selection step.
 
-Live CSV verification remains needed for the wizard transitions, mapping all files in one pass, relationship configuration, narrow-window layout, and shared Import All persistence.
+Live CSV verification remains needed for the wizard transitions, mapping all files in one pass, nested and array schema mappings, relationship configuration, narrow-window layout, and shared Import All persistence.
+
+### Explicit continuation point
+
+The current `CSVImportViewConfig` in `src/import/pages/csv.tsx` is page-wide scaffolding and is not the final design. Resume by replacing it with per-source/session configuration. The target workflow is one upload session containing a known parent CSV and a known child CSV, where each source has its own known type and mapping mode, while fixed relationship fields/rules are shared by the combined Import All plan.
+
+Still decide how the application identifies each known uploaded file: filename/source-key matching or an explicit user-selected parent/child source role. Do not create separate page-level presets for the parent and child.
 
 Before or alongside the wizard work, verify failed relationship-link retry when a suitable failure scenario is available.
 

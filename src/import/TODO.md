@@ -29,7 +29,7 @@
 - [x] Add an explicit CSV upload mode checkbox so users can choose between single-file progression and keeping the Upload step active for multiple files.
 - [x] In the CSV mapping step, show compact information for every uploaded file with expandable previews and per-file mapping controls.
 - [x] Include relationship fields and relationship rules alongside each file's mapping and preview.
-- [ ] Add a type-specific CSV mapping step for imports where the user chooses an existing object type and maps CSV columns to its schema fields.
+- [x] Add a type-specific CSV mapping step for imports where the user chooses an existing object type and maps CSV columns to its schema fields.
 
 ## 1. Establish tests and stabilize the current workflow
 
@@ -297,9 +297,19 @@ Suggested next step: should I move on to the CSV import adapter? Reply `yes` to 
 - [x] Add a per-file relationship-rule editor for child source, parent field, child field, and predicate.
   - [x] Submit all uploaded CSV sources to one shared relationship plan and persistence phase.
     - UI verification still needed: upload related CSV files, navigate to Import All, and confirm both sources appear in one plan with shared relationship counts and link results.
+  - [x] Let each CSV source choose an existing object type and load its default schema.
+  - [x] Combine CSV role mapping, data inclusion, and schema-field mapping into one table.
+  - [x] Prevent multiple CSV columns from selecting the same schema field.
+  - [x] Show schema field titles, IDs, and nested or array-item paths in mapping options.
+  - [x] Emit structured nested and array-item data for mapped schema paths.
+  - [x] Use the schema-field autocomplete option view to show a red required asterisk, bold field title, and smaller field path.
 - [ ] Resolve multi-spreadsheet imports in dependency order so parent spreadsheets are loaded before related child spreadsheets.
 - [ ] Preserve cross-spreadsheet identity and relationship diagnostics when a parent file is missing, duplicated, or loaded out of order.
 - [ ] Add parser and adapter tests for quoted cells, duplicate/blank headers, dates, numbers, missing columns, large files, and malformed input. (Adapter coverage started; parser edge-case coverage remains.)
+- [ ] Replace the page-wide `CSVImportViewConfig` with per-source/session configuration.
+- [ ] Support uploading a known parent CSV and known child CSV in one session, with independent known types and mapping modes.
+- [ ] Support fixed relationship fields and rules shared across the known parent/child source configuration.
+- [ ] Decide whether known uploaded files are identified by filename/source key or by an explicit user-selected source role.
 
 ### UI simplification
 
@@ -308,6 +318,24 @@ Suggested next step: should I move on to the CSV import adapter? Reply `yes` to 
 - Reuse the standard records, validation, conflict, relationship, and review screens.
 - [ ] When CSV validation fails because of an incorrect first-step mapping, allow mapping edits and revalidation in the same view, or provide field-by-field guidance about the expected mapping.
 - [ ] Clean up the CSV preview layout for smaller and narrower browser windows; remove overlapping content and reduce the multiple nested vertical scrollbars.
+
+### Completed item verification: type-specific CSV mapping
+
+- Automated: focused CSV, import-session, and relationship tests pass; `npm run build` passes.
+- UI verification still needed:
+  - Select an existing object type and confirm its default schema appears in the mapping table.
+  - Confirm label, slug, external ID, description, inclusion, and schema mapping are controlled from one table.
+  - Map two CSV columns to schema fields and confirm the selected field is disabled for the other column.
+  - Confirm nested fields show title, ID, and path, such as `Owner · owner · metadata.owner`.
+  - Confirm array-item fields show paths such as `tags[].value` and import as structured data.
+  - Confirm required autocomplete options show a red `*`, with the title above the smaller path.
+  - Confirm changing a document-role column shows it as included and disables its checkbox.
+
+Suggested next step: should I verify the updated CSV mapping flow in the authenticated UI? Reply `yes` to continue, or `no` to pause for live UI testing.
+
+### Continuation point
+
+Resume here: the current `CSVImportViewConfig` is page-wide scaffolding only. Do not add more page-level presets. Refactor the configuration to apply per uploaded source/session so a user can upload both a known parent type and a known child type, each with its own mapping mode, while fixed relationship fields/rules are applied to the combined Import All plan.
 
 ### Completed item verification: Import All type setup dialog
 

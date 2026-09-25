@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { FileSpreadsheet, X } from 'lucide-react'
 import { schemaToFormUtils, type IFieldInputProps, type IFormValues } from '@axdspub/axiom-ui-forms'
+import { AutoComplete, type ISelectOptionProps } from '@axdspub/axiom-ui-utilities'
 import type { ParsedCSV } from '@/lib/csv'
+import type { JSONSchema6 } from 'json-schema'
 import FileUpload from '@/manage/custom_inputs/file_upload'
 import {
   createCSVImportAdapter,
@@ -9,6 +11,9 @@ import {
   csvFileNameToTypeSlug,
   inferCSVImportMapping,
   isCSVImportMappingComplete,
+  getAvailableCSVSchemaFieldPaths,
+  getCSVSchemaFields,
+  inferCSVSchemaFieldMappings,
 } from '../csv_adapter'
 import type { CSVImportMapping } from '../csv_adapter'
 import type { ImportRelationshipRule, ImportSourceAdapter } from '../types'
@@ -30,6 +35,7 @@ const csvField = {
 type CSVImportSource = {
   sourceId: string
   typeSlug: string
+  selectedObjectTypeUuid?: string
   fileName: string
   fileText: string
   parsed: ParsedCSV
@@ -40,20 +46,59 @@ type CSVImportSource = {
   startAtImport: boolean
 }
 
+export type CSVImportViewConfig = {
+  mapping: 'required' | 'assumed'
+  relationships: 'user-configured' | 'fixed'
+  knownObjectTypeSlug?: string
+  relationshipFields?: string[]
+  relationshipRules?: ImportRelationshipRule[]
+}
+
+const defaultCSVImportViewConfig: CSVImportViewConfig = {
+  mapping: 'required',
+  relationships: 'user-configured',
+}
+
 const createSourceId = (typeSlug: string, sourceNumber: number): string =>
   `${typeSlug}-${sourceNumber}`
+
+const SchemaFieldOptionView = ({
+  title,
+  path,
+  required,
+}: ISelectOptionProps): ReactElement => (
+  <div className="flex min-w-0 flex-col py-1">
+    <div className="font-semibold">
+      {Boolean(required) && <span className="mr-1 text-red-600">*</span>}
+      <span>{String(title)}</span>
+    </div>
+    <div className="truncate text-xs text-gray-500">{String(path)}</div>
+  </div>
+)
 
 const CSVSourceEditor = ({
   source,
   sources,
   onChange,
   mode,
+  viewConfig,
 }: {
   source: CSVImportSource
   sources: CSVImportSource[]
   onChange: (update: Partial<CSVImportSource>) => void
   mode: 'mapping' | 'relationships'
+  viewConfig: CSVImportViewConfig
 }): ReactElement => {
+  const [contextState] = useAtom(contextStateAtom)
+  const selectedObjectType = source.selectedObjectTypeUuid
+    ? contextState.object_type_by_uuid[source.selectedObjectTypeUuid]
+    : contextState.object_type_by_slug[source.typeSlug]
+  const selectedSchema = selectedObjectType
+    ? (contextState.object_schema_defaults_by_object_type_uuid[selectedObjectType.uuid]
+      ?.json_schema as JSONSchema6 | undefined)
+    : undefined
+  const schemaFields = getCSVSchemaFields(selectedSchema)
+
   const rebuildAdapter = (
     mapping: CSVImportMapping,
     relationshipFields: string[],
@@ -65,7 +110,13 @@ const CSVSourceEditor = ({
       text: source.fileText,
       mapping,
       relationshipFields,
-      relationshipRules: relationshipRule ? [relationshipRule] : undefined,
+      relationshipRules:
+        viewConfig.relationships === 'fixed'
+          ? viewConfig.relationshipRules
+          : relationshipRule
+            ? [relationshipRule]
+            : undefined,
+      schema: selectedSchema,
     })
 
   const updateMapping = (mapping: CSVImportMapping) => {
@@ -78,7 +129,77 @@ const CSVSourceEditor = ({
 
   return (
     <>
-      {mode === 'mapping' && (
+      {mode === 'mapping' && viewConfig.mapping === 'assumed' && (
+        <section className="min-w-0 shrink-0 border-b pb-6 mb-4" aria-label="CSV assumed mapping">
+          <h2 className="font-semibold">Mapping assumed</h2>
+          <p className="text-sm text-gray-600">
+            CSV column names are used as document data fields without additional mapping.
+          </p>
+        </section>
+      )}
+      {mode === 'mapping' && viewConfig.mapping === 'required' && !viewConfig.knownObjectTypeSlug && (
+        <section className="min-w-0 shrink-0 border-b pb-6 mb-4" aria-label="CSV object type">
+          <div className="mb-3">
+            <h2 className="font-semibold">Object type</h2>
+            <p className="text-sm text-gray-600">
+              Use the filename-based type or choose an existing type and map columns to its schema.
+            </p>
+          </div>
+          <select
+            value={selectedObjectType?.uuid ?? ''}
+            onChange={(event) => {
+              const nextType = event.target.value
+                ? contextState.object_type_by_uuid[event.target.value]
+                : undefined
+              const nextSchema = nextType
+                ? (contextState.object_schema_defaults_by_object_type_uuid[nextType.uuid]
+                  ?.json_schema as JSONSchema6 | undefined)
+                : undefined
+              const nextTypeSlug = nextType?.slug ?? csvFileNameToTypeSlug(source.fileName)
+              const dataColumns = source.mapping.dataColumns ?? []
+              const fieldMappings = nextType
+                ? inferCSVSchemaFieldMappings(dataColumns, nextSchema)
+                : undefined
+              const relationshipRule = source.relationshipRule
+                ? {
+                  ...source.relationshipRule,
+                  parentObjectTypeSlug: nextTypeSlug,
+                }
+                : undefined
+              onChange({
+                selectedObjectTypeUuid: nextType?.uuid,
+                typeSlug: nextTypeSlug,
+                mapping: { ...source.mapping, fieldMappings },
+                relationshipRule,
+                adapter: createCSVImportAdapter({
+                  id: source.sourceId,
+                  label: csvFileNameToTypeLabel(source.fileName),
+                  text: source.fileText,
+                  mapping: { ...source.mapping, fieldMappings },
+                  relationshipFields: source.relationshipFields,
+                  relationshipRules: relationshipRule ? [relationshipRule] : undefined,
+                  schema: nextSchema,
+                }),
+                startAtImport: false,
+              })
+            }}
+            className="border px-2 py-1"
+          >
+            <option value="">Use filename-based type: {csvFileNameToTypeSlug(source.fileName)}</option>
+            {contextState.object_type.map((objectType) => (
+              <option key={objectType.uuid} value={objectType.uuid}>
+                {objectType.label} ({objectType.slug})
+              </option>
+            ))}
+          </select>
+          {source.selectedObjectTypeUuid && !selectedSchema && (
+            <p className="mt-2 text-sm text-amber-700" role="alert">
+              The selected type has no default schema. Choose another type or create a default schema before importing.
+            </p>
+          )}
+        </section>
+      )}
+      {mode === 'mapping' && viewConfig.mapping === 'required' && (
         <section className="min-w-0 shrink-0 border-b pb-6 mb-4" aria-label="CSV preview">
           <div className="mb-3 flex flex-wrap items-baseline gap-3">
             <h2 className="font-semibold">Preview</h2>
@@ -121,7 +242,26 @@ const CSVSourceEditor = ({
             Select columns used to match this CSV source to a related parent or child type.
           </p>
         </div>
-        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+        {viewConfig.relationships === 'fixed' ? (
+          <div className="flex flex-col gap-3 text-sm">
+            <div className="flex flex-wrap gap-x-4 gap-y-2">
+              {(viewConfig.relationshipFields ?? []).map((field) => (
+                <span key={field} className="border px-2 py-1">
+                  {field}
+                </span>
+              ))}
+            </div>
+            {(viewConfig.relationshipRules ?? []).map((rule) => (
+              <div
+                key={`${rule.parentObjectTypeSlug}-${rule.childObjectTypeSlug}-${rule.predicate}`}
+                className="border p-2"
+              >
+                {rule.parentObjectTypeSlug} ({rule.parentMatchField ?? 'identity'}) {'->'}{' '}
+                {rule.childObjectTypeSlug} ({rule.childMatchField ?? 'identity'}) · {rule.predicate}
+              </div>
+            ))}
+          </div>
+        ) : <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
           {source.parsed.headers.map((header) => {
             const selected = source.relationshipFields.includes(header.key)
             return (
@@ -149,10 +289,10 @@ const CSVSourceEditor = ({
               </label>
             )
           })}
-        </div>
+        </div>}
       </section>}
 
-      {mode === 'relationships' && <section className="min-w-0 shrink-0 border-b pb-6 mb-4" aria-label="CSV relationship rule">
+      {mode === 'relationships' && viewConfig.relationships === 'user-configured' && <section className="min-w-0 shrink-0 border-b pb-6 mb-4" aria-label="CSV relationship rule">
         <div className="mb-3">
           <h2 className="font-semibold">Relationship rule</h2>
           <p className="text-sm text-gray-600">
@@ -293,80 +433,137 @@ const CSVSourceEditor = ({
         <div className="mb-3">
           <h2 className="font-semibold">Map CSV fields</h2>
           <p className="text-sm text-gray-600">
-            Confirm which columns become document fields. Unmapped columns remain in document data
-            when selected below.
+            Choose each column&apos;s document role, whether it is included as data, and its schema
+            field when a type is selected.
           </p>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {(
-            [
-              ['label', 'Label'],
-              ['slug', 'Slug'],
-              ['externalId', 'External ID'],
-              ['description', 'Description'],
-            ] as const
-          ).map(([field, label]) => (
-            <label key={field} className="flex flex-col gap-1 text-sm">
-              <span className="font-medium">{label}</span>
-              <select
-                value={source.mapping[field] ?? ''}
-                onChange={(event) => {
-                  const nextValue = event.target.value || undefined
-                  const specialColumns = new Set(
-                    [
-                      source.mapping.label,
-                      source.mapping.slug,
-                      source.mapping.externalId,
-                      source.mapping.description,
-                      nextValue,
-                    ].filter((column): column is string => Boolean(column))
+        <div className="max-w-full overflow-auto border">
+          <table className="w-full min-w-[760px] text-left text-sm">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="border-b px-3 py-2 font-medium">CSV column / Include</th>
+                <th className="border-b px-3 py-2 font-medium">Document role</th>
+                {source.selectedObjectTypeUuid && schemaFields.length > 0 && (
+                  <th className="border-b px-3 py-2 font-medium">Schema field</th>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {source.parsed.headers.map((header) => {
+                const specialField = (['label', 'slug', 'externalId', 'description'] as const)
+                  .find((field) => source.mapping[field] === header.key)
+                const included = source.mapping.dataColumns?.includes(header.key) ?? false
+                const currentSchemaField = source.mapping.fieldMappings?.[header.key] ?? ''
+                const usedSchemaFields = getAvailableCSVSchemaFieldPaths(
+                  source.mapping,
+                  header.key
+                )
+                const toggleDataInclusion = (include: boolean) => {
+                  if (!specialField) {
+                    updateColumn(include ? 'data' : 'ignore')
+                    return
+                  }
+                  const dataColumns = new Set(source.mapping.dataColumns ?? [])
+                  if (include) dataColumns.add(header.key)
+                  else dataColumns.delete(header.key)
+                  updateMapping({ ...source.mapping, dataColumns: Array.from(dataColumns) })
+                }
+                const updateColumn = (
+                  role: 'label' | 'slug' | 'externalId' | 'description' | 'data' | 'ignore'
+                ) => {
+                  const nextMapping = { ...source.mapping }
+                    ; (['label', 'slug', 'externalId', 'description'] as const).forEach((field) => {
+                      if (nextMapping[field] === header.key) nextMapping[field] = undefined
+                    })
+                  nextMapping.dataColumns = (nextMapping.dataColumns ?? []).filter(
+                    (column) => column !== header.key
                   )
-                  updateMapping({
-                    ...source.mapping,
-                    [field]: nextValue,
-                    dataColumns: (source.mapping.dataColumns ?? []).filter(
-                      (column) => !specialColumns.has(column)
-                    ),
-                  })
-                }}
-                className="border px-2 py-1"
-              >
-                <option value="">Not mapped</option>
-                {source.parsed.headers.map((header) => (
-                  <option key={header.key} value={header.key}>
-                    {header.key}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ))}
-        </div>
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm">
-          {source.parsed.headers.map((header) => {
-            const selected = source.mapping.dataColumns?.includes(header.key) ?? false
-            return (
-              <label key={header.key} className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={selected}
-                  onChange={(event) => {
-                    const dataColumns = new Set(source.mapping.dataColumns ?? [])
-                    if (event.target.checked) dataColumns.add(header.key)
-                    else dataColumns.delete(header.key)
-                    updateMapping({ ...source.mapping, dataColumns: Array.from(dataColumns) })
-                  }}
-                />
-                {header.key}
-              </label>
-            )
-          })}
+                  if (role === 'data') nextMapping.dataColumns.push(header.key)
+                  if (role !== 'ignore' && role !== 'data') nextMapping[role] = header.key
+                  if (role === 'ignore') {
+                    const fieldMappings = { ...(nextMapping.fieldMappings ?? {}) }
+                    delete fieldMappings[header.key]
+                    nextMapping.fieldMappings = fieldMappings
+                  }
+                  updateMapping(nextMapping)
+                }
+                return (
+                  <tr key={header.key} className="border-b last:border-b-0">
+                    <td className="px-3 py-2 font-medium">
+                      <label className="flex items-start gap-2">
+                        <input
+                          type="checkbox"
+                          checked={included}
+                          onChange={(event) => toggleDataInclusion(event.target.checked)}
+                          aria-label={`Include ${header.key} as data`}
+                        />
+                        <span>
+                          <span className="block">{header.key}</span>
+                          <span className="block text-xs font-normal text-gray-500">{header.type}</span>
+                        </span>
+                      </label>
+                    </td>
+                    <td className="px-3 py-2">
+                      <select
+                        value={specialField ?? (included ? 'data' : 'ignore')}
+                        onChange={(event) => updateColumn(event.target.value as Parameters<typeof updateColumn>[0])}
+                        className="border px-2 py-1"
+                      >
+                        <option value="ignore">Ignore</option>
+                        <option value="data">Data field</option>
+                        <option value="label">Label</option>
+                        <option value="slug">Slug</option>
+                        <option value="externalId">External ID</option>
+                        <option value="description">Description</option>
+                      </select>
+                    </td>
+                    {source.selectedObjectTypeUuid && schemaFields.length > 0 && (
+                      <td className="px-3 py-2">
+                        <AutoComplete
+                          id={`schema-field-${source.sourceId}-${header.key}`}
+                          testId={`schema-field-${source.sourceId}-${header.key}`}
+                          placeholder="Keep CSV column name"
+                          includePrompt
+                          value={currentSchemaField}
+                          disabled={!included}
+                          onChange={(event) => {
+                            const fieldMappings = { ...(source.mapping.fieldMappings ?? {}) }
+                            const nextPath = typeof event?.value === 'string' ? event.value : ''
+                            if (nextPath) fieldMappings[header.key] = nextPath
+                            else delete fieldMappings[header.key]
+                            updateMapping({ ...source.mapping, fieldMappings })
+                          }}
+                          options={schemaFields
+                            .filter((field) => !usedSchemaFields.has(field.path))
+                            .map((field) => ({
+                              label: `${field.title} · ${field.path}`,
+                              value: field.path,
+                              title: field.title,
+                              path: field.path,
+                              required: field.required,
+                            }))}
+                          OptionView={SchemaFieldOptionView}
+                          className="max-w-[34rem]"
+                          size="sm"
+                        />
+                      </td>
+                    )}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       </section>}
     </>
   )
 }
 
-const CSVImportPage = (): ReactElement => {
+const CSVImportPage = ({
+  viewConfig = defaultCSVImportViewConfig,
+}: {
+  viewConfig?: CSVImportViewConfig
+}): ReactElement => {
   const [sources, setSources] = useState<CSVImportSource[]>([])
   const [activeSourceId, setActiveSourceId] = useState<string | null>(null)
   const [step, setStep] = useState<'upload' | 'records'>('upload')
@@ -396,24 +593,38 @@ const CSVImportPage = (): ReactElement => {
   }, [setUploadedImportSources, sources])
 
   const addSource = (fileData: string, parsed: ParsedCSV, fileName: string) => {
-    const typeSlug = csvFileNameToTypeSlug(fileName)
+    const typeSlug = viewConfig.knownObjectTypeSlug ?? csvFileNameToTypeSlug(fileName)
+    const existingType = contextState.object_type_by_slug[typeSlug]
+    const existingSchema = existingType
+      ? (contextState.object_schema_defaults_by_object_type_uuid[existingType.uuid]
+        ?.json_schema as JSONSchema6 | undefined)
+      : undefined
     sourceSequence.current += 1
     const sourceId = createSourceId(typeSlug, sourceSequence.current)
-    const mapping = inferCSVImportMapping(parsed.headers.map((header) => header.key))
+    const headers = parsed.headers.map((header) => header.key)
+    const inferredMapping = inferCSVImportMapping(headers)
+    const mapping = viewConfig.mapping === 'assumed'
+      ? { ...inferredMapping, dataColumns: headers }
+      : inferredMapping
+    mapping.fieldMappings = inferCSVSchemaFieldMappings(mapping.dataColumns ?? [], existingSchema)
     const adapter = createCSVImportAdapter({
       id: sourceId,
       label: csvFileNameToTypeLabel(fileName),
       text: fileData,
       mapping,
+      relationshipFields: viewConfig.relationshipFields ?? [],
+      relationshipRules: viewConfig.relationshipRules,
+      schema: existingSchema,
     })
     const source = {
       sourceId,
       typeSlug,
+      selectedObjectTypeUuid: existingType?.uuid,
       fileName,
       fileText: fileData,
       parsed,
       mapping,
-      relationshipFields: [],
+      relationshipFields: viewConfig.relationshipFields ?? [],
       relationshipRule: undefined,
       adapter,
       startAtImport: false,
@@ -445,7 +656,9 @@ const CSVImportPage = (): ReactElement => {
         candidates.map((candidate) => activeSource.adapter.load({ candidate }))
       )
       activeSession.setRecords(records)
-      const existingType = contextState.object_type_by_slug[activeSource.typeSlug]
+      const existingType = activeSource.selectedObjectTypeUuid
+        ? contextState.object_type_by_uuid[activeSource.selectedObjectTypeUuid]
+        : contextState.object_type_by_slug[activeSource.typeSlug]
       const existingSchema = existingType
         ? contextState.object_schema_defaults_by_object_type_uuid[existingType.uuid]?.json_schema
         : undefined
@@ -625,12 +838,14 @@ const CSVImportPage = (): ReactElement => {
                         source={source}
                         sources={sources}
                         mode="mapping"
+                        viewConfig={viewConfig}
                         onChange={(update) => updateSource(source.sourceId, update)}
                       />
                       <CSVSourceEditor
                         source={source}
                         sources={sources}
                         mode="relationships"
+                        viewConfig={viewConfig}
                         onChange={(update) => updateSource(source.sourceId, update)}
                       />
                     </div>
@@ -645,12 +860,14 @@ const CSVImportPage = (): ReactElement => {
                 source={activeSource}
                 sources={sources}
                 mode="mapping"
+                viewConfig={viewConfig}
                 onChange={(update) => updateSource(activeSource.sourceId, update)}
               />
               <CSVSourceEditor
                 source={activeSource}
                 sources={sources}
                 mode="relationships"
+                viewConfig={viewConfig}
                 onChange={(update) => updateSource(activeSource.sourceId, update)}
               />
             </>

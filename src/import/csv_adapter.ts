@@ -1,5 +1,6 @@
 import { parseCSV, type ParsedCSV } from '@/lib/csv'
 import type { CanonicalImportRecord, ImportCandidate, ImportSourceAdapter } from './types'
+import type { JSONSchema6 } from 'json-schema'
 
 export type CSVImportMapping = {
   label?: string
@@ -7,7 +8,68 @@ export type CSVImportMapping = {
   externalId?: string
   description?: string
   dataColumns?: string[]
+  fieldMappings?: Record<string, string>
 }
+
+export type CSVSchemaField = {
+  id: string
+  path: string
+  title: string
+  required: boolean
+}
+
+export const getCSVSchemaFields = (
+  schema: JSONSchema6 | undefined,
+  parentPath = ''
+): CSVSchemaField[] => {
+  if (!schema?.properties || typeof schema.properties !== 'object') return []
+  const requiredFields = new Set(schema.required ?? [])
+
+  return Object.entries(schema.properties)
+    .flatMap(([id, property]) => {
+      if (!property || typeof property === 'boolean') return []
+      const path = parentPath ? `${parentPath}.${id}` : id
+      const title = typeof property.title === 'string' ? property.title : id
+      const nestedFields = getCSVSchemaFields(property, path)
+      const arrayItem = Array.isArray(property.items) ? property.items[0] : property.items
+      const arrayFields =
+        arrayItem && typeof arrayItem !== 'boolean'
+          ? getCSVSchemaFields(arrayItem, `${path}[]`)
+          : []
+      return [{ id, path, title, required: requiredFields.has(id) }, ...nestedFields, ...arrayFields]
+    })
+    .sort((left, right) => Number(right.required) - Number(left.required))
+}
+
+export const inferCSVSchemaFieldMappings = (
+  columns: string[],
+  schema: JSONSchema6 | undefined
+): Record<string, string> => {
+  const normalize = (value: string): string => value.toLowerCase().replace(/[^a-z0-9]/g, '')
+  const schemaFields = getCSVSchemaFields(schema)
+  return Object.fromEntries(
+    columns
+      .map((column) => {
+        const field = schemaFields.find(
+          (candidate) =>
+            normalize(candidate.id) === normalize(column) ||
+            normalize(candidate.path) === normalize(column)
+        )
+        return field ? [column, field.path] : null
+      })
+      .filter((entry): entry is [string, string] => entry !== null)
+  )
+}
+
+export const getAvailableCSVSchemaFieldPaths = (
+  mapping: CSVImportMapping,
+  column: string
+): Set<string> =>
+  new Set(
+    Object.entries(mapping.fieldMappings ?? {})
+      .filter(([mappedColumn]) => mappedColumn !== column)
+      .map(([, fieldPath]) => fieldPath)
+  )
 
 export type CSVImportAdapterOptions = {
   id: string
@@ -16,6 +78,7 @@ export type CSVImportAdapterOptions = {
   mapping?: CSVImportMapping
   relationshipRules?: ImportSourceAdapter['relationshipRules']
   relationshipFields?: string[]
+  schema?: JSONSchema6
 }
 
 export const isCSVImportMappingComplete = (
@@ -87,6 +150,27 @@ const fallbackSlug = (value: string, index: number): string => {
 const rowValue = (row: Record<string, string | number>, key: string | undefined): string =>
   valueAsText(key ? row[key] : undefined)
 
+const setMappedValue = (target: Record<string, unknown>, path: string, value: unknown): void => {
+  const segments = path.split('.')
+  const segment = segments.shift()
+  if (!segment) return
+  const isArray = segment.endsWith('[]')
+  const key = isArray ? segment.slice(0, -2) : segment
+  if (segments.length === 0) {
+    target[key] = isArray ? [value] : value
+    return
+  }
+  if (isArray) {
+    const item: Record<string, unknown> = {}
+    target[key] = [item]
+    setMappedValue(item, segments.join('.'), value)
+    return
+  }
+  const nested = (target[key] ?? {}) as Record<string, unknown>
+  target[key] = nested
+  setMappedValue(nested, segments.join('.'), value)
+}
+
 const createCandidate = (
   row: Record<string, string | number>,
   index: number,
@@ -116,16 +200,29 @@ const createRecord = (
     mapping.description
   )
   const dataColumns = mapping.dataColumns
-  const columns = new Set([...(dataColumns ?? []), ...relationshipFields])
+  const mappedRoleColumns = [mapping.label, mapping.slug, mapping.externalId, mapping.description]
+    .filter((column): column is string =>
+      Boolean(column && dataColumns?.includes(column) && mapping.fieldMappings?.[column])
+    )
+  const columns = new Set([...(dataColumns ?? []), ...relationshipFields, ...mappedRoleColumns])
   const data =
-    columns.size > 0
-      ? Object.fromEntries(
+    Object.keys(mapping.fieldMappings ?? {}).length > 0
+      ? [...columns].reduce<Record<string, unknown>>((mappedData, sourceColumn) => {
+        setMappedValue(
+          mappedData,
+          mapping.fieldMappings?.[sourceColumn] ?? sourceColumn,
+          (candidate.data as Record<string, string | number>)[sourceColumn] ?? ''
+        )
+        return mappedData
+      }, {})
+      : columns.size > 0
+        ? Object.fromEntries(
           [...columns].map((key) => [
             key,
             (candidate.data as Record<string, string | number>)[key] ?? '',
           ])
         )
-      : candidate.data
+        : candidate.data
   return {
     uuid: candidate.uuid,
     label: candidate.label,
@@ -144,6 +241,7 @@ export const createCSVImportAdapter = ({
   mapping = {},
   relationshipRules,
   relationshipFields = [],
+  schema,
 }: CSVImportAdapterOptions): ImportSourceAdapter => {
   let parsed: ParsedCSV | undefined
   const getParsed = () => {
@@ -155,6 +253,7 @@ export const createCSVImportAdapter = ({
     id,
     defaultImportUrl: `csv://${id}`,
     relationshipRules,
+    schema,
     discover: async () =>
       getParsed().data.map((row, index) => createCandidate(row, index, id, mapping)),
     load: async ({ candidate }) => createRecord(candidate, mapping, relationshipFields),

@@ -6,6 +6,7 @@ import {
   csvFileNameToTypeLabel,
   csvFileNameToTypeSlug,
   getAvailableCSVSchemaFieldPaths,
+  getCSVArrayItemSchema,
   getCSVSchemaFields,
   inferCSVSchemaFieldMappings,
 } from './csv_adapter'
@@ -59,6 +60,26 @@ describe('createCSVImportAdapter', () => {
       { id: 'metadata', path: 'metadata', title: 'metadata', required: false },
       { id: 'value', path: 'tags[].value', title: 'value', required: false },
     ])
+  })
+
+  it('resolves the item schema for an array field', () => {
+    const itemSchema = getCSVArrayItemSchema(
+      {
+        type: 'object',
+        properties: {
+          contacts: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: { email: { type: 'string' } },
+            },
+          },
+        },
+      },
+      'contacts'
+    )
+
+    expect(itemSchema?.properties).toEqual({ email: { type: 'string' } })
   })
 
   it('infers nested paths and excludes already-mapped schema fields', () => {

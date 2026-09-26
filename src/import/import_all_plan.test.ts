@@ -6,6 +6,7 @@ import {
   discoverImportAllSource,
   executeImportAllSource,
   importAllRecordKey,
+  mergeArraySourceRecordsIntoParentRecords,
   refreshImportAllSourceReconciliation,
   prepareImportAllSource,
   summarizeImportAllPlan,
@@ -25,6 +26,86 @@ const source = (discover = vi.fn().mockResolvedValue([])): ImportAllPlanSource =
 })
 
 describe('Import All discovery plan', () => {
+  it('embeds array source rows into matching parent records', () => {
+    const parentRecord = {
+      uuid: 'parent-1',
+      slug: 'parent-1',
+      label: 'Parent 1',
+      data: { code: 'P-1' },
+      attrs: {},
+      description: '',
+      sourceData: {},
+      provenance: { sourceId: 'parents', externalId: 'parent-1' },
+    }
+    const arrayRecord = {
+      uuid: 'child-1',
+      slug: 'child-1',
+      label: 'Child 1',
+      data: { parent_code: 'P-1', name: 'Child 1' },
+      attrs: {},
+      description: '',
+      sourceData: {},
+      provenance: { sourceId: 'array-source', externalId: 'child-1' },
+    }
+
+    const result = mergeArraySourceRecordsIntoParentRecords({
+      parentRecords: [parentRecord],
+      arrayRecords: [arrayRecord],
+      target: {
+        parentSourceKey: 'parents',
+        arrayFieldPath: 'children',
+        parentMatchField: 'code',
+        rowMatchField: 'parent_code',
+      },
+    })
+
+    expect(result.records[0].data).toEqual({
+      code: 'P-1',
+      children: [{ parent_code: 'P-1', name: 'Child 1' }],
+    })
+    expect(result.unmatchedArrayRecords).toEqual([])
+  })
+
+  it('falls back to raw source data for array parent matching', () => {
+    const parentRecord = {
+      uuid: 'parent-1',
+      slug: 'parent-1',
+      label: 'Parent 1',
+      data: { name: 'Parent 1' },
+      attrs: {},
+      description: '',
+      sourceData: { code: ' P-1 ' },
+      provenance: { sourceId: 'parents', externalId: 'parent-1' },
+    }
+    const arrayRecord = {
+      uuid: 'child-1',
+      slug: 'child-1',
+      label: 'Child 1',
+      data: { name: 'Child 1' },
+      attrs: {},
+      description: '',
+      sourceData: { parent_code: 'P-1' },
+      provenance: { sourceId: 'array-source', externalId: 'child-1' },
+    }
+
+    const result = mergeArraySourceRecordsIntoParentRecords({
+      parentRecords: [parentRecord],
+      arrayRecords: [arrayRecord],
+      target: {
+        parentSourceKey: 'parents',
+        arrayFieldPath: 'children',
+        parentMatchField: 'code',
+        rowMatchField: 'parent_code',
+      },
+    })
+
+    expect(result.unmatchedArrayRecords).toEqual([])
+    expect(result.records[0].data).toEqual({
+      name: 'Parent 1',
+      children: [{ name: 'Child 1' }],
+    })
+  })
+
   it('collects relationship document UUIDs from execution results', () => {
     const configuredSource = source()
     const record = {

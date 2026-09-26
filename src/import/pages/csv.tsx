@@ -12,11 +12,17 @@ import {
   inferCSVImportMapping,
   isCSVImportMappingComplete,
   getAvailableCSVSchemaFieldPaths,
+  getCSVArrayItemSchema,
   getCSVSchemaFields,
   inferCSVSchemaFieldMappings,
 } from '../csv_adapter'
 import type { CSVImportMapping } from '../csv_adapter'
-import type { ImportRelationshipRule, ImportSourceAdapter } from '../types'
+import type {
+  ImportArraySourceTarget,
+  ImportRelationshipRule,
+  ImportSourceAdapter,
+} from '../types'
+import { mergeArraySourceRecordsIntoParentRecords } from '../import_all_plan'
 import ImportRecordsPage from './index'
 import { Button } from '@/components/ui/button'
 import { useImportSession } from '../state/importState'
@@ -34,6 +40,7 @@ const csvField = {
 
 type CSVImportSource = {
   sourceId: string
+  config: CSVImportSourceConfig
   typeSlug: string
   selectedObjectTypeUuid?: string
   fileName: string
@@ -46,12 +53,25 @@ type CSVImportSource = {
   startAtImport: boolean
 }
 
+export type CSVImportSourceConfig = {
+  key: string
+  label: string
+  description?: string
+  fileName?: string
+  typeSlug: string
+  typeKnown: boolean
+  mapping: 'required' | 'assumed'
+  relationshipFields?: string[]
+  arrayTarget?: ImportArraySourceTarget
+}
+
 export type CSVImportViewConfig = {
   mapping: 'required' | 'assumed'
   relationships: 'user-configured' | 'fixed'
   knownObjectTypeSlug?: string
   relationshipFields?: string[]
   relationshipRules?: ImportRelationshipRule[]
+  sourceConfigs?: CSVImportSourceConfig[]
 }
 
 const defaultCSVImportViewConfig: CSVImportViewConfig = {
@@ -59,8 +79,31 @@ const defaultCSVImportViewConfig: CSVImportViewConfig = {
   relationships: 'user-configured',
 }
 
-const createSourceId = (typeSlug: string, sourceNumber: number): string =>
-  `${typeSlug}-${sourceNumber}`
+const resolveCSVImportSourceConfig = (
+  viewConfig: CSVImportViewConfig,
+  fileName: string
+): CSVImportSourceConfig => {
+  const fileTypeSlug = csvFileNameToTypeSlug(fileName)
+  const configuredSource = viewConfig.sourceConfigs?.find(
+    (sourceConfig) =>
+      sourceConfig.fileName === fileName || sourceConfig.typeSlug === fileTypeSlug
+  )
+  if (configuredSource) return configuredSource
+
+  const typeSlug = viewConfig.knownObjectTypeSlug ?? fileTypeSlug
+  return {
+    key: typeSlug,
+    label: csvFileNameToTypeLabel(fileName),
+    fileName,
+    typeSlug,
+    typeKnown: viewConfig.knownObjectTypeSlug !== undefined,
+    mapping: viewConfig.mapping,
+    relationshipFields: viewConfig.relationshipFields,
+  }
+}
+
+const createSourceId = (typeSlug: string, sourceNumber: number, sourceKey?: string): string =>
+  `${sourceKey ?? typeSlug}-${sourceNumber}`
 
 const SchemaFieldOptionView = ({
   title,
@@ -97,7 +140,10 @@ const CSVSourceEditor = ({
     ? (contextState.object_schema_defaults_by_object_type_uuid[selectedObjectType.uuid]
       ?.json_schema as JSONSchema6 | undefined)
     : undefined
-  const schemaFields = getCSVSchemaFields(selectedSchema)
+  const mappingSchema = source.config.arrayTarget
+    ? getCSVArrayItemSchema(selectedSchema, source.config.arrayTarget.arrayFieldPath)
+    : selectedSchema
+  const schemaFields = getCSVSchemaFields(mappingSchema)
 
   const rebuildAdapter = (
     mapping: CSVImportMapping,
@@ -116,7 +162,11 @@ const CSVSourceEditor = ({
           : relationshipRule
             ? [relationshipRule]
             : undefined,
-      schema: selectedSchema,
+      arrayTarget: source.config.arrayTarget,
+      sourceKey: source.config.key,
+      schema: source.config.arrayTarget
+        ? getCSVArrayItemSchema(selectedSchema, source.config.arrayTarget.arrayFieldPath)
+        : selectedSchema,
     })
 
   const updateMapping = (mapping: CSVImportMapping) => {
@@ -129,7 +179,7 @@ const CSVSourceEditor = ({
 
   return (
     <>
-      {mode === 'mapping' && viewConfig.mapping === 'assumed' && (
+      {mode === 'mapping' && source.config.mapping === 'assumed' && (
         <section className="min-w-0 shrink-0 border-b pb-6 mb-4" aria-label="CSV assumed mapping">
           <h2 className="font-semibold">Mapping assumed</h2>
           <p className="text-sm text-gray-600">
@@ -137,7 +187,7 @@ const CSVSourceEditor = ({
           </p>
         </section>
       )}
-      {mode === 'mapping' && viewConfig.mapping === 'required' && !viewConfig.knownObjectTypeSlug && (
+      {mode === 'mapping' && source.config.mapping === 'required' && !source.config.typeKnown && (
         <section className="min-w-0 shrink-0 border-b pb-6 mb-4" aria-label="CSV object type">
           <div className="mb-3">
             <h2 className="font-semibold">Object type</h2>
@@ -157,8 +207,11 @@ const CSVSourceEditor = ({
                 : undefined
               const nextTypeSlug = nextType?.slug ?? csvFileNameToTypeSlug(source.fileName)
               const dataColumns = source.mapping.dataColumns ?? []
+              const nextMappingSchema = source.config.arrayTarget
+                ? getCSVArrayItemSchema(nextSchema, source.config.arrayTarget.arrayFieldPath)
+                : nextSchema
               const fieldMappings = nextType
-                ? inferCSVSchemaFieldMappings(dataColumns, nextSchema)
+                ? inferCSVSchemaFieldMappings(dataColumns, nextMappingSchema)
                 : undefined
               const relationshipRule = source.relationshipRule
                 ? {
@@ -178,7 +231,11 @@ const CSVSourceEditor = ({
                   mapping: { ...source.mapping, fieldMappings },
                   relationshipFields: source.relationshipFields,
                   relationshipRules: relationshipRule ? [relationshipRule] : undefined,
-                  schema: nextSchema,
+                  arrayTarget: source.config.arrayTarget,
+                  sourceKey: source.config.key,
+                  schema: source.config.arrayTarget
+                    ? getCSVArrayItemSchema(nextSchema, source.config.arrayTarget.arrayFieldPath)
+                    : nextSchema,
                 }),
                 startAtImport: false,
               })
@@ -199,7 +256,7 @@ const CSVSourceEditor = ({
           )}
         </section>
       )}
-      {mode === 'mapping' && viewConfig.mapping === 'required' && (
+      {mode === 'mapping' && source.config.mapping === 'required' && (
         <section className="min-w-0 shrink-0 border-b pb-6 mb-4" aria-label="CSV preview">
           <div className="mb-3 flex flex-wrap items-baseline gap-3">
             <h2 className="font-semibold">Preview</h2>
@@ -245,7 +302,7 @@ const CSVSourceEditor = ({
         {viewConfig.relationships === 'fixed' ? (
           <div className="flex flex-col gap-3 text-sm">
             <div className="flex flex-wrap gap-x-4 gap-y-2">
-              {(viewConfig.relationshipFields ?? []).map((field) => (
+              {(source.config.relationshipFields ?? []).map((field) => (
                 <span key={field} className="border px-2 py-1">
                   {field}
                 </span>
@@ -577,61 +634,101 @@ const CSVImportPage = ({
   const [, setUploadedImportSources] = useAtom(uploadedImportSourcesAtom)
   const activeSource = sources.find((source) => source.sourceId === activeSourceId) ?? null
   const activeSession = useImportSession(activeSource?.sourceId ?? 'csv-upload')
+  const configuredParentSource = sources.find((source) => !source.config.arrayTarget)
+  const parentSession = useImportSession(
+    configuredParentSource?.sourceId ?? 'csv-configured-parent'
+  )
   const sourceCountLabel = useMemo(
     () => `${sources.length} CSV source${sources.length === 1 ? '' : 's'}`,
     [sources.length]
   )
 
   useEffect(() => {
-    setUploadedImportSources(
-      sources.map((source) => ({
-        type: source.typeSlug,
-        label: csvFileNameToTypeLabel(source.fileName),
-        sourceAdapter: source.adapter,
-      }))
-    )
+    if (sources.length === 0) return
+    setUploadedImportSources((current) => {
+      const sourceIds = new Set(sources.map((source) => source.adapter.id))
+      return [
+        ...current.filter((source) => !sourceIds.has(source.sourceAdapter.id)),
+        ...sources.map((source) => ({
+          type: source.typeSlug,
+          label: source.config.label,
+          sourceAdapter: source.adapter,
+        })),
+      ]
+    })
   }, [setUploadedImportSources, sources])
 
-  const addSource = (fileData: string, parsed: ParsedCSV, fileName: string) => {
-    const typeSlug = viewConfig.knownObjectTypeSlug ?? csvFileNameToTypeSlug(fileName)
+  const addSource = (
+    fileData: string,
+    parsed: ParsedCSV,
+    fileName: string,
+    configuredSource?: CSVImportSourceConfig
+  ) => {
+    const sourceConfig = configuredSource ?? resolveCSVImportSourceConfig(viewConfig, fileName)
+    const typeSlug = sourceConfig.typeSlug
     const existingType = contextState.object_type_by_slug[typeSlug]
     const existingSchema = existingType
       ? (contextState.object_schema_defaults_by_object_type_uuid[existingType.uuid]
         ?.json_schema as JSONSchema6 | undefined)
       : undefined
     sourceSequence.current += 1
-    const sourceId = createSourceId(typeSlug, sourceSequence.current)
+    const sourceId = createSourceId(typeSlug, sourceSequence.current, sourceConfig.key)
     const headers = parsed.headers.map((header) => header.key)
     const inferredMapping = inferCSVImportMapping(headers)
-    const mapping = viewConfig.mapping === 'assumed'
+    const mapping = sourceConfig.mapping === 'assumed'
       ? { ...inferredMapping, dataColumns: headers }
       : inferredMapping
-    mapping.fieldMappings = inferCSVSchemaFieldMappings(mapping.dataColumns ?? [], existingSchema)
+    const mappingSchema = sourceConfig.arrayTarget
+      ? getCSVArrayItemSchema(existingSchema, sourceConfig.arrayTarget.arrayFieldPath)
+      : existingSchema
+    mapping.fieldMappings = inferCSVSchemaFieldMappings(mapping.dataColumns ?? [], mappingSchema)
     const adapter = createCSVImportAdapter({
       id: sourceId,
       label: csvFileNameToTypeLabel(fileName),
       text: fileData,
       mapping,
-      relationshipFields: viewConfig.relationshipFields ?? [],
+      relationshipFields: sourceConfig.relationshipFields ?? [],
       relationshipRules: viewConfig.relationshipRules,
-      schema: existingSchema,
+      arrayTarget: sourceConfig.arrayTarget,
+      sourceKey: sourceConfig.key,
+      schema: sourceConfig.arrayTarget
+        ? getCSVArrayItemSchema(existingSchema, sourceConfig.arrayTarget.arrayFieldPath)
+        : existingSchema,
     })
     const source = {
       sourceId,
+      config: sourceConfig,
       typeSlug,
       selectedObjectTypeUuid: existingType?.uuid,
       fileName,
       fileText: fileData,
       parsed,
       mapping,
-      relationshipFields: viewConfig.relationshipFields ?? [],
+      relationshipFields: sourceConfig.relationshipFields ?? [],
       relationshipRule: undefined,
       adapter,
       startAtImport: false,
     }
-    setSources((current) => [...current, source])
+    setSources((current) => [
+      ...current.filter(
+        (existing) => !configuredSource || existing.config.key !== configuredSource.key
+      ),
+      source,
+    ])
     setActiveSourceId(sourceId)
-    if (!uploadMultipleFiles) setActiveWizardStep('mapping')
+    const uploadedKeys = new Set([
+      ...sources.map((existing) => existing.config.key),
+      sourceConfig.key,
+    ])
+    if (
+      viewConfig.sourceConfigs?.length &&
+      viewConfig.sourceConfigs.every((configured) => uploadedKeys.has(configured.key))
+    ) {
+      setActiveWizardStep('mapping')
+    }
+    if (!uploadMultipleFiles && !(viewConfig.sourceConfigs && viewConfig.sourceConfigs.length > 0)) {
+      setActiveWizardStep('mapping')
+    }
     setUploadKey((key) => key + 1)
   }
 
@@ -646,6 +743,78 @@ const CSVImportPage = ({
     setIsLoadingRecords(true)
     setLoadError(undefined)
     try {
+      if (viewConfig.sourceConfigs?.some((sourceConfig) => sourceConfig.arrayTarget)) {
+        const parentSource = configuredParentSource
+        if (!parentSource) throw new Error('A parent CSV source is required.')
+        const controller = new AbortController()
+        const loadedSources = await Promise.all(
+          sources.map(async (source) => {
+            const candidates = await source.adapter.discover({
+              url: source.adapter.defaultImportUrl,
+              signal: controller.signal,
+            })
+            const records = await Promise.all(
+              candidates.map((candidate) => source.adapter.load({ candidate }))
+            )
+            return { source, candidates, records }
+          })
+        )
+        const parentLoaded = loadedSources.find(
+          (loaded) => loaded.source.sourceId === parentSource.sourceId
+        )
+        if (!parentLoaded) throw new Error('The parent CSV source could not be loaded.')
+
+        let mergedRecords = parentLoaded.records
+        for (const loaded of loadedSources) {
+          const target = loaded.source.config.arrayTarget
+          if (!target) continue
+          const merged = mergeArraySourceRecordsIntoParentRecords({
+            parentRecords: mergedRecords,
+            arrayRecords: loaded.records,
+            target,
+          })
+          if (merged.unmatchedArrayRecords.length > 0) {
+            throw new Error(
+              `${merged.unmatchedArrayRecords.length} array rows did not match a parent record.`
+            )
+          }
+          mergedRecords = merged.records
+        }
+
+        parentSession.resetSession()
+        parentSession.setCandidates(parentLoaded.candidates)
+        parentSession.setRecords(mergedRecords)
+        const existingType = parentSource.selectedObjectTypeUuid
+          ? contextState.object_type_by_uuid[parentSource.selectedObjectTypeUuid]
+          : contextState.object_type_by_slug[parentSource.typeSlug]
+        const existingSchema = existingType
+          ? contextState.object_schema_defaults_by_object_type_uuid[existingType.uuid]?.json_schema
+          : undefined
+        if (existingType && existingSchema) {
+          parentSession.setSelectedObjectType(existingType)
+          parentSession.setSchema(existingSchema)
+          parentSession.setValidationResults(
+            mergedRecords.map((record) => {
+              const errors = schemaToFormUtils.validateAgainstSchema(
+                omit(existingSchema as Record<string, unknown>, '$schema'),
+                record.data as IFormValues
+              )
+              return {
+                record,
+                result: {
+                  isValid: !errors?.length,
+                  errors: errors?.map((error) => error.message) ?? [],
+                },
+              }
+            })
+          )
+        }
+        setActiveSourceId(parentSource.sourceId)
+        updateSource(parentSource.sourceId, { startAtImport: Boolean(existingType && existingSchema) })
+        setStep('records')
+        setActiveWizardStep('import')
+        return
+      }
       activeSession.resetSession()
       const candidates = await activeSource.adapter.discover({
         url: activeSource.adapter.defaultImportUrl,
@@ -666,7 +835,9 @@ const CSVImportPage = ({
         activeSource.parsed.headers.map((header) => header.key),
         activeSource.mapping
       )
-      const canStartAtImport = Boolean(existingType && existingSchema && mappingComplete)
+      const canStartAtImport = Boolean(
+        !activeSource.config.arrayTarget && existingType && existingSchema && mappingComplete
+      )
       if (canStartAtImport && existingType && existingSchema) {
         activeSession.setSelectedObjectType(existingType)
         activeSession.setSchema(existingSchema)
@@ -736,25 +907,66 @@ const CSVImportPage = ({
               </div>
               <FileSpreadsheet size={22} />
             </div>
-            <FileUpload
-              key={uploadKey}
-              field={csvField}
-              value={null}
-              onChange={() => undefined}
-              acceptFileTypes={['csv', 'text/csv']}
-              onFileUploaded={(fileData, csvData, uploadedFileName) => {
-                if (typeof fileData === 'string' && csvData && uploadedFileName)
-                  addSource(fileData, csvData, uploadedFileName)
-              }}
-            />
-            <label className="mt-3 inline-flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={uploadMultipleFiles}
-                onChange={(event) => setUploadMultipleFiles(event.target.checked)}
-              />
-              Upload multiple files in this session
-            </label>
+            {viewConfig.sourceConfigs && viewConfig.sourceConfigs.length > 0 ? (
+              <div className="grid gap-3 md:grid-cols-2">
+                {viewConfig.sourceConfigs.map((sourceConfig) => {
+                  const uploadedSource = sources.find(
+                    (source) => source.config.key === sourceConfig.key
+                  )
+                  return (
+                    <section key={sourceConfig.key} className="border p-3" aria-label={sourceConfig.label}>
+                      <h2 className="font-semibold">{sourceConfig.label}</h2>
+                      {sourceConfig.description && (
+                        <p className="mb-3 text-sm text-gray-600">{sourceConfig.description}</p>
+                      )}
+                      <FileUpload
+                        key={`${uploadKey}-${sourceConfig.key}`}
+                        field={{
+                          ...csvField,
+                          id: `csv-file-${sourceConfig.key}`,
+                          label: `Upload ${sourceConfig.label}`,
+                          description: sourceConfig.description ?? csvField.description,
+                        }}
+                        value={null}
+                        onChange={() => undefined}
+                        acceptFileTypes={['csv', 'text/csv']}
+                        onFileUploaded={(fileData, csvData, uploadedFileName) => {
+                          if (typeof fileData === 'string' && csvData && uploadedFileName)
+                            addSource(fileData, csvData, uploadedFileName, sourceConfig)
+                        }}
+                      />
+                      {uploadedSource && (
+                        <p className="mt-2 text-xs text-green-700">
+                          Using {uploadedSource.fileName} for this source.
+                        </p>
+                      )}
+                    </section>
+                  )
+                })}
+              </div>
+            ) : (
+              <>
+                <FileUpload
+                  key={uploadKey}
+                  field={csvField}
+                  value={null}
+                  onChange={() => undefined}
+                  acceptFileTypes={['csv', 'text/csv']}
+                  onFileUploaded={(fileData, csvData, uploadedFileName) => {
+                    if (typeof fileData === 'string' && csvData && uploadedFileName)
+                      addSource(fileData, csvData, uploadedFileName)
+                  }}
+                />
+                <label className="mt-3 inline-flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={uploadMultipleFiles}
+                    onChange={(event) => setUploadMultipleFiles(event.target.checked)}
+                  />
+                  Upload multiple files in this session
+                </label>
+              </>
+            )}
           </section>
 
           {sources.length > 0 && (
@@ -915,6 +1127,7 @@ const CSVImportPage = ({
               pluralLabel="CSV records"
               sourceAdapter={activeSource.adapter}
               csvSource
+              arraySource={Boolean(activeSource.config.arrayTarget)}
               startAtImport={activeSource.startAtImport}
               icon={FileSpreadsheet}
             />

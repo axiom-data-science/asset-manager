@@ -1,5 +1,10 @@
 import { parseCSV, type ParsedCSV } from '@/lib/csv'
-import type { CanonicalImportRecord, ImportCandidate, ImportSourceAdapter } from './types'
+import type {
+  CanonicalImportRecord,
+  ImportArraySourceTarget,
+  ImportCandidate,
+  ImportSourceAdapter,
+} from './types'
 import type { JSONSchema6 } from 'json-schema'
 
 export type CSVImportMapping = {
@@ -41,6 +46,36 @@ export const getCSVSchemaFields = (
     .sort((left, right) => Number(right.required) - Number(left.required))
 }
 
+export const getCSVSchemaAtPath = (
+  schema: JSONSchema6 | undefined,
+  path: string
+): JSONSchema6 | undefined => {
+  let current = schema
+  for (const segment of path.split('.')) {
+    const arraySegment = segment.endsWith('[]')
+    const propertyName = arraySegment ? segment.slice(0, -2) : segment
+    const property = current?.properties?.[propertyName]
+    if (!property || typeof property === 'boolean') return undefined
+    current = property
+    if (arraySegment) {
+      const itemSchema = Array.isArray(current.items) ? current.items[0] : current.items
+      if (!itemSchema || typeof itemSchema === 'boolean') return undefined
+      current = itemSchema
+    }
+  }
+  return current
+}
+
+export const getCSVArrayItemSchema = (
+  schema: JSONSchema6 | undefined,
+  arrayFieldPath: string
+): JSONSchema6 | undefined => {
+  const arraySchema = getCSVSchemaAtPath(schema, arrayFieldPath)
+  if (!arraySchema?.items || typeof arraySchema.items === 'boolean') return undefined
+  const itemSchema = Array.isArray(arraySchema.items) ? arraySchema.items[0] : arraySchema.items
+  return itemSchema && typeof itemSchema !== 'boolean' ? itemSchema : undefined
+}
+
 export const inferCSVSchemaFieldMappings = (
   columns: string[],
   schema: JSONSchema6 | undefined
@@ -78,6 +113,8 @@ export type CSVImportAdapterOptions = {
   mapping?: CSVImportMapping
   relationshipRules?: ImportSourceAdapter['relationshipRules']
   relationshipFields?: string[]
+  arrayTarget?: ImportArraySourceTarget
+  sourceKey?: string
   schema?: JSONSchema6
 }
 
@@ -241,6 +278,8 @@ export const createCSVImportAdapter = ({
   mapping = {},
   relationshipRules,
   relationshipFields = [],
+  arrayTarget,
+  sourceKey,
   schema,
 }: CSVImportAdapterOptions): ImportSourceAdapter => {
   let parsed: ParsedCSV | undefined
@@ -253,6 +292,8 @@ export const createCSVImportAdapter = ({
     id,
     defaultImportUrl: `csv://${id}`,
     relationshipRules,
+    arrayTarget,
+    sourceKey,
     schema,
     discover: async () =>
       getParsed().data.map((row, index) => createCandidate(row, index, id, mapping)),

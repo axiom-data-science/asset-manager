@@ -102,11 +102,20 @@ export type ImportRelationshipRule = {
     predicate: string
 }
 
+export type ImportArraySourceTarget = {
+    parentSourceKey: string
+    arrayFieldPath: string
+    parentMatchField: string
+    rowMatchField: string
+}
+
 export type ImportSourceAdapter = {
     id: string
     defaultImportUrl: string
     defaultDetailRoot?: string
     relationshipRules?: ImportRelationshipRule[]
+    arrayTarget?: ImportArraySourceTarget
+    sourceKey?: string
     schema?: JSONSchema6
     discover: (options: ImportDiscoveryOptions) => Promise<ImportCandidate[]>
     load: (options: ImportLoadOptions) => Promise<CanonicalImportRecord>

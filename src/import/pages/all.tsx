@@ -15,6 +15,7 @@ import {
   discoverImportAllSource,
   executeImportAllSource,
   importAllRecordKey,
+  mergeArraySourceRecordsIntoParentRecords,
   prepareImportAllSource,
   refreshImportAllSourceReconciliation,
   summarizeImportAllPlan,
@@ -22,7 +23,7 @@ import {
   type ImportAllSourcePlan,
 } from '../import_all_plan'
 import { fetchExistingImportDocuments } from '../reconciliation_service'
-import { getDocumentImportProvenance } from '../reconciliation'
+import { getDocumentImportProvenance, reconcileImportRecords } from '../reconciliation'
 import { useAuth } from '@/auth/useAuth'
 import { omit } from 'lodash-es'
 import type { JSONSchema6 } from 'json-schema'
@@ -763,14 +764,15 @@ const ImportAllPage = (): ReactElement => {
       )
     )
 
-    await Promise.all(
+    const preparedPlans = await Promise.all(
       selected.map(async (plan) => {
         const source = sourcesById[plan.sourceId]
-        const objectType = objectTypesBySlug[plan.type]
+        const isArraySource = source?.sourceAdapter.arrayTarget !== undefined
+        const objectType = isArraySource ? undefined : objectTypesBySlug[plan.type]
         const schema = objectType
           ? defaultSchemasByTypeUuid[objectType.uuid]?.json_schema
           : undefined
-        if (!source) return
+        if (!source) return plan
         try {
           const prepared = await prepareImportAllSource({
             source: source as ImportAllPlanSource,
@@ -789,16 +791,89 @@ const ImportAllPage = (): ReactElement => {
               }),
           })
           if (!controller.signal.aborted) updatePlan(plan.sourceId, prepared)
+          return prepared
         } catch {
           if (!controller.signal.aborted) {
-            updatePlan(plan.sourceId, {
-              preparationStatus: 'error',
+            const failedPlan = {
+              ...plan,
+              preparationStatus: 'error' as const,
               error: 'Preparation was cancelled before this source completed.',
-            })
+            }
+            updatePlan(plan.sourceId, failedPlan)
+            return failedPlan
           }
+          return plan
         }
       })
     )
+
+    if (!controller.signal.aborted) {
+      const nextPlans = {
+        ...plans,
+        ...Object.fromEntries(preparedPlans.map((plan) => [plan.sourceId, plan])),
+      } as Record<string, ImportAllSourcePlan>
+
+      for (const arrayPlan of preparedPlans) {
+        const arraySource = sourcesById[arrayPlan.sourceId]
+        const target = arraySource?.sourceAdapter.arrayTarget
+        if (!target || arrayPlan.preparationStatus !== 'ready') continue
+        const parentSource = Object.values(sourcesById).find(
+          (source) => source.sourceAdapter.sourceKey === target.parentSourceKey
+        )
+        const parentPlan = parentSource ? nextPlans[parentSource.sourceAdapter.id] : undefined
+        if (!parentPlan || parentPlan.preparationStatus !== 'ready') {
+          nextPlans[arrayPlan.sourceId] = {
+            ...arrayPlan,
+            preparationStatus: 'error',
+            error: `Parent source "${target.parentSourceKey}" was not prepared.`,
+          }
+          continue
+        }
+
+        const parentObjectType = objectTypesBySlug[parentPlan.type]
+        const parentSchema = parentObjectType
+          ? defaultSchemasByTypeUuid[parentObjectType.uuid]?.json_schema
+          : undefined
+        const merged = mergeArraySourceRecordsIntoParentRecords({
+          parentRecords: parentPlan.records,
+          arrayRecords: arrayPlan.records,
+          target,
+        })
+        const validationResults = parentSchema
+          ? merged.records.map((record) => ({
+            record,
+            ...validateRecord(parentSchema as JSONSchema6, record),
+          }))
+          : merged.records.map((record) => ({ record, isValid: true, errors: [] }))
+        const validRecords = validationResults
+          .filter(({ isValid }) => isValid)
+          .map(({ record }) => record)
+        const existingDocuments = parentObjectType
+          ? await fetchExistingImportDocuments({
+            records: validRecords,
+            objectTypeUuid: parentObjectType.uuid,
+            token: auth.user?.access_token ?? '',
+            signal: controller.signal,
+          })
+          : []
+
+        nextPlans[parentPlan.sourceId] = {
+          ...parentPlan,
+          records: merged.records,
+          validationResults,
+          reconciliations: parentObjectType
+            ? reconcileImportRecords(validRecords, existingDocuments)
+            : [],
+        }
+        if (merged.unmatchedArrayRecords.length > 0) {
+          nextPlans[arrayPlan.sourceId] = {
+            ...arrayPlan,
+            error: `${merged.unmatchedArrayRecords.length} array rows did not match a parent.`,
+          }
+        }
+      }
+      setPlans(nextPlans)
+    }
 
     if (controllerRef.current === controller) controllerRef.current = null
   }
@@ -814,6 +889,7 @@ const ImportAllPage = (): ReactElement => {
       ({ sourceId, enabled, preparationStatus }) =>
         enabled &&
         preparationStatus === 'ready' &&
+        !sourcesById[sourceId]?.sourceAdapter.arrayTarget &&
         (!recordKeysBySource || recordKeysBySource[sourceId] !== undefined)
     )
     console.log('[Import All] selected sources for execution', {

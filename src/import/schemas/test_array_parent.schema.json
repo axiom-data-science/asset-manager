@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-06/schema#",
+  "title": "Test Array Parent",
+  "type": "object",
+  "properties": {
+    "code": {
+      "title": "Parent code",
+      "type": "string"
+    },
+    "name": {
+      "title": "Parent name",
+      "type": "string"
+    },
+    "contacts": {
+      "title": "Contacts",
+      "type": "array",
+      "items": {
+        "title": "Contact",
+        "type": "object",
+        "properties": {
+          "parent_code": {
+            "title": "Parent code",
+            "type": "string"
+          },
+          "name": {
+            "title": "Contact name",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "required": [
+          "parent_code",
+          "name",
+          "email"
+        ]
+      }
+    }
+  },
+  "required": [
+    "code",
+    "name"
+  ]
+}

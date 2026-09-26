@@ -13,6 +13,7 @@ import type {
   ImportRelationshipPersistenceResult,
   ImportRelationshipPlan,
 } from './relationship_planning'
+import type { ImportArraySourceTarget } from './types'
 import { relationshipDocumentKey } from './relationship_planning'
 
 export type ImportAllDiscoveryStatus = 'idle' | 'loading' | 'ready' | 'error'
@@ -169,6 +170,78 @@ export const createImportAllSourcePlan = (source: ImportAllPlanSource): ImportAl
 
 export const importAllRecordKey = (record: CanonicalImportRecord): string =>
   `${record.provenance.sourceId}:${record.provenance.externalId}`
+
+const getRecordPathValue = (value: unknown, path: string): unknown =>
+  path.split('.').reduce<unknown>((current, segment) => {
+    if (!current || typeof current !== 'object') return undefined
+    return (current as Record<string, unknown>)[segment]
+  }, value)
+
+const getRecordMatchValue = (record: CanonicalImportRecord, path: string): unknown =>
+  getRecordPathValue(record.data, path) ?? getRecordPathValue(record.sourceData, path)
+
+const normalizeMatchValue = (value: unknown): string => String(value).trim()
+
+export const mergeArraySourceRecordsIntoParentRecords = ({
+  parentRecords,
+  arrayRecords,
+  target,
+}: {
+  parentRecords: CanonicalImportRecord[]
+  arrayRecords: CanonicalImportRecord[]
+  target: ImportArraySourceTarget
+}): { records: CanonicalImportRecord[]; unmatchedArrayRecords: CanonicalImportRecord[] } => {
+  const arrayRecordsByParentValue = new Map<string, CanonicalImportRecord[]>()
+  for (const arrayRecord of arrayRecords) {
+    const parentValue = getRecordMatchValue(arrayRecord, target.rowMatchField)
+    if (parentValue === undefined || parentValue === null) continue
+    const key = normalizeMatchValue(parentValue)
+    arrayRecordsByParentValue.set(key, [
+      ...(arrayRecordsByParentValue.get(key) ?? []),
+      arrayRecord,
+    ])
+  }
+
+  const unmatchedArrayRecords = [...arrayRecords]
+  const records = parentRecords.map((parentRecord) => {
+    const parentValue = getRecordMatchValue(parentRecord, target.parentMatchField)
+    const matchingArrayRecords =
+      parentValue === undefined || parentValue === null
+        ? []
+        : arrayRecordsByParentValue.get(normalizeMatchValue(parentValue)) ?? []
+    if (matchingArrayRecords.length === 0) return parentRecord
+
+    const matchingKeys = new Set(
+      matchingArrayRecords.map((arrayRecord) => importAllRecordKey(arrayRecord))
+    )
+    for (let index = unmatchedArrayRecords.length - 1; index >= 0; index -= 1) {
+      if (matchingKeys.has(importAllRecordKey(unmatchedArrayRecords[index]))) {
+        unmatchedArrayRecords.splice(index, 1)
+      }
+    }
+
+    const existingItems = getRecordPathValue(parentRecord.data, target.arrayFieldPath)
+    const arrayItems = Array.isArray(existingItems) ? existingItems : []
+    const data = { ...(parentRecord.data as Record<string, unknown>) }
+    let targetData = data
+    const segments = target.arrayFieldPath.split('.')
+    const finalSegment = segments.pop()
+    for (const segment of segments) {
+      const nested = (targetData[segment] ?? {}) as Record<string, unknown>
+      targetData[segment] = nested
+      targetData = nested
+    }
+    if (finalSegment) {
+      targetData[finalSegment] = [
+        ...arrayItems,
+        ...matchingArrayRecords.map((arrayRecord) => arrayRecord.data),
+      ]
+    }
+    return { ...parentRecord, data }
+  })
+
+  return { records, unmatchedArrayRecords }
+}
 
 export const collectImportDocumentUuids = ({
   executedPlans,
@@ -364,18 +437,18 @@ export const executeImportAllSource = async ({
       const document =
         action === 'merge'
           ? {
-              label: mergeIncomingNonEmpty(existing.label, record.label) as string,
-              description: mergeIncomingNonEmpty(
-                existing.description,
-                record.description
-              ) as string,
-              slug: mergeIncomingNonEmpty(existing.slug, record.slug) as string,
-              data: mergeIncomingNonEmpty(existing.data, record.data),
-              attrs: withImportProvenance(
-                mergeIncomingNonEmpty(existing.attrs, incomingDocument.attrs),
-                record.provenance
-              ),
-            }
+            label: mergeIncomingNonEmpty(existing.label, record.label) as string,
+            description: mergeIncomingNonEmpty(
+              existing.description,
+              record.description
+            ) as string,
+            slug: mergeIncomingNonEmpty(existing.slug, record.slug) as string,
+            data: mergeIncomingNonEmpty(existing.data, record.data),
+            attrs: withImportProvenance(
+              mergeIncomingNonEmpty(existing.attrs, incomingDocument.attrs),
+              record.provenance
+            ),
+          }
           : incomingDocument
       if (action === 'merge' && mergeStrategy === 'postgrest-rpc') {
         await persistence.mergeRpc(existing.uuid, document, signal)

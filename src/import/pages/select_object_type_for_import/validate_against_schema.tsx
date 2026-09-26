@@ -240,8 +240,14 @@ const ValidateAgainstSchema = ({
                     }
                     dark={true}
                   >
-                    <span className="bg-red-600 p-1 text-white text-xs flex flex-row gap-1 rounded-sm shadow-sm items-center whitespace-nowrap">
-                      <TriangleAlert className="w-3 h-3" /> {result?.errors?.length} errors
+                    <span className="bg-red-600 p-1 text-white text-xs flex flex-row gap-2 rounded-sm shadow-sm items-center whitespace-nowrap">
+                      <span className='flex flex-row gap-1 items-center'><TriangleAlert className="w-3 h-3" /> {result?.errors?.length} errors</span>
+                      <span className='bg-white p-0.5 rounded-sm'>
+                        <CopyButton
+                          size={14}
+                          value={result?.errors?.map(e => e.message).join('\n')}
+                        />
+                      </span>
                     </span>
                   </Tooltip>
                 )}

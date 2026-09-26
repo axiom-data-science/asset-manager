@@ -298,13 +298,20 @@ const EditDocumentForm = ({
 
   const onSave = async () => {
     try {
-      await mutateAsync({
+      const result = await mutateAsync({
         document,
         form,
         formValues,
         isUsingDataForm,
+        schema: schema.json_schema,
         validate,
       })
+
+      if (result.valid === false) {
+        setErrors(result.errors)
+        return
+      }
+
       navigate('/document')
     } catch (error) {
       setErrors([

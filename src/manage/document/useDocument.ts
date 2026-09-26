@@ -176,24 +176,31 @@ export const useSaveDocumentMutation = () => {
       form,
       formValues,
       isUsingDataForm,
+      schema,
       validate,
     }: {
       document: IDocument
       form: IForm
       formValues: IFormValues
       isUsingDataForm: boolean
+      schema?: Record<string, unknown>
       validate: ({
         form,
         formValues,
+        schema
       }: {
         form: IForm
-        formValues: IFormValues
+        formValues: IFormValues,
+        schema?: Record<string, unknown>
       }) => Promise<{ valid: boolean; errors: IValidationError[] }>
     }) => {
       // Run validation first
-      const result = await validate({ form, formValues })
+      const result = await validate({ form, formValues, schema })
       if (!result.valid) {
-        throw new Error(JSON.stringify(result.errors))
+        return {
+          valid: false,
+          errors: result.errors
+        }
       }
 
       // Merge and save
@@ -215,11 +222,16 @@ export const useSaveDocumentMutation = () => {
         data: mergedData,
       } as IDocument
 
-      return patchDocument({
+      const updatedDoc = patchDocument({
         uuid: document.uuid,
         document: mergedDocument,
         token: auth.user?.access_token ?? '',
       })
+      return {
+        document: updatedDoc,
+        valid: true,
+        errors: []
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({

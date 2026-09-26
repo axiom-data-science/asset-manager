@@ -26,29 +26,32 @@ export const validate = async ({
   const errors: IValidationError[] = []
   let valid = true
 
+
   const flattenedFields = getters.getFieldsFromFormSection(form)
   const fieldsById = Object.fromEntries(flattenedFields.map((f) => [f.id, f]))
-  flattenedFields.forEach((f) => {
-    if (f.required && (formValues[f.id] === undefined || formValues[f.id] === '')) {
-      valid = false
-      errors.push({
-        field: f.id,
-        fieldLabel: f.label ?? undefined,
-        message: `is required.`,
-      })
-    }
-  })
-  if (schemaFields?.length) {
-    schemaFields.forEach((field) => {
-      const schemaValid = schemaToFormUtils.validateSchema(get(formValues, field) ?? {})
-      if (schemaValid.error) {
-        errors.push({
-          field,
-          message: `field is not a valid JSON schema. ${schemaValid.error}`,
-        })
+  if (schema === undefined) {
+    flattenedFields.forEach((f) => {
+      if (f.required && (formValues[f.id] === undefined || formValues[f.id] === '')) {
         valid = false
+        errors.push({
+          field: f.id,
+          fieldLabel: f.label ?? undefined,
+          message: `is required.`,
+        })
       }
     })
+    if (schemaFields?.length) {
+      schemaFields.forEach((field) => {
+        const schemaValid = schemaToFormUtils.validateSchema(get(formValues, field) ?? {})
+        if (schemaValid.error) {
+          errors.push({
+            field,
+            message: `field is not a valid JSON schema. ${schemaValid.error}`,
+          })
+          valid = false
+        }
+      })
+    }
   }
   if (schema !== undefined) {
     const againstSchema = schemaToFormUtils.validateAgainstSchema(

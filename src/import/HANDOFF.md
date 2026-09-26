@@ -235,9 +235,24 @@ Live CSV verification remains needed for the wizard transitions, mapping all fil
 
 ### Explicit continuation point
 
-The current `CSVImportViewConfig` in `src/import/pages/csv.tsx` is page-wide scaffolding and is not the final design. Resume by replacing it with per-source/session configuration. The target workflow is one upload session containing a known parent CSV and a known child CSV, where each source has its own known type and mapping mode, while fixed relationship fields/rules are shared by the combined Import All plan.
+The current `CSVImportViewConfig` in `src/import/pages/csv.tsx` now has initial `sourceConfigs` upload slots. These slots provide per-source labels, descriptions, known types, mapping modes, and relationship fields. The target workflow is one upload session containing a known parent CSV and a known child CSV, where fixed relationship fields/rules are shared by the combined Import All plan.
+
+The first-level array-field slice is now implemented: a configured array source carries an explicit parent source key, array field path, parent match field, and row match field. Import All loads those rows, embeds them into the matching parent records, validates/reconciles the merged parent, and skips standalone array-source document writes. Do not import an array spreadsheet as separate documents once that slot type is selected.
+
+UI verification is still needed for the configured array upload slot and the final parent document shape. Nested arrays, multiple spreadsheets contributing to one array, and item-level retry remain deferred.
+
+The ordinary `/import/csv` create-types-as-you-go workflow intentionally does not use this array composition path. It remains a future enhancement; the current array implementation is for configured known-type views only.
 
 Still decide how the application identifies each known uploaded file: filename/source-key matching or an explicit user-selected parent/child source role. Do not create separate page-level presets for the parent and child.
+
+Additional CSV requirements for the next design:
+
+- A known-type upload session may include an additional spreadsheet that populates an array field, not only spreadsheets connected by parent/child relationships.
+- Known-type workflows should provide targeted upload slots with labels and descriptions for expected relationship sources and specific array fields.
+- Each spreadsheet row should become one object in the parent document's array. The parent and its array items should be created together; individual array-item retries are not required.
+- Array spreadsheet columns map to the parent field's existing `items` schema, rather than creating a separate document type/schema for array items.
+- Multiple spreadsheets contributing to the same array are possible but deferred until needed.
+- Nested arrays are a future task. They will require child/parent lookup and nested relationship planning, but are intentionally out of scope for the first array-of-objects implementation.
 
 Before or alongside the wizard work, verify failed relationship-link retry when a suitable failure scenario is available.
 

@@ -108,6 +108,7 @@
 - [ ] Remove or reconcile enum controls with Quicktype's current `no-enums` configuration.
 - [x] Ensure automatically created Import All schemas strip all enum constraints.
   - UI verification still needed: create a type automatically and inspect the saved default schema for enum properties.
+- [ ] Investigate nested required-field validation in `src/lib/utils.ts` `validate`, especially required properties inside array items. Trace its `schemaToFormUtils.validateAgainstSchema` call and review the temporary workaround added during CSV array testing as a possible long-term validation strategy.
 
 ### UI simplification
 
@@ -310,6 +311,17 @@ Suggested next step: should I move on to the CSV import adapter? Reply `yes` to 
 - [ ] Support uploading a known parent CSV and known child CSV in one session, with independent known types and mapping modes.
 - [ ] Support fixed relationship fields and rules shared across the known parent/child source configuration.
 - [ ] Decide whether known uploaded files are identified by filename/source key or by an explicit user-selected source role.
+- [x] Add initial configured upload slots with per-source labels, descriptions, known types, mapping modes, and source-specific relationship fields.
+- [x] Allow an additional spreadsheet source to populate an array of objects on a known parent document type, alongside ordinary parent/child relationship sources.
+- [x] Treat each spreadsheet row as one object in the parent document's array; create the parent document and its array items in one operation, with no individual array-item retry workflow.
+- [x] Map array spreadsheet columns to the parent schema's existing `items` schema rather than a separate document type/schema.
+- [ ] Defer multiple spreadsheets contributing to the same array until a concrete use case requires it.
+- [ ] Provide configured upload slots for known-type workflows, with a label and description targeting the expected document type or array field.
+- [ ] Provide targeted upload-slot guidance when a relationship source or one or more array-field spreadsheets are expected.
+- [x] Extend configured upload slots with an explicit array-field target and persist its rows into the parent document's array instead of importing the spreadsheet as separate documents.
+  - UI verification still needed: upload a configured array source, prepare the parent and array source together, and confirm rows are embedded in the parent document rather than written as standalone documents.
+- [ ] Future: support nested arrays, including the required child/parent lookup and nested relationship planning. This is not required for the first array-of-objects implementation.
+- [ ] Future: support array composition in the ordinary create-types-as-you-go CSV workflow. The current array process intentionally requires a configured known-type upload view.
 
 ### UI simplification
 
@@ -318,6 +330,11 @@ Suggested next step: should I move on to the CSV import adapter? Reply `yes` to 
 - Reuse the standard records, validation, conflict, relationship, and review screens.
 - [ ] When CSV validation fails because of an incorrect first-step mapping, allow mapping edits and revalidation in the same view, or provide field-by-field guidance about the expected mapping.
 - [ ] Clean up the CSV preview layout for smaller and narrower browser windows; remove overlapping content and reduce the multiple nested vertical scrollbars.
+
+### Configured array workflow scope
+
+- The configured known-type array workflow is the current supported path for importing a parent CSV plus array-item CSV.
+- The ordinary `/import/csv` flow remains focused on creating/selecting a type and importing document records; it does not infer or compose array fields while types are being created.
 
 ### Completed item verification: type-specific CSV mapping
 
@@ -336,6 +353,12 @@ Suggested next step: should I verify the updated CSV mapping flow in the authent
 ### Continuation point
 
 Resume here: the current `CSVImportViewConfig` is page-wide scaffolding only. Do not add more page-level presets. Refactor the configuration to apply per uploaded source/session so a user can upload both a known parent type and a known child type, each with its own mapping mode, while fixed relationship fields/rules are applied to the combined Import All plan.
+
+New requirements to carry into that refactor:
+
+- A session may include additional spreadsheets that populate an array field on a known document type, in addition to spreadsheets connected through relationships.
+- Known-type upload views should expose targeted upload buttons/slots with labels and descriptions, such as the expected parent/child type or the specific array field being populated.
+- Clarify before implementation whether each spreadsheet row becomes one array item, whether the array item schema is mapped independently, whether multiple files can contribute to one array, and what identity/retry behavior array items require.
 
 ### Completed item verification: Import All type setup dialog
 

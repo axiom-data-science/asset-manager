@@ -49,8 +49,9 @@ import { useAtom } from 'jotai'
 import type { IAssetForm } from '@/types/types'
 import { fetchPersons } from '@/manage/person/services'
 import importConfigs from './import/config'
-import ImportAllPage from './import/pages/all'
 import CSVImportPage from './import/pages/csv'
+import { CSVTestArray } from './import/pages/csv_test_array_views'
+import ImportAllPage from './import/pages/all'
 import ListRelationships from '@/manage/relationship/list'
 import EditRelationship from '@/manage/relationship/edit'
 import CreateRelationship from '@/manage/relationship/create'
@@ -584,6 +585,17 @@ function App(): ReactElement {
             </Route>
             <Route path="import">
               <Route
+                path="all"
+                element={
+                  <SidebarLayout
+                    mainClassName="min-h-0 overflow-hidden"
+                    contentClassName="min-h-0 overflow-hidden"
+                  >
+                    <ImportAllPage />
+                  </SidebarLayout>
+                }
+              />
+              <Route
                 path="csv"
                 element={
                   <SidebarLayout>
@@ -592,13 +604,10 @@ function App(): ReactElement {
                 }
               />
               <Route
-                path="all"
+                path="csv/test-array"
                 element={
-                  <SidebarLayout
-                    mainClassName="min-h-0 overflow-hidden"
-                    contentClassName="min-h-0 overflow-hidden"
-                  >
-                    <ImportAllPage />
+                  <SidebarLayout>
+                    <CSVTestArray />
                   </SidebarLayout>
                 }
               />

@@ -311,15 +311,10 @@ export function AppSidebar() {
           url: '/import/csv',
         },
         {
-          name: 'Test Array Parent CSV',
+          name: 'Test Array CSV',
           icon: FileSpreadsheet,
-          url: '/import/csv/test-array-parent',
+          url: '/import/csv/test-array',
         },
-        {
-          name: 'Test Array Items CSV',
-          icon: FileSpreadsheet,
-          url: '/import/csv/test-array-items',
-        }
       ].concat(
         importConfigs.map((config) => {
           return {

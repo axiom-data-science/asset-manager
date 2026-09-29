@@ -168,6 +168,21 @@ export const SelectObjectTypeForImportTab = ({
     type,
   ])
 
+  useEffect(() => {
+    if (!automaticallyCreatedTypeUuid) return
+    const createdObjectType = contextState.object_type_by_uuid[automaticallyCreatedTypeUuid]
+    if (!createdObjectType) return
+    const createdSchema = getSchemaForSelectedObjectType(createdObjectType.uuid)
+    if (!createdSchema) return
+    setSelectedObjectType(createdObjectType)
+    setSchema(createdSchema)
+  }, [
+    automaticallyCreatedTypeUuid,
+    contextState.object_type_by_uuid,
+    setSchema,
+    setSelectedObjectType,
+  ])
+
   if (documents.length === 0) {
     return (
       <div className="p-4 text-sm text-gray-700">

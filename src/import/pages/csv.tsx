@@ -876,46 +876,50 @@ const CSVImportPage = ({
         }))
         : []
     })
+    const relationshipRules = sources.flatMap((source) => {
+      const objectType = source.selectedObjectTypeUuid
+        ? contextState.object_type_by_uuid[source.selectedObjectTypeUuid]
+        : contextState.object_type_by_slug[source.typeSlug]
+      const configuredRules = source.relationshipRule
+        ? [source.relationshipRule]
+        : source.adapter.relationshipRules ?? []
+      return configuredRules.map((rule) => ({
+        ...rule,
+        parentObjectTypeSlug: (() => {
+          const parentSource = source.role === 'parent'
+            ? source
+            : sources.find(
+              (candidate) => candidate.role === 'parent' && candidate.typeSlug === rule.parentObjectTypeSlug
+            )
+          const parentType = parentSource?.selectedObjectTypeUuid
+            ? contextState.object_type_by_uuid[parentSource.selectedObjectTypeUuid]
+            : parentSource
+              ? contextState.object_type_by_slug[parentSource.typeSlug]
+              : undefined
+          return parentType?.slug ?? (source.role === 'parent' && objectType ? objectType.slug : rule.parentObjectTypeSlug)
+        })(),
+        childObjectTypeSlug: (() => {
+          const childSource = source.role === 'child'
+            ? source
+            : sources.find(
+              (candidate) => candidate.role === 'child' && candidate.typeSlug === rule.childObjectTypeSlug
+            )
+          const childType = childSource?.selectedObjectTypeUuid
+            ? contextState.object_type_by_uuid[childSource.selectedObjectTypeUuid]
+            : childSource
+              ? contextState.object_type_by_slug[childSource.typeSlug]
+              : undefined
+          return childType?.slug ?? (source.role === 'child' && objectType ? objectType.slug : rule.childObjectTypeSlug)
+        })(),
+      }))
+    }).filter((rule, index, allRules) =>
+      allRules.findIndex((candidate) => JSON.stringify(candidate) === JSON.stringify(rule)) === index
+    )
+
     return planImportRelationships({
       parentObjectTypes: objectTypes,
       candidates,
-      relationshipRules: sources.flatMap((source) => {
-        const objectType = source.selectedObjectTypeUuid
-          ? contextState.object_type_by_uuid[source.selectedObjectTypeUuid]
-          : contextState.object_type_by_slug[source.typeSlug]
-        const configuredRules = source.relationshipRule
-          ? [source.relationshipRule]
-          : source.adapter.relationshipRules ?? []
-        return configuredRules.map((rule) => ({
-          ...rule,
-          parentObjectTypeSlug: (() => {
-            const parentSource = source.role === 'parent'
-              ? source
-              : sources.find(
-                (candidate) => candidate.role === 'parent' && candidate.typeSlug === rule.parentObjectTypeSlug
-              )
-            const parentType = parentSource?.selectedObjectTypeUuid
-              ? contextState.object_type_by_uuid[parentSource.selectedObjectTypeUuid]
-              : parentSource
-                ? contextState.object_type_by_slug[parentSource.typeSlug]
-                : undefined
-            return parentType?.slug ?? (source.role === 'parent' && objectType ? objectType.slug : rule.parentObjectTypeSlug)
-          })(),
-          childObjectTypeSlug: (() => {
-            const childSource = source.role === 'child'
-              ? source
-              : sources.find(
-                (candidate) => candidate.role === 'child' && candidate.typeSlug === rule.childObjectTypeSlug
-              )
-            const childType = childSource?.selectedObjectTypeUuid
-              ? contextState.object_type_by_uuid[childSource.selectedObjectTypeUuid]
-              : childSource
-                ? contextState.object_type_by_slug[childSource.typeSlug]
-                : undefined
-            return childType?.slug ?? (source.role === 'child' && objectType ? objectType.slug : rule.childObjectTypeSlug)
-          })(),
-        }))
-      }),
+      relationshipRules,
     })
   }, [contextState.object_type, contextState.object_type_by_slug, contextState.object_type_by_uuid, loadedSourceRecords, sources])
 
@@ -1499,23 +1503,50 @@ const CSVImportPage = ({
                                 const child = sources.find(
                                   (candidate) => candidate.typeSlug === event.target.value
                                 )
-                                if (!child) return
+                                const previousChild = sources.find(
+                                  (candidate) =>
+                                    candidate.typeSlug === source.relationshipRule?.childObjectTypeSlug
+                                )
+                                if (!child) {
+                                  setSources((current) => current.map((candidate) => {
+                                    if (candidate.sourceId === source.sourceId) {
+                                      return { ...candidate, relationshipRule: undefined }
+                                    }
+                                    if (candidate.sourceId === previousChild?.sourceId) {
+                                      return {
+                                        ...candidate,
+                                        role: 'standalone',
+                                        relationshipRule: undefined,
+                                      }
+                                    }
+                                    return candidate
+                                  }))
+                                  return
+                                }
+                                const relationshipRule = {
+                                  parentObjectTypeSlug: source.typeSlug,
+                                  childObjectTypeSlug: child.typeSlug,
+                                  parentMatchField: source.relationshipRule?.parentMatchField ?? '',
+                                  childMatchField: source.relationshipRule?.childMatchField ?? '',
+                                  predicate: source.relationshipRule?.predicate || 'has_parent',
+                                }
                                 setSources((current) => current.map((candidate) => {
                                   if (candidate.sourceId === source.sourceId) {
                                     return {
                                       ...candidate,
                                       role: 'parent',
-                                      relationshipRule: {
-                                        parentObjectTypeSlug: source.typeSlug,
-                                        childObjectTypeSlug: child.typeSlug,
-                                        parentMatchField: source.relationshipRule?.parentMatchField ?? '',
-                                        childMatchField: source.relationshipRule?.childMatchField ?? '',
-                                        predicate: source.relationshipRule?.predicate || 'has_parent',
-                                      },
+                                      relationshipRule,
+                                    }
+                                  }
+                                  if (candidate.sourceId === previousChild?.sourceId) {
+                                    return {
+                                      ...candidate,
+                                      role: 'standalone',
+                                      relationshipRule: undefined,
                                     }
                                   }
                                   if (candidate.sourceId === child.sourceId) {
-                                    return { ...candidate, role: 'child' }
+                                    return { ...candidate, role: 'child', relationshipRule }
                                   }
                                   return candidate
                                 }))
@@ -1543,7 +1574,7 @@ const CSVImportPage = ({
                                       ...source.relationshipRule!,
                                       parentMatchField: event.target.value,
                                     }
-                                    updateSource(source.sourceId, { relationshipRule })
+                                    updateRelationshipRule(source, relationshipRule)
                                   }}
                                   className="border px-2 py-1"
                                 >
@@ -1562,7 +1593,7 @@ const CSVImportPage = ({
                                       ...source.relationshipRule!,
                                       childMatchField: event.target.value,
                                     }
-                                    updateSource(source.sourceId, { relationshipRule })
+                                    updateRelationshipRule(source, relationshipRule)
                                   }}
                                   className="border px-2 py-1"
                                 >
@@ -1576,11 +1607,9 @@ const CSVImportPage = ({
                                 <span className="font-medium">Predicate on child</span>
                                 <select
                                   value={source.relationshipRule.predicate}
-                                  onChange={(event) => updateSource(source.sourceId, {
-                                    relationshipRule: {
-                                      ...source.relationshipRule!,
-                                      predicate: event.target.value,
-                                    },
+                                  onChange={(event) => updateRelationshipRule(source, {
+                                    ...source.relationshipRule!,
+                                    predicate: event.target.value,
                                   })}
                                   className="border px-2 py-1"
                                 >

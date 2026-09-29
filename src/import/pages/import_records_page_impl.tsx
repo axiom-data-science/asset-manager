@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { TableVirtuoso, type TableComponents } from 'react-virtuoso'
 import {
   forwardRef,
+  useEffect,
   useMemo,
   useState,
   type ForwardRefExoticComponent,
@@ -215,6 +216,7 @@ export type IImportPageProps = {
   csvSource?: boolean
   arraySource?: boolean
   startAtImport?: boolean
+  onObjectTypeSelected?: (objectType: IObjectType | undefined) => void
   icon: ForwardRefExoticComponent<Omit<LucideProps, 'ref'> & RefAttributes<SVGSVGElement>>
 }
 
@@ -227,6 +229,7 @@ const ImportRecordsPage = ({
   csvSource = false,
   arraySource = false,
   startAtImport = false,
+  onObjectTypeSelected,
   // objectType
 }: IImportPageProps): ReactElement => {
   pluralLabel = pluralLabel || `${label}s`
@@ -242,6 +245,9 @@ const ImportRecordsPage = ({
     setRecordResult,
   } = useImportSession(sourceId)
   const { candidates: previewRecordsToImport, selectedObjectType: objectTypeForRecords } = session
+  useEffect(() => {
+    onObjectTypeSelected?.(objectTypeForRecords)
+  }, [objectTypeForRecords, onObjectTypeSelected])
   const validationComplete = isValidationComplete(session)
   const eligibleRecords = useMemo(
     () =>

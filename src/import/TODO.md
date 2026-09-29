@@ -22,7 +22,8 @@
 
 - [x] Refactor single-file CSV import into `Upload`, `Map fields`, and `Import` steps by default.
 - [x] For multi-file CSV import, use `Upload`, `Map fields`, and `Import` steps, with relationship settings included in Map fields.
-- [ ] Make object-type selection and creation automatic by default when filename, mapping, and an existing type/schema provide enough information.
+- [ ] Make object-type selection and creation automatic by default; when no type matches the CSV filename, default to creating a new object type from the CSV data.
+- [ ] Let the Import step automatically create a newly inferred type without requiring a checkbox or scrolling past schema output; make schema review and object-type creation an optional modal step.
 - [ ] Offer an option at the beginning to make object-type setup an explicit wizard step when automatic setup is not appropriate.
 - [x] Keep all uploaded CSV files in the same wizard session and import them together from the final `Import` step.
 - [x] Show per-file diagnostics and settings beneath the active wizard step without sending the user back to the beginning to configure another file.
@@ -296,22 +297,30 @@ Suggested next step: should I move on to the CSV import adapter? Reply `yes` to 
   - [x] Add CSV adapter support for relationship rules and explicit join fields, with cross-source planner tests.
 - [x] Expose per-file relationship-field selection in the CSV mapping view and preserve selected fields in canonical records.
 - [x] Add a per-file relationship-rule editor for child source, parent field, child field, and predicate.
-  - [x] Submit all uploaded CSV sources to one shared relationship plan and persistence phase.
-    - UI verification still needed: upload related CSV files, navigate to Import All, and confirm both sources appear in one plan with shared relationship counts and link results.
+    - [x] Keep CSV users inside `/import/csv`; shared wizard, adapter, validation, relationship, and persistence functionality may be reused, but CSV users must not be sent to `/import/all`.
+      - UI verification still needed: load related CSV sources, import each document source, review ready/blocking relationships, and link them from the CSV import step.
   - [x] Let each CSV source choose an existing object type and load its default schema.
   - [x] Combine CSV role mapping, data inclusion, and schema-field mapping into one table.
   - [x] Prevent multiple CSV columns from selecting the same schema field.
   - [x] Show schema field titles, IDs, and nested or array-item paths in mapping options.
   - [x] Emit structured nested and array-item data for mapped schema paths.
   - [x] Use the schema-field autocomplete option view to show a red required asterisk, bold field title, and smaller field path.
-- [ ] Resolve multi-spreadsheet imports in dependency order so parent spreadsheets are loaded before related child spreadsheets.
+- [x] Load multi-spreadsheet CSV sources together inside `/import/csv` for relationship planning.
+- [ ] Resolve multi-spreadsheet document imports in dependency order inside `/import/csv` so parent spreadsheets are imported before related child spreadsheets.
 - [ ] Preserve cross-spreadsheet identity and relationship diagnostics when a parent file is missing, duplicated, or loaded out of order.
 - [ ] Add parser and adapter tests for quoted cells, duplicate/blank headers, dates, numbers, missing columns, large files, and malformed input. (Adapter coverage started; parser edge-case coverage remains.)
 - [ ] Replace the page-wide `CSVImportViewConfig` with per-source/session configuration.
 - [ ] Support uploading a known parent CSV and known child CSV in one session, with independent known types and mapping modes.
 - [ ] Support fixed relationship fields and rules shared across the known parent/child source configuration.
-- [ ] Decide whether known uploaded files are identified by filename/source key or by an explicit user-selected source role.
+- [x] Keep CSV relationship planning and persistence accessible inside `/import/csv`; shared implementation code with Import All is allowed, but CSV users must not be routed to `/import/all`.
+  - UI verification still needed for relationship results and failed-link recovery.
 - [x] Add initial configured upload slots with per-source labels, descriptions, known types, mapping modes, and source-specific relationship fields.
+- [x] Use an explicit user-selected source role for generic CSV parent, child, and array-item uploads.
+- [x] Preserve role-specific relationship match fields automatically in canonical CSV data.
+- [x] Synchronize object types selected or created during CSV import back to their CSV sources before relationship planning.
+- [x] Move generic parent/child type, child-source, lookup-column, and predicate setup to the CSV Upload step.
+- [x] Add an on-screen CSV planner snapshot for relationship debugging.
+- [x] Render independent import panels for all uploaded document CSV sources in the CSV Import step.
 - [x] Allow an additional spreadsheet source to populate an array of objects on a known parent document type, alongside ordinary parent/child relationship sources.
 - [x] Treat each spreadsheet row as one object in the parent document's array; create the parent document and its array items in one operation, with no individual array-item retry workflow.
 - [x] Map array spreadsheet columns to the parent schema's existing `items` schema rather than a separate document type/schema.
@@ -328,13 +337,21 @@ Suggested next step: should I move on to the CSV import adapter? Reply `yes` to 
 - Treat each uploaded file as a source row rather than opening a separate CSV-only workflow.
 - Infer mappings and types, showing only uncertain mappings for confirmation.
 - Reuse the standard records, validation, conflict, relationship, and review screens.
+- [ ] Revisit the main Import All page later: reduce its crowded UI and improve grouping of controls, diagnostics, and progress information.
 - [ ] When CSV validation fails because of an incorrect first-step mapping, allow mapping edits and revalidation in the same view, or provide field-by-field guidance about the expected mapping.
 - [ ] Clean up the CSV preview layout for smaller and narrower browser windows; remove overlapping content and reduce the multiple nested vertical scrollbars.
+- [x] Rename the Upload-step `Child CSV` selector to `Related CSV` so the control describes the selected source without overcommitting to direction.
+- [x] Bring the CSV-to-array workflow into the simplified Upload-step relationship setup, while keeping array rows embedded in the parent document rather than importing them as standalone documents.
+  - UI verification still needed for parent array shape and unmatched-row diagnostics.
+- [ ] Automatically assign the parent source the `Parent` role when an `Array items` source selects it.
+- [ ] Simplify the CSV Import step further after multi-source panel UI verification.
+- [ ] Test one parent CSV with array items and two ordinary parent/child relationships in the same upload session; extend relationship planning/source roles if needed.
 
-### Configured array workflow scope
+### CSV workflow boundary
 
-- The configured known-type array workflow is the current supported path for importing a parent CSV plus array-item CSV.
-- The ordinary `/import/csv` flow remains focused on creating/selecting a type and importing document records; it does not infer or compose array fields while types are being created.
+- `/import/csv` is the complete CSV user workflow, including multi-file relationships and array composition.
+- `/import/all` is a separate user workflow for configured remote-source imports. Shared implementation code and UI patterns are fine, but CSV users are never sent there as a workflow step or verification destination.
+- The ordinary CSV flow exposes explicit parent, child, and array-item roles; live verification remains needed for generic array composition with an existing parent type/schema.
 
 ### Completed item verification: type-specific CSV mapping
 
@@ -352,7 +369,7 @@ Suggested next step: should I verify the updated CSV mapping flow in the authent
 
 ### Continuation point
 
-Resume here: the current `CSVImportViewConfig` is page-wide scaffolding only. Do not add more page-level presets. Refactor the configuration to apply per uploaded source/session so a user can upload both a known parent type and a known child type, each with its own mapping mode, while fixed relationship fields/rules are applied to the combined Import All plan.
+Resume here: the current `CSVImportViewConfig` is page-wide scaffolding only. Do not add more page-level presets. Refactor the configuration to apply per uploaded source/session so a user can upload both a known parent type and a known child type, each with its own mapping mode, while fixed relationship fields/rules are applied to the combined CSV-local plan.
 
 New requirements to carry into that refactor:
 

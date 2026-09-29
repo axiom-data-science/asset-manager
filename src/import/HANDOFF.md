@@ -29,6 +29,14 @@ The implementation plan and remaining work are tracked in `src/import/TODO.md`.
 - CSV rows are discovered and canonical-loaded immediately after continuing; the remote-source preload step is skipped because the file is already local.
 - CSV imports use the shared type selection, schema validation, reconciliation, and persistence workflow.
 - CSV sources can choose an existing object type and its default schema instead of relying only on filename-based type inference.
+- Generic CSV sources can explicitly be assigned `Standalone documents`, `Parent documents`, `Child documents`, or `Array items on a parent` roles during mapping.
+- Generic child and array sources select their related parent source explicitly; role match fields are preserved in canonical data automatically.
+- Object types selected or created from the CSV import step are synchronized back to the CSV source, so relationship planning uses the actual selected type slugs rather than filename-derived slugs.
+- Generic parent/child relationship setup now starts on the Upload step: choose object types, select a child CSV from the parent row, select parent/child lookup columns, and choose the database predicate. The Mapping step no longer repeats generic relationship setup.
+- The CSV import step shows an on-screen planner snapshot with source roles, selected type IDs, relationship rules, loaded record counts, and ready/blocking relationship plans.
+- Multi-file CSV Import now renders one independent import panel per document source, so users can choose types, validate, reconcile, and import all uploaded document sources without switching back to Mapping between files. Array-item sources remain attached to their parent panel.
+- Array-item CSV sources can now be declared on the Upload step alongside parent/child sources by choosing `Array items`, selecting the parent CSV, and setting the parent array path and lookup columns. The existing parent merge flow remains responsible for embedding the rows.
+- Verified workflow: upload a parent CSV and array-item CSV, set the parent role to `Parent`, set the array source role to `Array items`, select the parent CSV, configure the array path and lookup columns, and complete the import successfully.
 - CSV mapping uses one table for document roles, data inclusion, and schema-field mapping.
 - Schema mapping options show field titles, IDs, and nested or array-item paths; a schema field can be selected by only one CSV column.
 - Nested and array-item schema mappings are emitted as structured canonical document data.
@@ -98,10 +106,10 @@ The implementation plan and remaining work are tracked in `src/import/TODO.md`.
 - Each uploaded file retains its own preview, mapping, adapter, validation state, and import session.
 - Upload source IDs are unique for the lifetime of the page, even when a source is removed and another file is added.
 - CSV adapters can carry relationship rules and preserve explicitly configured join fields in canonical record data.
-- Cross-source relationship planning is covered by focused tests, but uploaded CSV sources are not yet submitted to one shared relationship plan and persistence phase.
+- CSV sources are loaded together for a CSV-local relationship review. The review reports ready and blocked relationships and can persist links with duplicate detection without routing to Import All.
 - The preview is bounded for narrower windows and the mapping section no longer overlaps it; additional scrollbar cleanup remains open.
 
-Relationship UI note: the individual source `Import Records` tab only checks document duplicates. Relationship counts and link results appear on `Import All Sources` after execution, when matching parent and child records are included in the same plan.
+CSV workflow boundary: `/import/csv` is self-contained from the user's perspective. CSV relationships and array composition must be planned, persisted, diagnosed, and retried through the CSV workflow. Shared wizard, adapter, validation, relationship, and persistence code is allowed, but CSV users are never sent to `/import/all`; that remains a separate remote-source workflow.
 
 ## Known issue: hidden or late duplicate conflicts
 
@@ -219,11 +227,11 @@ Live CSV checks still needed:
 
 Live Import All verification is complete for preparation, document execution, relationship linking, duplicate relationship handling, relationship planning blockers, progress visualization, batching, pauses, cancellation, and failed relationship-link retry. Repeating the same parent/child import reported `100 links already existed` without creating duplicates. Relationship planning was verified for ready, missing-parent, and ambiguous-parent cases using the development-only Oikos test modes. The retry check used `VITE_IMPORT_FAIL_RELATIONSHIP_ONCE`; keep all relationship test switches unset or `false`/`off` during normal development and production use.
 
-The shared wizard shell, type-specific CSV mapping, and initial Import All/CSV integration are now implemented. The next work is live CSV verification and any fixes found there:
+The shared wizard shell, type-specific CSV mapping, and shared implementation pieces used by Import All and CSV are now implemented. CSV-local relationship review and persistence are also wired. The next work is live CSV verification and any fixes found there:
 
 1. Verify existing-type selection and default-schema loading.
 2. Verify the unified mapping table, unique schema-field selection, and nested/array field paths.
-3. Verify related CSV files appear in one shared relationship plan and persistence phase.
+3. Verify related CSV files appear in one CSV-local relationship plan, import each document source, and link the ready relationships from the CSV import step.
 
 For CSV, the current flow is:
 
@@ -231,19 +239,19 @@ For CSV, the current flow is:
 2. Multiple files: `Upload` -> `Map fields` -> `Import`, with relationship settings shown alongside each file's mapping and preview.
 3. All uploaded files remain in one session and can be mapped without returning to a separate file-selection step.
 
-Live CSV verification remains needed for the wizard transitions, mapping all files in one pass, nested and array schema mappings, relationship configuration, narrow-window layout, and shared Import All persistence.
+Live CSV verification remains needed for the wizard transitions, mapping all files in one pass, nested and array schema mappings, upload-step relationship configuration, narrow-window layout, CSV-local relationship persistence, and retry behavior for failed links.
 
 ### Explicit continuation point
 
-The current `CSVImportViewConfig` in `src/import/pages/csv.tsx` now has initial `sourceConfigs` upload slots. These slots provide per-source labels, descriptions, known types, mapping modes, and relationship fields. The target workflow is one upload session containing a known parent CSV and a known child CSV, where fixed relationship fields/rules are shared by the combined Import All plan.
+The current `CSVImportViewConfig` in `src/import/pages/csv.tsx` still supports initial `sourceConfigs` upload slots. Generic uploads now also provide explicit per-source roles, so a session can identify a parent CSV, child CSV, or array-item CSV without relying on filenames or inferred type relationships. Configured slots remain compatible with this role model.
 
-The first-level array-field slice is now implemented: a configured array source carries an explicit parent source key, array field path, parent match field, and row match field. Import All loads those rows, embeds them into the matching parent records, validates/reconciles the merged parent, and skips standalone array-source document writes. Do not import an array spreadsheet as separate documents once that slot type is selected.
+The first-level array-field slice is now implemented and manually verified: an array source carries an explicit parent source key, array field path, parent match field, and row match field. The CSV workflow loads those rows, embeds them into matching parent records, validates/reconciles the merged parent, and skips standalone array-source document writes. Do not import an array spreadsheet as separate documents once that role is selected.
 
 UI verification is still needed for the configured array upload slot and the final parent document shape. Nested arrays, multiple spreadsheets contributing to one array, and item-level retry remain deferred.
 
-The ordinary `/import/csv` create-types-as-you-go workflow intentionally does not use this array composition path. It remains a future enhancement; the current array implementation is for configured known-type views only.
+The ordinary `/import/csv` workflow now exposes the array role and target fields. Live verification remains needed for the final parent array shape and unmatched-row diagnostics.
 
-Still decide how the application identifies each known uploaded file: filename/source-key matching or an explicit user-selected parent/child source role. Do not create separate page-level presets for the parent and child.
+Known uploaded files are identified by explicit user-selected source roles. Do not create separate page-level presets for the parent and child.
 
 Additional CSV requirements for the next design:
 
@@ -253,6 +261,14 @@ Additional CSV requirements for the next design:
 - Array spreadsheet columns map to the parent field's existing `items` schema, rather than creating a separate document type/schema for array items.
 - Multiple spreadsheets contributing to the same array are possible but deferred until needed.
 - Nested arrays are a future task. They will require child/parent lookup and nested relationship planning, but are intentionally out of scope for the first array-of-objects implementation.
+
+### Next CSV design follow-ups
+
+- When no object type matches a CSV filename, default to creating a new object type from the CSV data.
+- Let the Import step create that new type automatically without requiring the user to select a checkbox or scroll past generated schema output; make schema review and object-type creation an optional modal step.
+- When an array-item source selects a parent CSV, automatically assign the parent source the `Parent` role instead of requiring a second manual role selection.
+- Simplify the Import step further after the multi-source panels have been exercised in the UI.
+- Test one parent CSV with array items and two ordinary parent/child relationships; update planning or source-role modeling if the combined case exposes limitations.
 
 Before or alongside the wizard work, verify failed relationship-link retry when a suitable failure scenario is available.
 

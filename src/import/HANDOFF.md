@@ -47,6 +47,10 @@ The implementation plan and remaining work are tracked in `src/import/TODO.md`.
 - CSV now has a shared wizard shell with `Upload files` -> `Map fields` -> `Import records` steps. Multiple-file mode keeps Upload active after each file is added.
 - The CSV Map fields step shows every uploaded file in expandable sections with compact previews, per-file field mappings, relationship fields, and relationship rules together.
 - CSV source labels use high-contrast dark headers, and mapping sections have increased spacing for readability.
+- CSV relationship selectors can be cleared after a related source is selected.
+- Selecting a related CSV mirrors the relationship rule and child role onto the counterpart source; lookup fields and predicates remain synchronized when edited.
+- CSV relationship planner diagnostics collapse mirrored source rules into one canonical rule before logging and planning.
+- Automatically created object types select their refreshed default schema after the context reloads.
 
 ### Duplicate reconciliation
 
@@ -222,16 +226,20 @@ Live CSV checks still needed:
 - Upload multiple CSV files, switch between source rows, and confirm each mapping and import session remains isolated.
 - Confirm invalid CSV records can be diagnosed by revising the mapping and validating again without leaving the validation workflow.
 - Check the preview at short and narrow browser sizes for overlapping sections and unnecessary nested vertical scrollbars.
+- Select a parent and related child CSV, verify the mirrored rule and lookup fields, clear the relationship, and confirm both sources reset.
+- Confirm the automatic type-creation flow selects the generated default schema and proceeds to import without extra schema selection.
+- Import related CSV files and verify the ready relationship is persisted from the CSV workflow.
 
 ## Next implementation step
 
 Live Import All verification is complete for preparation, document execution, relationship linking, duplicate relationship handling, relationship planning blockers, progress visualization, batching, pauses, cancellation, and failed relationship-link retry. Repeating the same parent/child import reported `100 links already existed` without creating duplicates. Relationship planning was verified for ready, missing-parent, and ambiguous-parent cases using the development-only Oikos test modes. The retry check used `VITE_IMPORT_FAIL_RELATIONSHIP_ONCE`; keep all relationship test switches unset or `false`/`off` during normal development and production use.
 
-The shared wizard shell, type-specific CSV mapping, and shared implementation pieces used by Import All and CSV are now implemented. CSV-local relationship review and persistence are also wired. The next work is live CSV verification and any fixes found there:
+The shared wizard shell, type-specific CSV mapping, and shared implementation pieces used by Import All and CSV are now implemented. CSV-local relationship review and persistence are also wired. The next work is live CSV verification and any fixes found there. After that, implement dependency-aware CSV document execution so parent sources are persisted before related child sources:
 
 1. Verify existing-type selection and default-schema loading.
 2. Verify the unified mapping table, unique schema-field selection, and nested/array field paths.
 3. Verify related CSV files appear in one CSV-local relationship plan, import each document source, and link the ready relationships from the CSV import step.
+4. Add dependency-aware multi-file document execution, preserving missing-parent, ambiguous-parent, and out-of-order diagnostics.
 
 For CSV, the current flow is:
 

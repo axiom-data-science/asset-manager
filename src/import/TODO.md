@@ -297,6 +297,8 @@ Suggested next step: should I move on to the CSV import adapter? Reply `yes` to 
   - [x] Add CSV adapter support for relationship rules and explicit join fields, with cross-source planner tests.
 - [x] Expose per-file relationship-field selection in the CSV mapping view and preserve selected fields in canonical records.
 - [x] Add a per-file relationship-rule editor for child source, parent field, child field, and predicate.
+  - [x] Allow the related CSV selection to be cleared after it is set.
+  - [x] Mirror the selected relationship, role, lookup fields, and predicate onto the counterpart source.
     - [x] Keep CSV users inside `/import/csv`; shared wizard, adapter, validation, relationship, and persistence functionality may be reused, but CSV users must not be sent to `/import/all`.
       - UI verification still needed: load related CSV sources, import each document source, review ready/blocking relationships, and link them from the CSV import step.
   - [x] Let each CSV source choose an existing object type and load its default schema.
@@ -307,6 +309,7 @@ Suggested next step: should I move on to the CSV import adapter? Reply `yes` to 
   - [x] Use the schema-field autocomplete option view to show a red required asterisk, bold field title, and smaller field path.
 - [x] Load multi-spreadsheet CSV sources together inside `/import/csv` for relationship planning.
 - [ ] Resolve multi-spreadsheet document imports in dependency order inside `/import/csv` so parent spreadsheets are imported before related child spreadsheets.
+  - Next implementation target after live CSV verification.
 - [ ] Preserve cross-spreadsheet identity and relationship diagnostics when a parent file is missing, duplicated, or loaded out of order.
 - [ ] Add parser and adapter tests for quoted cells, duplicate/blank headers, dates, numbers, missing columns, large files, and malformed input. (Adapter coverage started; parser edge-case coverage remains.)
 - [ ] Replace the page-wide `CSVImportViewConfig` with per-source/session configuration.
@@ -320,6 +323,7 @@ Suggested next step: should I move on to the CSV import adapter? Reply `yes` to 
 - [x] Synchronize object types selected or created during CSV import back to their CSV sources before relationship planning.
 - [x] Move generic parent/child type, child-source, lookup-column, and predicate setup to the CSV Upload step.
 - [x] Add an on-screen CSV planner snapshot for relationship debugging.
+- [x] Deduplicate mirrored CSV relationship rules in planner diagnostics and planning input.
 - [x] Render independent import panels for all uploaded document CSV sources in the CSV Import step.
 - [x] Allow an additional spreadsheet source to populate an array of objects on a known parent document type, alongside ordinary parent/child relationship sources.
 - [x] Treat each spreadsheet row as one object in the parent document's array; create the parent document and its array items in one operation, with no individual array-item retry workflow.

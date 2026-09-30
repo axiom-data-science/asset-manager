@@ -1,5 +1,7 @@
 import type { IValidationError } from '@/types/types'
 import { getters, schemaToFormUtils, type IForm, type IFormValues } from '@axdspub/axiom-ui-forms'
+import { APP_VARIANT } from '@/config/config'
+import { resolveAppVariantId } from '@/variants/resolve'
 import { QueryClient, queryOptions, useQueries } from '@tanstack/react-query'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
@@ -133,14 +135,14 @@ export const createFilterForSaveFn = (presentationFields?: string[]) => {
   }
 }
 
-export const getBrand = (): string | undefined => {
-  const origin = window.location.origin
+export const getAppVariantId = (): string | undefined => {
   const url = new URL(window.location.href)
-  const brand =
-    origin.match(/modl-asset/) /* || origin.match(/localhost/) */
-      ? 'modl'
-      : (url.searchParams.get('brand') ?? undefined)
-  return brand
+  return resolveAppVariantId({
+    configuredVariant: APP_VARIANT,
+    hostname: window.location.hostname,
+    queryVariant:
+      url.searchParams.get('variant') ?? url.searchParams.get('brand') ?? undefined,
+  })
 }
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i

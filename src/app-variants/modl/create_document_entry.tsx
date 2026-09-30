@@ -3,11 +3,9 @@ import { ViewWithLoader } from '@axdspub/axiom-ui-utilities'
 import { Book } from 'lucide-react'
 import type { ReactElement } from 'react'
 import { Link } from 'react-router-dom'
+import type { CreateDocumentEntryProps } from '@/variants/types'
 
-export type MODLCreateDocumentEntryProps = {
-  returnToOnSuccess?: string
-  documentCreatePath?: string
-}
+export type MODLCreateDocumentEntryProps = CreateDocumentEntryProps
 
 export const MODLDocumentSelector = ({
   returnToOnSuccess,

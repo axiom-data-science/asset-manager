@@ -37,8 +37,11 @@ import AuthentikUsers from '@/examples/authentik-users'
 import { SITE_TITLE } from './config/config'
 import ListFilesLoader from './manage/document_file/list'
 import ImportRecordsPage from './import/pages'
-import { getBrand } from '@/lib/utils'
-import { getBrandComponent, type BrandComponentProps } from '@/BrandComponents'
+import { getAppVariantId } from '@/lib/utils'
+import {
+  getAppVariantComponent,
+  type AppVariantComponentProps,
+} from '@/AppVariantComponents'
 import { fetchPredicates } from '@/manage/document/services'
 import { fetchObjectCategories, fetchObjectTypes } from '@/manage/object_type/services'
 import { fetchObjectSchemas } from '@/manage/object_schema/services'
@@ -88,25 +91,25 @@ const queryClient = new QueryClient({
   },
 })
 
-const Header = ({ brand }: { brand?: string }): ReactElement => {
-  brand = brand ?? getBrand()
-  const BrandHeader = getBrandComponent(brand, 'Header')
-  if (BrandHeader) {
-    return BrandHeader
+const Header = ({ variantId }: { variantId?: string }): ReactElement => {
+  variantId = variantId ?? getAppVariantId()
+  const VariantHeader = getAppVariantComponent(variantId, 'Header')
+  if (VariantHeader) {
+    return VariantHeader
   }
   return <></>
 }
 
-const EntryPage = ({ brand }: { brand?: string }): ReactElement => {
-  brand = brand ?? getBrand()
-  const props: BrandComponentProps['EntryPage'] = {
+const EntryPage = ({ variantId }: { variantId?: string }): ReactElement => {
+  variantId = variantId ?? getAppVariantId()
+  const props: AppVariantComponentProps['HomePage'] = {
     returnToOnSuccess: '/create-document-success',
     documentCreatePath: '/create-document',
   }
-  const BrandEntryPage = getBrandComponent(brand, 'EntryPage', props)
+  const VariantEntryPage = getAppVariantComponent(variantId, 'HomePage', props)
 
-  if (BrandEntryPage) {
-    return BrandEntryPage
+  if (VariantEntryPage) {
+    return VariantEntryPage
   }
   return (
     <>
@@ -116,12 +119,12 @@ const EntryPage = ({ brand }: { brand?: string }): ReactElement => {
   )
 }
 
-const LoginPage = ({ brand }: { brand?: string }): ReactElement => {
-  brand = brand ?? getBrand()
+const LoginPage = ({ variantId }: { variantId?: string }): ReactElement => {
+  variantId = variantId ?? getAppVariantId()
   const auth = useAuth()
-  const BrandLoginPage = getBrandComponent(brand, 'LoginPage')
-  if (BrandLoginPage) {
-    return BrandLoginPage
+  const VariantLoginPage = getAppVariantComponent(variantId, 'LoginPage')
+  if (VariantLoginPage) {
+    return VariantLoginPage
   }
 
   return (
@@ -131,14 +134,18 @@ const LoginPage = ({ brand }: { brand?: string }): ReactElement => {
   )
 }
 
-const DocumentSuccessPage = ({ brand }: { brand?: string }): ReactElement => {
-  brand = brand ?? getBrand()
-  const props: BrandComponentProps['DocumentSuccessPage'] = {
+const DocumentSuccessPage = ({ variantId }: { variantId?: string }): ReactElement => {
+  variantId = variantId ?? getAppVariantId()
+  const props: AppVariantComponentProps['DocumentSuccessPage'] = {
     action: 'created',
   }
-  const BrandDocumentSuccessPage = getBrandComponent(brand, 'DocumentSuccessPage', props)
-  if (BrandDocumentSuccessPage) {
-    return BrandDocumentSuccessPage
+  const VariantDocumentSuccessPage = getAppVariantComponent(
+    variantId,
+    'DocumentSuccessPage',
+    props
+  )
+  if (VariantDocumentSuccessPage) {
+    return VariantDocumentSuccessPage
   }
   return <CreateDocumentSuccess {...props} />
 }

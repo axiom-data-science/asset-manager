@@ -21,7 +21,7 @@ import { Button, Loader, utils, ViewWithLoader } from '@axdspub/axiom-ui-utiliti
 import { useState, type ReactElement } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { get, omit } from 'lodash-es'
-import { buildStringFromTemplate, getBrand, validate } from '@/lib/utils'
+import { buildStringFromTemplate, getAppVariantId, validate } from '@/lib/utils'
 import Errors from '@/manage/components/errors'
 import Link from '@/manage/components/link'
 import { useObjectTypesAndFormsAndSchemas } from '@/manage/object_type/useObjectTypeList'
@@ -32,7 +32,10 @@ import StationSearch from '../custom_inputs/station_search'
 import { useSlug } from '@/manage/components/useSlug'
 import SampleFileObject from '../custom_inputs/sample_file_object'
 import CSVUploadForSampleFile from '../custom_inputs/csv_upload_for_sample_file'
-import { getBrandComponent, type BrandComponentProps } from '@/BrandComponents'
+import {
+  getAppVariantComponent,
+  type AppVariantComponentProps,
+} from '@/AppVariantComponents'
 import { useObjectTypeFull } from '@/manage/object_type/useObjectType'
 import { useObjectSchemaFull } from '@/manage/object_schema/useObjectSchema'
 import DocumentTabs from './document_tabs'
@@ -505,14 +508,18 @@ export const SelectDocumentForm = ({
   documentCreatePath,
   filters,
 }: ISelectDocumentFormProps): ReactElement => {
-  const brand = getBrand()
-  const createEntryProps: BrandComponentProps['CreateDocumentEntry'] = {
+  const variantId = getAppVariantId()
+  const createEntryProps: AppVariantComponentProps['CreateDocumentEntry'] = {
     returnToOnSuccess,
     documentCreatePath,
   }
-  const BrandCreateDocumentEntry = getBrandComponent(brand, 'CreateDocumentEntry', createEntryProps)
-  if (BrandCreateDocumentEntry) {
-    return BrandCreateDocumentEntry
+  const VariantCreateDocumentEntry = getAppVariantComponent(
+    variantId,
+    'CreateDocumentEntry',
+    createEntryProps
+  )
+  if (VariantCreateDocumentEntry) {
+    return VariantCreateDocumentEntry
   }
   return (
     <DefaultSelectDocumentForm

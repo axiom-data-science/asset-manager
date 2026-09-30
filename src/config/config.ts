@@ -80,3 +80,5 @@ export const IMPORT_RELATIONSHIP_TEST_CHILD_SLUG = import.meta.env.DEV
   : ''
 
 export const SITE_TITLE = twconfig('$TWOWOLVES_SITE_TITLE', 'VITE_SITE_TITLE', 'Asset Manager')
+
+export const APP_VARIANT = twconfig('$TWOWOLVES_APP_VARIANT', 'VITE_APP_VARIANT', '')

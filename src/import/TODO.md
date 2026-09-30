@@ -246,6 +246,7 @@
 - [x] Verify unique schema-field selection; a schema field already assigned to one CSV column is unavailable to another.
 - [x] Verify nested and array-item mappings produce structured document values; the array fixture produced `sample_file.headers[].data_type` as an object inside an array.
 - [x] Unit-test matched, unmatched, and keyless array rows plus the shared unmatched-row diagnostic used by CSV and Import All.
+- [x] Add focused CSV orchestration tests for configured and generic-style array composition, unmatched-row blocking, and excluding array sources from standalone document panels.
 - [x] Add automated tests for automatic type/default-schema creation payloads and source-specific CSV mapping isolation.
 - [x] Verify multiple-file mapping/session isolation and that invalid records can be corrected by remapping and revalidation; click `Continue to import` after the correction to reload and validate.
 - [x] Verify the Upload-step related CSV, lookup columns, and predicate produce one mirrored rule with the selected parent and child fields.

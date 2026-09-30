@@ -112,6 +112,7 @@ The implementation plan and remaining work are tracked in `src/import/TODO.md`.
 - CSV adapters can carry relationship rules and preserve explicitly configured join fields in canonical record data.
 - CSV sources are loaded together for a CSV-local relationship review. The review reports ready and blocked relationships and can persist links with duplicate detection without routing to Import All.
 - The preview is bounded for narrower windows and the mapping section no longer overlaps it; additional scrollbar cleanup remains open.
+- CSV array and document-source orchestration is isolated in `src/import/csv_orchestration.ts`. Focused tests cover configured and generic-style array composition, unmatched-row blocking, and excluding array sources from standalone document panels.
 
 CSV workflow boundary: `/import/csv` is self-contained from the user's perspective. CSV relationships and array composition must be planned, persisted, diagnosed, and retried through the CSV workflow. Shared wizard, adapter, validation, relationship, and persistence code is allowed, but CSV users are never sent to `/import/all`; that remains a separate remote-source workflow.
 
@@ -146,6 +147,16 @@ npm test -- src/import  # 92 tests passed across 15 files
 npm run build           # passed
 git diff --check        # passed
 ```
+
+Latest verification on 2026-09-30:
+
+```text
+npm test -- src/import/csv_orchestration.test.ts  # 3 tests passed
+npm test -- src/import                       # 92 passed, 3 existing Oikos schema failures
+npm run build                                  # blocked by existing CSV OptionView and Oikos validation errors
+```
+
+The new orchestration tests pass. The full import suite currently contains 95 tests across 16 files; the three failing Oikos schema tests call the shared validation helper as though it always returns an array. The build reports the same `OptionView` type error in the CSV UI and possibly-undefined validation results in those Oikos tests. These failures were not introduced by the CSV orchestration extraction.
 
 The build still reports the existing Quicktype Node-module browser-externalization warnings and large-chunk warnings. Full lint has not been rerun for this checkpoint; earlier lint failures are listed below.
 
@@ -236,7 +247,7 @@ Remaining authenticated CSV checks:
 
 Start with the remaining authenticated CSV array check: upload a configured parent CSV and array-item CSV, verify matched rows are embedded under the parent's configured array path, then include an array row with no matching parent and verify the unmatched-row diagnostic. Also verify the generic array role if time permits. Do not import array-item rows as standalone documents.
 
-The CSV mapping, existing/generated type setup, multi-file source isolation, relationship rule editing/clearing, CSV-local link persistence/retry, and expanded-sidebar table scrolling are now manually verified. Automated coverage currently passes 92 import tests; `npm run build` passes with the existing Quicktype browser-externalization and large-chunk warnings.
+The CSV mapping, existing/generated type setup, multi-file source isolation, relationship rule editing/clearing, CSV-local link persistence/retry, and expanded-sidebar table scrolling are now manually verified. Automated CSV orchestration coverage now includes configured and generic-style array composition, unmatched-row blocking, and array-source exclusion from standalone document panels. The authenticated configured/generic array workflow check remains open, as does dependency-aware multi-file document execution. The current full import suite has 92 passing tests and 3 existing Oikos schema failures; the build is currently blocked by the existing errors described above.
 
 After the array upload verification and any fixes, continue with dependency-aware multi-file CSV document execution. Persist parent sources before related child sources and preserve missing-parent, ambiguous-parent, and out-of-order diagnostics.
 

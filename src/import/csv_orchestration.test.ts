@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  formatCSVRecordsError,
   getCSVDocumentSources,
   mergeCSVArraySources,
   type CSVLoadedSource,
@@ -127,5 +128,14 @@ describe('CSV import orchestration', () => {
         ],
       })
     ).toThrow('1 array row did not match a parent record.')
+  })
+
+  it('formats unmatched array rows as an actionable composition blocker', () => {
+    expect(formatCSVRecordsError(new Error('1 array row did not match a parent record.'))).toBe(
+      'Array composition blocked: 1 array row did not match a parent record. Correct the parent and row lookup columns or add the missing parent rows, then continue again.'
+    )
+    expect(formatCSVRecordsError(new Error('Malformed CSV'))).toBe(
+      'Could not load CSV records: Malformed CSV'
+    )
   })
 })

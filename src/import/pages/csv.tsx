@@ -17,7 +17,11 @@ import {
   inferCSVSchemaFieldMappings,
 } from '../csv_adapter'
 import type { CSVImportMapping } from '../csv_adapter'
-import { getCSVDocumentSources, mergeCSVArraySources } from '../csv_orchestration'
+import {
+  formatCSVRecordsError,
+  getCSVDocumentSources,
+  mergeCSVArraySources,
+} from '../csv_orchestration'
 import type {
   CanonicalImportRecord,
   ImportCandidate,
@@ -173,7 +177,7 @@ const CSVSourceEditor = ({
     : contextState.object_type_by_slug[source.typeSlug]
   const selectedSchema = selectedObjectType
     ? (contextState.object_schema_defaults_by_object_type_uuid[selectedObjectType.uuid]
-        ?.json_schema as JSONSchema6 | undefined)
+      ?.json_schema as JSONSchema6 | undefined)
     : undefined
   const mappingSchema = source.arrayTarget
     ? getCSVArrayItemSchema(selectedSchema, source.arrayTarget.arrayFieldPath)
@@ -402,14 +406,14 @@ const CSVSourceEditor = ({
                     )
                     const relationshipRule = related
                       ? {
-                          parentObjectTypeSlug:
-                            source.role === 'parent' ? source.typeSlug : related.typeSlug,
-                          childObjectTypeSlug:
-                            source.role === 'parent' ? related.typeSlug : source.typeSlug,
-                          parentMatchField: source.relationshipRule?.parentMatchField ?? '',
-                          childMatchField: source.relationshipRule?.childMatchField ?? '',
-                          predicate: source.relationshipRule?.predicate || 'has_parent',
-                        }
+                        parentObjectTypeSlug:
+                          source.role === 'parent' ? source.typeSlug : related.typeSlug,
+                        childObjectTypeSlug:
+                          source.role === 'parent' ? related.typeSlug : source.typeSlug,
+                        parentMatchField: source.relationshipRule?.parentMatchField ?? '',
+                        childMatchField: source.relationshipRule?.childMatchField ?? '',
+                        predicate: source.relationshipRule?.predicate || 'has_parent',
+                      }
                       : undefined
                     onChange({
                       relationshipRule,
@@ -460,9 +464,9 @@ const CSVSourceEditor = ({
                       {(source.role === 'parent'
                         ? source.parsed.headers
                         : (sources.find(
-                            (candidate) =>
-                              candidate.typeSlug === source.relationshipRule?.parentObjectTypeSlug
-                          )?.parsed.headers ?? [])
+                          (candidate) =>
+                            candidate.typeSlug === source.relationshipRule?.parentObjectTypeSlug
+                        )?.parsed.headers ?? [])
                       ).map((header) => (
                         <option key={header.key} value={header.key}>
                           {header.key}
@@ -493,9 +497,9 @@ const CSVSourceEditor = ({
                       <option value="">Select a field</option>
                       {(source.role === 'parent'
                         ? (sources.find(
-                            (candidate) =>
-                              candidate.typeSlug === source.relationshipRule?.childObjectTypeSlug
-                          )?.parsed.headers ?? [])
+                          (candidate) =>
+                            candidate.typeSlug === source.relationshipRule?.childObjectTypeSlug
+                        )?.parsed.headers ?? [])
                         : source.parsed.headers
                       ).map((header) => (
                         <option key={header.key} value={header.key}>
@@ -723,9 +727,9 @@ const CSVSourceEditor = ({
                     role: 'label' | 'slug' | 'externalId' | 'description' | 'data' | 'ignore'
                   ) => {
                     const nextMapping = { ...source.mapping }
-                    ;(['label', 'slug', 'externalId', 'description'] as const).forEach((field) => {
-                      if (nextMapping[field] === header.key) nextMapping[field] = undefined
-                    })
+                      ; (['label', 'slug', 'externalId', 'description'] as const).forEach((field) => {
+                        if (nextMapping[field] === header.key) nextMapping[field] = undefined
+                      })
                     nextMapping.dataColumns = (nextMapping.dataColumns ?? []).filter(
                       (column) => column !== header.key
                     )
@@ -948,10 +952,10 @@ const CSVImportPage = ({
       const records = loadedSourceRecords[source.sourceId]?.records ?? []
       return objectType
         ? records.map((record) => ({
-            record,
-            objectTypeUuid: objectType.uuid,
-            objectTypeSlug: objectType.slug,
-          }))
+          record,
+          objectTypeUuid: objectType.uuid,
+          objectTypeSlug: objectType.slug,
+        }))
         : []
     })
     const relationshipRules = sources
@@ -969,10 +973,10 @@ const CSVImportPage = ({
               source.role === 'parent'
                 ? source
                 : sources.find(
-                    (candidate) =>
-                      candidate.role === 'parent' &&
-                      candidate.typeSlug === rule.parentObjectTypeSlug
-                  )
+                  (candidate) =>
+                    candidate.role === 'parent' &&
+                    candidate.typeSlug === rule.parentObjectTypeSlug
+                )
             const parentType = parentSource?.selectedObjectTypeUuid
               ? contextState.object_type_by_uuid[parentSource.selectedObjectTypeUuid]
               : parentSource
@@ -988,9 +992,9 @@ const CSVImportPage = ({
               source.role === 'child'
                 ? source
                 : sources.find(
-                    (candidate) =>
-                      candidate.role === 'child' && candidate.typeSlug === rule.childObjectTypeSlug
-                  )
+                  (candidate) =>
+                    candidate.role === 'child' && candidate.typeSlug === rule.childObjectTypeSlug
+                )
             const childType = childSource?.selectedObjectTypeUuid
               ? contextState.object_type_by_uuid[childSource.selectedObjectTypeUuid]
               : childSource
@@ -1074,7 +1078,7 @@ const CSVImportPage = ({
     const existingType = contextState.object_type_by_slug[typeSlug]
     const existingSchema = existingType
       ? (contextState.object_schema_defaults_by_object_type_uuid[existingType.uuid]?.json_schema as
-          JSONSchema6 | undefined)
+        JSONSchema6 | undefined)
       : undefined
     sourceSequence.current += 1
     const sourceId = createSourceId(typeSlug, sourceSequence.current, sourceConfig.key)
@@ -1258,17 +1262,17 @@ const CSVImportPage = ({
       const loadedSources =
         sources.length > 1
           ? await Promise.all(
-              sources.map(async (source) => {
-                const candidates = await source.adapter.discover({
-                  url: source.adapter.defaultImportUrl,
-                  signal: controller.signal,
-                })
-                const records = await Promise.all(
-                  candidates.map((candidate) => source.adapter.load({ candidate }))
-                )
-                return { source, candidates, records }
+            sources.map(async (source) => {
+              const candidates = await source.adapter.discover({
+                url: source.adapter.defaultImportUrl,
+                signal: controller.signal,
               })
-            )
+              const records = await Promise.all(
+                candidates.map((candidate) => source.adapter.load({ candidate }))
+              )
+              return { source, candidates, records }
+            })
+          )
           : []
       if (loadedSources.length > 0) {
         setLoadedSourceRecords(
@@ -1331,7 +1335,7 @@ const CSVImportPage = ({
       setStep('records')
       setActiveWizardStep('import')
     } catch (error) {
-      setLoadError(error instanceof Error ? error.message : String(error))
+      setLoadError(formatCSVRecordsError(error))
     } finally {
       setIsLoadingRecords(false)
     }
@@ -1603,11 +1607,11 @@ const CSVImportPage = ({
                           const arrayTarget =
                             role === 'array'
                               ? (source.arrayTarget ?? {
-                                  parentSourceKey: '',
-                                  arrayFieldPath: '',
-                                  parentMatchField: '',
-                                  rowMatchField: '',
-                                })
+                                parentSourceKey: '',
+                                arrayFieldPath: '',
+                                parentMatchField: '',
+                                rowMatchField: '',
+                              })
                               : undefined
                           updateSource(source.sourceId, {
                             role,
@@ -1617,9 +1621,9 @@ const CSVImportPage = ({
                             adapter:
                               role === 'array' || source.arrayTarget
                                 ? {
-                                    ...source.adapter,
-                                    arrayTarget,
-                                  }
+                                  ...source.adapter,
+                                  arrayTarget,
+                                }
                                 : source.adapter,
                           })
                         }}
@@ -1923,7 +1927,7 @@ const CSVImportPage = ({
 
           {loadError && (
             <div className="text-sm text-red-700" role="alert">
-              Could not load CSV records: {loadError}
+              {loadError}
             </div>
           )}
         </div>
@@ -1996,6 +2000,11 @@ const CSVImportPage = ({
               )}
             </>
           ) : null}
+          {loadError && (
+            <div className="text-sm text-red-700" role="alert">
+              {loadError}
+            </div>
+          )}
           {activeWizardStep === 'mapping' && (
             <div className="flex justify-end border-t pt-4">
               <Button
@@ -2007,11 +2016,6 @@ const CSVImportPage = ({
                 Continue to import
                 <FileSpreadsheet size={16} />
               </Button>
-            </div>
-          )}
-          {loadError && (
-            <div className="text-sm text-red-700" role="alert">
-              Could not load CSV records: {loadError}
             </div>
           )}
         </div>

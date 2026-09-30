@@ -253,8 +253,10 @@
 - [x] Verify clearing and reselecting `Related CSV` empties and repopulates the relationship rules.
 - [x] Verify CSV-local relationship persistence; the authenticated workflow reported `3 created`.
 - [x] Verify failed-link retry without rerunning document imports by blocking `/relationship` requests, restoring them, and linking successfully.
-- [ ] Verify configured and generic array-item uploads produce the expected parent document and report unmatched rows.
-- [ ] Check the preview and mapping layout at narrow and short browser sizes.
+- [x] Verify configured and generic array-item uploads produce the expected parent document and report unmatched rows.
+  - Confirmed matched array rows are embedded in parent documents and unmatched rows block the transition to Import records.
+  - The unmatched-row message now identifies an array-composition blocker and directs the user to lookup columns or missing parent rows.
+- [x] Check the preview and mapping layout at narrow and short browser sizes.
 - [ ] Fix issues found in these checks, with focused tests for behavioral changes.
 - [ ] Implement dependency-aware multi-file document execution so parent sources are persisted before related child sources, preserving missing, ambiguous, and out-of-order diagnostics.
 
@@ -295,6 +297,10 @@
 - [x] Map array spreadsheet columns to the parent schema's existing `items` schema rather than a separate document type/schema.
 - [ ] Defer multiple spreadsheets contributing to the same array until a concrete use case requires it.
 - [ ] Provide configured upload slots for known-type workflows, with a label and description targeting the expected document type or array field.
+  - Deferred while the required backend schemas and object types are prepared.
+  - Reuse `CSVImportPage` with route-specific `CSVImportViewConfig` and `sourceConfigs`, following `/import/csv/test-array`; do not copy the CSV workflow into separate page implementations.
+  - Each production configuration needs backend object-type slugs, source keys/labels/descriptions, expected filenames or columns, mapping mode, and any fixed roles, relationship rules, or array targets. Backend default schemas are loaded by object-type slug, so local schema imports are not required when those records already exist.
+  - Keep route registration and brand-specific discovery separate from the shared CSV import behavior so branded instances can supply their own configured views later.
 - [ ] Provide targeted upload-slot guidance when a relationship source or one or more array-field spreadsheets are expected.
 - [x] Extend configured upload slots with an explicit array-field target and persist its rows into the parent document's array instead of importing the spreadsheet as separate documents.
   - Live verification of configured array uploads is tracked under `Current next steps` above.
@@ -308,7 +314,7 @@
 - Reuse the standard records, validation, conflict, relationship, and review screens.
 - [ ] Revisit the main Import All page later: reduce its crowded UI and improve grouping of controls, diagnostics, and progress information.
 - [x] Allow CSV mapping edits and revalidation after validation fails; return to `Map fields` and click `Continue to import` after correcting the mapping.
-- [ ] Verify the CSV preview layout at narrow and short browser sizes; check for overlap and nested vertical scrollbars.
+- [x] Verify the CSV preview layout at narrow and short browser sizes; no overlap or problematic nested vertical scrollbars were observed.
 - [x] Verify the wide-table fix at narrow width with the sidebar expanded; confirm only the table scrolls horizontally.
 - [ ] Make the `Map fields` to `Import records` transition accessible without scrolling to the bottom; enable the wizard step when the import transition is available.
 - [x] Constrain wide tables to their layout container and give them their own horizontal scrollbar instead of scrolling the whole page.
@@ -334,6 +340,8 @@
 ### Continuation point
 
 Current state: `CSVImportViewConfig` still provides configured upload slots, while generic uploads support explicit parent, child, and array-item roles. Do not add more page-level presets. Any follow-up configuration work should be per source/session and must feed the combined CSV-local relationship plan.
+
+The next configured-upload branch is intentionally deferred. When resumed, create production known-schema views as declarative configurations over `CSVImportPage`, using `/import/csv/test-array` as the proven reference. Do not duplicate its page or orchestration code. Obtain the concrete backend object-type slugs and source/relationship definitions before implementation.
 
 New requirements to carry into that refactor:
 

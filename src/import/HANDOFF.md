@@ -162,7 +162,7 @@ The build still reports the existing Quicktype Node-module browser-externalizati
 
 The full lint command currently reports unrelated errors in:
 
-- `src/brands/modl/create_document_entry.tsx`
+- `src/app-variants/modl/create_document_entry.tsx`
 - `src/components/ui/button.tsx`
 - `src/components/ui/sidebar.tsx`
 - `src/hooks/use-mobile.ts`
@@ -238,18 +238,20 @@ Authenticated CSV checks confirmed on 2026-09-29:
 - CSV-local relationship persistence created three links. Blocking then restoring `/relationship` requests verified retry without rerunning document imports.
 - At narrow width, the table scrolls without browser-level horizontal overflow while the sidebar is expanded.
 
-Remaining authenticated CSV checks:
+Authenticated CSV array checks completed on 2026-09-30:
 
-- Verify configured and generic array-item uploads produce the expected parent document and report unmatched rows.
-- Check short/narrow preview layout for overlap and nested vertical scrollbars; the expanded-sidebar horizontal overflow was separately verified fixed.
+- Configured and generic array-item uploads embedded matched rows in their parent documents.
+- Unmatched array rows blocked access to Import records rather than being written as standalone documents.
+- The unmatched-row diagnostic was browser-verified at `/import/csv/test-array`; it identifies an array-composition blocker and suggests correcting lookup columns or adding missing parent rows.
+- Short and narrow preview layouts showed no overlap or problematic nested vertical scrollbars.
 
 ## Resume point
 
-Start with the remaining authenticated CSV array check: upload a configured parent CSV and array-item CSV, verify matched rows are embedded under the parent's configured array path, then include an array row with no matching parent and verify the unmatched-row diagnostic. Also verify the generic array role if time permits. Do not import array-item rows as standalone documents.
+The authenticated CSV array and responsive-layout checks are complete, including a browser check of the revised unmatched-row wording.
 
-The CSV mapping, existing/generated type setup, multi-file source isolation, relationship rule editing/clearing, CSV-local link persistence/retry, and expanded-sidebar table scrolling are now manually verified. Automated CSV orchestration coverage now includes configured and generic-style array composition, unmatched-row blocking, and array-source exclusion from standalone document panels. The authenticated configured/generic array workflow check remains open, as does dependency-aware multi-file document execution. The current full import suite has 92 passing tests and 3 existing Oikos schema failures; the build is currently blocked by the existing errors described above.
+The CSV mapping, existing/generated type setup, multi-file source isolation, relationship rule editing/clearing, CSV-local link persistence/retry, configured and generic array composition, unmatched-row blocking, responsive layout, and expanded-sidebar table scrolling are now manually verified. Automated CSV orchestration coverage includes configured and generic-style array composition, unmatched-row blocking, and array-source exclusion from standalone document panels. Dependency-aware multi-file document execution remains deferred. The latest `npm run build` passes; older failure notes above describe superseded checkpoints.
 
-After the array upload verification and any fixes, continue with dependency-aware multi-file CSV document execution. Persist parent sources before related child sources and preserve missing-parent, ambiguous-parent, and out-of-order diagnostics.
+Import follow-up is paused while branding architecture is explored. When import work resumes, choose between the deferred known-schema configured views and dependency-aware multi-file CSV document execution based on product priority.
 
 The CSV user flow remains self-contained: single and multiple file sessions use `Upload files` -> `Map fields` -> `Import records`; multiple files keep independent mappings and import sessions, with relationship setup in the CSV workflow.
 
@@ -263,7 +265,17 @@ UI verification is still needed for the configured array upload slot and the fin
 
 The ordinary `/import/csv` workflow now exposes the array role and target fields. Live verification remains needed for the final parent array shape and unmatched-row diagnostics.
 
-Known uploaded files are identified by explicit user-selected source roles. Do not create separate page-level presets for the parent and child.
+Known uploaded files are identified by explicit user-selected source roles. Do not create separate page implementations for the parent and child.
+
+### Deferred known-schema upload views
+
+The next requested import branch is a small set of production upload forms for known backend schemas. It is deferred until the schemas and object types are ready.
+
+- Reuse `CSVImportPage` with a route-specific `CSVImportViewConfig` and `sourceConfigs`, following `/import/csv/test-array` as the reference implementation.
+- Keep document loading, array composition, validation, reconciliation, and persistence in the shared CSV workflow; production views should be declarative configurations, not copies of the test page.
+- Required inputs are backend object-type slugs, source keys and user-facing labels/descriptions, expected filenames or columns, mapping mode, and fixed roles, relationships, or array targets.
+- Backend default schemas are resolved from object-type slugs. Local schema files are unnecessary when the corresponding backend object types and default schemas already exist.
+- Keep configured-view registration compatible with the upcoming branding work so branded applications can provide or discover their own known-schema upload definitions.
 
 Additional CSV requirements for the next design:
 

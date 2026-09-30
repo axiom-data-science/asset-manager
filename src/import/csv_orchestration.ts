@@ -18,6 +18,14 @@ export type CSVLoadedSource = {
 export const getCSVDocumentSources = <T extends CSVOrchestrationSource>(sources: T[]): T[] =>
   sources.filter((source) => !source.arrayTarget)
 
+export const formatCSVRecordsError = (error: unknown): string => {
+  const message = error instanceof Error ? error.message : String(error)
+  if (/array rows? did not match a parent record/i.test(message)) {
+    return `Array composition blocked: ${message} Correct the parent and row lookup columns or add the missing parent rows, then continue again.`
+  }
+  return `Could not load CSV records: ${message}`
+}
+
 export const mergeCSVArraySources = ({
   parentSourceId,
   loadedSources,

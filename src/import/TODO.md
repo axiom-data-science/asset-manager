@@ -235,7 +235,7 @@
 
 ## 7. Add CSV through the common adapter API
 
-  - **Outside import:** reuse the parser as-is initially; parser changes require dedicated tests because other features may consume it later.
+- **Outside import:** reuse the parser as-is initially; parser changes require dedicated tests because other features may consume it later.
 
 ### Current next steps
 
@@ -259,6 +259,7 @@
 - [ ] Implement dependency-aware multi-file document execution so parent sources are persisted before related child sources, preserving missing, ambiguous, and out-of-order diagnostics.
 
   - [x] Add CSV adapter support for relationship rules and explicit join fields, with cross-source planner tests.
+
 - [x] Expose per-file relationship-field selection in the CSV mapping view and preserve selected fields in canonical records.
 - [x] Add a per-file relationship-rule editor for child source, parent field, child field, and predicate.
   - [x] Allow the related CSV selection to be cleared after it is set.

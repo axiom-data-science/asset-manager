@@ -157,7 +157,7 @@
 - [x] Apply per-source bulk conflict defaults and exceptional row overrides during execution.
 - [x] Expand the prepared plan from counts, source errors, validation, and conflicts to include relationship dependencies.
 - [x] Require source discovery and plan review before execution.
-- [ ] Execute related sources through a dependency-aware task or resolve counterpart documents during creation; choose and implement one approach.
+- [x] Execute related Import All sources by persisting documents first, then resolving and persisting ready relationships from the retained document UUID map.
 - [x] Preserve per-source and per-record execution results for retry review.
 - [x] Remove the current mock results and simulated completion behavior.
 - [ ] Add a simple one-button import path for prepared sources.
@@ -167,52 +167,19 @@
   - Confirmed the UI can refresh types and schemas after `object_type_slug_unique` conflict and continue the prepared import workflow.
 - [ ] Add a simple one-button import path for prepared sources after type setup and review are complete.
 
-### Completed item verification: controlled Import All execution
+### Import All verification
 
-- Automated: `src/import/import_all_plan.test.ts` passes (6 tests); `npm run build` passes.
-- UI verification still needed with authenticated PostgREST and configured source endpoints:
-  - Discover two or more sources and confirm each source keeps its own count and status.
-  - Prepare a source containing new, changed, invalid, and ambiguous records.
-  - Confirm the Execute button stays disabled until all enabled sources are prepared and type/schema blockers are resolved.
-  - Change a source conflict default, override one changed row, execute, and confirm imported/ignored/blocked/failed counts remain visible after completion.
-  - Confirm a late slug conflict reports failure and does not overwrite the existing document.
+- [x] Verify authenticated preparation and document execution across multiple sources, including validation and conflict blockers.
+- [x] Verify relationship planning for ready, missing-parent, and ambiguous-parent cases.
+- [x] Verify document and relationship progress, batching, abort-aware pauses, cancellation, and failed-link retry.
+- [x] Verify repeat relationship execution detects existing links without creating duplicates.
+- [ ] Verify failed-document retry in the authenticated UI, confirming successful records are not rerun and retry refreshes duplicate reconciliation.
 
-Suggested next step: should I add retry controls for failed Import All records next? Reply `yes` to continue with retry behavior, or `no` to pause for live UI verification.
+### Import All errors
 
-### Completed item verification: failed-record retry controls
-
-- Automated: `src/import/import_all_plan.test.ts` passes (7 tests); `npm run build` passes.
-- UI verification still needed:
-  - Force one record to fail while another succeeds.
-  - Confirm `Retry failed` appears for that source and successful records are not rerun.
-  - Confirm the failed record's result is replaced by the retry result while the other result remains unchanged.
-  - Confirm retry remains disabled while another execution is running.
-
-Suggested next step: should I make retry re-run duplicate reconciliation for failed records before writing? Reply `yes` to continue with retry reconciliation, or `no` to pause for live UI verification.
-
-### Completed item verification: retry reconciliation
-
-- Automated: `src/import/import_all_plan.test.ts` passes (8 tests); `npm run build` passes.
-- UI verification still needed:
-  - Force a write failure, then create or change the same document before selecting `Retry failed`.
-  - Confirm retry refreshes the failed row and changes its classification when appropriate.
-  - Confirm a newly ambiguous row is blocked rather than written.
-  - Confirm successful rows from the original execution remain untouched.
-
-Suggested next step: should I start relationship planning and persistence next? Reply `yes` to continue with relationships, or `no` to pause for live UI verification.
-
-### Follow-up tasks from current UI testing
-
-- [ ] Investigate missing relationships reported after Import All execution. (Deferred by current work decision.)
-  - Related records must be loaded in dependency order; loading a child before its parent can prevent the relationship from being created.
-  - Compare `relationships ready`, `relationship blockers`, and persisted link results.
-  - Check missing parents, identity-field mismatches, predicate lookup, and source coverage.
-  - Add focused tests for the observed missing case before changing matching behavior.
 - [x] Add a concise Import All error view as an Errors tab.
   - Include source discovery, preparation, validation, document, and relationship errors.
   - Keep per-source and per-record context, with retry actions where available.
-
-Suggested next step: should I investigate the missing relationships first? Reply `yes` to continue, or `no` to pause for UI verification.
 
 ### UI simplification
 
@@ -229,8 +196,8 @@ Suggested next step: should I investigate the missing relationships first? Reply
 - [x] Resolve relationships from canonical external identities before execution for the current Import All plan.
 - [x] Normalize Oikos service payloads to snake_case at the import boundary, including `layer_group_id` for layer/group matching.
 - [x] Add self-contained static Oikos schemas for layers, layer groups, and modules.
-- [ ] Detect missing parents, ambiguous matches, cardinality violations, and cycles during review.
-- [ ] Persist documents first and retain the resulting document UUID map.
+- [x] Detect missing parents and ambiguous matches during review.
+- [ ] Detect relationship cardinality violations and cycles during review.
 - [x] Persist documents first and retain the resulting document UUID map.
 - [x] Persist ready relationships in a separate phase with independent per-link results.
   - **Outside import:** reuse the existing relationship PostgREST service or extract a shared service from document creation; regression-test normal document creation.
@@ -246,27 +213,11 @@ Suggested next step: should I investigate the missing relationships first? Reply
 - [x] Deduplicate Oikos module candidates repeated across layer groups.
 - [x] Match Oikos module UUIDs to layer-group `module_uuid` values.
 
-### Completed item verification: relationship planning and persistence foundation
+### Relationship planning and persistence verification
 
-- Automated: `src/import/relationship_planning.test.ts` and Import All tests pass (15 tests); `npm run build` passes.
-- UI verification completed:
-  - Confirmed a forced relationship-link failure appears in the Import All results and can be retried successfully without rerunning document imports.
-  - The development-only `VITE_IMPORT_FAIL_RELATIONSHIP_ONCE` switch was used to force the failure.
-  - Keep the switch unset or `false` during normal development and production use.
-  - Remaining checks:
-  - Prepare parent and child sources whose external identities match and confirm the ready relationship count.
-  - Prepare a child without a matching parent and confirm it appears as a relationship blocker.
-  - Prepare duplicate parent identities and confirm the relationship is classified as ambiguous rather than written.
-  - Confirm relationship counts reset when a source is rediscovered or re-prepared.
-  - Execute a ready parent/child pair and confirm the relationship is written child-to-parent.
-  - Force a relationship write failure and confirm link failures remain separate from document failures.
-  - Confirm the `Retry failed links` button appears beside link counts only after a link failure.
-  - Confirm retry disables the button while links are being written and does not rerun document imports.
-  - Confirm a successful retry changes the failed count to zero and increments links created.
-  - For relationship checks, use **Import All Sources**, not the individual source's `Import Records` tab.
-  - In Import All, include the parent and child sources, prepare the plan, execute it twice, and confirm the summary shows `links already existed` on the second run without adding duplicate links.
-
-Suggested next step: should I move on to the CSV import adapter? Reply `yes` to continue, or `no` to pause for live UI verification.
+- [x] Verify authenticated ready, missing-parent, and ambiguous-parent plans, successful relationship persistence, duplicate detection, and retry of failed links without rerunning documents.
+- [x] Verify repeating the same parent/child import reports existing links without creating duplicates.
+- Development-only failure switches were used for verification. Keep them unset or `false`/`off` during normal development and production use.
 
 ### UI simplification
 
@@ -274,33 +225,45 @@ Suggested next step: should I move on to the CSV import adapter? Reply `yes` to 
 - Focus the user on unresolved and invalid links instead of listing every successful match.
 - Keep source overrides adjacent to the relationship rule they replace.
 
-### Next relationship design decision
-
-- [ ] Decide whether related remote sources should be grouped into one dependency-aware import task or whether each document creation should resolve an already-created counterpart.
-- [ ] Support first imports where both parent and child documents are new.
-- [ ] Support imports where only the parent or only the child already exists.
-- [ ] Support source selection in either order without losing relationship planning or persistence.
-- [ ] Verify layer/layer-group relationships across first import, repeat import, partial existing data, and retryable failures.
-- [ ] Carry the chosen relationship behavior into the multi-file CSV import design.
-
 ### Import All execution follow-up
 
 - [x] Add overall and per-source progress bars during document execution.
 - [x] Batch document writes while preserving per-record results and failed-record retry behavior.
 - [x] Batch relationship writes with abort-aware pauses while preserving independent per-link results.
 - [x] Show relationship persistence progress alongside document import progress in Import All.
-- [ ] Verify progress bars, batch pacing, cancellation, and retry behavior in the authenticated UI.
+- [x] Verify progress bars, batch pacing, cancellation, and failed relationship-link retry in the authenticated UI.
 
 ## 7. Add CSV through the common adapter API
 
   - **Outside import:** reuse the parser as-is initially; parser changes require dedicated tests because other features may consume it later.
+
+### Current next steps
+
+- [x] Verify filename-derived type/schema naming, automatic creation, and selection of the generated default schema.
+- [x] Verify uploading the same filename again blocks duplicate type creation.
+- [x] Verify existing-type default-schema loading.
+- [x] Verify the unified CSV field-mapping table controls label, slug, external ID, description, inclusion, and schema mapping.
+- [x] Verify unique schema-field selection; a schema field already assigned to one CSV column is unavailable to another.
+- [x] Verify nested and array-item mappings produce structured document values; the array fixture produced `sample_file.headers[].data_type` as an object inside an array.
+- [x] Unit-test matched, unmatched, and keyless array rows plus the shared unmatched-row diagnostic used by CSV and Import All.
+- [x] Add automated tests for automatic type/default-schema creation payloads and source-specific CSV mapping isolation.
+- [x] Verify multiple-file mapping/session isolation and that invalid records can be corrected by remapping and revalidation; click `Continue to import` after the correction to reload and validate.
+- [x] Verify the Upload-step related CSV, lookup columns, and predicate produce one mirrored rule with the selected parent and child fields.
+- [x] Verify clearing and reselecting `Related CSV` empties and repopulates the relationship rules.
+- [x] Verify CSV-local relationship persistence; the authenticated workflow reported `3 created`.
+- [x] Verify failed-link retry without rerunning document imports by blocking `/relationship` requests, restoring them, and linking successfully.
+- [ ] Verify configured and generic array-item uploads produce the expected parent document and report unmatched rows.
+- [ ] Check the preview and mapping layout at narrow and short browser sizes.
+- [ ] Fix issues found in these checks, with focused tests for behavioral changes.
+- [ ] Implement dependency-aware multi-file document execution so parent sources are persisted before related child sources, preserving missing, ambiguous, and out-of-order diagnostics.
+
   - [x] Add CSV adapter support for relationship rules and explicit join fields, with cross-source planner tests.
 - [x] Expose per-file relationship-field selection in the CSV mapping view and preserve selected fields in canonical records.
 - [x] Add a per-file relationship-rule editor for child source, parent field, child field, and predicate.
   - [x] Allow the related CSV selection to be cleared after it is set.
   - [x] Mirror the selected relationship, role, lookup fields, and predicate onto the counterpart source.
     - [x] Keep CSV users inside `/import/csv`; shared wizard, adapter, validation, relationship, and persistence functionality may be reused, but CSV users must not be sent to `/import/all`.
-      - UI verification still needed: load related CSV sources, import each document source, review ready/blocking relationships, and link them from the CSV import step.
+      - Live relationship verification is tracked under `Current next steps` below.
   - [x] Let each CSV source choose an existing object type and load its default schema.
   - [x] Combine CSV role mapping, data inclusion, and schema-field mapping into one table.
   - [x] Prevent multiple CSV columns from selecting the same schema field.
@@ -309,14 +272,14 @@ Suggested next step: should I move on to the CSV import adapter? Reply `yes` to 
   - [x] Use the schema-field autocomplete option view to show a red required asterisk, bold field title, and smaller field path.
 - [x] Load multi-spreadsheet CSV sources together inside `/import/csv` for relationship planning.
 - [ ] Resolve multi-spreadsheet document imports in dependency order inside `/import/csv` so parent spreadsheets are imported before related child spreadsheets.
-  - Next implementation target after live CSV verification.
+  - Next implementation target after the live CSV checks above.
 - [ ] Preserve cross-spreadsheet identity and relationship diagnostics when a parent file is missing, duplicated, or loaded out of order.
 - [ ] Add parser and adapter tests for quoted cells, duplicate/blank headers, dates, numbers, missing columns, large files, and malformed input. (Adapter coverage started; parser edge-case coverage remains.)
 - [ ] Replace the page-wide `CSVImportViewConfig` with per-source/session configuration.
 - [ ] Support uploading a known parent CSV and known child CSV in one session, with independent known types and mapping modes.
 - [ ] Support fixed relationship fields and rules shared across the known parent/child source configuration.
 - [x] Keep CSV relationship planning and persistence accessible inside `/import/csv`; shared implementation code with Import All is allowed, but CSV users must not be routed to `/import/all`.
-  - UI verification still needed for relationship results and failed-link recovery.
+  - Live verification of CSV-local relationship results and failed-link recovery is tracked under `Current next steps` below.
 - [x] Add initial configured upload slots with per-source labels, descriptions, known types, mapping modes, and source-specific relationship fields.
 - [x] Use an explicit user-selected source role for generic CSV parent, child, and array-item uploads.
 - [x] Preserve role-specific relationship match fields automatically in canonical CSV data.
@@ -332,7 +295,7 @@ Suggested next step: should I move on to the CSV import adapter? Reply `yes` to 
 - [ ] Provide configured upload slots for known-type workflows, with a label and description targeting the expected document type or array field.
 - [ ] Provide targeted upload-slot guidance when a relationship source or one or more array-field spreadsheets are expected.
 - [x] Extend configured upload slots with an explicit array-field target and persist its rows into the parent document's array instead of importing the spreadsheet as separate documents.
-  - UI verification still needed: upload a configured array source, prepare the parent and array source together, and confirm rows are embedded in the parent document rather than written as standalone documents.
+  - Live verification of configured array uploads is tracked under `Current next steps` above.
 - [ ] Future: support nested arrays, including the required child/parent lookup and nested relationship planning. This is not required for the first array-of-objects implementation.
 - [ ] Future: support array composition in the ordinary create-types-as-you-go CSV workflow. The current array process intentionally requires a configured known-type upload view.
 
@@ -342,11 +305,15 @@ Suggested next step: should I move on to the CSV import adapter? Reply `yes` to 
 - Infer mappings and types, showing only uncertain mappings for confirmation.
 - Reuse the standard records, validation, conflict, relationship, and review screens.
 - [ ] Revisit the main Import All page later: reduce its crowded UI and improve grouping of controls, diagnostics, and progress information.
-- [ ] When CSV validation fails because of an incorrect first-step mapping, allow mapping edits and revalidation in the same view, or provide field-by-field guidance about the expected mapping.
-- [ ] Clean up the CSV preview layout for smaller and narrower browser windows; remove overlapping content and reduce the multiple nested vertical scrollbars.
+- [x] Allow CSV mapping edits and revalidation after validation fails; return to `Map fields` and click `Continue to import` after correcting the mapping.
+- [ ] Verify the CSV preview layout at narrow and short browser sizes; check for overlap and nested vertical scrollbars.
+- [x] Verify the wide-table fix at narrow width with the sidebar expanded; confirm only the table scrolls horizontally.
+- [ ] Make the `Map fields` to `Import records` transition accessible without scrolling to the bottom; enable the wizard step when the import transition is available.
+- [x] Constrain wide tables to their layout container and give them their own horizontal scrollbar instead of scrolling the whole page.
+  - Fixed the shared sidebar layout with `min-w-0 flex-1`; browser verification remains open above.
 - [x] Rename the Upload-step `Child CSV` selector to `Related CSV` so the control describes the selected source without overcommitting to direction.
 - [x] Bring the CSV-to-array workflow into the simplified Upload-step relationship setup, while keeping array rows embedded in the parent document rather than importing them as standalone documents.
-  - UI verification still needed for parent array shape and unmatched-row diagnostics.
+  - Live verification for parent array shape and unmatched-row diagnostics is included in the current next steps above.
 - [ ] Automatically assign the parent source the `Parent` role when an `Array items` source selects it.
 - [ ] Simplify the CSV Import step further after multi-source panel UI verification.
 - [ ] Test one parent CSV with array items and two ordinary parent/child relationships in the same upload session; extend relationship planning/source roles if needed.
@@ -355,31 +322,22 @@ Suggested next step: should I move on to the CSV import adapter? Reply `yes` to 
 
 - `/import/csv` is the complete CSV user workflow, including multi-file relationships and array composition.
 - `/import/all` is a separate user workflow for configured remote-source imports. Shared implementation code and UI patterns are fine, but CSV users are never sent there as a workflow step or verification destination.
-- The ordinary CSV flow exposes explicit parent, child, and array-item roles; live verification remains needed for generic array composition with an existing parent type/schema.
+- The ordinary CSV flow exposes explicit parent, child, and array-item roles; live verification for array composition with an existing parent type/schema is tracked under `Current next steps` above.
 
-### Completed item verification: type-specific CSV mapping
+### CSV mapping verification
 
-- Automated: focused CSV, import-session, and relationship tests pass; `npm run build` passes.
-- UI verification still needed:
-  - Select an existing object type and confirm its default schema appears in the mapping table.
-  - Confirm label, slug, external ID, description, inclusion, and schema mapping are controlled from one table.
-  - Map two CSV columns to schema fields and confirm the selected field is disabled for the other column.
-  - Confirm nested fields show title, ID, and path, such as `Owner · owner · metadata.owner`.
-  - Confirm array-item fields show paths such as `tags[].value` and import as structured data.
-  - Confirm required autocomplete options show a red `*`, with the title above the smaller path.
-  - Confirm changing a document-role column shows it as included and disables its checkbox.
-
-Suggested next step: should I verify the updated CSV mapping flow in the authenticated UI? Reply `yes` to continue, or `no` to pause for live UI testing.
+- Automated CSV, import-session, and relationship tests passed in the latest recorded validation.
+- Live verification is included in `Current next steps` above, including required-field indicators and document-role inclusion behavior.
 
 ### Continuation point
 
-Resume here: the current `CSVImportViewConfig` is page-wide scaffolding only. Do not add more page-level presets. Refactor the configuration to apply per uploaded source/session so a user can upload both a known parent type and a known child type, each with its own mapping mode, while fixed relationship fields/rules are applied to the combined CSV-local plan.
+Current state: `CSVImportViewConfig` still provides configured upload slots, while generic uploads support explicit parent, child, and array-item roles. Do not add more page-level presets. Any follow-up configuration work should be per source/session and must feed the combined CSV-local relationship plan.
 
 New requirements to carry into that refactor:
 
 - A session may include additional spreadsheets that populate an array field on a known document type, in addition to spreadsheets connected through relationships.
 - Known-type upload views should expose targeted upload buttons/slots with labels and descriptions, such as the expected parent/child type or the specific array field being populated.
-- Clarify before implementation whether each spreadsheet row becomes one array item, whether the array item schema is mapped independently, whether multiple files can contribute to one array, and what identity/retry behavior array items require.
+- Resolved array behavior: each spreadsheet row becomes an item mapped against the parent's existing array-item schema; parent and items are written together, without individual item retries. Multiple files contributing to one array and nested arrays remain deferred.
 
 ### Completed item verification: Import All type setup dialog
 
@@ -399,8 +357,6 @@ New requirements to carry into that refactor:
   - Select an existing type, close the dialog, and confirm the Import All page reflects the type after context refresh.
   - Create a type from the prepared records, close the dialog, and confirm the source no longer shows `Set up type`.
   - For a missing type, confirm `Prepare review` loads records first; then `Set up type` opens without a schema-inference error.
-
-Suggested next step: should I add the one-button import path for prepared sources? Reply `yes` to continue, or `no` to pause for UI verification.
 
 ## 8. Add XLS/XLSX only after CSV is complete
 

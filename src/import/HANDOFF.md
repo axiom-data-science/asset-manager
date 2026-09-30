@@ -139,15 +139,15 @@ Without configuration, client deep merge plus authenticated PATCH remains the de
 
 ## Validation
 
-Latest verification during this work:
+Latest verification on 2026-09-29:
 
 ```text
-npm test       # latest full-suite result should be rerun after the Oikos relationship tests were added
-npm run build  # passed
-npm run lint   # fails on existing repository lint issues listed below
+npm test -- src/import  # 92 tests passed across 15 files
+npm run build           # passed
+git diff --check        # passed
 ```
 
-Focused ESLint checks for the new Import All files passed. Existing import hook dependency warnings remain in `useBatchImport.tsx` and `select_object_type_for_import/index.tsx`. Vite reports bundle-size and browser-externalization warnings.
+The build still reports the existing Quicktype Node-module browser-externalization warnings and large-chunk warnings. Full lint has not been rerun for this checkpoint; earlier lint failures are listed below.
 
 The full lint command currently reports unrelated errors in:
 
@@ -217,37 +217,30 @@ src/import/state/importState.test.ts
 npm run build  # passed; existing Vite browser-externalization and chunk-size warnings remain
 ```
 
-Live CSV checks still needed:
+Authenticated CSV checks confirmed on 2026-09-29:
 
-- Upload a new CSV, confirm filename-derived type/schema naming, generate a schema, and use `Create automatically`.
-- Upload the same filename again and confirm the intended-slug warning blocks duplicate creation.
-- Choose the existing type and confirm its default schema is loaded and validation can proceed.
-- Change each CSV mapping and confirm the resulting document fields match the selected columns.
-- Upload multiple CSV files, switch between source rows, and confirm each mapping and import session remains isolated.
-- Confirm invalid CSV records can be diagnosed by revising the mapping and validating again without leaving the validation workflow.
-- Check the preview at short and narrow browser sizes for overlapping sections and unnecessary nested vertical scrollbars.
-- Select a parent and related child CSV, verify the mirrored rule and lookup fields, clear the relationship, and confirm both sources reset.
-- Confirm the automatic type-creation flow selects the generated default schema and proceeds to import without extra schema selection.
-- Import related CSV files and verify the ready relationship is persisted from the CSV workflow.
+- Filename-derived type/schema naming, automatic creation, refreshed default-schema selection, and duplicate-slug blocking.
+- Existing-type default-schema loading and the unified mapping table for label, slug, external ID, description, inclusion, and schema paths.
+- Schema fields cannot be assigned to multiple CSV columns; nested and array-item paths produce structured document data.
+- Multi-file mappings remain isolated. After correcting an invalid mapping, `Continue to import` reloads and revalidates the records.
+- Related CSV lookup fields and predicate mirror to one canonical rule; clearing and reselecting the related file clears and repopulates `rules`.
+- CSV-local relationship persistence created three links. Blocking then restoring `/relationship` requests verified retry without rerunning document imports.
+- At narrow width, the table scrolls without browser-level horizontal overflow while the sidebar is expanded.
 
-## Next implementation step
+Remaining authenticated CSV checks:
 
-Live Import All verification is complete for preparation, document execution, relationship linking, duplicate relationship handling, relationship planning blockers, progress visualization, batching, pauses, cancellation, and failed relationship-link retry. Repeating the same parent/child import reported `100 links already existed` without creating duplicates. Relationship planning was verified for ready, missing-parent, and ambiguous-parent cases using the development-only Oikos test modes. The retry check used `VITE_IMPORT_FAIL_RELATIONSHIP_ONCE`; keep all relationship test switches unset or `false`/`off` during normal development and production use.
+- Verify configured and generic array-item uploads produce the expected parent document and report unmatched rows.
+- Check short/narrow preview layout for overlap and nested vertical scrollbars; the expanded-sidebar horizontal overflow was separately verified fixed.
 
-The shared wizard shell, type-specific CSV mapping, and shared implementation pieces used by Import All and CSV are now implemented. CSV-local relationship review and persistence are also wired. The next work is live CSV verification and any fixes found there. After that, implement dependency-aware CSV document execution so parent sources are persisted before related child sources:
+## Resume point
 
-1. Verify existing-type selection and default-schema loading.
-2. Verify the unified mapping table, unique schema-field selection, and nested/array field paths.
-3. Verify related CSV files appear in one CSV-local relationship plan, import each document source, and link the ready relationships from the CSV import step.
-4. Add dependency-aware multi-file document execution, preserving missing-parent, ambiguous-parent, and out-of-order diagnostics.
+Start with the remaining authenticated CSV array check: upload a configured parent CSV and array-item CSV, verify matched rows are embedded under the parent's configured array path, then include an array row with no matching parent and verify the unmatched-row diagnostic. Also verify the generic array role if time permits. Do not import array-item rows as standalone documents.
 
-For CSV, the current flow is:
+The CSV mapping, existing/generated type setup, multi-file source isolation, relationship rule editing/clearing, CSV-local link persistence/retry, and expanded-sidebar table scrolling are now manually verified. Automated coverage currently passes 92 import tests; `npm run build` passes with the existing Quicktype browser-externalization and large-chunk warnings.
 
-1. Single file: `Upload` -> `Map fields` -> `Import`.
-2. Multiple files: `Upload` -> `Map fields` -> `Import`, with relationship settings shown alongside each file's mapping and preview.
-3. All uploaded files remain in one session and can be mapped without returning to a separate file-selection step.
+After the array upload verification and any fixes, continue with dependency-aware multi-file CSV document execution. Persist parent sources before related child sources and preserve missing-parent, ambiguous-parent, and out-of-order diagnostics.
 
-Live CSV verification remains needed for the wizard transitions, mapping all files in one pass, nested and array schema mappings, upload-step relationship configuration, narrow-window layout, CSV-local relationship persistence, and retry behavior for failed links.
+The CSV user flow remains self-contained: single and multiple file sessions use `Upload files` -> `Map fields` -> `Import records`; multiple files keep independent mappings and import sessions, with relationship setup in the CSV workflow.
 
 ### Explicit continuation point
 

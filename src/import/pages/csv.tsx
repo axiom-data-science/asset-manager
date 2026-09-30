@@ -25,7 +25,10 @@ import type {
   ImportSourceAdapter,
 } from '../types'
 import type { IObjectType } from '@/types/types'
-import { mergeArraySourceRecordsIntoParentRecords } from '../import_all_plan'
+import {
+  formatUnmatchedArrayRowsError,
+  mergeArraySourceRecordsIntoParentRecords,
+} from '../import_all_plan'
 import { fetchExistingImportDocuments } from '../reconciliation_service'
 import { getDocumentImportProvenance } from '../reconciliation'
 import {
@@ -42,6 +45,12 @@ import contextStateAtom from '@/state/contextStateAtom'
 import { useAtom } from 'jotai'
 import { omit } from 'lodash-es'
 import { uploadedImportSourcesAtom } from '../state/uploadedImportSources'
+import {
+  clearCSVRelationshipRule,
+  getUniqueCSVRelationshipRules,
+  mirrorCSVRelationshipRule,
+} from '../csv_relationships'
+import { updateCSVImportSource } from '../csv_import_source_state'
 import { ImportWizard } from '../components/import_wizard'
 import { fetchRelationships, postRelationship } from '@/manage/relationship/services'
 import { useAuth } from '@/auth/useAuth'
@@ -1041,10 +1050,37 @@ const CSVImportPage = ({
   }
 
   const updateSource = (sourceId: string, update: Partial<CSVImportSource>) => {
-    setSources((current) =>
-      current.map((source) => (source.sourceId === sourceId ? { ...source, ...update } : source))
-    )
+    setSources((current) => updateCSVImportSource(current, sourceId, update))
   }
+
+  const updateRelationshipRule = (rule: ImportRelationshipRule) => {
+    setSources((current) => mirrorCSVRelationshipRule(current, rule).map((source, index) => {
+      if (source === current[index]) return source
+      const matchField = source.role === 'parent'
+        ? rule.parentMatchField
+        : source.role === 'child'
+          ? rule.childMatchField
+          : undefined
+      if (matchField === undefined) return source
+      return {
+        ...source,
+        adapter: createCSVImportAdapter({
+          id: source.sourceId,
+          label: csvFileNameToTypeLabel(source.fileName),
+          text: source.fileText,
+          mapping: source.mapping,
+          relationshipFields: source.relationshipFields,
+          relationshipRules: viewConfig.relationships === 'fixed'
+            ? viewConfig.relationshipRules
+            : [rule],
+          arrayTarget: source.arrayTarget,
+          sourceKey: source.config.key,
+          schema: source.adapter.schema,
+        }),
+      }
+    }))
+  }
+  console.log('rules', getUniqueCSVRelationshipRules(sources))
 
   const continueToRecords = async () => {
     if (!activeSource) return
@@ -1091,9 +1127,7 @@ const CSVImportPage = ({
             target,
           })
           if (merged.unmatchedArrayRecords.length > 0) {
-            throw new Error(
-              `${merged.unmatchedArrayRecords.length} array rows did not match a parent record.`
-            )
+            throw new Error(formatUnmatchedArrayRowsError(merged.unmatchedArrayRecords.length))
           }
           mergedRecords = merged.records
         }
@@ -1508,19 +1542,34 @@ const CSVImportPage = ({
                                     candidate.typeSlug === source.relationshipRule?.childObjectTypeSlug
                                 )
                                 if (!child) {
-                                  setSources((current) => current.map((candidate) => {
-                                    if (candidate.sourceId === source.sourceId) {
-                                      return { ...candidate, relationshipRule: undefined }
-                                    }
-                                    if (candidate.sourceId === previousChild?.sourceId) {
+                                  setSources((current) =>
+                                    clearCSVRelationshipRule(
+                                      current,
+                                      source.sourceId,
+                                      previousChild?.sourceId,
+                                      viewConfig.relationships === 'fixed'
+                                        ? viewConfig.relationshipRules
+                                        : undefined
+                                    ).map((candidate, index) => {
+                                      if (candidate === current[index]) return candidate
                                       return {
                                         ...candidate,
-                                        role: 'standalone',
-                                        relationshipRule: undefined,
+                                        adapter: createCSVImportAdapter({
+                                          id: candidate.sourceId,
+                                          label: csvFileNameToTypeLabel(candidate.fileName),
+                                          text: candidate.fileText,
+                                          mapping: candidate.mapping,
+                                          relationshipFields: candidate.relationshipFields,
+                                          relationshipRules: viewConfig.relationships === 'fixed'
+                                            ? viewConfig.relationshipRules
+                                            : undefined,
+                                          arrayTarget: candidate.arrayTarget,
+                                          sourceKey: candidate.config.key,
+                                          schema: candidate.adapter.schema,
+                                        }),
                                       }
-                                    }
-                                    return candidate
-                                  }))
+                                    })
+                                  )
                                   return
                                 }
                                 const relationshipRule = {
@@ -1574,7 +1623,7 @@ const CSVImportPage = ({
                                       ...source.relationshipRule!,
                                       parentMatchField: event.target.value,
                                     }
-                                    updateRelationshipRule(source, relationshipRule)
+                                    updateRelationshipRule(relationshipRule)
                                   }}
                                   className="border px-2 py-1"
                                 >
@@ -1593,7 +1642,7 @@ const CSVImportPage = ({
                                       ...source.relationshipRule!,
                                       childMatchField: event.target.value,
                                     }
-                                    updateRelationshipRule(source, relationshipRule)
+                                    updateRelationshipRule(relationshipRule)
                                   }}
                                   className="border px-2 py-1"
                                 >
@@ -1607,7 +1656,7 @@ const CSVImportPage = ({
                                 <span className="font-medium">Predicate on child</span>
                                 <select
                                   value={source.relationshipRule.predicate}
-                                  onChange={(event) => updateRelationshipRule(source, {
+                                  onChange={(event) => updateRelationshipRule({
                                     ...source.relationshipRule!,
                                     predicate: event.target.value,
                                   })}
@@ -1871,9 +1920,19 @@ const CSVImportPage = ({
               ))}
               {relationshipResults.length > 0 && (
                 <div className="mt-2 text-sm text-gray-700">
-                  {relationshipResults.filter(({ status }) => status === 'created').length} created,{' '}
-                  {relationshipResults.filter(({ status }) => status === 'existing').length} already existed,{' '}
-                  {relationshipResults.filter(({ status }) => status === 'failed').length} failed
+                  <div>
+                    {relationshipResults.filter(({ status }) => status === 'created').length} created,{' '}
+                    {relationshipResults.filter(({ status }) => status === 'existing').length} already existed,{' '}
+                    {relationshipResults.filter(({ status }) => status === 'blocked').length} blocked,{' '}
+                    {relationshipResults.filter(({ status }) => status === 'failed').length} failed
+                  </div>
+                  {relationshipResults
+                    .filter(({ status }) => status === 'blocked' || status === 'failed')
+                    .map((result) => (
+                      <div key={result.relationshipKey} className="mt-1 text-red-700">
+                        {result.status === 'blocked' ? 'Blocked' : 'Failed'}: {result.error ?? result.relationshipKey}
+                      </div>
+                    ))}
                 </div>
               )}
               {relationshipError && (

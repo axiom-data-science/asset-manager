@@ -29,6 +29,10 @@ import { postObjectType } from '@/manage/object_type/services'
 import { postObjectSchema } from '@/manage/object_schema/services'
 import { useAuth } from '@/auth/useAuth'
 import { requestContextReloadAtom } from '@/state/contextStateAtom'
+import {
+  canAutomaticallyCreateImportType,
+  createImportedObjectTypeAndSchema,
+} from '@/import/create_import_object_type'
 
 const createObjectTypeFromDataState = atom(false)
 
@@ -117,29 +121,18 @@ export const SelectObjectTypeForImportTab = ({
 
   const enumProps = schema ? findEnumProperties(schema) : []
   const createAutomatically = async () => {
-    if (!schema || intendedObjectType || !auth.user?.access_token) return
+    const token = auth.user?.access_token
+    if (!token || !canAutomaticallyCreateImportType(schema, intendedObjectType, token)) return
     setIsCreatingAutomatically(true)
     setAutomaticCreateError(undefined)
     try {
-      const newObjectType = await postObjectType({
-        object_type: {
-          category: 'document',
-          label: label ?? type,
-          slug: type,
-        },
-        token: auth.user.access_token,
-      })
-      await postObjectSchema({
-        object_schema: {
-          object_type_uuid: newObjectType.uuid,
-          label: `${label ?? type} default schema`,
-          slug: `${type}_default`,
-          description: `Automatically generated from imported records.`,
-          version: 1,
-          is_type_default: true,
-          json_schema: schema as Record<string, unknown>,
-        },
-        token: auth.user.access_token,
+      const newObjectType = await createImportedObjectTypeAndSchema({
+        type,
+        label,
+        schema,
+        token,
+        createObjectType: postObjectType,
+        createObjectSchema: postObjectSchema,
       })
       setSelectedObjectType(newObjectType)
       setAutomaticallyCreatedTypeUuid(newObjectType.uuid)

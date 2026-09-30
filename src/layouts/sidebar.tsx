@@ -21,13 +21,13 @@ export default function SidebarLayout({
   return (
     <SidebarProvider className="h-full">
       <AppSidebar />
-      <main className={cn('w-full h-full', mainClassName)} style={mainStyle}>
+      <main className={cn('min-w-0 flex-1 h-full', mainClassName)} style={mainStyle}>
         <span className="sticky top-2 z-50 cursor-pointer" style={triggerStyle}>
           <Tooltip content="Toggle sidebar" side="right" dark={true} useSpan={true}>
             <SidebarTrigger />
           </Tooltip>
         </span>
-        <div className={cn('p-10 pt-4 h-full', contentClassName)}>{children}</div>
+        <div className={cn('min-w-0 p-10 pt-4 h-full', contentClassName)}>{children}</div>
       </main>
     </SidebarProvider>
   )

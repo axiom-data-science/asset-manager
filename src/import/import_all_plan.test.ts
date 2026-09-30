@@ -5,6 +5,7 @@ import {
   collectImportAllErrors,
   discoverImportAllSource,
   executeImportAllSource,
+  formatUnmatchedArrayRowsError,
   importAllRecordKey,
   mergeArraySourceRecordsIntoParentRecords,
   refreshImportAllSourceReconciliation,
@@ -104,6 +105,69 @@ describe('Import All discovery plan', () => {
       name: 'Parent 1',
       children: [{ name: 'Child 1' }],
     })
+  })
+
+  it('returns array rows with missing or unmatched parent keys and formats a diagnostic', () => {
+    const parentRecord = {
+      uuid: 'parent-1',
+      slug: 'parent-1',
+      label: 'Parent 1',
+      data: { 'station-id': 'ERDDAP-A-001' },
+      attrs: {},
+      description: '',
+      sourceData: {},
+      provenance: { sourceId: 'parents', externalId: 'parent-1' },
+    }
+    const matchedArrayRecord = {
+      uuid: 'header-1',
+      slug: 'header-1',
+      label: 'Header 1',
+      data: { station_identifier: 'ERDDAP-A-001', data_type: 'float' },
+      attrs: {},
+      description: '',
+      sourceData: {},
+      provenance: { sourceId: 'array-source', externalId: 'header-1' },
+    }
+    const unmatchedArrayRecord = {
+      ...matchedArrayRecord,
+      uuid: 'header-2',
+      slug: 'header-2',
+      provenance: { sourceId: 'array-source', externalId: 'header-2' },
+      data: { station_identifier: 'UNKNOWN', data_type: 'string' },
+    }
+    const arrayRecordWithoutParentKey = {
+      ...matchedArrayRecord,
+      uuid: 'header-3',
+      slug: 'header-3',
+      provenance: { sourceId: 'array-source', externalId: 'header-3' },
+      data: { data_type: 'integer' },
+    }
+
+    const result = mergeArraySourceRecordsIntoParentRecords({
+      parentRecords: [parentRecord],
+      arrayRecords: [matchedArrayRecord, unmatchedArrayRecord, arrayRecordWithoutParentKey],
+      target: {
+        parentSourceKey: 'parents',
+        arrayFieldPath: 'sample_file.headers',
+        parentMatchField: 'station-id',
+        rowMatchField: 'station_identifier',
+      },
+    })
+
+    expect(result.records[0].data).toEqual({
+      'station-id': 'ERDDAP-A-001',
+      sample_file: {
+        headers: [{ station_identifier: 'ERDDAP-A-001', data_type: 'float' }],
+      },
+    })
+    expect(result.unmatchedArrayRecords.map(({ provenance }) => provenance.externalId)).toEqual([
+      'header-2',
+      'header-3',
+    ])
+    expect(formatUnmatchedArrayRowsError(result.unmatchedArrayRecords.length)).toBe(
+      '2 array rows did not match a parent record.'
+    )
+    expect(formatUnmatchedArrayRowsError(1)).toBe('1 array row did not match a parent record.')
   })
 
   it('collects relationship document UUIDs from execution results', () => {

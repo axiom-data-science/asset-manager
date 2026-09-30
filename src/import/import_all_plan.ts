@@ -243,6 +243,9 @@ export const mergeArraySourceRecordsIntoParentRecords = ({
   return { records, unmatchedArrayRecords }
 }
 
+export const formatUnmatchedArrayRowsError = (count: number): string =>
+  `${count} array ${count === 1 ? 'row' : 'rows'} did not match a parent record.`
+
 export const collectImportDocumentUuids = ({
   executedPlans,
   objectTypesBySlug,

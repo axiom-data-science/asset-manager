@@ -1,0 +1,3 @@
+external_id,label,slug,description,station_identifier,contributor_email,alternate_email,sample_file_uri
+CSV-NESTED-001,North Test Station,csv-nested-north,North fixture station,ERDDAP-N-001,north@example.test,north-alt@example.test,https://example.test/north.csv
+CSV-NESTED-002,South Test Station,csv-nested-south,South fixture station,ERDDAP-S-002,south@example.test,south-alt@example.test,https://example.test/south.csv

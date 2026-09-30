@@ -14,6 +14,7 @@ import {
   collectImportAllErrors,
   discoverImportAllSource,
   executeImportAllSource,
+  formatUnmatchedArrayRowsError,
   importAllRecordKey,
   mergeArraySourceRecordsIntoParentRecords,
   prepareImportAllSource,
@@ -868,7 +869,7 @@ const ImportAllPage = (): ReactElement => {
         if (merged.unmatchedArrayRecords.length > 0) {
           nextPlans[arrayPlan.sourceId] = {
             ...arrayPlan,
-            error: `${merged.unmatchedArrayRecords.length} array rows did not match a parent.`,
+            error: formatUnmatchedArrayRowsError(merged.unmatchedArrayRecords.length),
           }
         }
       }

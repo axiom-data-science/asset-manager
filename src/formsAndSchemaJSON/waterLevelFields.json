@@ -1,0 +1,412 @@
+[
+  {
+    "prop": "prepared-by",
+    "example": "Ex: Taylor Nguyen"
+  },
+  {
+    "prop": "reason-for-update"
+  },
+  {
+    "prop": "creator.name",
+    "example": "Ex: Taylor Nguyen"
+  },
+  {
+    "prop": "creator.address",
+    "example": "Ex: 123 W 3rd Ave"
+  },
+  {
+    "prop": "creator.city",
+    "example": "Ex: Anchorage"
+  },
+  {
+    "prop": "creator.postal_code",
+    "example": "Ex: 99501"
+  },
+  {
+    "prop": "creator.country"
+  },
+  {
+    "prop": "creator.email",
+    "example": "Ex: tnguyen@ancsurvey.com"
+  },
+  {
+    "prop": "creator.institution",
+    "example": "Ex: Anchorage Surveying"
+  },
+  {
+    "prop": "creator.phone",
+    "example": "Ex: 907-123-4567"
+  },
+  {
+    "prop": "creator.sector",
+    "example": "Ex: Nonprofit"
+  },
+  {
+    "prop": "creator.state",
+    "example": "Ex: AK"
+  },
+  {
+    "prop": "creator.url",
+    "example": "Ex: https://aoos.org/"
+  },
+  {
+    "prop": "platform"
+  },
+  {
+    "prop": "platform_name",
+    "example": "Ex: Hoonah, AK"
+  },
+  {
+    "prop": "station-id"
+  },
+  {
+    "prop": "latitude",
+    "example": "Ex: 58.107234"
+  },
+  {
+    "prop": "longitude",
+    "example": "Ex: -135.44521"
+  },
+  {
+    "prop": "horizontal-datum",
+    "type": "selectOrText",
+    "example": "Ex: NAD83 (2011)"
+  },
+  {
+    "prop": "water-body-setting",
+    "type": "selectOrText"
+  },
+  {
+    "prop": "approximate-position",
+    "example": "Ex: Hoonah Harbor, Port Frederick."
+  },
+  {
+    "prop": "additional-information",
+    "example": "Ex: Located on the end of the Transient Dock Pier in the Hoonah Harbor"
+  },
+  {
+    "prop": "station-datum",
+    "example": "Ex: Bench mark 945 1439 F is the primary bench mark with a Station Datum elevation of 19.808 m. "
+  },
+  {
+    "prop": "station-datum-establishment-date"
+  },
+  {
+    "prop": "sensors.instrument"
+  },
+  {
+    "prop": "sensors.instrument_variable:make_model",
+    "type": "selectOrText"
+  },
+  {
+    "prop": "sensors.sensor-serial-number",
+    "example": "Ex: 41230053"
+  },
+  {
+    "prop": "sensors.sample-interval-min",
+    "type": "selectOrText"
+  },
+  {
+    "prop": "sensors.sample-average-window-sec",
+    "type": "selectOrText"
+  },
+  {
+    "prop": "sensors.mounting-structure",
+    "type": "selectOrText"
+  },
+  {
+    "prop": "sensors.geophysical_variable:accuracy"
+  },
+  {
+    "prop": "sensors.time_coverage_start"
+  },
+  {
+    "prop": "sensors.time_coverage_end"
+  },
+  {
+    "prop": "sensors.telemetry-method"
+  },
+  {
+    "prop": "sensors.date-removed"
+  },
+  {
+    "prop": "sensors.elevations.sensor-elevation-on-station-datum",
+    "example": "Ex: 20.737"
+  },
+  {
+    "prop": "sensors.elevations.sensor-elevation-survey-date"
+  },
+  {
+    "prop": "sensors.elevations.sensor-elevation-ortho",
+    "example": "Ex. 15.320"
+  },
+  {
+    "prop": "sensors.elevations.sensor-elevation-ortho-datum",
+    "example": "Ex. NAVD 88"
+  },
+  {
+    "prop": "sensors.elevations.sensor-elevation-ortho-geoid",
+    "example": "Ex. GEOID18"
+  },
+  {
+    "prop": "sensors.elevations.sensor-elevation-ellipsoidal",
+    "example": "Ex. 8.750"
+  },
+  {
+    "prop": "sensors.elevations.sensor-elevation-ellipsoidal-refsys",
+    "type": "selectOrText",
+    "example": "Ex. NAD 83"
+  },
+  {
+    "prop": "sensors.elevations.sensor-elevation-ellipsoidal-epoch",
+    "example": "Ex. 2011"
+  },
+  {
+    "prop": "sensors.elevations.sensor-elevation-dynamic",
+    "example": "Ex. 8.750"
+  },
+  {
+    "prop": "sensors.elevations.sensor-elevation-dynamic-refsys",
+    "type": "selectOrText"
+  },
+  {
+    "prop": "sensors.elevations.sensor-elevation-dynamic-epoch",
+    "example": "Ex. 2011"
+  },
+  {
+    "prop": "sensors.difference-since-last-survey"
+  },
+  {
+    "prop": "sensors.difference-within-5-cm"
+  },
+  {
+    "prop": "sensors.additional-sensor-information"
+  },
+  {
+    "prop": "surveys.marker-stamping",
+    "example": "Ex: 2338 D 2009"
+  },
+  {
+    "prop": "surveys.marker-ngs-pid"
+  },
+  {
+    "prop": "surveys.marker-co-ops-vm"
+  },
+  {
+    "prop": "surveys.marker-other-identifier"
+  },
+  {
+    "prop": "surveys.survey-method",
+    "example": "Ex: 3rd Order Leveling, static GNSS"
+  },
+  {
+    "prop": "surveys.date-of-most-recent-survey"
+  },
+  {
+    "prop": "surveys.measurement-by-at-most-recent-survey",
+    "example": "Ex: Taylor Nguyen"
+  },
+  {
+    "prop": "surveys.bench-mark-descriptions",
+    "example": "Ex: The bench mark is a standard NOS disk set in the concrete surface at the bast of the pier to the Hoonah Harbor Transient Dock, 59.50 m (195.2 ft) ENE of crane on transient dock pier, 54.80 m (179.8 ft) SE of public restrooms on Harbor Way, 28.00 m (91.9 ft) SW of Hoonah Heritage Foundation front door at 306 Harbor Way, 8.81 m (28.9 ft) NNW of power pole 2256-2259, and 0.31 m (1.0 ft) WSW of the intersection of pier concrete and sidewalk concrete."
+  },
+  {
+    "prop": "surveys.latitude",
+    "example": "Ex: 58.10764"
+  },
+  {
+    "prop": "surveys.longitude",
+    "example": "Ex: -135.44385"
+  },
+  {
+    "prop": "surveys.elevation",
+    "example": "Ex: 19.8078"
+  },
+  {
+    "prop": "surveys.additional-survey-information"
+  },
+  {
+    "prop": "surveys.gnss-rtk-unit"
+  },
+  {
+    "prop": "surveys.processing-software"
+  },
+  {
+    "prop": "total-water-level-error-cm",
+    "example": "Ex: 11.2"
+  },
+  {
+    "prop": "sensor-error-cm",
+    "example": "Ex: 2"
+  },
+  {
+    "prop": "survey-error-cm",
+    "example": "Ex: 1.1"
+  },
+  {
+    "prop": "data-processing-error-cm",
+    "example": "Ex: 2.3"
+  },
+  {
+    "prop": "record-start-date"
+  },
+  {
+    "prop": "record-end-date"
+  },
+  {
+    "prop": "computation-tool",
+    "type": "selectOrText"
+  },
+  {
+    "prop": "computation-period"
+  },
+  {
+    "prop": "computation-method"
+  },
+  {
+    "prop": "nwlon-control-station",
+    "example": "Ex: 9450460 Ketchikan, AK"
+  },
+  {
+    "prop": "control-station-epoch",
+    "example": "Ex: NTDE 1983-2001"
+  },
+  {
+    "prop": "datum-type"
+  },
+  {
+    "prop": "computation-date"
+  },
+  {
+    "prop": "computed-by"
+  },
+  {
+    "prop": "sensors.sensor-survey-reference-point",
+    "example": "Ex. The mounting collar"
+  },
+  {
+    "prop": "sensors.sensor-offset",
+    "example": "Ex: -0.005"
+  },
+  {
+    "prop": "navd88-m",
+    "example": "Ex: 13.542"
+  },
+  {
+    "prop": "nad83-m",
+    "example": "Ex: 11.362"
+  },
+  {
+    "prop": "mhhw-m",
+    "example": "Ex: 17.052"
+  },
+  {
+    "prop": "mhw-m",
+    "example": "Ex: 16.770"
+  },
+  {
+    "prop": "mlw-m",
+    "example": "Ex: 12.954"
+  },
+  {
+    "prop": "mllw-m",
+    "example": "Ex: 12.477"
+  },
+  {
+    "prop": "dtl-m",
+    "example": "Ex: 14.764"
+  },
+  {
+    "prop": "mtl-m",
+    "example": "Ex: 14.862"
+  },
+  {
+    "prop": "msl-m",
+    "example": "Ex: 14.891"
+  },
+  {
+    "prop": "gt-m"
+  },
+  {
+    "prop": "mn-m"
+  },
+  {
+    "prop": "dhq-m"
+  },
+  {
+    "prop": "dlq-m"
+  },
+  {
+    "prop": "hwi-hr"
+  },
+  {
+    "prop": "lwi-hr"
+  },
+  {
+    "prop": "igld"
+  },
+  {
+    "prop": "lwd"
+  },
+  {
+    "prop": "is-colocation"
+  },
+  {
+    "prop": "additional-colocation-information[]"
+  },
+  {
+    "prop": "benchmarks-photo",
+    "type": "file_upload"
+  },
+  {
+    "prop": "underwater-components",
+    "type": "file_upload"
+  },
+  {
+    "prop": "vicinity",
+    "type": "file_upload"
+  },
+  {
+    "prop": "bench-mark-diagram",
+    "type": "file_upload"
+  },
+  {
+    "prop": "sensor-test-worksheet",
+    "type": "file_upload"
+  },
+  {
+    "prop": "sensor-elevation-drawing",
+    "type": "file_upload"
+  },
+  {
+    "prop": "other-attachment",
+    "type": "file_upload"
+  },
+  {
+    "prop": "wmo_platform_code"
+  },
+  {
+    "prop": "disclaimer"
+  },
+  {
+    "prop": "dissemination-flag"
+  },
+  {
+    "prop": "shef-element-code"
+  },
+  {
+    "prop": "api-provider"
+  },
+  {
+    "prop": "api-external-identifier"
+  },
+  {
+    "prop": "api-documentation"
+  },
+  {
+    "prop": "api-access"
+  },
+  {
+    "prop": "api-additional-information"
+  }
+]

@@ -1,5 +1,6 @@
-- Update to latest forms
+- [x] Update to `@axdspub/axiom-ui-forms@^1.2.2-alpha.3`.
 - Investigate behavior where toggling 'Use form config rather than overriding schema ' checkbox on form edit page somehow inserts a ton of extra json in the Form Configuration field 
 - Establish consistent UI for creating and discovering parent/child documents from currently created/edited document
 - Introduce form editor UI on form edit page
-- With new forms: update csv_upload_for_sample_file.tsx and custom:file_upload to use newly included csv and file upload inputs in forms ui
+- [x] Update `custom_inputs/file_upload.tsx` to use `Inputs.FileUploadInput` while preserving PostgREST persistence and parsed-file callbacks. Authenticated browser verification remains; see `manage/custom_inputs/HANDOFF.md`.
+- [ ] Update `csv_upload_for_sample_file.tsx` to use the shared forms CSV/file input while preserving sample-file-specific behavior.

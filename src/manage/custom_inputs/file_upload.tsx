@@ -1,199 +1,43 @@
 import { APPS_API_BASE_URL } from '@/config/config'
-import { parseCSV, type ParsedCSV } from '@/lib/csv'
+import type { ParsedCSV } from '@/lib/csv'
 import { uploadFileToPostgrest } from '@/services/postgrest/services'
-import type { IFieldInputProps } from '@axdspub/axiom-ui-forms'
-import { CloudUpload, File, X } from 'lucide-react'
-import { useState, useRef, type ReactElement } from 'react'
+import { Inputs, type IFieldInputProps } from '@axdspub/axiom-ui-forms'
+import type { ReactElement } from 'react'
 import { useAuth } from 'react-oidc-context'
-import { useDocument } from '../document/useDocument'
-import { utils, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
-import Link from '../components/link'
 
-const FileDisplay = ({ fileRef }: { fileRef: string }): ReactElement => {
-  const url = new URL(fileRef)
-  const uuid = url.searchParams.get('uuid')
-  const { data, isLoading, error } = useDocument(uuid)
-  return (
-    <>
-      {uuid === null ? <span className="text-red-500">Invalid file reference</span> : null}
-      <ViewWithLoader isLoading={isLoading} error={error} data={data}>
-        {data && (
-          <>
-            {String((data?.attrs as { mime_type: string })?.mime_type).startsWith('image/') ? (
-              <Link
-                to={fileRef}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
-                <img src={url.toString()} className="max-w-md max-h-64 object-contain shadow-md" />
-              </Link>
-            ) : (
-              <></>
-            )}
-            <Link
-              to={fileRef}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
-            >
-              View {data?.label ?? 'file'}
-            </Link>
-          </>
-        )}
-      </ViewWithLoader>
-    </>
-  )
+type FileUploadProps = IFieldInputProps & {
+    acceptFileTypes?: string[]
+    onFileUploaded?: (
+        fileData: string | ArrayBuffer | undefined | null,
+        csvData: ParsedCSV | null,
+        fileName?: string
+    ) => void
 }
 
 const FileUpload = ({
-  field,
-  value,
-  onChange,
-  acceptFileTypes,
-  onFileUploaded,
-}: IFieldInputProps & {
-  acceptFileTypes?: string[]
-  onFileUploaded?: (
-    fileData: string | ArrayBuffer | undefined | null,
-    csvData: ParsedCSV | null,
-    fileName?: string
-  ) => void
-}): ReactElement => {
-  const [file, setFile] = useState<File | null>(null)
-  const [fileRef, setFileRef] = useState<string | null>(
-    value !== null && value !== undefined ? String(value) : null
-  )
-  const [uploading, setUploading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const auth = useAuth()
-  const fileInputRef = useRef<HTMLInputElement>(null)
+    acceptFileTypes,
+    onFileUploaded,
+    ...inputProps
+}: FileUploadProps): ReactElement => {
+    const auth = useAuth()
 
-  const onUpload = async (f?: File | null) => {
-    const _file = f ?? file
-    if (!_file) return
-    setUploading(true)
-    try {
-      const reader = new FileReader()
+    return (
+        <Inputs.FileUploadInput
+            {...inputProps}
+            acceptFileTypes={acceptFileTypes}
+            onFileUpload={async ({ fileName, fileData, parsedCsvData, file }) => {
+                onFileUploaded?.(fileData, parsedCsvData, fileName)
 
-      // This event fires when the file reading is complete
-      reader.onload = function (event) {
-        const text = event.target?.result
-        if (typeof text === 'string') {
-          const data = parseCSV(text)
-          if (onFileUploaded) {
-            onFileUploaded(text, data, _file.name)
-          }
-        } else if (onFileUploaded) {
-          onFileUploaded(event.target?.result, null, _file.name)
-        }
-      }
+                const fileUuid = await uploadFileToPostgrest({
+                    file,
+                    token: auth.user?.access_token ?? '',
+                })
 
-      // Read the file object as a plain text string
-      reader.readAsText(_file)
-      const fileUuid = await uploadFileToPostgrest({
-        file: _file,
-        token: auth.user?.access_token || '',
-      })
-      const url = `${APPS_API_BASE_URL}/rpc/get_document_file?uuid=${fileUuid}`
-      setFileRef(url)
-      onChange(url)
-      // Clear the input value so the same file can be selected again
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
-    } catch (error) {
-      console.error('File upload failed:', error)
-      setError(`File upload failed. ${(error as Error)?.message ?? ''}`)
-    } finally {
-      setUploading(false)
-    }
-  }
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files ? e.target.files[0] : null
-    setFile(file)
-    onUpload(file)
-  }
-  return (
-    <div className="flex flex-col gap-2">
-      <p>{field.label}</p>
-      {field.description && <p className="text-sm text-gray-600 mb-2">{field.description}</p>}
-
-      <label className="block">
-        {error && <span className="text-red-500 text-sm mb-2 block">{error}</span>}
-        <span className="sr-only">Choose profile photo</span>
-        <input
-          type="file"
-          id="file_input"
-          ref={fileInputRef}
-          className="sr-only"
-          disabled={file !== null}
-          onChange={handleFileChange}
-          accept={acceptFileTypes ? acceptFileTypes.join(', ') : undefined}
+                return `${APPS_API_BASE_URL}/rpc/get_document_file?uuid=${fileUuid}`
+            }}
+            getPreviewUrl={(fileRef) => fileRef}
         />
-        {!fileRef && (
-          <div
-            className={`${utils.createButtonClass({
-              size: 'sm',
-              variant: 'create',
-            })} px-4 py-2 rounded-lg cursor-pointer inline-block ${file !== null ? 'bg-slate-200 text-slate-400' : ''}`}
-          >
-            {uploading ? (
-              <span className="flex flex-row gap-1">Uploading ...</span>
-            ) : (
-              'Browse Files'
-            )}
-          </div>
-        )}
-        {file && (
-          <span className="text-sm text-gray-700">
-            <span className="bg-slate-200 p-2 my-2 inline-flex items-center gap-1 rounded-md">
-              <File size={14} /> {file.name}{' '}
-            </span>
-            {!fileRef && (
-              <CloudUpload
-                className="inline-block ml-1 cursor-pointer"
-                onClick={() => onUpload()}
-              />
-            )}
-            <X
-              className="inline-block ml-1 cursor-pointer"
-              onClick={(e) => {
-                e.stopPropagation()
-                e.preventDefault()
-                setFile(null)
-                setFileRef(null)
-                onChange(null)
-                if (fileInputRef.current) {
-                  fileInputRef.current.value = ''
-                }
-              }}
-            />
-          </span>
-        )}
-      </label>
-      {fileRef && (
-        <div className="flex flex-row gap-2">
-          <FileDisplay fileRef={fileRef} />
-          {!file && (
-            <X
-              className="inline-block ml-1 cursor-pointer"
-              onClick={(e) => {
-                e.stopPropagation()
-                e.preventDefault()
-                setFile(null)
-                setFileRef(null)
-                onChange(null)
-                if (fileInputRef.current) {
-                  fileInputRef.current.value = ''
-                }
-              }}
-            />
-          )}
-        </div>
-      )}
-    </div>
-  )
+    )
 }
 
 export default FileUpload

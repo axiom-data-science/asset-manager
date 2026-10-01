@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactElement } from 'react'
 import { useAtom } from 'jotai'
 import headerStateAtom from '@/state/headerStateAtom'
 import { Link } from 'react-router-dom'
-import { AudioLines, Waves } from 'lucide-react'
+import { AudioLines } from 'lucide-react'
 
 const PAMHeader = (): ReactElement => {
     const [isScrolled,] = useState(true)

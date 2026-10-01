@@ -100,7 +100,7 @@ const CreateDocumentForm = ({
     ],
   }
   const fieldConfigJSON =
-    fieldConfigs?.map((fc) => fc.fields_override_config.config as unknown as IFormFieldOverride) ??
+    fieldConfigs?.map((fc) => fc.fields_override_config.config as unknown as IFormFieldOverride[]) ??
     []
   const dataForm = (
     assetForm?.use_form_config === true &&
@@ -114,7 +114,7 @@ const CreateDocumentForm = ({
             formOverrides: assetForm?.schema_override_config
               ? [assetForm?.schema_override_config as IFormOverride]
               : undefined,
-            formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
+            formFieldOverrides: fieldConfigJSON ? fieldConfigJSON : undefined,
           }),
           'label'
         )

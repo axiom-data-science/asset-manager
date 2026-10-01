@@ -8,6 +8,8 @@ type AppVariantLoader = () => Promise<AppVariantModule>
 
 export const appVariantLoaders = {
     modl: () => import('@/app-variants/modl'),
+    'water-level': () => import('@/app-variants/water-level'),
+    pam: () => import('@/app-variants/pam'),
 } satisfies Record<string, AppVariantLoader>
 
 const appVariantCache = new Map<string, Promise<AppVariantDefinition | undefined>>()

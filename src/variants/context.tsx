@@ -9,6 +9,7 @@ import {
 import { getAppVariantId } from '@/lib/utils'
 import { loadAppVariantDefinition } from './registry'
 import type { AppVariantDefinition } from './types'
+import { Loader } from '@axdspub/axiom-ui-utilities'
 
 type AppVariantContextValue = {
     variantId?: string
@@ -47,7 +48,7 @@ export const AppVariantProvider = ({ children }: { children: ReactNode }): React
     }, [variantId])
 
     if (isLoading) {
-        return <div className="p-6 text-sm text-gray-600">Loading application...</div>
+        return <Loader className='pt-10' />
     }
 
     if (error) {

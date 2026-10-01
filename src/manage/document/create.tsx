@@ -21,7 +21,7 @@ import { Button, Loader, utils, ViewWithLoader } from '@axdspub/axiom-ui-utiliti
 import { useState, type ReactElement } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { get, omit } from 'lodash-es'
-import { buildStringFromTemplate, getAppVariantId, validate } from '@/lib/utils'
+import { buildStringFromTemplate, validate } from '@/lib/utils'
 import Errors from '@/manage/components/errors'
 import Link from '@/manage/components/link'
 import { useObjectTypesAndFormsAndSchemas } from '@/manage/object_type/useObjectTypeList'
@@ -33,7 +33,7 @@ import { useSlug } from '@/manage/components/useSlug'
 import SampleFileObject from '../custom_inputs/sample_file_object'
 import CSVUploadForSampleFile from '../custom_inputs/csv_upload_for_sample_file'
 import {
-  getAppVariantComponent,
+  useAppVariantComponent,
   type AppVariantComponentProps,
 } from '@/AppVariantComponents'
 import { useObjectTypeFull } from '@/manage/object_type/useObjectType'
@@ -508,13 +508,11 @@ export const SelectDocumentForm = ({
   documentCreatePath,
   filters,
 }: ISelectDocumentFormProps): ReactElement => {
-  const variantId = getAppVariantId()
   const createEntryProps: AppVariantComponentProps['CreateDocumentEntry'] = {
     returnToOnSuccess,
     documentCreatePath,
   }
-  const VariantCreateDocumentEntry = getAppVariantComponent(
-    variantId,
+  const VariantCreateDocumentEntry = useAppVariantComponent(
     'CreateDocumentEntry',
     createEntryProps
   )

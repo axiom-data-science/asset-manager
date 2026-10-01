@@ -12,6 +12,7 @@ import {
   OIDC_SCOPE
 } from './config/config.ts'
 import { BrowserRouter } from 'react-router-dom';
+import { AppVariantProvider } from '@/variants/context'
 
 
 console.log(`OIDC_AUTHORITY: ${OIDC_AUTHORITY}`)
@@ -44,10 +45,12 @@ const oidcConfig: AuthProviderProps = {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
-      <AuthProvider {...oidcConfig}>
-        <App />
-      </AuthProvider>
-    </BrowserRouter>
+    <AppVariantProvider>
+      <BrowserRouter>
+        <AuthProvider {...oidcConfig}>
+          <App />
+        </AuthProvider>
+      </BrowserRouter>
+    </AppVariantProvider>
   </StrictMode>,
 )

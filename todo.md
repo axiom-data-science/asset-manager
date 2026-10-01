@@ -19,7 +19,7 @@
 ## Branding
 
 - [x] Add a typed application-owned `AppVariantDefinition` and variant resolver tests.
-- [ ] Resolve the active brand once through a provider instead of calling `getBrand()` at each override point.
+- [x] Resolve and lazily load the active application variant once through `AppVariantProvider`; unused variant modules remain in separate unloaded chunks.
 - [x] Render registered component types through JSX; remove the core variant contract's dependency on MODL prop types.
 - [x] Add explicit runtime variant configuration, with hostname and query selection retained as compatibility/development fallbacks.
 - [ ] Support brand metadata, assets, theme tokens, navigation additions, and known-schema CSV view definitions through the typed boundary.

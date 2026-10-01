@@ -37,9 +37,8 @@ import AuthentikUsers from '@/examples/authentik-users'
 import { SITE_TITLE } from './config/config'
 import ListFilesLoader from './manage/document_file/list'
 import ImportRecordsPage from './import/pages'
-import { getAppVariantId } from '@/lib/utils'
 import {
-  getAppVariantComponent,
+  useAppVariantComponent,
   type AppVariantComponentProps,
 } from '@/AppVariantComponents'
 import { fetchPredicates } from '@/manage/document/services'
@@ -91,22 +90,20 @@ const queryClient = new QueryClient({
   },
 })
 
-const Header = ({ variantId }: { variantId?: string }): ReactElement => {
-  variantId = variantId ?? getAppVariantId()
-  const VariantHeader = getAppVariantComponent(variantId, 'Header')
+const Header = (): ReactElement => {
+  const VariantHeader = useAppVariantComponent('Header')
   if (VariantHeader) {
     return VariantHeader
   }
   return <></>
 }
 
-const EntryPage = ({ variantId }: { variantId?: string }): ReactElement => {
-  variantId = variantId ?? getAppVariantId()
+const EntryPage = (): ReactElement => {
   const props: AppVariantComponentProps['HomePage'] = {
     returnToOnSuccess: '/create-document-success',
     documentCreatePath: '/create-document',
   }
-  const VariantEntryPage = getAppVariantComponent(variantId, 'HomePage', props)
+  const VariantEntryPage = useAppVariantComponent('HomePage', props)
 
   if (VariantEntryPage) {
     return VariantEntryPage
@@ -119,10 +116,9 @@ const EntryPage = ({ variantId }: { variantId?: string }): ReactElement => {
   )
 }
 
-const LoginPage = ({ variantId }: { variantId?: string }): ReactElement => {
-  variantId = variantId ?? getAppVariantId()
+const LoginPage = (): ReactElement => {
   const auth = useAuth()
-  const VariantLoginPage = getAppVariantComponent(variantId, 'LoginPage')
+  const VariantLoginPage = useAppVariantComponent('LoginPage')
   if (VariantLoginPage) {
     return VariantLoginPage
   }
@@ -134,16 +130,11 @@ const LoginPage = ({ variantId }: { variantId?: string }): ReactElement => {
   )
 }
 
-const DocumentSuccessPage = ({ variantId }: { variantId?: string }): ReactElement => {
-  variantId = variantId ?? getAppVariantId()
+const DocumentSuccessPage = (): ReactElement => {
   const props: AppVariantComponentProps['DocumentSuccessPage'] = {
     action: 'created',
   }
-  const VariantDocumentSuccessPage = getAppVariantComponent(
-    variantId,
-    'DocumentSuccessPage',
-    props
-  )
+  const VariantDocumentSuccessPage = useAppVariantComponent('DocumentSuccessPage', props)
   if (VariantDocumentSuccessPage) {
     return VariantDocumentSuccessPage
   }

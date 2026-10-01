@@ -33,7 +33,7 @@ export interface AppVariantDefinition {
 }
 ```
 
-Resolve the active definition once in an `AppVariantProvider` and access it through `useAppVariant()`. Component overrides should be React component types rendered through JSX, not component functions invoked directly. Shared component props belong to the application variant API and must not import types from an individual variant.
+Resolve the active definition once in `AppVariantProvider` and access it through `useAppVariant()`. The registry dynamically imports and caches the selected variant module, so unused variants are not downloaded or evaluated. Component overrides are React component types rendered through JSX, not component functions invoked directly. Shared component props belong to the application variant API and must not import types from an individual variant.
 
 Runtime configuration should select a bundled brand by explicit brand ID. Hostname and query-string detection may remain as development or compatibility fallbacks, but brand selection should not depend on a loose hostname substring match.
 
@@ -44,7 +44,7 @@ Known-schema CSV views should remain declarative configurations over the shared 
 1. Add tests for default, environment, hostname, and query-string variant resolution.
 2. Move shared override props out of `app-variants/modl` and define a typed application-owned contract.
 3. Return component types from the registry and render overrides through JSX.
-4. Add `AppVariantProvider` and `useAppVariant()` so the variant is resolved once.
+4. Add `AppVariantProvider` and `useAppVariant()` so the variant is resolved and lazily loaded once. (Complete.)
 5. Add explicit runtime variant configuration and preserve selection through authentication redirects.
 6. Apply title, favicon, asset paths, and CSS theme variables from the active definition.
 7. Add declarative navigation and known-schema CSV view registration where product needs require them.

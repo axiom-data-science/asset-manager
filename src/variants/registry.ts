@@ -1,19 +1,29 @@
-import { MODLComponents } from '@/app-variants/modl'
 import type { AppVariantDefinition } from './types'
 
-export const appVariants = {
-    modl: {
-        id: 'modl',
-        branding: {
-            siteTitle: 'MODL Asset Manager',
-        },
-        components: MODLComponents,
-    },
-} satisfies Record<string, AppVariantDefinition>
+type AppVariantModule = {
+    appVariant: AppVariantDefinition
+}
 
-export const getAppVariantDefinition = (
+type AppVariantLoader = () => Promise<AppVariantModule>
+
+export const appVariantLoaders = {
+    modl: () => import('@/app-variants/modl'),
+} satisfies Record<string, AppVariantLoader>
+
+const appVariantCache = new Map<string, Promise<AppVariantDefinition | undefined>>()
+
+export const loadAppVariantDefinition = (
     variantId: string | undefined
-): AppVariantDefinition | undefined => {
-    if (!variantId) return undefined
-    return appVariants[variantId as keyof typeof appVariants]
+): Promise<AppVariantDefinition | undefined> => {
+    if (!variantId) return Promise.resolve(undefined)
+
+    const cached = appVariantCache.get(variantId)
+    if (cached) return cached
+
+    const loader = appVariantLoaders[variantId as keyof typeof appVariantLoaders]
+    if (!loader) return Promise.resolve(undefined)
+
+    const pending = loader().then(({ appVariant }) => appVariant)
+    appVariantCache.set(variantId, pending)
+    return pending
 }

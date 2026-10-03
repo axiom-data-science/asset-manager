@@ -95,8 +95,8 @@
       ]
     },
     "contributor": {
-      "type": "object",
-      "additionalProperties": {
+      "type": "array",
+      "items": {
         "type": "object",
         "properties": {
           "role": {

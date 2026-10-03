@@ -1,0 +1,7 @@
+label,slug,external_id,description,category,year,active,tags,notes
+North Pier Sensor,north-pier-sensor,TM-001,"Temperature sensor at the north pier",weather,2024,true,"temperature;coastal","Installed during spring survey"
+South Pier Sensor,south-pier-sensor,TM-002,"Temperature sensor at the south pier",weather,2024,true,"temperature;coastal",""
+Harbor Camera,harbor-camera,TM-003,"Camera covering the harbor entrance",security,2023,false,"video;coastal","Requires lens cleaning"
+Mooring 12,mooring-12,TM-004,"Mooring with a comma, near the east channel",infrastructure,2022,true,"mooring;channel","Check chain length"
+Acoustic Receiver,acoustic-receiver,TM-005,,research,2025,true,"audio;marine","Description intentionally blank"
+Old Weather Station,old-weather-station,TM-006,"Retired weather station",weather,2019,false,"temperature;retired","No longer transmitting"

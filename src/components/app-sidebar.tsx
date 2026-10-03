@@ -37,6 +37,7 @@ import headerStateAtom from '@/state/headerStateAtom'
 import { useAtom } from 'jotai'
 import importConfigs from '@/import/config'
 import type { ReactElement } from 'react'
+import { useAppVariant } from '@/variants/context'
 
 const SidebarNavItem = ({
   name,
@@ -127,6 +128,7 @@ const SidebarCollapsibleSection = ({
 
 export function AppSidebar() {
   const auth = useAuth()
+  const { definition } = useAppVariant()
   const [headerState] = useAtom(headerStateAtom)
   const navGroups = [
     {
@@ -316,6 +318,11 @@ export function AppSidebar() {
           url: '/import/csv/test-array',
         },
       ].concat(
+        (definition?.csvImportViews ?? []).map((view) => ({
+          name: view.label,
+          icon: FileSpreadsheet,
+          url: view.path,
+        })),
         importConfigs.map((config) => {
           return {
             name: config.label,

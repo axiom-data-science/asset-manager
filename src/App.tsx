@@ -60,6 +60,7 @@ import CreateRelationship from '@/manage/relationship/create'
 import EditPredicate from '@/manage/predicate/edit'
 import CreatePredicate from '@/manage/predicate/create'
 import ListPredicates from '@/manage/predicate/list'
+import { useAppVariant } from '@/variants/context'
 
 const makeSiteTitle = (pageTitle?: string) => {
   return `${SITE_TITLE}${pageTitle ? ` - ${pageTitle}` : ''}`
@@ -143,6 +144,7 @@ const DocumentSuccessPage = (): ReactElement => {
 
 function App(): ReactElement {
   const auth = useAuth()
+  const { definition } = useAppVariant()
   console.log(auth)
 
   return (
@@ -625,6 +627,17 @@ function App(): ReactElement {
                 })}
               </>
             </Route>
+            {definition?.csvImportViews?.map((view) => (
+              <Route
+                key={view.id}
+                path={view.path}
+                element={
+                  <SidebarLayout>
+                    <CSVImportPage viewConfig={view.config} />
+                  </SidebarLayout>
+                }
+              />
+            ))}
           </Routes>
         )}
       </>

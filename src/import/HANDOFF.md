@@ -306,3 +306,24 @@ The relationship ordering investigation is now part of the next relationship-des
 - `src/config/config.ts`: optional import merge RPC runtime setting.
 
 No shared PostgREST or document service implementation was changed.
+
+## Resume note: PAM known-type CSV import (2026-10-02)
+
+Completed groundwork in this session:
+
+- `App.tsx` mounts known CSV views registered on the active app variant as routes.
+- `app-sidebar.tsx` lists those registered views under Imports.
+- The PAM-specific view has not been added yet; it should be a declarative `CSVImportViewConfig` on `src/app-variants/pam/index.tsx`, reusing `CSVImportPage` and the configured upload slots.
+- Document create/edit now share mapped label/description resolution. Edit validation resolves schema `$ref`s through a tested helper; the app-level edit label and validation flow were verified by the user.
+
+PAM workflow details supplied by the user:
+
+- Primary known type and filename: `pam_project`, `pam_project.csv`.
+- Document hierarchy: `pam_project` has child type `pam_site`; `pam_site` has child type `pam_deployment`.
+- `pam_deployment` has array fields `recordings` and `analyses`, each to be populated from its own CSV source and embedded into the deployment document. Array item headers should be discovered at upload time and mapped against the backend array-item schema as closely as possible.
+
+Before implementing the PAM view, confirm whether backend object type metadata already declares both child relationships, including predicates and any match-field rules. The current user-configured CSV relationship editor models one parent-child link per source, so it cannot directly configure `pam_site` as both child and parent. The relationship planner can consume multiple fixed rules or backend `expected_child_types`; if those are not configured, extend the shared CSV relationship editor/planner rather than hiding the missing link in the PAM config.
+
+Array targets can be configured for `recordings` and `analyses` under the `pam_deployment` source. Their parent/row lookup columns can be chosen at runtime from discovered CSV headers; confirm whether these should remain user-selected or be fixed when the source columns are known. Exact filenames for the site, deployment, and array CSVs are not required for configured upload slots, which accept files directly.
+
+Latest verification before handoff: document metadata and ref-aware validation tests pass; production build passes with existing Quicktype browser-externalization and large-chunk warnings. The PAM-specific CSV route/config and authenticated PAM import validation remain outstanding.

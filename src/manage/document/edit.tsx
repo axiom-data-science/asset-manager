@@ -1,5 +1,5 @@
 import { useAuth } from '@/auth/useAuth'
-import { type IValidationError, type IObjectSchema } from '@/types/types'
+import { type IValidationError, type IObjectSchema, type IObjectTypeFieldMappings } from '@/types/types'
 import type { IAssetForm, IDocument, IFormToFieldConfigWithDetails } from '@/types/types'
 import {
   FormCreator,
@@ -218,11 +218,13 @@ const EditDocumentForm = ({
   schema,
   assetForm,
   fieldConfigs,
+  fieldMappings,
 }: {
   document: IDocument
   schema: IObjectSchema
   assetForm?: IAssetForm | null
   fieldConfigs?: IFormToFieldConfigWithDetails[]
+  fieldMappings?: IObjectTypeFieldMappings
 }): ReactElement => {
   const navigate = useNavigate()
   const [errors, setErrors] = useState<IValidationError[]>([])
@@ -303,6 +305,7 @@ const EditDocumentForm = ({
         form,
         formValues,
         isUsingDataForm,
+        fieldMappings,
         schema: schema.json_schema,
         validate,
       })
@@ -395,6 +398,7 @@ const LoadSchemaAndCreateDocumentForm = ({
         document={document}
         schema={data.object_schema}
         assetForm={data.forms.find((f) => f.is_schema_and_version_default) ?? data.forms[0]}
+        fieldMappings={objectType.data?.field_mappings}
       />
     ) : null
   return (

@@ -4,8 +4,16 @@ import { fetchDocument, patchDocument } from '@/manage/document/services'
 import { documentListQueryKey } from '@/manage/document/useDocumentList'
 import { fetchObjectType } from '@/manage/object_type/services'
 import { lockDocument, unlockDocument } from '@/services/postgrest/services'
-import type { IDocument, IObjectType, IPostgrestParams, IValidationError } from '@/types/types'
-import type { IForm, IFormValues } from '@axdspub/axiom-ui-forms'
+import type {
+  IDocument,
+  IObjectType,
+  IObjectTypeFieldMappings,
+  IPostgrestParams,
+  IValidationError,
+} from '@/types/types'
+import { getters, type IForm, type IFormValues } from '@axdspub/axiom-ui-forms'
+import { getDocumentMetadata } from './documentMetadata'
+import { validateDocumentForm } from './documentValidation'
 import {
   queryOptions,
   useMutation,
@@ -176,6 +184,7 @@ export const useSaveDocumentMutation = () => {
       form,
       formValues,
       isUsingDataForm,
+      fieldMappings,
       schema,
       validate,
     }: {
@@ -183,6 +192,7 @@ export const useSaveDocumentMutation = () => {
       form: IForm
       formValues: IFormValues
       isUsingDataForm: boolean
+      fieldMappings?: IObjectTypeFieldMappings
       schema?: Record<string, unknown>
       validate: ({
         form,
@@ -195,7 +205,7 @@ export const useSaveDocumentMutation = () => {
       }) => Promise<{ valid: boolean; errors: IValidationError[] }>
     }) => {
       // Run validation first
-      const result = await validate({ form, formValues, schema })
+      const result = await validateDocumentForm({ form, formValues, schema, validate })
       if (!result.valid) {
         return {
           valid: false,
@@ -204,23 +214,41 @@ export const useSaveDocumentMutation = () => {
       }
 
       // Merge and save
-      const cleanValues = removeUndefinedAndNullKeys(formValues)
+      const cleanValues = removeUndefinedAndNullKeys(
+        // get only form values intended for saving according to the form
+        getters.getFormPayload(formValues, form)
+      )
       const mergedData = {
         ...(document.data as JSON),
         ...(isUsingDataForm ? cleanValues : (cleanValues.data as JSON)),
       }
+      const { label, description } = getDocumentMetadata({
+        formValues,
+        valuesToSave: cleanValues as IFormValues,
+        labelPath: fieldMappings?.label,
+        descriptionPath: fieldMappings?.description,
+      })
 
       const mergedDocument = {
         ...document,
-        label:
-          formValues.label ??
-          formValues.title ??
-          formValues.platform_name ??
-          formValues.station_label ??
-          'Untitled Document',
-        description: formValues.description ?? '',
+        label,
+        description,
         data: mergedData,
       } as IDocument
+
+      const valid = await validateDocumentForm({
+        form,
+        formValues: cleanValues as IFormValues,
+        schema,
+        validate,
+      })
+      if (!valid.valid) {
+        return {
+          valid: false,
+          errors: valid.errors
+        }
+      }
+
 
       const updatedDoc = patchDocument({
         uuid: document.uuid,

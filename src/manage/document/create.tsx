@@ -12,6 +12,8 @@ import type {
 } from '@/types/types'
 import {
   FormCreator,
+  getters,
+  resolveRefs,
   schemaToFormUtils,
   type IForm,
   type IFormFieldOverride,
@@ -20,7 +22,7 @@ import {
 import { Button, Loader, utils, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
 import { useState, type ReactElement } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { get, omit } from 'lodash-es'
+import { omit } from 'lodash-es'
 import { buildStringFromTemplate, validate } from '@/lib/utils'
 import Errors from '@/manage/components/errors'
 import Link from '@/manage/components/link'
@@ -44,6 +46,8 @@ import { fetchSingleFromPostgrest, postToPostgrest } from '@/services/postgrest/
 import { fetchObjectType } from '../object_type/services'
 import EditDocument from './edit'
 import StateSelector from '@/manage/custom_inputs/state_selector'
+import { getDocumentMetadata } from './documentMetadata'
+
 
 const CreateDocumentForm = ({
   type,
@@ -140,10 +144,12 @@ const CreateDocumentForm = ({
     autoSlug: true,
   })
 
+
   const onSave = async () => {
     setSaving(true)
-    const valuesToSave = filterForSave(formValues)
-    const valid = await validate({ form, formValues: valuesToSave, schema: schema.json_schema })
+    const cleanFormValues = getters.getFormPayload(formValues, form)
+    const valuesToSave = filterForSave(cleanFormValues)
+    const valid = await validate({ form, formValues: valuesToSave, schema: resolveRefs(schema.json_schema) as Record<string, unknown> })
     if (!valid.valid && valid.errors.length > 0) {
       setErrors(valid.errors)
       setSaving(false)
@@ -155,21 +161,13 @@ const CreateDocumentForm = ({
     }
     setErrors([])
     try {
-      const defaultLabel =
-        formValues.label ??
-        formValues.title ??
-        formValues.platform_name ??
-        formValues.station_label ??
-        'Untitled Document'
-      const label = type.data?.field_mappings?.label
-        ? get(valuesToSave, type.data.field_mappings.label, defaultLabel)
-        : defaultLabel
-
+      const { label, description } = getDocumentMetadata({
+        formValues,
+        valuesToSave,
+        labelPath: type.data?.field_mappings?.label,
+        descriptionPath: type.data?.field_mappings?.description,
+      })
       const slug = formValues.slug ?? null
-      const defaultDescription = formValues.description ?? ''
-      const description = type.data?.field_mappings?.description
-        ? get(valuesToSave, type.data.field_mappings.description, defaultDescription)
-        : defaultDescription
 
       const docToSave = {
         object_type_uuid: type.uuid,

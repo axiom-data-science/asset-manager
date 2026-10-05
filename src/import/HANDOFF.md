@@ -322,8 +322,19 @@ PAM workflow details supplied by the user:
 - Document hierarchy: `pam_project` has child type `pam_site`; `pam_site` has child type `pam_deployment`.
 - `pam_deployment` has array fields `recordings` and `analyses`, each to be populated from its own CSV source and embedded into the deployment document. Array item headers should be discovered at upload time and mapped against the backend array-item schema as closely as possible.
 
-Before implementing the PAM view, confirm whether backend object type metadata already declares both child relationships, including predicates and any match-field rules. The current user-configured CSV relationship editor models one parent-child link per source, so it cannot directly configure `pam_site` as both child and parent. The relationship planner can consume multiple fixed rules or backend `expected_child_types`; if those are not configured, extend the shared CSV relationship editor/planner rather than hiding the missing link in the PAM config.
+Backend definitions were confirmed on 2026-10-04 through PostgREST at `http://localhost:3345`. All three object types have default schemas; `pam_project.expected_child_types` declares `pam_site`, and `pam_site.expected_child_types` declares `pam_deployment`, both using `to_parent_predicate: has_child` (the child-side predicate is `has_parent`). The deployment schema defines `recordings` and `analyses` as arrays with object item schemas. This endpoint is machine-local; on another machine, verify the active API environment points to the intended backend before relying on these records.
 
-Array targets can be configured for `recordings` and `analyses` under the `pam_deployment` source. Their parent/row lookup columns can be chosen at runtime from discovered CSV headers; confirm whether these should remain user-selected or be fixed when the source columns are known. Exact filenames for the site, deployment, and array CSVs are not required for configured upload slots, which accept files directly.
+Confirmed CSV join fields:
+
+- Project to site: parent `pam_project.project` matches child `pam_site.project`.
+- Site to deployment: parent `pam_site.siteOrCruiseName` matches child `pam_deployment.site`.
+- Deployment to recordings array: parent `pam_deployment.deploymentTitle` matches the recordings row `deploymentTitle`.
+- Deployment to analyses array: parent `pam_deployment.deploymentTitle` matches the analyses row `deploymentTitle`.
+
+The relationship planner supports explicit parent/child match fields, and configured array targets accept parent and row match fields. Exact filenames for the site, deployment, and array CSVs are not required for configured upload slots, which accept files directly.
+
+Agreed site-location workflow: use one PAM CSV entry page with four clear `locationDetail` choices: stationary marine, stationary terrestrial, mobile marine, and multipoint stationary marine. The selected branch should guide field mapping and construct the corresponding discriminator/value shape while retaining the backend schema as the validation source. Do not add four separately maintained routes unless later usability testing calls for that.
+
+Remaining implementation/validation work: add the declarative PAM CSV view, ensure related document sources execute in dependency order, and extend CSV field discovery/mapping for the selected `pam_site.locationDetail` `oneOf` branch and its `$ref`s as needed. Confirm representative site CSV headers/shape for each location type before implementing branch-specific mapping. Authenticated end-to-end PAM import validation remains outstanding.
 
 Latest verification before handoff: document metadata and ref-aware validation tests pass; production build passes with existing Quicktype browser-externalization and large-chunk warnings. The PAM-specific CSV route/config and authenticated PAM import validation remain outstanding.

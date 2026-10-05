@@ -297,10 +297,20 @@
 - [x] Map array spreadsheet columns to the parent schema's existing `items` schema rather than a separate document type/schema.
 - [ ] Defer multiple spreadsheets contributing to the same array until a concrete use case requires it.
 - [ ] Provide configured upload slots for known-type workflows, with a label and description targeting the expected document type or array field.
-  - Deferred while the required backend schemas and object types are prepared.
+  - PAM is the next known-type view; its concrete configuration and prerequisites are tracked in the PAM continuation checklist below.
   - Reuse `CSVImportPage` with route-specific `CSVImportViewConfig` and `sourceConfigs`, following `/import/csv/test-array`; do not copy the CSV workflow into separate page implementations.
   - Each production configuration needs backend object-type slugs, source keys/labels/descriptions, expected filenames or columns, mapping mode, and any fixed roles, relationship rules, or array targets. Backend default schemas are loaded by object-type slug, so local schema imports are not required when those records already exist.
   - Keep route registration and brand-specific discovery separate from the shared CSV import behavior so branded instances can supply their own configured views later.
+- [ ] Implement PAM known-type CSV import as a declarative known-schema view over `CSVImportPage`.
+  - **Outside import:** register the view in `src/app-variants/pam/index.tsx`; route and navigation registration already support variant-provided CSV views.
+  - Backend definitions were confirmed on 2026-10-04 at `http://localhost:3345`: default schemas exist for `pam_project`, `pam_site`, and `pam_deployment`; recheck the active backend on another machine because this URL is local to the confirming machine.
+  - Backend `expected_child_types` declares `pam_project` -> `pam_site` -> `pam_deployment`, with `to_parent_predicate: has_child` (child-side predicate `has_parent`). Keep schemas and this relationship metadata backend-owned.
+  - Configure document joins: parent `pam_project.project` to child `pam_site.project`; parent `pam_site.siteOrCruiseName` to child `pam_deployment.site`.
+  - Configure array source slots targeting `pam_deployment.recordings` and `pam_deployment.analyses`; in both, match parent `deploymentTitle` to row `deploymentTitle`.
+  - Agreed UX: one PAM entry page with four clear `locationDetail` choices: stationary marine, stationary terrestrial, mobile marine, and multipoint stationary marine. Construct the selected `oneOf` branch and validate against the backend schema; do not duplicate the schema in frontend configuration.
+  - Before branch-specific site mapping, obtain representative headers/examples for each location type. Extend schema field discovery/mapping for `oneOf` and `$ref` only as needed to support those data shapes.
+  - Resolve dependency-aware CSV document execution so project and site parents persist before their child sources; retain missing, ambiguous, and out-of-order diagnostics.
+  - Add focused tests for configured source/array mapping, both relationship rules, all four `locationDetail` branches, and dependency ordering; then perform authenticated end-to-end validation against the intended backend.
 - [ ] Provide targeted upload-slot guidance when a relationship source or one or more array-field spreadsheets are expected.
 - [x] Extend configured upload slots with an explicit array-field target and persist its rows into the parent document's array instead of importing the spreadsheet as separate documents.
   - Live verification of configured array uploads is tracked under `Current next steps` above.

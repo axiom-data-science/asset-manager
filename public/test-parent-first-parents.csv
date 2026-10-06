@@ -1,0 +1,3 @@
+label,slug,external_id,description,code,category
+Parent saved,parent-first-saved,PFP-001,Parent record expected to save,PF-OK,workflow
+Parent failure,parent-first-failure,PFP-002,Parent record used for simulated failure,PF-FAIL,workflow

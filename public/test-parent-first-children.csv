@@ -1,0 +1,3 @@
+label,slug,external_id,description,parent_code,measurement
+Child of saved parent,parent-first-child-saved,PFC-001,Child linked to the saved parent,PF-OK,12.5
+Child of failed parent,parent-first-child-failure,PFC-002,Child linked to the failed parent,PF-FAIL,6.5

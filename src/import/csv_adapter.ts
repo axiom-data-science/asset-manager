@@ -5,7 +5,9 @@ import type {
   ImportCandidate,
   ImportSourceAdapter,
 } from './types'
+import type { IObjectTypeFieldMappings } from '@/types/types'
 import type { JSONSchema6 } from 'json-schema'
+import { get } from 'lodash-es'
 
 export type CSVImportMapping = {
   label?: string
@@ -23,9 +25,52 @@ export type CSVSchemaField = {
   required: boolean
 }
 
-export const getCSVSchemaFields = (
+const resolveLocalSchemaRefs = (
+  schema: unknown,
+  root: unknown,
+  refStack = new Set<string>()
+): unknown => {
+  if (Array.isArray(schema))
+    return schema.map((value) => resolveLocalSchemaRefs(value, root, refStack))
+  if (schema === null || typeof schema !== 'object') return schema
+
+  let resolved = schema as Record<string, unknown>
+  const reference = resolved.$ref
+  if (typeof reference === 'string' && reference.startsWith('#/') && !refStack.has(reference)) {
+    const target = reference
+      .slice(2)
+      .split('/')
+      .map((part) => part.replace(/~1/g, '/').replace(/~0/g, '~'))
+      .reduce<unknown>((current, part) =>
+        current !== null && typeof current === 'object'
+          ? (current as Record<string, unknown>)[part]
+          : undefined, root)
+    if (target !== null && typeof target === 'object' && !Array.isArray(target)) {
+      const nextRefStack = new Set(refStack).add(reference)
+      const siblings = Object.fromEntries(
+        Object.entries(resolved).filter(([key]) => key !== '$ref')
+      )
+      resolved = resolveLocalSchemaRefs(
+        { ...(target as Record<string, unknown>), ...siblings },
+        root,
+        nextRefStack
+      ) as Record<string, unknown>
+      return resolved
+    }
+  }
+
+  return Object.fromEntries(
+    Object.entries(resolved).map(([key, value]) => [
+      key,
+      resolveLocalSchemaRefs(value, root, refStack),
+    ])
+  )
+}
+
+const getCSVSchemaFieldsFromResolved = (
   schema: JSONSchema6 | undefined,
-  parentPath = ''
+  parentPath: string,
+  branchSelections: Record<string, string>
 ): CSVSchemaField[] => {
   if (!schema?.properties || typeof schema.properties !== 'object') return []
   const requiredFields = new Set(schema.required ?? [])
@@ -35,15 +80,45 @@ export const getCSVSchemaFields = (
       if (!property || typeof property === 'boolean') return []
       const path = parentPath ? `${parentPath}.${id}` : id
       const title = typeof property.title === 'string' ? property.title : id
-      const nestedFields = getCSVSchemaFields(property, path)
+      const selectedBranch = branchSelections[path]
+      const branches = property.oneOf?.filter((branch): branch is JSONSchema6 => {
+        if (typeof branch === 'boolean') return false
+        if (!selectedBranch) return true
+        const typeProperty = branch.properties?.type
+        return Boolean(
+          typeProperty && typeof typeProperty !== 'boolean' && typeProperty.const === selectedBranch
+        )
+      })
+      const nestedFields = branches?.length
+        ? branches.flatMap((branch) =>
+          getCSVSchemaFieldsFromResolved(branch, path, branchSelections)
+        )
+        : getCSVSchemaFieldsFromResolved(property, path, branchSelections)
       const arrayItem = Array.isArray(property.items) ? property.items[0] : property.items
+      const scalarArrayItem =
+        arrayItem && typeof arrayItem !== 'boolean' && !arrayItem.properties
       const arrayFields =
-        arrayItem && typeof arrayItem !== 'boolean'
-          ? getCSVSchemaFields(arrayItem, `${path}[]`)
+        arrayItem && typeof arrayItem !== 'boolean' && !scalarArrayItem
+          ? getCSVSchemaFieldsFromResolved(arrayItem, `${path}[]`, branchSelections)
           : []
-      return [{ id, path, title, required: requiredFields.has(id) }, ...nestedFields, ...arrayFields]
+      const fieldPath = scalarArrayItem ? `${path}[]` : path
+      return [
+        { id, path: fieldPath, title, required: requiredFields.has(id) },
+        ...nestedFields,
+        ...arrayFields,
+      ]
     })
     .sort((left, right) => Number(right.required) - Number(left.required))
+}
+
+export const getCSVSchemaFields = (
+  schema: JSONSchema6 | undefined,
+  parentPath = '',
+  branchSelections: Record<string, string> = {}
+): CSVSchemaField[] => {
+  if (!schema) return []
+  const resolved = resolveLocalSchemaRefs(schema, schema) as JSONSchema6
+  return getCSVSchemaFieldsFromResolved(resolved, parentPath, branchSelections)
 }
 
 export const getCSVSchemaAtPath = (
@@ -78,10 +153,11 @@ export const getCSVArrayItemSchema = (
 
 export const inferCSVSchemaFieldMappings = (
   columns: string[],
-  schema: JSONSchema6 | undefined
+  schema: JSONSchema6 | undefined,
+  branchSelections: Record<string, string> = {}
 ): Record<string, string> => {
   const normalize = (value: string): string => value.toLowerCase().replace(/[^a-z0-9]/g, '')
-  const schemaFields = getCSVSchemaFields(schema)
+  const schemaFields = getCSVSchemaFields(schema, '', branchSelections)
   return Object.fromEntries(
     columns
       .map((column) => {
@@ -114,6 +190,8 @@ export type CSVImportAdapterOptions = {
   relationshipRules?: ImportSourceAdapter['relationshipRules']
   relationshipFields?: string[]
   arrayTarget?: ImportArraySourceTarget
+  fixedFields?: Record<string, unknown>
+  fieldMappings?: IObjectTypeFieldMappings
   sourceKey?: string
   schema?: JSONSchema6
 }
@@ -187,6 +265,14 @@ const fallbackSlug = (value: string, index: number): string => {
 const rowValue = (row: Record<string, string | number>, key: string | undefined): string =>
   valueAsText(key ? row[key] : undefined)
 
+const mappedFieldValue = (data: Record<string, unknown>, path: string | undefined): string | undefined => {
+  if (!path) return undefined
+  const value = get(data, path)
+  if (typeof value !== 'string' && typeof value !== 'number') return undefined
+  const text = String(value).trim()
+  return text || undefined
+}
+
 const setMappedValue = (target: Record<string, unknown>, path: string, value: unknown): void => {
   const segments = path.split('.')
   const segment = segments.shift()
@@ -198,7 +284,14 @@ const setMappedValue = (target: Record<string, unknown>, path: string, value: un
     return
   }
   if (isArray) {
-    const item: Record<string, unknown> = {}
+    const previousItems = target[key]
+    const item =
+      Array.isArray(previousItems) &&
+        previousItems[0] !== null &&
+        typeof previousItems[0] === 'object' &&
+        !Array.isArray(previousItems[0])
+        ? (previousItems[0] as Record<string, unknown>)
+        : {}
     target[key] = [item]
     setMappedValue(item, segments.join('.'), value)
     return
@@ -208,20 +301,58 @@ const setMappedValue = (target: Record<string, unknown>, path: string, value: un
   setMappedValue(nested, segments.join('.'), value)
 }
 
+const mapCSVRowToData = (
+  row: Record<string, string | number>,
+  mapping: CSVImportMapping,
+  relationshipFields: string[]
+): Record<string, unknown> => {
+  const dataColumns = mapping.dataColumns
+  const mappedRoleColumns = [mapping.label, mapping.slug, mapping.externalId, mapping.description]
+    .filter((column): column is string =>
+      Boolean(column && dataColumns?.includes(column) && mapping.fieldMappings?.[column])
+    )
+  const columns = new Set([...(dataColumns ?? []), ...relationshipFields, ...mappedRoleColumns])
+  return Object.keys(mapping.fieldMappings ?? {}).length > 0
+    ? [...columns].reduce<Record<string, unknown>>((mappedData, sourceColumn) => {
+      setMappedValue(
+        mappedData,
+        mapping.fieldMappings?.[sourceColumn] ?? sourceColumn,
+        row[sourceColumn] ?? ''
+      )
+      return mappedData
+    }, {})
+    : columns.size > 0
+      ? Object.fromEntries(
+        [...columns].map((key) => [key, row[key] ?? ''])
+      )
+      : row
+}
+
 const createCandidate = (
   row: Record<string, string | number>,
   index: number,
   sourceId: string,
-  mapping: CSVImportMapping
+  mapping: CSVImportMapping,
+  relationshipFields: string[],
+  fieldMappings?: IObjectTypeFieldMappings
 ): ImportCandidate => {
-  const externalId = rowValue(row, mapping.externalId) || String(index + 1)
+  const data = mapCSVRowToData(row, mapping, relationshipFields)
+  const mappedSlug = mappedFieldValue(data, fieldMappings?.slug)
   const label =
-    rowValue(row, mapping.label) || rowValue(row, mapping.externalId) || `Row ${index + 1}`
-  const slug = rowValue(row, mapping.slug) || fallbackSlug(label, index)
+    mappedFieldValue(data, fieldMappings?.label) ||
+    rowValue(row, mapping.label) ||
+    rowValue(row, mapping.externalId) ||
+    `Row ${index + 1}`
+  const slug = mappedSlug || rowValue(row, mapping.slug) || fallbackSlug(label, index)
+  const externalId =
+    mappedSlug || rowValue(row, mapping.externalId) || (fieldMappings ? slug : String(index + 1))
+  const description =
+    mappedFieldValue(data, fieldMappings?.description) || rowValue(row, mapping.description)
   return {
     uuid: externalId,
     label,
     slug,
+    description,
     data: row,
     provenance: { sourceId, externalId },
   }
@@ -230,42 +361,24 @@ const createCandidate = (
 const createRecord = (
   candidate: ImportCandidate,
   mapping: CSVImportMapping,
-  relationshipFields: string[]
+  relationshipFields: string[],
+  fixedFields: Record<string, unknown>,
+  fieldMappings?: IObjectTypeFieldMappings
 ): CanonicalImportRecord => {
-  const description = rowValue(
-    candidate.data as Record<string, string | number>,
-    mapping.description
-  )
-  const dataColumns = mapping.dataColumns
-  const mappedRoleColumns = [mapping.label, mapping.slug, mapping.externalId, mapping.description]
-    .filter((column): column is string =>
-      Boolean(column && dataColumns?.includes(column) && mapping.fieldMappings?.[column])
-    )
-  const columns = new Set([...(dataColumns ?? []), ...relationshipFields, ...mappedRoleColumns])
-  const data =
-    Object.keys(mapping.fieldMappings ?? {}).length > 0
-      ? [...columns].reduce<Record<string, unknown>>((mappedData, sourceColumn) => {
-        setMappedValue(
-          mappedData,
-          mapping.fieldMappings?.[sourceColumn] ?? sourceColumn,
-          (candidate.data as Record<string, string | number>)[sourceColumn] ?? ''
-        )
-        return mappedData
-      }, {})
-      : columns.size > 0
-        ? Object.fromEntries(
-          [...columns].map((key) => [
-            key,
-            (candidate.data as Record<string, string | number>)[key] ?? '',
-          ])
-        )
-        : candidate.data
+  const row = candidate.data as Record<string, string | number>
+  const recordData = mapCSVRowToData(row, mapping, relationshipFields)
+  Object.entries(fixedFields).forEach(([path, value]) => setMappedValue(recordData, path, value))
+  const description =
+    mappedFieldValue(recordData, fieldMappings?.description) ||
+    rowValue(row, mapping.description) ||
+    candidate.description ||
+    ''
   return {
     uuid: candidate.uuid,
-    label: candidate.label,
-    slug: candidate.slug,
+    label: mappedFieldValue(recordData, fieldMappings?.label) || candidate.label,
+    slug: mappedFieldValue(recordData, fieldMappings?.slug) || candidate.slug,
     description,
-    data,
+    data: recordData,
     attrs: {},
     sourceData: candidate.data,
     provenance: candidate.provenance,
@@ -279,6 +392,8 @@ export const createCSVImportAdapter = ({
   relationshipRules,
   relationshipFields = [],
   arrayTarget,
+  fixedFields = {},
+  fieldMappings,
   sourceKey,
   schema,
 }: CSVImportAdapterOptions): ImportSourceAdapter => {
@@ -296,8 +411,11 @@ export const createCSVImportAdapter = ({
     sourceKey,
     schema,
     discover: async () =>
-      getParsed().data.map((row, index) => createCandidate(row, index, id, mapping)),
-    load: async ({ candidate }) => createRecord(candidate, mapping, relationshipFields),
+      getParsed().data.map((row, index) =>
+        createCandidate(row, index, id, mapping, relationshipFields, fieldMappings)
+      ),
+    load: async ({ candidate }) =>
+      createRecord(candidate, mapping, relationshipFields, fixedFields, fieldMappings),
   }
 }
 

@@ -1,0 +1,2 @@
+project,siteOrCruiseName,alternateSiteName,platform,locationDetail.seaArea,locationDetail.locationDerivationDescription,locationDetail.navigationFileURIList[]
+Example PAM Project,Example PAM Site,Example Mobile Site,Research vessel,Northeast Pacific,Position derived from vessel navigation data,https://example.org/pam/navigation.csv

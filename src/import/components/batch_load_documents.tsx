@@ -131,6 +131,7 @@ const BatchLoadDocuments = ({
   onResolveConflict,
   createDocument,
   includeRandomSelector = false,
+  executionBlocked = false,
 }: {
   documents: ImportCandidate<unknown>[]
   getFullDoc: (props: {
@@ -153,6 +154,7 @@ const BatchLoadDocuments = ({
     fullDoc: CanonicalImportRecord
   ) => Promise<{ error?: string; document?: IDocument }>
   includeRandomSelector?: boolean
+  executionBlocked?: boolean
 }): ReactElement => {
   const [data, setData] = useState<ImportRowState[]>(() => createImportRows(documents))
   const documentListKey = importCandidateListKey(documents)
@@ -289,7 +291,7 @@ const BatchLoadDocuments = ({
           />
         </div>
         <Button
-          disabled={isRunning}
+          disabled={isRunning || executionBlocked}
           onClick={() => {
             setStartImport(true)
           }}

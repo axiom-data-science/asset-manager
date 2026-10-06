@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { JSONSchema6 } from 'json-schema'
 import {
   createCSVImportAdapter,
   inferCSVImportMapping,
@@ -60,6 +61,98 @@ describe('createCSVImportAdapter', () => {
       { id: 'metadata', path: 'metadata', title: 'metadata', required: false },
       { id: 'value', path: 'tags[].value', title: 'value', required: false },
     ])
+  })
+
+  it('exposes scalar array item paths for CSV column mapping', () => {
+    const fields = getCSVSchemaFields({
+      type: 'object',
+      properties: {
+        navigationFileURIList: {
+          type: 'array',
+          items: { type: 'string', format: 'uri' },
+        },
+      },
+    })
+
+    expect(fields).toEqual([
+      { id: 'navigationFileURIList', path: 'navigationFileURIList[]', title: 'navigationFileURIList', required: false },
+    ])
+    expect(inferCSVSchemaFieldMappings(['navigationFileURIList[]'], {
+      type: 'object',
+      properties: {
+        navigationFileURIList: {
+          type: 'array',
+          items: { type: 'string', format: 'uri' },
+        },
+      },
+    })).toEqual({ 'navigationFileURIList[]': 'navigationFileURIList[]' })
+  })
+
+  it('discovers fields from the selected oneOf branch and resolves its refs', () => {
+    const fields = getCSVSchemaFields(
+      {
+        type: 'object',
+        definitions: {
+          marineLocation: {
+            type: 'object',
+            properties: {
+              latitude: { type: 'number', title: 'Latitude' },
+            },
+          },
+        },
+        properties: {
+          locationDetail: {
+            oneOf: [
+              {
+                type: 'object',
+                properties: {
+                  type: { type: 'string', const: 'stationary_marine' },
+                  deploymentLocation: { $ref: '#/definitions/marineLocation' },
+                },
+              },
+              {
+                type: 'object',
+                properties: {
+                  type: { type: 'string', const: 'stationary_terrestrial' },
+                  surfaceElevation: { type: 'number', title: 'Surface Elevation' },
+                },
+              },
+            ],
+          },
+        },
+      },
+      '',
+      { locationDetail: 'stationary_marine' }
+    )
+
+    expect(fields.map(({ path }) => path)).toContain('locationDetail.deploymentLocation.latitude')
+    expect(fields.map(({ path }) => path)).not.toContain('locationDetail.surfaceElevation')
+  })
+
+  it.each([
+    ['stationary_marine', 'seaArea'],
+    ['stationary_terrestrial', 'surfaceElevation'],
+    ['mobile_marine', 'navigationFileURIList'],
+    ['multipoint_stationary_marine', 'locations'],
+  ])('exposes only the %s location branch', (choice, expectedField) => {
+    const schema = {
+      type: 'object' as const,
+      properties: {
+        locationDetail: {
+          oneOf: [
+            { type: 'object' as const, properties: { type: { const: 'stationary_marine' }, seaArea: { type: 'string' as const } } },
+            { type: 'object' as const, properties: { type: { const: 'stationary_terrestrial' }, surfaceElevation: { type: 'number' as const } } },
+            { type: 'object' as const, properties: { type: { const: 'mobile_marine' }, navigationFileURIList: { type: 'array' as const } } },
+            { type: 'object' as const, properties: { type: { const: 'multipoint_stationary_marine' }, locations: { type: 'array' as const } } },
+          ],
+        },
+      },
+    } as JSONSchema6
+    const paths = getCSVSchemaFields(schema, '', { locationDetail: choice }).map(({ path }) => path)
+
+    expect(paths).toContain(`locationDetail.${expectedField}`)
+    expect(paths.filter((path) => path.startsWith('locationDetail.') && path !== 'locationDetail.type'))
+      .toEqual([`locationDetail.${expectedField}`])
   })
 
   it('resolves the item schema for an array field', () => {
@@ -189,6 +282,44 @@ describe('createCSVImportAdapter', () => {
     expect(record.data).toEqual({ kind: 'photo', source_note: 'internal' })
   })
 
+  it('derives document metadata from object-type field mappings after CSV mapping', async () => {
+    const adapter = createCSVImportAdapter({
+      id: 'pam-project-source',
+      text: 'project_name,data_submitter\nNorth Pacific Survey,Marine Institute',
+      mapping: {
+        dataColumns: ['project_name', 'data_submitter'],
+        fieldMappings: {
+          project_name: 'project',
+          data_submitter: 'dataSubmitter',
+        },
+      },
+      fieldMappings: {
+        label: 'project',
+        description: 'dataSubmitter',
+      },
+    })
+
+    const [candidate] = await adapter.discover({
+      url: adapter.defaultImportUrl,
+      signal: new AbortController().signal,
+    })
+    const record = await adapter.load({ candidate })
+
+    expect(candidate).toMatchObject({
+      uuid: 'north-pacific-survey',
+      label: 'North Pacific Survey',
+      slug: 'north-pacific-survey',
+      description: 'Marine Institute',
+      provenance: { sourceId: 'pam-project-source', externalId: 'north-pacific-survey' },
+    })
+    expect(record).toMatchObject({
+      label: 'North Pacific Survey',
+      slug: 'north-pacific-survey',
+      description: 'Marine Institute',
+      data: { project: 'North Pacific Survey', dataSubmitter: 'Marine Institute' },
+    })
+  })
+
   it('writes nested and array-item schema mappings as structured data', async () => {
     const adapter = createCSVImportAdapter({
       id: 'csv-assets',
@@ -211,6 +342,80 @@ describe('createCSVImportAdapter', () => {
     expect(record.data).toEqual({
       metadata: { owner: 'Ada' },
       tags: [{ value: 'important' }],
+    })
+  })
+
+  it('combines multiple mapped columns into the same nested array item', async () => {
+    const adapter = createCSVImportAdapter({
+      id: 'pam-site-source',
+      text: 'latitude,longitude\n44.1,-123.2',
+      mapping: {
+        dataColumns: ['latitude', 'longitude'],
+        fieldMappings: {
+          latitude: 'locationDetail.locations[].latitude',
+          longitude: 'locationDetail.locations[].longitude',
+        },
+      },
+    })
+
+    const [candidate] = await adapter.discover({
+      url: adapter.defaultImportUrl,
+      signal: new AbortController().signal,
+    })
+    const record = await adapter.load({ candidate })
+
+    expect(record.data).toEqual({
+      locationDetail: { locations: [{ latitude: 44.1, longitude: -123.2 }] },
+    })
+  })
+
+  it('writes configured fixed fields into structured document data', async () => {
+    const adapter = createCSVImportAdapter({
+      id: 'pam-site-source',
+      text: 'site_name,latitude\nHarbor,44.1',
+      mapping: {
+        dataColumns: ['site_name', 'latitude'],
+        fieldMappings: {
+          site_name: 'siteOrCruiseName',
+          latitude: 'locationDetail.deploymentLocation.latitude',
+        },
+      },
+      fixedFields: { 'locationDetail.type': 'stationary_marine' },
+    })
+
+    const [candidate] = await adapter.discover({
+      url: adapter.defaultImportUrl,
+      signal: new AbortController().signal,
+    })
+    const record = await adapter.load({ candidate })
+
+    expect(record.data).toEqual({
+      siteOrCruiseName: 'Harbor',
+      locationDetail: {
+        deploymentLocation: { latitude: 44.1 },
+        type: 'stationary_marine',
+      },
+    })
+  })
+
+  it('maps a scalar array CSV column into one array item', async () => {
+    const adapter = createCSVImportAdapter({
+      id: 'pam-site-source',
+      text: 'navigation_uri\nhttps://example.org/navigation.csv',
+      mapping: {
+        dataColumns: ['navigation_uri'],
+        fieldMappings: { navigation_uri: 'locationDetail.navigationFileURIList[]' },
+      },
+    })
+
+    const [candidate] = await adapter.discover({
+      url: adapter.defaultImportUrl,
+      signal: new AbortController().signal,
+    })
+    const record = await adapter.load({ candidate })
+
+    expect(record.data).toEqual({
+      locationDetail: { navigationFileURIList: ['https://example.org/navigation.csv'] },
     })
   })
 

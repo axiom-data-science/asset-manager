@@ -1,0 +1,2 @@
+site,deploymentTitle,dataCollectionName,averageFileLengthMinutes,deploymentDescription,instrument,sourceURI,calibrationState,sensitivityFlatValue,deploymentTime,recoveryTime
+Example PAM Site,Example PAM Deployment,example-pam-acoustic-dataset,10,Example passive acoustic deployment,Hydrophone,https://example.org/pam/audio/,Factory Calibrated,-165,2025-06-01T12:00:00Z,2025-06-30T12:00:00Z

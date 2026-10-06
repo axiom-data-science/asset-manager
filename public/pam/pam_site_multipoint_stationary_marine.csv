@@ -1,0 +1,2 @@
+project,siteOrCruiseName,alternateSiteName,platform,locationDetail.seaArea,locationDetail.locations[].latitude,locationDetail.locations[].longitude,locationDetail.locations[].seaFloorDepth,locationDetail.locations[].instrumentDepth
+Example PAM Project,Example PAM Site,Example Multipoint Site,Fixed hydrophone array,Northeast Pacific,44.5,-124.1,-100,-50

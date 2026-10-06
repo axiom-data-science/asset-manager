@@ -1,0 +1,2 @@
+project,dataSubmitter,contributor[].name,contributor[].role,contributor[].email,contributor[].affiliation,relatedProjects[]
+Example PAM Project,Example Data Submitter,Example Scientist,scientist,scientist@example.org,Example Marine Institute,Regional PAM Monitoring

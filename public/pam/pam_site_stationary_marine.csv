@@ -1,0 +1,2 @@
+project,siteOrCruiseName,alternateSiteName,platform,locationDetail.seaArea,locationDetail.deploymentLocation.latitude,locationDetail.deploymentLocation.longitude,locationDetail.deploymentLocation.seaFloorDepth,locationDetail.deploymentLocation.instrumentDepth,locationDetail.recoveryLocation.latitude,locationDetail.recoveryLocation.longitude,locationDetail.recoveryLocation.seaFloorDepth,locationDetail.recoveryLocation.instrumentDepth
+Example PAM Project,Example PAM Site,Example Marine Site,Moored buoy,Northeast Pacific,44.5,-124.1,-100,-50,44.51,-124.11,-101,-49

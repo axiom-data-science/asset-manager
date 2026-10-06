@@ -1,0 +1,2 @@
+project,siteOrCruiseName,alternateSiteName,platform,locationDetail.latitude,locationDetail.longitude,locationDetail.surfaceElevation,locationDetail.instrumentElevation
+Example PAM Project,Example PAM Site,Example Land Site,Terrestrial station,44.56,-123.26,125,3

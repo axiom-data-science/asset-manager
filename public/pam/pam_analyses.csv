@@ -1,0 +1,2 @@
+deploymentTitle,qualityAnalyst,qualityAssessmentDescription,qualityEntries[].startTime,qualityEntries[].endTime,qualityEntries[].minFrequency,qualityEntries[].maxFrequency,qualityEntries[].qualityLevel,qualityEntries[].comments,qualityEntries[].channelNumbers[]
+Example PAM Deployment,Example Analyst,Synthetic quality assessment,2025-06-01T12:00:00Z,2025-06-30T12:00:00Z,20,20000,good,Example channel passed quality review,1

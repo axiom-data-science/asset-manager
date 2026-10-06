@@ -1,0 +1,2 @@
+deploymentTitle,channels[].startTime,channels[].endTime,channels[].dutyCycles[].duration,channels[].dutyCycles[].interval,channels[].sampleRates[].startTime,channels[].sampleRates[].endTime,channels[].sampleRates[].sampleRate,channels[].sampleRates[].sampleBits
+Example PAM Deployment,2025-06-01T12:00:00Z,2025-06-30T12:00:00Z,600,600,2025-06-01T12:00:00Z,2025-06-30T12:00:00Z,48000,24

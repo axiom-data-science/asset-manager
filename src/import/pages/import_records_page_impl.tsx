@@ -216,6 +216,9 @@ export type IImportPageProps = {
   csvSource?: boolean
   arraySource?: boolean
   startAtImport?: boolean
+  executionBlocked?: boolean
+  executionBlockMessage?: string
+  onImportAttemptComplete?: () => void
   onObjectTypeSelected?: (objectType: IObjectType | undefined) => void
   icon: ForwardRefExoticComponent<Omit<LucideProps, 'ref'> & RefAttributes<SVGSVGElement>>
 }
@@ -229,6 +232,9 @@ const ImportRecordsPage = ({
   csvSource = false,
   arraySource = false,
   startAtImport = false,
+  executionBlocked = false,
+  executionBlockMessage,
+  onImportAttemptComplete,
   onObjectTypeSelected,
   // objectType
 }: IImportPageProps): ReactElement => {
@@ -279,6 +285,25 @@ const ImportRecordsPage = ({
         .map(([key, result]) => ({ key, result })),
     [session.recordResults]
   )
+
+  useEffect(() => {
+    if (
+      csvSource &&
+      !executionBlocked &&
+      session.reconciliations &&
+      unresolvedCount === 0 &&
+      recordsToPersist.length === 0
+    ) {
+      onImportAttemptComplete?.()
+    }
+  }, [
+    csvSource,
+    executionBlocked,
+    onImportAttemptComplete,
+    recordsToPersist.length,
+    session.reconciliations,
+    unresolvedCount,
+  ])
 
   const auth = useAuth()
   const [selectedTab, setSelectedTab] = useState(
@@ -349,7 +374,11 @@ const ImportRecordsPage = ({
                   id: 'import',
                   label: arraySource ? '2. Attach to parent' : csvSource ? '2. Import' : '3. Import',
                   disabled:
-                    arraySource || !validationComplete || !eligibleRecords.length || !objectTypeForRecords,
+                    arraySource ||
+                    executionBlocked ||
+                    !validationComplete ||
+                    !eligibleRecords.length ||
+                    !objectTypeForRecords,
                 },
               ].map((step) => (
                 <Button
@@ -416,6 +445,11 @@ const ImportRecordsPage = ({
                         Importing {eligibleRecords.length} validated records with object type{' '}
                         {objectTypeForRecords?.label}
                       </div>
+                      {executionBlocked && (
+                        <div className="text-sm text-amber-800" role="status">
+                          {executionBlockMessage ?? 'Import the related parent source first.'}
+                        </div>
+                      )}
                       {invalidCount > 0 && !session.includeInvalidRecords && (
                         <div className="text-sm text-amber-800">
                           {invalidCount} invalid records are excluded from this import.
@@ -502,6 +536,7 @@ const ImportRecordsPage = ({
                       {session.reconciliations && recordsToPersist.length > 0 && (
                         <BatchLoadDocuments
                           documents={recordsToPersist}
+                          executionBlocked={executionBlocked}
                           getFullDoc={async ({ doc }) => {
                             const record = recordsToPersist.find(
                               (candidate) =>
@@ -594,6 +629,7 @@ const ImportRecordsPage = ({
                           onAllFullDocsLoaded={async (fullDocs, summary) => {
                             console.log('All full docs loaded:', fullDocs)
                             if (summary.failed === 0) clearReconciliations()
+                            onImportAttemptComplete?.()
                           }}
                           onRecordResult={(record, result) => {
                             const error =

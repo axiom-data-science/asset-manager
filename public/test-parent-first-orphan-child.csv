@@ -1,0 +1,2 @@
+label,slug,external_id,description,parent_code,measurement
+Orphan child,parent-first-orphan,PFOC-001,Child intentionally referencing an absent parent,PF-MISSING,3.5

@@ -275,9 +275,10 @@
   - [x] Emit structured nested and array-item data for mapped schema paths.
   - [x] Use the schema-field autocomplete option view to show a red required asterisk, bold field title, and smaller field path.
 - [x] Load multi-spreadsheet CSV sources together inside `/import/csv` for relationship planning.
-- [ ] Resolve multi-spreadsheet document imports in dependency order inside `/import/csv` so parent spreadsheets are imported before related child spreadsheets.
-  - Next implementation target after the live CSV checks above.
-- [ ] Preserve cross-spreadsheet identity and relationship diagnostics when a parent file is missing, duplicated, or loaded out of order.
+- [x] Resolve multi-spreadsheet document imports in dependency order inside `/import/csv` so parent spreadsheets are imported before related child spreadsheets. Panels are dependency-ordered, and child write steps wait for uploaded parents to finish an import attempt; a missing parent source remains available to relationship diagnostics.
+  - [x] Verify parent-first gating in the authenticated CSV UI; the child import remained blocked until the parent batch finished.
+  - [x] Verify partial parent failures, parent-row retry, and missing-parent diagnostics with the fixtures in `public/test-parent-first-*.csv`.
+- [x] Preserve cross-spreadsheet identity and relationship diagnostics when a parent file is missing, duplicated, or loaded out of order.
 - [ ] Add parser and adapter tests for quoted cells, duplicate/blank headers, dates, numbers, missing columns, large files, and malformed input. (Adapter coverage started; parser edge-case coverage remains.)
 - [ ] Replace the page-wide `CSVImportViewConfig` with per-source/session configuration.
 - [ ] Support uploading a known parent CSV and known child CSV in one session, with independent known types and mapping modes.
@@ -296,21 +297,26 @@
 - [x] Treat each spreadsheet row as one object in the parent document's array; create the parent document and its array items in one operation, with no individual array-item retry workflow.
 - [x] Map array spreadsheet columns to the parent schema's existing `items` schema rather than a separate document type/schema.
 - [ ] Defer multiple spreadsheets contributing to the same array until a concrete use case requires it.
-- [ ] Provide configured upload slots for known-type workflows, with a label and description targeting the expected document type or array field.
-  - PAM is the next known-type view; its concrete configuration and prerequisites are tracked in the PAM continuation checklist below.
+- [x] Provide configured upload slots for known-type workflows, with a label and description targeting the expected document type or array field.
+  - PAM is the production known-type view; its remaining validation is tracked in the PAM continuation checklist below.
   - Reuse `CSVImportPage` with route-specific `CSVImportViewConfig` and `sourceConfigs`, following `/import/csv/test-array`; do not copy the CSV workflow into separate page implementations.
   - Each production configuration needs backend object-type slugs, source keys/labels/descriptions, expected filenames or columns, mapping mode, and any fixed roles, relationship rules, or array targets. Backend default schemas are loaded by object-type slug, so local schema imports are not required when those records already exist.
   - Keep route registration and brand-specific discovery separate from the shared CSV import behavior so branded instances can supply their own configured views later.
-- [ ] Implement PAM known-type CSV import as a declarative known-schema view over `CSVImportPage`.
-  - **Outside import:** register the view in `src/app-variants/pam/index.tsx`; route and navigation registration already support variant-provided CSV views.
-  - Backend definitions were confirmed on 2026-10-04 at `http://localhost:3345`: default schemas exist for `pam_project`, `pam_site`, and `pam_deployment`; recheck the active backend on another machine because this URL is local to the confirming machine.
+- [x] Implement PAM known-type CSV import as a declarative known-schema view over `CSVImportPage` at `/import/csv/pam`.
+  - [x] Register the view in `src/app-variants/pam/index.tsx`; route and navigation registration already support variant-provided CSV views.
+  - Backend definitions were confirmed on 2026-10-05 through `http://localhost:3345/object_schema?slug=eq.pam_project`, `http://localhost:3345/object_schema?slug=eq.pam_site`, and `http://localhost:3345/object_schema?slug=eq.pam_deployment`; recheck the active backend on another machine because this URL is local to the confirming machine.
   - Backend `expected_child_types` declares `pam_project` -> `pam_site` -> `pam_deployment`, with `to_parent_predicate: has_child` (child-side predicate `has_parent`). Keep schemas and this relationship metadata backend-owned.
   - Configure document joins: parent `pam_project.project` to child `pam_site.project`; parent `pam_site.siteOrCruiseName` to child `pam_deployment.site`.
   - Configure array source slots targeting `pam_deployment.recordings` and `pam_deployment.analyses`; in both, match parent `deploymentTitle` to row `deploymentTitle`.
-  - Agreed UX: one PAM entry page with four clear `locationDetail` choices: stationary marine, stationary terrestrial, mobile marine, and multipoint stationary marine. Construct the selected `oneOf` branch and validate against the backend schema; do not duplicate the schema in frontend configuration.
-  - Before branch-specific site mapping, obtain representative headers/examples for each location type. Extend schema field discovery/mapping for `oneOf` and `$ref` only as needed to support those data shapes.
-  - Resolve dependency-aware CSV document execution so project and site parents persist before their child sources; retain missing, ambiguous, and out-of-order diagnostics.
-  - Add focused tests for configured source/array mapping, both relationship rules, all four `locationDetail` branches, and dependency ordering; then perform authenticated end-to-end validation against the intended backend.
+  - [x] Agreed UX: one PAM entry page with four clear `locationDetail` choices: stationary marine, stationary terrestrial, mobile marine, and multipoint stationary marine. The selected backend `oneOf` branch scopes field choices and supplies `locationDetail.type`; the backend schema remains the validation source.
+  - [x] Extend schema field discovery for selected `oneOf` branches and local `$ref`s; combine separately mapped columns into the same nested array item.
+  - [x] Add schema-derived synthetic CSV fixtures in `public/pam/` for the project, all four site branches, deployment, recordings, and analyses.
+  - [x] Derive CSV document label, slug, description, and provenance identity from mapped data using `object_type.data.field_mappings` after CSV-to-schema mapping; do not require generic metadata columns in PAM CSVs.
+  - [x] Include project contributor and related-project array examples; omit generic metadata role columns from PAM project, site, and deployment fixtures.
+  - [ ] Confirm actual producer CSV conventions for navigation URI lists and multiple `locations` on one multipoint site; the synthetic multipoint row contains one schema-minimum location.
+  - [x] Resolve dependency-aware CSV document execution so project and site parents are attempted before their child sources; retain missing, ambiguous, and out-of-order diagnostics.
+  - [x] Add focused tests for the four branch choices, `$ref` field discovery, discriminator emission, nested location arrays, and dependency ordering.
+  - [ ] Add focused assertions for the PAM route's configured source/relationship/array slots, then perform authenticated end-to-end validation against the intended backend.
 - [ ] Provide targeted upload-slot guidance when a relationship source or one or more array-field spreadsheets are expected.
 - [x] Extend configured upload slots with an explicit array-field target and persist its rows into the parent document's array instead of importing the spreadsheet as separate documents.
   - Live verification of configured array uploads is tracked under `Current next steps` above.

@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   formatCSVRecordsError,
   getCSVDocumentSources,
+  getCSVDocumentSourcesInDependencyOrder,
+  getCSVSourceDependencies,
+  getCSVSourceExecutionDependencies,
   mergeCSVArraySources,
   type CSVLoadedSource,
 } from './csv_orchestration'
@@ -68,6 +71,79 @@ describe('CSV import orchestration', () => {
       code: 'P-1',
       contacts: [{ parent_code: 'P-1', name: 'Ada' }],
     })
+  })
+
+  it('orders document sources by their configured parent dependencies', () => {
+    const projectSource = { sourceId: 'project', typeSlug: 'pam_project', role: 'parent' }
+    const siteSource = {
+      sourceId: 'site',
+      typeSlug: 'pam_site',
+      role: 'child',
+      relationshipRule: {
+        parentObjectTypeSlug: 'pam_project',
+        childObjectTypeSlug: 'pam_site',
+        predicate: 'has_parent',
+      },
+    }
+    const deploymentSource = {
+      sourceId: 'deployment',
+      typeSlug: 'pam_deployment',
+      role: 'child',
+      relationshipRule: {
+        parentObjectTypeSlug: 'pam_site',
+        childObjectTypeSlug: 'pam_deployment',
+        predicate: 'has_parent',
+      },
+    }
+    const sources = [deploymentSource, siteSource, projectSource]
+
+    expect(getCSVSourceDependencies(siteSource, sources)).toEqual(['project'])
+    expect(getCSVSourceDependencies(deploymentSource, sources)).toEqual(['site'])
+    expect(getCSVDocumentSourcesInDependencyOrder(sources).map(({ sourceId }) => sourceId)).toEqual([
+      'project',
+      'site',
+      'deployment',
+    ])
+  })
+
+  it('does not gate a child when its parent source is missing', () => {
+    const childSource = {
+      sourceId: 'child',
+      typeSlug: 'children',
+      relationshipRule: {
+        parentObjectTypeSlug: 'parents',
+        childObjectTypeSlug: 'children',
+        predicate: 'has_parent',
+      },
+    }
+
+    expect(getCSVSourceDependencies(childSource, [childSource])).toEqual([])
+  })
+
+  it('breaks cyclic dependency rules deterministically instead of blocking every source', () => {
+    const sourceA = {
+      sourceId: 'a',
+      typeSlug: 'type-a',
+      relationshipRule: {
+        parentObjectTypeSlug: 'type-b',
+        childObjectTypeSlug: 'type-a',
+        predicate: 'has_parent',
+      },
+    }
+    const sourceB = {
+      sourceId: 'b',
+      typeSlug: 'type-b',
+      relationshipRule: {
+        parentObjectTypeSlug: 'type-a',
+        childObjectTypeSlug: 'type-b',
+        predicate: 'has_parent',
+      },
+    }
+    const ordered = getCSVDocumentSourcesInDependencyOrder([sourceA, sourceB])
+
+    expect(
+      ordered.map((source) => getCSVSourceExecutionDependencies(source, [sourceA, sourceB], ordered))
+    ).toEqual([[], ['a']])
   })
 
   it('merges a generic array source without creating a standalone document source', () => {

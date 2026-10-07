@@ -7,8 +7,8 @@
 - [ ] Keep changes under `src/import` unless sharing existing behavior avoids duplication.
 - **Outside import:** CSV route and navigation require `src/App.tsx` and `src/components/app-sidebar.tsx` changes.
 - [ ] Mark every proposed change outside `src/import` with an **Outside import** note before implementation.
-- [ ] Complete remote-source and CSV workflows before adding XLS/XLSX support.
-- [ ] Add XLS/XLSX only through the same adapter API used by CSV.
+- [x] Complete remote-source and CSV workflows before adding XLSX support.
+- [x] Add XLSX only through the same adapter API used by CSV.
 - [ ] Prefer a guided, reviewable workflow over exposing every setting on one screen.
 
 ## Future import workflow direction
@@ -253,12 +253,14 @@
 - [x] Verify clearing and reselecting `Related CSV` empties and repopulates the relationship rules.
 - [x] Verify CSV-local relationship persistence; the authenticated workflow reported `3 created`.
 - [x] Verify failed-link retry without rerunning document imports by blocking `/relationship` requests, restoring them, and linking successfully.
+- [x] Replace Import records cards with dependency-ordered source rows, validation counts, duplicate handling, and a type/schema validation dialog.
+- [ ] Investigate the latest CSV-local link failure (2026-10-06): documents imported, but relationships did not link. Capture planner statuses, link results/errors, and the relationship request response; verify the selected document UUIDs and predicate. Do not rerun successful document imports during this investigation. The earlier `3 created` and retry checks remain historical successes.
 - [x] Verify configured and generic array-item uploads produce the expected parent document and report unmatched rows.
   - Confirmed matched array rows are embedded in parent documents and unmatched rows block the transition to Import records.
   - The unmatched-row message now identifies an array-composition blocker and directs the user to lookup columns or missing parent rows.
 - [x] Check the preview and mapping layout at narrow and short browser sizes.
 - [ ] Fix issues found in these checks, with focused tests for behavioral changes.
-- [ ] Implement dependency-aware multi-file document execution so parent sources are persisted before related child sources, preserving missing, ambiguous, and out-of-order diagnostics.
+- [x] Implement dependency-aware multi-file document execution so parent sources are persisted before related child sources, preserving missing, ambiguous, and out-of-order diagnostics.
 
   - [x] Add CSV adapter support for relationship rules and explicit join fields, with cross-source planner tests.
 
@@ -316,7 +318,9 @@
   - [ ] Confirm actual producer CSV conventions for navigation URI lists and multiple `locations` on one multipoint site; the synthetic multipoint row contains one schema-minimum location.
   - [x] Resolve dependency-aware CSV document execution so project and site parents are attempted before their child sources; retain missing, ambiguous, and out-of-order diagnostics.
   - [x] Add focused tests for the four branch choices, `$ref` field discovery, discriminator emission, nested location arrays, and dependency ordering.
-  - [ ] Add focused assertions for the PAM route's configured source/relationship/array slots, then perform authenticated end-to-end validation against the intended backend.
+  - [x] Add focused assertions for the PAM route's configured source, relationship, array slots, and location choices.
+  - [x] Perform authenticated end-to-end validation against the intended backend for the core PAM workflow.
+    - Confirmed 2026-10-06: `pam_project`, `pam_site`, and `pam_deployment` imported; recordings and analyses were embedded in deployments; configured relationships were created.
 - [ ] Provide targeted upload-slot guidance when a relationship source or one or more array-field spreadsheets are expected.
 - [x] Extend configured upload slots with an explicit array-field target and persist its rows into the parent document's array instead of importing the spreadsheet as separate documents.
   - Live verification of configured array uploads is tracked under `Current next steps` above.
@@ -340,7 +344,8 @@
   - Live verification for parent array shape and unmatched-row diagnostics is included in the current next steps above.
 - [ ] Automatically assign the parent source the `Parent` role when an `Array items` source selects it.
 - [ ] Simplify the CSV Import step further after multi-source panel UI verification.
-- [ ] Test one parent CSV with array items and two ordinary parent/child relationships in the same upload session; extend relationship planning/source roles if needed.
+- [x] Test one parent CSV with array items and two ordinary parent/child relationships in the same upload session; extend relationship planning/source roles if needed.
+  - Confirmed in the authenticated PAM workflow on 2026-10-06: project -> site -> deployment relationships created, with recordings and analyses embedded in deployments.
 
 ### CSV workflow boundary
 
@@ -384,16 +389,39 @@ New requirements to carry into that refactor:
   - Create a type from the prepared records, close the dialog, and confirm the source no longer shows `Set up type`.
   - For a missing type, confirm `Prepare review` loads records first; then `Set up type` opens without a schema-inference error.
 
-## 8. Add XLS/XLSX only after CSV is complete
+## 8. Add workbook sources through the CSV pipeline
 
-- [ ] Extract a tabular-source adapter API from the completed CSV adapter.
-- [ ] Verify that the API represents workbook name, sheet name, headers, rows, and mapping without CSV-specific assumptions.
-- [ ] Select an XLS/XLSX parsing library based on browser support, maintenance, bundle size, and licensing.
-  - **Outside import:** dependency and lockfile changes will be required.
-- [ ] Implement each worksheet as a tabular source using the CSV adapter API.
-- [ ] Support selecting multiple sheets and assigning one type per sheet.
-- [ ] Reuse cross-source relationship joins for parent/child sheets.
-- [ ] Add workbook tests for multiple sheets, formulas/results, date cells, blank rows, duplicate headers, and large workbooks.
+- [x] Select `read-excel-file` for browser-side `.xlsx` parsing; lazy-load it only when a workbook is selected.
+  - **Outside import:** `package.json` and the lockfile include the parser dependency.
+- [x] Convert selected worksheets into independent sources through the existing CSV adapter, mapping, validation, and reconciliation workflow.
+- [x] Support selecting multiple sheets; each selected sheet gets an independent source and type/mapping workflow.
+- [x] Add focused coverage for multiple sheets, empty sheets, and CSV-safe cell serialization.
+- [x] Authenticated UI verification: workbook tabs are recognized in the sheet selector.
+- [x] Keep templated source cards hidden until selected workbook sheets are added; show each sheet's configured type (or None) before adding.
+- [x] Show configured schema-branch choices in the matching worksheet row and require a choice before adding that sheet.
+- [x] Make the assumed type editable, show array destinations as `type.path[]`, and widen the pre-add worksheet controls to avoid overlap.
+- [x] Replace the native workbook input with a filename-aware Choose file button and an X that removes the workbook and all of its imported sheets.
+- [x] Render configured source slots as compact rows instead of tall cards.
+- [ ] Authenticated UI verification: select multiple sheets and confirm each appears as an independent source with its own type and mapping.
+- [ ] Authenticated UI verification: confirm clean known-schema sources expose one final Import action, while mapping, validation, and conflict issues remain reviewable.
+- [ ] Authenticated UI verification: confirm schema-derived optional array slots use parent and row lookup columns and embed matched rows in the parent.
+- [ ] Evaluate legacy `.xls` support separately; the current upload picker accepts `.xlsx` only.
+- [ ] Extend workbook tests for formula results, date cells, duplicate headers, and large workbooks.
+
+## 9. Universal upload format and existing-parent relationships
+
+- [x] Require an initial CSV files / Excel workbook (.xlsx) choice on every CSV import page.
+- [x] Replace the shared location-specific entry choice with configurable schema branch/value choices, including a view-provided label, placeholder, and options.
+- [x] Allow configured document sources to be optional so partial source sets can be imported without requiring every configured tab.
+- [x] Support opt-in exact matching against existing parent documents using configured parent type and data-field paths.
+- [x] Auto-link a unique exact match and require explicit selection when multiple parents match.
+- [x] Allow a missing-parent child row to be excluded from import, with an action to restore ignored rows.
+- [x] Offer detailed generic relationship review and a guided variant presentation.
+- [x] Keep array-only sources blocked unless their configured in-session parent source is uploaded.
+- [ ] Authenticated UI verification: choose CSV and workbook modes on generic and PAM CSV routes; verify each shows only its selected upload controls.
+- [ ] Authenticated UI verification: upload a partial PAM source with a unique existing parent and confirm it auto-resolves and links.
+- [ ] Authenticated UI verification: confirm multiple existing parents require a selection and no-match rows can be ignored/restored before import.
+- [ ] Authenticated UI verification: confirm an array-only workbook is blocked without its configured document source, then embeds rows when that source is present.
 
 ## Completion criteria
 
@@ -403,4 +431,4 @@ New requirements to carry into that refactor:
 - [ ] Existing records are detected before writes and receive an explicit conflict policy.
 - [ ] Relationships are planned before writes and persisted in a retryable phase.
 - [ ] Vitest covers the source-neutral business logic and critical adapters.
-- [ ] XLS/XLSX begins only after the CSV adapter API has proven reusable.
+- [x] Workbook sheets use the existing CSV adapter pipeline rather than a separate import flow.

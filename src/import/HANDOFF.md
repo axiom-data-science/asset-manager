@@ -24,6 +24,17 @@ The implementation plan and remaining work are tracked in `src/import/TODO.md`.
 ### CSV imports
 
 - `/import/csv` reuses the existing CSV file uploader and parser.
+- Known-schema CSV sources with confident mappings are validated and duplicate-checked automatically; one explicit session-level Import action starts the ready document sources in dependency order. Mapping uncertainty, validation errors, or conflicts remain in review.
+- Configured known-type sources expose optional upload slots for schema-optional object arrays. These generated slots reuse the existing parent source, array path, and lookup-column controls; variant-specific array slots remain supported.
+- `.xlsx` workbooks can be uploaded from the CSV Upload step. Users explicitly select worksheets, and each selected sheet becomes an independent source using the existing CSV adapter, mapping, validation, and reconciliation pipeline. The current picker accepts `.xlsx`; legacy `.xls` is not enabled.
+- Every CSV import view now begins with a CSV-files or Excel-workbook (.xlsx) choice; upload controls for the other format remain hidden, and the choice locks after a source is added.
+- In workbook mode, templated source cards stay hidden until worksheets are added. Before adding, the worksheet selector shows each sheet's configured type or `None`, and any required schema discriminator is selected inline before Add is enabled.
+- The pre-add type assumption is editable from the existing object types; array sheets show the destination path, such as `pam_deployment.recordings[]`. The wider sheet list scrolls horizontally to keep selectors from overlapping.
+- The workbook chooser is a styled button that displays the selected filename, sits above compact source rows, and has a remove action that clears pending sheets and all sources created from that workbook.
+- Schema discriminator choices are generic view configuration: each source binds a configured choice key to a schema branch path and emitted value path, while the view supplies the label, placeholder, and options.
+- Configured document tabs can be optional, allowing partial source imports. PAM opts into exact existing-parent lookup for its project/site and site/deployment relations; a unique match resolves automatically, while multiple matches require a parent selection.
+- A missing-parent child row can be excluded from the import set with `Ignore child row`; ignored rows can be restored. `Add parent source` returns to upload. Generic CSV views show detailed planner diagnostics, while PAM uses the guided summary.
+- Array-only imports remain blocked unless the configured parent source is uploaded in the same session. The parent is resolved by the array target's configured source key, including PAM deployment array rows.
 - The uploaded filename supplies the default object-type slug and label. For example, `test-metadata.csv` becomes `test-metadata` and `Test Metadata`.
 - CSV rows are previewed before import and can be mapped to label, slug, external ID, description, and document-data columns.
 - CSV rows are discovered and canonical-loaded immediately after continuing; the remote-source preload step is skipped because the file is already local.
@@ -37,6 +48,9 @@ The implementation plan and remaining work are tracked in `src/import/TODO.md`.
 - Multi-file CSV Import now renders one independent import panel per document source, so users can choose types, validate, reconcile, and import all uploaded document sources without switching back to Mapping between files. Array-item sources remain attached to their parent panel.
 - Array-item CSV sources can now be declared on the Upload step alongside parent/child sources by choosing `Array items`, selecting the parent CSV, and setting the parent array path and lookup columns. The existing parent merge flow remains responsible for embedding the rows.
 - Verified workflow: upload a parent CSV and array-item CSV, set the parent role to `Parent`, set the array source role to `Array items`, select the parent CSV, configure the array path and lookup columns, and complete the import successfully.
+- PAM authenticated workflow confirmed on 2026-10-06: `pam_project`, `pam_site`, and `pam_deployment` imported; recordings and analyses were embedded in deployment records; configured project -> site -> deployment relationships were created.
+- PAM relationship planning excludes array rows from document candidates, resolves cascade rules by matching source type, and prefers configured lookup rules over sparse duplicate backend metadata. Focused CSV, relationship planning, Import All, and Oikos validation passed (53 tests).
+- The workbook parser uses `read-excel-file` and converts selected worksheet rows into the existing parsed-CSV source shape; parser conversion and multi-sheet separation have focused unit coverage.
 - CSV mapping uses one table for document roles, data inclusion, and schema-field mapping.
 - Schema mapping options show field titles, IDs, and nested or array-item paths; a schema field can be selected by only one CSV column.
 - Nested and array-item schema mappings are emitted as structured canonical document data.
@@ -242,6 +256,15 @@ Authenticated CSV array checks completed on 2026-09-30:
 
 - Configured and generic array-item uploads embedded matched rows in their parent documents.
 - Unmatched array rows blocked access to Import records rather than being written as standalone documents.
+
+Current upload-format and existing-parent validation:
+
+```text
+Focused CSV, workbook, relationship, reconciliation, and PAM tests: 65 passed
+npm run build: passed; existing quicktype-core browser externalization and large-chunk warnings remain
+```
+
+Authenticated UI validation remains open for choosing both formats on generic and PAM routes, partial PAM imports against existing parents, resolving ambiguous matches, ignoring/restoring missing-parent rows, and array-only parent-source blocking. These scenarios are tracked in `src/import/TODO.md`.
 - The unmatched-row diagnostic was browser-verified at `/import/csv/test-array`; it identifies an array-composition blocker and suggests correcting lookup columns or adding missing parent rows.
 - Short and narrow preview layouts showed no overlap or problematic nested vertical scrollbars.
 
@@ -340,3 +363,11 @@ Dependency-aware multi-file CSV execution is implemented: document panels are or
 Schema-derived synthetic CSV examples are in `public/pam/`: `pam_project.csv`, `pam_site_stationary_marine.csv`, `pam_site_stationary_terrestrial.csv`, `pam_site_mobile_marine.csv`, `pam_site_multipoint_stationary_marine.csv`, `pam_deployment.csv`, `pam_recordings.csv`, and `pam_analyses.csv`. They were checked against the `json_schema` fields from the live `object_schema` rows for `pam_project`, `pam_site`, and `pam_deployment`. PAM imports now derive canonical metadata from mapped data using `object_type.data.field_mappings`; current backend mappings set `label` to `project`, `siteOrCruiseName`, and `dataCollectionName` respectively. No slug or description paths are configured, so slug is generated from the mapped label and description defaults to empty unless supplied by an explicit CSV description role. The fixtures intentionally omit generic metadata columns. The project example covers contributor and related-project arrays. The site examples use one navigation URI and one multipoint location; these satisfy schema minima but do not establish the real producer's CSV conventions for multiple values.
 
 Latest verification before handoff: 23 focused CSV adapter tests pass; the focused orchestration/relationship tests and production build pass, with existing Quicktype browser-externalization and large-chunk warnings. All eight PAM fixture files parse with consistent row widths and their headers match the live schemas (excluding configured relationship keys). Dependency ordering, scalar array mapping, object-type metadata derivation, and all four location branch choices have automated coverage. Real PAM CSV convention validation and authenticated end-to-end PAM import validation remain outstanding.
+
+## Latest checkpoint (2026-10-06)
+
+- The CSV Import records step now uses dependency-ordered source rows instead of import cards. Rows show the selected type, validation counts, and duplicate handling; `Edit type & validate` opens the existing type/schema editor and validator in a dialog.
+- Automatic duplicate reconciliation runs for import-ready CSV sources without requiring the dialog to be opened. The global import count includes actionable create, overwrite, and merge records, and excludes ignored or ambiguous records.
+- The user reports that documents imported in the latest CSV attempt, but their relationships did not link. The cause and result/error details are not yet known. Treat the earlier `3 created` and retry checks above as historical successes, not confirmation that the latest attempt linked successfully.
+- Next, inspect the CSV relationship review counts and plan statuses, then capture the link result (`created`, `existing`, `blocked`, or `failed`), displayed error, and relationship request response. Verify the selected document UUIDs and predicate before retrying. Do not rerun document imports just to investigate linking.
+- Automated validation for the latest import-row and duplicate-readiness changes: 72 focused CSV, workbook, PAM, reconciliation, session, and orchestration tests passed; focused ESLint, TypeScript, and `git diff --check` passed. Production build passed with existing Quicktype browser-externalization and large-chunk warnings.

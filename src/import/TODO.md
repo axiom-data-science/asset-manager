@@ -217,6 +217,10 @@
 
 - [x] Verify authenticated ready, missing-parent, and ambiguous-parent plans, successful relationship persistence, duplicate detection, and retry of failed links without rerunning documents.
 - [x] Verify repeating the same parent/child import reports existing links without creating duplicates.
+- [x] Automatically start CSV relationship persistence after all dependency-ordered document source attempts complete; retain the manual action for retry.
+- [x] Keep the CSV document batch executor mounted outside the validation dialog so the global Import request is consumed while the dialog is closed.
+- [x] Verify CSV document import and subsequent relationship linking in the authenticated UI.
+  - User confirmed on 2026-10-07 that Import worked and relationships linked after the persistent executor fix.
 - Development-only failure switches were used for verification. Keep them unset or `false`/`off` during normal development and production use.
 
 ### UI simplification

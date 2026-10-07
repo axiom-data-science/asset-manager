@@ -1001,7 +1001,7 @@ const CSVSourceImportPanel = ({
     })
     return () => controller.abort()
   }, [
-    auth.user?.access_token,
+    auth.user,
     loaded,
     objectType,
     session,
@@ -1093,6 +1093,28 @@ const CSVSourceImportPanel = ({
           </Button>
         </div>
       </div>
+      {loaded && (
+        <div className="hidden">
+          <ImportRecordsPage
+            key={`${source.adapter.id}-${loaded.records.length}-execution`}
+            type={source.sourceId}
+            objectTypeSlug={source.typeSlug}
+            label={csvFileNameToTypeLabel(source.fileName)}
+            pluralLabel="CSV records"
+            sourceAdapter={source.adapter}
+            csvSource
+            arraySource={Boolean(source.arrayTarget)}
+            startAtImport
+            externalImportControl={externalImportControl}
+            startImportRequest={startImportRequest}
+            executionBlocked={executionBlocked}
+            executionBlockMessage={executionBlockMessage}
+            onImportAttemptComplete={handleImportAttemptComplete}
+            onObjectTypeSelected={handlePanelObjectTypeSelected}
+            icon={FileSpreadsheet}
+          />
+        </div>
+      )}
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
         <DialogContent className="flex h-[calc(100vh-2rem)] max-h-none w-[calc(100vw-2rem)] max-w-none flex-col overflow-hidden sm:max-w-none">
           <DialogHeader>
@@ -1114,7 +1136,7 @@ const CSVSourceImportPanel = ({
                 arraySource={Boolean(source.arrayTarget)}
                 startAtImport={false}
                 externalImportControl={externalImportControl}
-                startImportRequest={startImportRequest}
+                startImportRequest={0}
                 executionBlocked={executionBlocked}
                 executionBlockMessage={executionBlockMessage}
                 onImportAttemptComplete={handleImportAttemptComplete}
@@ -1159,6 +1181,7 @@ const CSVImportPage = ({
   >({})
   const [completedSourceIds, setCompletedSourceIds] = useState<Set<string>>(() => new Set())
   const [importRequest, setImportRequest] = useState(0)
+  const autoLinkedImportRequest = useRef(0)
   const [sessionImportStarted, setSessionImportStarted] = useState(false)
   const [pendingWorkbook, setPendingWorkbook] = useState<{
     fileName: string
@@ -1314,7 +1337,7 @@ const CSVImportPage = ({
       if (current.has(sourceId)) return current
       return new Set(current).add(sourceId)
     })
-  }, [])
+  }, [setCompletedSourceIds])
 
   const handleObjectTypeSelected = useCallback(
     (sourceId: string, objectType: IObjectType | undefined) => {
@@ -1363,7 +1386,7 @@ const CSVImportPage = ({
         })
       )
     },
-    [contextState, viewConfig]
+    [contextState, setCompletedSourceIds, viewConfig]
   )
   const resolvedRelationshipRules = useMemo(
     () => resolveCSVRelationshipRules(
@@ -2107,7 +2130,7 @@ const CSVImportPage = ({
     }
   }
 
-  const linkCSVRelationships = async () => {
+  const linkCSVRelationships = useCallback(async () => {
     setIsLinkingRelationships(true)
     setRelationshipError(undefined)
     try {
@@ -2201,7 +2224,32 @@ const CSVImportPage = ({
     } finally {
       setIsLinkingRelationships(false)
     }
-  }
+  }, [
+    contextState.object_type_by_slug,
+    contextState.object_type_by_uuid,
+    contextState.predicate_by_predicate,
+    contextState.predicate_by_uuid,
+    csvRelationshipPlans.length,
+    auth.user,
+    loadedSourceRecords,
+    resolvedCSVRelationshipPlans,
+    sources,
+  ])
+
+  useEffect(() => {
+    if (importRequest === 0) {
+      autoLinkedImportRequest.current = 0
+      return
+    }
+    const sourceIds = documentSourcesInDependencyOrder.map((source) => source.sourceId)
+    if (
+      sourceIds.length === 0 ||
+      !sourceIds.every((sourceId) => completedSourceIds.has(sourceId)) ||
+      autoLinkedImportRequest.current === importRequest
+    ) return
+    autoLinkedImportRequest.current = importRequest
+    void linkCSVRelationships()
+  }, [completedSourceIds, documentSourcesInDependencyOrder, importRequest, linkCSVRelationships])
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden p-4">
@@ -3154,6 +3202,7 @@ const CSVImportPage = ({
                   }
                   onClick={() => {
                     setSessionImportStarted(true)
+                    setCompletedSourceIds(new Set())
                     setImportRequest((request) => request + 1)
                   }}
                 >
@@ -3212,6 +3261,9 @@ const CSVImportPage = ({
                   disabled={
                     isLinkingRelationships ||
                     isResolvingParents ||
+                    !documentSourcesInDependencyOrder.every((source) =>
+                      completedSourceIds.has(source.sourceId)
+                    ) ||
                     resolvedCSVRelationshipPlans.length === 0 ||
                     resolvedCSVRelationshipPlans.some(({ status }) => status !== 'ready')
                   }

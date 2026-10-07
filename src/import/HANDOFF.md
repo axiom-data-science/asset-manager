@@ -21,6 +21,16 @@ The implementation plan and remaining work are tracked in `src/import/TODO.md`.
 - Cancellation reaches source requests and document writes.
 - Row failures remain selected and visible for retry.
 
+### ERDDAP metadata imports
+
+- `/import/erddap_metadata` accepts either one dataset metadata URL (`/info/{datasetID}/index.json`) or a server catalog URL (`/info/index.json`).
+- Catalog discovery creates one candidate per `Dataset ID`, using the catalog `Title` and `Summary`. Full per-dataset metadata is fetched only when candidates are preloaded; single-dataset imports use the same canonical-record path.
+- ERDDAP metadata is normalized into `dataset_id`, `metadata_url`, `global_attributes`, and `variables`. Global attributes and variable attributes remain separate in canonical record data.
+- The `Map metadata` step exposes configured text overrides for `dataset_id`, `global_attributes.id`, and `global_attributes.platform_name`. Changing an override clears prior validation and reconciliation state.
+- The remote preload list can be searched by label, identifier, or description. Select-all and random selection apply to visible search results; selections outside the filter are preserved.
+- ERDDAP imports continue through shared type/schema selection, validation, duplicate reconciliation, and persistence. Browser requests require the ERDDAP server to permit cross-origin access.
+- Automated tests cover single-dataset loading, catalog discovery, lazy full-metadata loading, and metadata table parsing. Authenticated browser verification against the live single-dataset and catalog URLs remains open.
+
 ### CSV imports
 
 - `/import/csv` reuses the existing CSV file uploader and parser.
@@ -153,6 +163,15 @@ TWOWOLVES_IMPORT_MERGE_RPC=merge_import_document
 Without configuration, client deep merge plus authenticated PATCH remains the default. PostgREST `resolution=merge-duplicates` is intentionally not treated as an equivalent deep merge.
 
 ## Validation
+
+Latest automated verification on 2026-10-07:
+
+```text
+npm test       # 137 tests passed
+npm run build  # passed; existing Vite quicktype/browser-externalization and chunk-size warnings remain
+```
+
+Authenticated browser verification of the ERDDAP single-dataset and catalog workflows is still pending.
 
 Latest verification on 2026-09-29:
 

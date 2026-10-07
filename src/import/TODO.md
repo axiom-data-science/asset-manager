@@ -32,6 +32,16 @@
 - [x] Include relationship fields and relationship rules alongside each file's mapping and preview.
 - [x] Add a type-specific CSV mapping step for imports where the user chooses an existing object type and maps CSV columns to its schema fields.
 
+### ERDDAP metadata import
+
+- [x] Add an ERDDAP source adapter for single-dataset `/info/{datasetID}/index.json` metadata.
+- [x] Discover datasets from `/info/index.json`, using catalog IDs, titles, and summaries; fetch full metadata only for selected candidates during preload.
+- [x] Normalize ERDDAP global attributes and per-variable attributes into canonical record data.
+- [x] Add config-driven text overrides for `dataset_id`, `global_attributes.id`, and `global_attributes.platform_name`; edits invalidate validation and reconciliation.
+- [x] Add searchable remote preload records, with select-all and random selection scoped to visible results while preserving hidden selections.
+- [x] Add parser, adapter, catalog-discovery, and lazy-loading tests.
+- [ ] Verify in the authenticated browser with the live AOOS single-dataset and catalog URLs, including CORS, search/filter selection, preload, metadata overrides, and schema validation.
+
 ## 1. Establish tests and stabilize the current workflow
 
 - [x] Install and configure Vitest with a `test` script and shared test setup.

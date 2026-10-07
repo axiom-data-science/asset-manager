@@ -14,6 +14,7 @@ import oikosLayerSchema from './schemas/oikos_layer.schema.json'
 import oikosLayerGroupSchema from './schemas/oikos_layer_group.schema.json'
 import oikosModuleSchema from './schemas/oikos_module.schema.json'
 import { createRemoteImportAdapter } from './adapters'
+import { createERDDAPMetadataAdapter } from './erddap_metadata'
 import {
   binninatorMetadata,
   binninatorRecords,
@@ -40,6 +41,18 @@ import {
 } from './services'
 
 const importConfigs: IImportPageProps[] = [
+  {
+    sourceAdapter: createERDDAPMetadataAdapter(),
+    label: 'ERDDAP Dataset',
+    pluralLabel: 'ERDDAP Datasets',
+    type: 'erddap_metadata',
+    icon: Grid2X2,
+    recordOverrideFields: [
+      { path: 'dataset_id', label: 'Dataset ID' },
+      { path: 'global_attributes.id', label: 'ID' },
+      { path: 'global_attributes.platform_name', label: 'Platform Name' },
+    ],
+  },
   {
     sourceAdapter: createRemoteImportAdapter({
       id: 'moving_platform',

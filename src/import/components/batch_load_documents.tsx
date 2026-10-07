@@ -3,7 +3,7 @@ import { Checkbox, Input, Loader } from '@axdspub/axiom-ui-utilities'
 import { TableVirtuoso, type TableComponents } from 'react-virtuoso'
 import { forwardRef, useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
 import { Button } from '@/components/ui/button'
-import { Check, TriangleAlert } from 'lucide-react'
+import { Check, Search, TriangleAlert } from 'lucide-react'
 import { useBatchImport, type BatchProgress } from '../hooks/useBatchImport'
 import type { CanonicalImportRecord, ImportCandidate } from '@/import/types'
 import type { IDocument } from '@/types/types'
@@ -131,6 +131,7 @@ const BatchLoadDocuments = ({
   onResolveConflict,
   createDocument,
   includeRandomSelector = false,
+  searchable = false,
   executionBlocked = false,
   externalImportControl = false,
   startImportRequest = 0,
@@ -156,6 +157,7 @@ const BatchLoadDocuments = ({
     fullDoc: CanonicalImportRecord
   ) => Promise<{ error?: string; document?: IDocument }>
   includeRandomSelector?: boolean
+  searchable?: boolean
   executionBlocked?: boolean
   externalImportControl?: boolean
   startImportRequest?: number
@@ -189,8 +191,20 @@ const BatchLoadDocuments = ({
   const [startImport, setStartImport] = useState(false)
   const [batchSize, setBatchSize] = useState(10)
   const [randomSelectCount, setRandomSelectCount] = useState(20)
+  const [searchQuery, setSearchQuery] = useState('')
   const allDocsRef = useRef<CanonicalImportRecord[]>([])
   const handledImportRequest = useRef(0)
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase()
+  const visibleRows = data.flatMap((row, originalIndex) => {
+    const matchesSearch =
+      !normalizedSearchQuery ||
+      [row.label, row.slug, row.uuid, row.description].some(
+        (value) => typeof value === 'string' && value.toLowerCase().includes(normalizedSearchQuery)
+      )
+    return matchesSearch ? [{ row, originalIndex }] : []
+  })
+  const visibleIds = new Set(visibleRows.map(({ row }) => row.uuid))
+  const allVisibleSelected = visibleRows.length > 0 && visibleRows.every(({ row }) => row.selected)
 
   useEffect(() => {
     if (startImportRequest <= handledImportRequest.current || executionBlocked) return
@@ -279,17 +293,35 @@ const BatchLoadDocuments = ({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex shrink-0 flex-row gap-4 items-center mb-4">
-        <Checkbox
-          id="select-all"
-          testId="select-all"
-          label="Select All"
-          value={!data.find((d) => !d.selected)}
-          onChange={(e) => {
-            const newData = data.map((d) => ({ ...d, selected: e }))
-            setData(newData)
-          }}
-        />
+      <div className="flex shrink-0 flex-row gap-4 items-center mb-4 mt-4">
+        <div className='w-36'>
+          <Checkbox
+            id="select-all"
+            testId="select-all"
+            label={normalizedSearchQuery ? 'Select all visible' : 'Select All'}
+            value={allVisibleSelected}
+            onChange={(e) => {
+              const newData = data.map((d) =>
+                visibleIds.has(d.uuid) ? { ...d, selected: e } : d
+              )
+              setData(newData)
+            }}
+          />
+        </div>
+        {searchable && (
+          <div className="flex min-w-48 flex-1 items-center gap-2 border">
+            <Search size={16} className="shrink-0 text-gray-500" />
+            <Input
+              id="record-search"
+              testId="record-search"
+              className="min-w-0 flex-1 border-0"
+              size="xs"
+              label=""
+              value={searchQuery}
+              onChange={(value) => setSearchQuery(value ?? '')}
+            />
+          </div>
+        )}
         <div className="flex flex-row gap-2 items-center text-xs">
           <span>Batch Size:</span>
           <Input
@@ -326,16 +358,14 @@ const BatchLoadDocuments = ({
             <Button
               disabled={isRunning}
               onClick={() => {
-                const newSelected = data
+                const newSelected = visibleRows
                   .slice()
                   .sort(() => 0.5 - Math.random())
                   .slice(0, randomSelectCount)
-                const newData = data.map((d) => {
-                  return {
-                    ...d,
-                    selected: newSelected.includes(d),
-                  }
-                })
+                const selectedIds = new Set(newSelected.map(({ row }) => row.uuid))
+                const newData = data.map((d) =>
+                  visibleIds.has(d.uuid) ? { ...d, selected: selectedIds.has(d.uuid) } : d
+                )
                 setData(newData)
               }}
               size="xs"
@@ -374,27 +404,33 @@ const BatchLoadDocuments = ({
           <span className="ml-2">Review the errors below and choose an available action.</span>
         </div>
       )}
-      <TableVirtuoso
-        className="min-h-80 w-full flex-1 bg-slate-100"
-        style={{ minHeight: 320 }}
-        data={data}
-        components={TableComponentsOverride}
-        fixedHeaderContent={() => (
-          <tr>
-            <th className="px-6 py-3">Label</th>
-            <th className="px-6 w-[50%] py-3">Identifier</th>
-          </tr>
-        )}
-        itemContent={(index, doc) => (
-          <RowView
-            {...doc}
-            index={index}
-            onChangeSelected={onChangeSelected}
-            onIgnoreError={onIgnoreError}
-            onResolveConflict={onResolveConflict}
-          />
-        )}
-      />
+      {visibleRows.length > 0 ? (
+        <TableVirtuoso
+          className="min-h-80 w-full flex-1 bg-slate-100"
+          style={{ minHeight: 320 }}
+          data={visibleRows.map(({ row }) => row)}
+          components={TableComponentsOverride}
+          fixedHeaderContent={() => (
+            <tr>
+              <th className="px-6 py-3">Label</th>
+              <th className="px-6 w-[50%] py-3">Identifier</th>
+            </tr>
+          )}
+          itemContent={(visibleIndex, row) => (
+            <RowView
+              {...row}
+              index={visibleRows[visibleIndex]?.originalIndex ?? visibleIndex}
+              onChangeSelected={onChangeSelected}
+              onIgnoreError={onIgnoreError}
+              onResolveConflict={onResolveConflict}
+            />
+          )}
+        />
+      ) : (
+        <div className="flex min-h-80 flex-1 items-center justify-center bg-slate-50 text-sm text-gray-600">
+          {normalizedSearchQuery ? 'No records match this search.' : 'No records to display.'}
+        </div>
+      )}
     </div>
   )
 }

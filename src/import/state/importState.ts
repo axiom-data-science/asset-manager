@@ -69,10 +69,11 @@ export const setLoadedRecords = (
 ): ImportSession => ({
   ...session,
   records,
+  validationResults: {},
   reconciliations: null,
   recordResults: {
     ...session.recordResults,
-    ...Object.fromEntries(records.map((record) => [importRecordKey(record), { stage: 'loaded' }])),
+    ...Object.fromEntries(records.map((record) => [importRecordKey(record), { stage: 'loaded' }]))
   },
 })
 

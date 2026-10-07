@@ -3,7 +3,7 @@ import type { CanonicalImportRecord, ImportCandidate } from '../../types'
 import { Inputs } from '@axdspub/axiom-ui-forms'
 
 import { type LanguageName, quicktype, jsonInputForTargetLanguage, InputData } from 'quicktype-core'
-import { Checkbox, SelectInput, Tooltip, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
+import { Checkbox, Input, SelectInput, Tooltip, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 
 import { Tabs } from '@axdspub/axiom-ui-utilities'
@@ -35,6 +35,31 @@ import {
 } from '@/import/create_import_object_type'
 
 const createObjectTypeFromDataState = atom(false)
+
+const getValueAtPath = (value: unknown, path: string): unknown =>
+  path.split('.').reduce<unknown>((current, segment) => {
+    if (!current || typeof current !== 'object') return undefined
+    return (current as Record<string, unknown>)[segment]
+  }, value)
+
+const setValueAtPath = (
+  value: Record<string, unknown>,
+  path: string,
+  nextValue: string
+): Record<string, unknown> => {
+  const [segment, ...remaining] = path.split('.')
+  if (!segment) return value
+  if (remaining.length === 0) return { ...value, [segment]: nextValue }
+
+  const child = value[segment]
+  const childObject = child && typeof child === 'object' && !Array.isArray(child)
+    ? child as Record<string, unknown>
+    : {}
+  return {
+    ...value,
+    [segment]: setValueAtPath(childObject, remaining.join('.'), nextValue),
+  }
+}
 
 export async function quicktypeJSON(
   targetLanguage: LanguageName,
@@ -472,6 +497,7 @@ const SelectObjectTypeForImport = ({
   label,
   type,
   sourceId,
+  recordOverrideFields = [],
 }: {
   documents: ImportCandidate[]
   getFullDoc: (props: {
@@ -484,6 +510,7 @@ const SelectObjectTypeForImport = ({
   label?: string
   type: string
   sourceId: string
+  recordOverrideFields?: Array<{ path: string; label: string }>
 }): ReactElement => {
   const [selectedTab, setSelectedTab] = useState('preload')
   const [createObjectTypeFromData] = useAtom(createObjectTypeFromDataState)
@@ -507,13 +534,14 @@ const SelectObjectTypeForImport = ({
                 documents={documents}
                 getFullDoc={getFullDoc}
                 detailRoot={detailRoot}
+                searchable={true}
                 onFullDocLoaded={async (doc) => {
                   console.log('Full doc loaded:', doc)
                 }}
                 onAllFullDocsLoaded={async (fullDocs) => {
                   console.log('All full docs loaded:', fullDocs)
                   setRecords(fullDocs.slice())
-                  setSelectedTab('validate')
+                  setSelectedTab(recordOverrideFields.length > 0 ? 'map-metadata' : 'validate')
                 }}
                 onRecordResult={(record, result) => {
                   setRecordResult(
@@ -534,6 +562,59 @@ const SelectObjectTypeForImport = ({
             ),
             label: 'Select and preload full records',
           },
+          ...(recordOverrideFields.length > 0
+            ? [
+              {
+                id: 'map-metadata',
+                content: (
+                  <div className="flex h-full flex-col gap-3 overflow-auto">
+                    <p className="text-sm text-gray-600">
+                      Override selected metadata properties before schema validation.
+                    </p>
+                    {recordsToImport.map((record) => (
+                      <section
+                        key={record.provenance.externalId}
+                        className="flex flex-col gap-2 border-b pb-3"
+                      >
+                        <h3 className="text-sm font-medium">{record.label}</h3>
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                          {recordOverrideFields.map(({ path, label: fieldLabel }) => {
+                            const value = getValueAtPath(record.data, path)
+                            return (
+                              <Input
+                                key={path}
+                                id={`erddap-${record.provenance.externalId}-${path}`}
+                                testId={`erddap-${record.provenance.externalId}-${path}`}
+                                label={fieldLabel}
+                                value={typeof value === 'string' ? value : value == null ? '' : String(value)}
+                                onChange={(nextValue) => {
+                                  setRecords(
+                                    recordsToImport.map((candidate) =>
+                                      candidate.provenance.externalId === record.provenance.externalId
+                                        ? {
+                                          ...candidate,
+                                          data: setValueAtPath(
+                                            candidate.data as Record<string, unknown>,
+                                            path,
+                                            nextValue ?? ''
+                                          ),
+                                        }
+                                        : candidate
+                                    )
+                                  )
+                                }}
+                              />
+                            )
+                          })}
+                        </div>
+                      </section>
+                    ))}
+                  </div>
+                ),
+                label: 'Map metadata',
+              },
+            ]
+            : []),
           {
             id: 'validate',
             content: (

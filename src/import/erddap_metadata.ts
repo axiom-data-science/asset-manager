@@ -1,0 +1,191 @@
+import type { CanonicalImportRecord, ImportCandidate, ImportSourceAdapter } from './types'
+
+type ERDDAPMetadataTable = {
+    columnNames?: string[]
+    rows?: unknown[][]
+}
+
+type ERDDAPMetadataResponse = {
+    table?: ERDDAPMetadataTable
+}
+
+export type ERDDAPDatasetMetadata = {
+    dataset_id: string
+    metadata_url: string
+    global_attributes: Record<string, unknown>
+    variables: Record<string, Record<string, unknown>>
+}
+
+const normalizeColumnName = (columnName: string): string =>
+    columnName.toLowerCase().replace(/[^a-z0-9]/g, '')
+
+const getColumnIndex = (columnNames: string[], name: string): number =>
+    columnNames.findIndex((columnName) => normalizeColumnName(columnName) === normalizeColumnName(name))
+
+const getDatasetId = (url: string): string => {
+    const match = new URL(url).pathname.match(/\/info\/([^/]+)\/index\.json\/?$/i)
+    if (!match?.[1]) throw new Error('Use an ERDDAP metadata URL ending in /info/{dataset}/index.json')
+    return decodeURIComponent(match[1])
+}
+
+const isERDDAPCatalogUrl = (url: string): boolean =>
+    /\/info\/index\.json\/?$/i.test(new URL(url).pathname)
+
+const getDatasetMetadataUrl = (catalogUrl: string, datasetId: string): string => {
+    const url = new URL(catalogUrl)
+    const infoRoot = url.pathname.match(/^(.*)\/info\/index\.json\/?$/i)?.[1]
+    if (infoRoot === undefined) throw new Error('Use an ERDDAP catalog URL ending in /info/index.json')
+    url.pathname = `${infoRoot}/info/${encodeURIComponent(datasetId)}/index.json`
+    url.search = ''
+    url.hash = ''
+    return url.toString()
+}
+
+export const parseERDDAPMetadata = (
+    response: ERDDAPMetadataResponse,
+    metadataUrl: string
+): ERDDAPDatasetMetadata => {
+    const datasetId = getDatasetId(metadataUrl)
+    const table = response.table
+    if (!table?.columnNames || !Array.isArray(table.rows)) {
+        throw new Error('ERDDAP metadata response is missing table columns or rows')
+    }
+
+    const variableIndex = getColumnIndex(table.columnNames, 'VariableName')
+    const attributeIndex = getColumnIndex(table.columnNames, 'AttributeName')
+    const valueIndex = getColumnIndex(table.columnNames, 'Value')
+    if (attributeIndex < 0 || valueIndex < 0) {
+        throw new Error('ERDDAP metadata table must include AttributeName and Value columns')
+    }
+
+    const globalAttributes: Record<string, unknown> = {}
+    const variables: Record<string, Record<string, unknown>> = {}
+    for (const row of table.rows) {
+        const attributeName = row[attributeIndex]
+        if (typeof attributeName !== 'string' || attributeName.length === 0) continue
+
+        const variableName = variableIndex < 0 ? undefined : row[variableIndex]
+        const destination =
+            typeof variableName === 'string' && variableName.length > 0 && variableName !== 'NC_GLOBAL'
+                ? (variables[variableName] ??= {})
+                : globalAttributes
+        destination[attributeName] = row[valueIndex]
+    }
+
+    return {
+        dataset_id: datasetId,
+        metadata_url: metadataUrl,
+        global_attributes: globalAttributes,
+        variables,
+    }
+}
+
+export const parseERDDAPCatalog = (
+    response: ERDDAPMetadataResponse,
+    catalogUrl: string
+): ImportCandidate[] => {
+    const table = response.table
+    if (!table?.columnNames || !Array.isArray(table.rows)) {
+        throw new Error('ERDDAP catalog response is missing table columns or rows')
+    }
+
+    const datasetIdIndex = getColumnIndex(table.columnNames, 'Dataset ID')
+    if (datasetIdIndex < 0) throw new Error('ERDDAP catalog table must include a Dataset ID column')
+    const titleIndex = getColumnIndex(table.columnNames, 'Title')
+    const summaryIndex = getColumnIndex(table.columnNames, 'Summary')
+    const datasetIds = new Set<string>()
+
+    return table.rows.flatMap((row) => {
+        const datasetId = row[datasetIdIndex]
+        if (typeof datasetId !== 'string' || !datasetId.trim() || datasetIds.has(datasetId)) return []
+        datasetIds.add(datasetId)
+
+        const title = titleIndex < 0 ? undefined : row[titleIndex]
+        const summary = summaryIndex < 0 ? undefined : row[summaryIndex]
+        const label = typeof title === 'string' && title.trim() ? title : datasetId
+        const description = typeof summary === 'string' ? summary : ''
+        const metadataUrl = getDatasetMetadataUrl(catalogUrl, datasetId)
+
+        return [{
+            uuid: datasetId,
+            slug: datasetId,
+            label,
+            description,
+            data: {
+                dataset_id: datasetId,
+                metadata_url: metadataUrl,
+                global_attributes: { title: label, summary: description },
+                variables: {},
+            } satisfies ERDDAPDatasetMetadata,
+            partial: true,
+            provenance: { sourceId: 'erddap_metadata', externalId: datasetId },
+        }]
+    })
+}
+
+const getDatasetLabel = (metadata: ERDDAPDatasetMetadata): string => {
+    const title = metadata.global_attributes.title
+    return typeof title === 'string' && title.trim() ? title : metadata.dataset_id
+}
+
+const getDatasetDescription = (metadata: ERDDAPDatasetMetadata): string => {
+    const summary = metadata.global_attributes.summary
+    return typeof summary === 'string' ? summary : ''
+}
+
+export const createERDDAPMetadataAdapter = (): ImportSourceAdapter => ({
+    id: 'erddap_metadata',
+    defaultImportUrl: '',
+    discover: async ({ url, signal }): Promise<ImportCandidate[]> => {
+        const response = await fetch(url, {
+            signal,
+            headers: { accept: 'application/json' },
+        })
+        if (!response.ok) throw new Error(`ERDDAP metadata request failed (${response.status})`)
+
+        const responseData = (await response.json()) as ERDDAPMetadataResponse
+        if (isERDDAPCatalogUrl(url)) return parseERDDAPCatalog(responseData, url)
+
+        const metadata = parseERDDAPMetadata(responseData, url)
+        return [
+            {
+                uuid: metadata.dataset_id,
+                slug: metadata.dataset_id,
+                label: getDatasetLabel(metadata),
+                description: getDatasetDescription(metadata),
+                data: metadata,
+                partial: false,
+                provenance: { sourceId: 'erddap_metadata', externalId: metadata.dataset_id },
+            },
+        ]
+    },
+    load: async ({ candidate, signal }): Promise<CanonicalImportRecord> => {
+        const catalogMetadata = candidate.data as ERDDAPDatasetMetadata
+        const metadata = candidate.partial
+            ? await (async () => {
+                const response = await fetch(catalogMetadata.metadata_url, {
+                    signal,
+                    headers: { accept: 'application/json' },
+                })
+                if (!response.ok) {
+                    throw new Error(`ERDDAP dataset metadata request failed (${response.status})`)
+                }
+                return parseERDDAPMetadata(
+                    (await response.json()) as ERDDAPMetadataResponse,
+                    catalogMetadata.metadata_url
+                )
+            })()
+            : catalogMetadata
+
+        return {
+            uuid: candidate.uuid,
+            slug: candidate.slug,
+            label: getDatasetLabel(metadata),
+            description: getDatasetDescription(metadata),
+            attrs: {},
+            data: metadata,
+            provenance: candidate.provenance,
+            sourceData: metadata,
+        }
+    },
+})

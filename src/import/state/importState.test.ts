@@ -58,6 +58,32 @@ describe('import session transitions', () => {
     expect(sourceB).toEqual(createImportSession('source-b'))
   })
 
+  it('invalidates validation after records change and preserves preload failures', () => {
+    const record = { ...candidate, description: '', attrs: {}, sourceData: candidate.data }
+    const failedCandidate = {
+      ...candidate,
+      uuid: 'transport-2',
+      provenance: { sourceId: 'source-a', externalId: 'external-2' },
+    }
+    const discovered = setDiscoveredCandidates(createImportSession('source-a'), [candidate, failedCandidate])
+    const failed = setImportRecordResult(discovered, failedCandidate, {
+      stage: 'failed',
+      error: 'Metadata could not be loaded',
+    })
+    const validated = setImportValidationResults(setLoadedRecords(failed, [record]), [
+      { record, result: { isValid: true, errors: [] } },
+    ])
+
+    const changed = setLoadedRecords(validated, [{ ...record, data: { edited: true } }])
+
+    expect(changed.validationResults).toEqual({})
+    expect(changed.reconciliations).toBeNull()
+    expect(changed.recordResults[importRecordKey(failedCandidate)]).toEqual({
+      stage: 'failed',
+      error: 'Metadata could not be loaded',
+    })
+  })
+
   it('records an actionable failure for one record', () => {
     const session = setDiscoveredCandidates(createImportSession('source-a'), [candidate])
 

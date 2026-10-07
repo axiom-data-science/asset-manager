@@ -161,6 +161,13 @@ const RemoteSourceImport = ({
 
   return (
     <>
+      {adapter.id === 'erddap_metadata' && (
+        <p className="text-xs text-gray-600">
+          Enter a dataset metadata URL ending in /info/{'{datasetID}'}/index.json, or the catalog
+          URL /info/index.json to discover all datasets. Full metadata loads when records are
+          preloaded.
+        </p>
+      )}
       <div className="flex flex-row gap-4 items-end">
         <Input
           id="import-url"
@@ -215,6 +222,7 @@ export type IImportPageProps = {
   objectType?: IObjectType
   csvSource?: boolean
   arraySource?: boolean
+  recordOverrideFields?: Array<{ path: string; label: string }>
   startAtImport?: boolean
   externalImportControl?: boolean
   startImportRequest?: number
@@ -233,6 +241,7 @@ const ImportRecordsPage = ({
   sourceAdapter,
   csvSource = false,
   arraySource = false,
+  recordOverrideFields,
   startAtImport = false,
   externalImportControl = false,
   startImportRequest = 0,
@@ -439,6 +448,7 @@ const ImportRecordsPage = ({
                       label={label}
                       type={typeSlug}
                       sourceId={sourceId}
+                      recordOverrideFields={recordOverrideFields}
                     />
                   ),
                 },

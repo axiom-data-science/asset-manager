@@ -7,6 +7,8 @@ import type { ImportRelationshipRule, ImportSourceAdapter } from './types'
 
 export type CSVOrchestrationSource = {
   sourceId: string
+  sourceKey?: string
+  fileName?: string
   typeSlug?: string
   role?: string
   arrayTarget?: ImportArraySourceTarget
@@ -89,10 +91,18 @@ export const getCSVSourceExecutionDependencies = <T extends CSVOrchestrationSour
 export const formatCSVRecordsError = (error: unknown): string => {
   const message = error instanceof Error ? error.message : String(error)
   if (/array rows? did not match a parent record/i.test(message)) {
-    return `Array composition blocked: ${message} Correct the parent and row lookup columns or add the missing parent rows, then continue again.`
+    const [summary, ...details] = message.split('\n')
+    const detailText = details.length > 0 ? `\n${details.join('\n')}\n` : ' '
+    return `Array composition blocked: ${summary}${detailText}Correct the parent and row lookup columns or add the missing parent rows, then continue again.`
   }
   return `Could not load CSV records: ${message}`
 }
+
+const getRecordPathValue = (value: unknown, path: string): unknown =>
+  path.split('.').reduce<unknown>((current, segment) => {
+    if (!current || typeof current !== 'object') return undefined
+    return (current as Record<string, unknown>)[segment]
+  }, value)
 
 export const mergeCSVArraySources = ({
   parentSourceId,
@@ -104,17 +114,31 @@ export const mergeCSVArraySources = ({
   const parentLoaded = loadedSources.find(({ source }) => source.sourceId === parentSourceId)
   if (!parentLoaded) throw new Error('The parent CSV source could not be loaded.')
 
+  const parentSourceKey = parentLoaded.source.sourceKey ?? parentLoaded.source.sourceId
   let mergedRecords = parentLoaded.records
   for (const loaded of loadedSources) {
     const target = loaded.source.arrayTarget
-    if (!target) continue
+    if (!target || target.parentSourceKey !== parentSourceKey) continue
     const merged = mergeArraySourceRecordsIntoParentRecords({
       parentRecords: mergedRecords,
       arrayRecords: loaded.records,
       target,
     })
     if (merged.unmatchedArrayRecords.length > 0) {
-      throw new Error(formatUnmatchedArrayRowsError(merged.unmatchedArrayRecords.length))
+      const rowDetails = merged.unmatchedArrayRecords.map((record) => {
+        const dataRowNumber = loaded.records.indexOf(record) + 1
+        const matchValue =
+          getRecordPathValue(record.sourceData, target.rowMatchField) ??
+          getRecordPathValue(record.data, target.rowMatchField)
+        const formattedMatchValue =
+          matchValue === undefined || matchValue === null || matchValue === ''
+            ? '(blank)'
+            : JSON.stringify(matchValue)
+        return `- ${loaded.source.fileName ?? 'Array source'}, data row ${dataRowNumber} (${target.rowMatchField}=${formattedMatchValue})`
+      })
+      throw new Error(
+        `${formatUnmatchedArrayRowsError(merged.unmatchedArrayRecords.length)}\nUnmatched rows:\n${rowDetails.join('\n')}`
+      )
     }
     mergedRecords = merged.records
   }

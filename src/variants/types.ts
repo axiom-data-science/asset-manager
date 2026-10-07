@@ -1,6 +1,7 @@
-import type { ComponentType } from 'react'
+import type { ComponentType, ForwardRefExoticComponent, RefAttributes } from 'react'
 import type { CSVImportViewConfig } from '@/import/pages/csv'
 import type { ICreateDocumentSuccessProps } from '@/manage/document/create_success'
+import type { LucideProps } from 'lucide-react'
 
 export type CreateDocumentEntryProps = {
     returnToOnSuccess?: string
@@ -48,6 +49,7 @@ export type KnownCSVImportView = {
     id: string
     label: string
     path: string
+    icon: ForwardRefExoticComponent<Omit<LucideProps, 'ref'> & RefAttributes<SVGSVGElement>>
     config: CSVImportViewConfig
 }
 

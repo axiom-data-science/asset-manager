@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
-import { FileSpreadsheet, X } from 'lucide-react'
+import { ChevronDown, FileSpreadsheet, X } from 'lucide-react'
 import { schemaToFormUtils, type IFieldInputProps, type IFormValues } from '@axdspub/axiom-ui-forms'
 import { AutoComplete, type ISelectOptionProps } from '@axdspub/axiom-ui-utilities'
 import type { ParsedCSV } from '@/lib/csv'
@@ -10,15 +10,17 @@ import {
   csvFileNameToTypeLabel,
   csvFileNameToTypeSlug,
   inferCSVImportMapping,
-  isCSVImportMappingComplete,
+  isCSVSchemaMappingComplete,
   getAvailableCSVSchemaFieldPaths,
   getCSVArrayItemSchema,
+  getCSVOptionalObjectArrayFields,
   getCSVSchemaFields,
   inferCSVSchemaFieldMappings,
 } from '../csv_adapter'
 import type { CSVImportMapping } from '../csv_adapter'
 import {
   formatCSVRecordsError,
+  getCSVDocumentSources,
   getCSVDocumentSourcesInDependencyOrder,
   getCSVSourceExecutionDependencies,
   mergeCSVArraySources,
@@ -31,18 +33,37 @@ import type {
   ImportSourceAdapter,
 } from '../types'
 import type { IObjectType } from '@/types/types'
-import { fetchExistingImportDocuments } from '../reconciliation_service'
-import { getDocumentImportProvenance } from '../reconciliation'
+import {
+  fetchDocumentsByDataFieldValues,
+  fetchExistingImportDocuments,
+} from '../reconciliation_service'
+import { getDocumentImportProvenance, reconcileImportRecords } from '../reconciliation'
 import {
   persistImportRelationships,
   planImportRelationships,
+  getRelationshipMatchValue,
+  importRelationshipKey,
   relationshipDocumentKey,
   type ImportRelationshipPersistenceResult,
   type ImportRelationshipPlan,
+  type ImportRelationshipCandidate,
 } from '../relationship_planning'
 import ImportRecordsPage from './index'
 import { Button } from '@/components/ui/button'
-import { useImportSession } from '../state/importState'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  isValidationComplete,
+  importRecordKey,
+  useImportSession,
+  useImportSessions,
+} from '../state/importState'
+import type { ImportConflictAction } from '../reconciliation'
 import contextStateAtom from '@/state/contextStateAtom'
 import { useAtom } from 'jotai'
 import { omit } from 'lodash-es'
@@ -51,11 +72,13 @@ import {
   clearCSVRelationshipRule,
   getUniqueCSVRelationshipRules,
   mirrorCSVRelationshipRule,
+  resolveCSVRelationshipRules,
 } from '../csv_relationships'
 import { updateCSVImportSource } from '../csv_import_source_state'
 import { ImportWizard } from '../components/import_wizard'
 import { fetchRelationships, postRelationship } from '@/manage/relationship/services'
 import { useAuth } from '@/auth/useAuth'
+import type { ParsedWorkbookSheet } from '../workbook'
 
 const csvField = {
   id: 'csv-file',
@@ -72,7 +95,8 @@ type CSVImportSource = {
   selectedObjectTypeUuid?: string
   fileName: string
   fileText: string
-  entryChoiceValue?: string
+  workbookFileName?: string
+  schemaChoiceValue?: string
   parsed: ParsedCSV
   mapping: CSVImportMapping
   relationshipFields: string[]
@@ -91,47 +115,74 @@ export type CSVImportSourceConfig = {
   typeSlug: string
   typeKnown: boolean
   mapping: 'required' | 'assumed'
+  optional?: boolean
   role?: CSVImportSourceRole
   relationshipFields?: string[]
-  entryChoiceKey?: string
-  entryChoiceSchemaPath?: string
-  entryChoiceFieldPath?: string
+  schemaChoice?: {
+    key: string
+    branchPath: string
+    valuePath: string
+  }
   arrayTarget?: ImportArraySourceTarget
 }
 
-export type CSVImportEntryChoice = {
+export type CSVImportSchemaChoice = {
   key: string
   label: string
+  placeholder: string
+  showLabel?: boolean
   options: Array<{ value: string; label: string }>
 }
 
 export type CSVImportViewConfig = {
   mapping: 'required' | 'assumed'
   relationships: 'user-configured' | 'fixed'
+  relationshipPresentation?: 'detailed' | 'guided'
   knownObjectTypeSlug?: string
   relationshipFields?: string[]
   relationshipRules?: ImportRelationshipRule[]
   sourceConfigs?: CSVImportSourceConfig[]
-  entryChoices?: CSVImportEntryChoice[]
+  schemaChoices?: CSVImportSchemaChoice[]
 }
 
 const getCSVSourceBranchSelections = (
-  source: Pick<CSVImportSource, 'config' | 'entryChoiceValue'>
+  source: Pick<CSVImportSource, 'config' | 'schemaChoiceValue'>
 ): Record<string, string> =>
-  source.config.entryChoiceSchemaPath && source.entryChoiceValue
-    ? { [source.config.entryChoiceSchemaPath]: source.entryChoiceValue }
+  source.config.schemaChoice && source.schemaChoiceValue
+    ? { [source.config.schemaChoice.branchPath]: source.schemaChoiceValue }
     : {}
 
 const getCSVSourceFixedFields = (
-  source: Pick<CSVImportSource, 'config' | 'entryChoiceValue'>
+  source: Pick<CSVImportSource, 'config' | 'schemaChoiceValue'>
 ): Record<string, unknown> =>
-  source.config.entryChoiceFieldPath && source.entryChoiceValue
-    ? { [source.config.entryChoiceFieldPath]: source.entryChoiceValue }
+  source.config.schemaChoice && source.schemaChoiceValue
+    ? { [source.config.schemaChoice.valuePath]: source.schemaChoiceValue }
     : {}
+
+const validateCSVRecords = (
+  records: CanonicalImportRecord[],
+  schema: JSONSchema6
+): Array<{ record: CanonicalImportRecord; result: { isValid: boolean; errors: string[] } }> => {
+  const cleanedSchema = omit(schema as Record<string, unknown>, '$schema')
+  return records.map((record) => {
+    const errors = schemaToFormUtils.validateAgainstSchema(
+      cleanedSchema,
+      record.data as IFormValues
+    )
+    return {
+      record,
+      result: {
+        isValid: !errors?.length,
+        errors: errors?.map((error) => error.message) ?? [],
+      },
+    }
+  })
+}
 
 const defaultCSVImportViewConfig: CSVImportViewConfig = {
   mapping: 'required',
   relationships: 'user-configured',
+  relationshipPresentation: 'detailed',
 }
 
 const resolveCSVImportSourceConfig = (
@@ -855,19 +906,39 @@ const CSVSourceEditor = ({
 const CSVSourceImportPanel = ({
   source,
   loaded,
+  objectType,
+  schema,
   onObjectTypeSelected,
   executionBlocked,
   executionBlockMessage,
+  externalImportControl,
+  startImportRequest,
   onImportAttemptComplete,
 }: {
   source: CSVImportSource
   loaded?: { candidates: ImportCandidate[]; records: CanonicalImportRecord[] }
+  objectType?: IObjectType
+  schema?: JSONSchema6
   onObjectTypeSelected: (sourceId: string, objectType: IObjectType | undefined) => void
   executionBlocked: boolean
   executionBlockMessage?: string
+  externalImportControl: boolean
+  startImportRequest: number
   onImportAttemptComplete: (sourceId: string) => void
 }): ReactElement => {
-  const { session, setCandidates, setRecords } = useImportSession(source.sourceId)
+  const {
+    session,
+    setCandidates,
+    setRecords,
+    setSelectedObjectType,
+    setSchema,
+    setValidationResults,
+    setReconciliations,
+    setConflictAction,
+  } = useImportSession(source.sourceId)
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  const [duplicateCheckError, setDuplicateCheckError] = useState<string>()
+  const auth = useAuth()
   const handlePanelObjectTypeSelected = useCallback(
     (objectType: IObjectType | undefined) => onObjectTypeSelected(source.sourceId, objectType),
     [onObjectTypeSelected, source.sourceId]
@@ -879,44 +950,184 @@ const CSVSourceImportPanel = ({
 
   useEffect(() => {
     if (!loaded) return
-    const sessionMatchesLoadedRecords =
-      session.records.length === loaded.records.length &&
-      session.records[0]?.provenance.externalId === loaded.records[0]?.provenance.externalId
-    if (sessionMatchesLoadedRecords) return
+    if (session.records === loaded.records) return
     setCandidates(loaded.candidates)
     setRecords(loaded.records)
-  }, [loaded, session.records, setCandidates, setRecords])
+    setSchema(schema ?? null)
+    if (objectType) setSelectedObjectType(objectType)
+  }, [
+    loaded,
+    objectType,
+    schema,
+    session.records,
+    setCandidates,
+    setRecords,
+    setSchema,
+    setSelectedObjectType,
+  ])
+
+  useEffect(() => {
+    if (!loaded || session.records !== loaded.records || !session.schema || isValidationComplete(session))
+      return
+    setValidationResults(validateCSVRecords(loaded.records, session.schema))
+  }, [loaded, session, setValidationResults])
+
+  useEffect(() => {
+    const token = auth.user?.access_token
+    if (
+      !source.startAtImport ||
+      !loaded ||
+      !objectType ||
+      !token ||
+      session.records !== loaded.records ||
+      !isValidationComplete(session) ||
+      !session.records.every((record) => session.validationResults[importRecordKey(record)]?.isValid) ||
+      session.reconciliations
+    ) return
+
+    const controller = new AbortController()
+    void fetchExistingImportDocuments({
+      records: session.records,
+      objectTypeUuid: objectType.uuid,
+      token,
+      signal: controller.signal,
+    }).then((existingDocuments) => {
+      if (controller.signal.aborted) return
+      setDuplicateCheckError(undefined)
+      setReconciliations(reconcileImportRecords(session.records, existingDocuments))
+    }).catch((error: unknown) => {
+      if (controller.signal.aborted) return
+      setDuplicateCheckError(error instanceof Error ? error.message : String(error))
+    })
+    return () => controller.abort()
+  }, [
+    auth.user?.access_token,
+    loaded,
+    objectType,
+    session,
+    setReconciliations,
+    source.startAtImport,
+  ])
 
   useEffect(() => {
     if (!loaded || loaded.records.length > 0 || executionBlocked) return
     onImportAttemptComplete(source.sourceId)
   }, [executionBlocked, loaded, onImportAttemptComplete, source.sourceId])
 
-  if (!loaded) {
-    return <div className="border p-3 text-sm text-gray-600">Records are still loading.</div>
-  }
+  const records = loaded?.records ?? []
+  const validCount = records.filter(
+    (record) => session.validationResults[importRecordKey(record)]?.isValid
+  ).length
+  const invalidCount = records.filter(
+    (record) => session.validationResults[importRecordKey(record)]?.isValid === false
+  ).length
+  const pendingValidationCount = records.length - validCount - invalidCount
+  const duplicateReconciliations = session.reconciliations?.filter(
+    ({ status }) => status === 'exact' || status === 'conflicting'
+  ) ?? []
+  const duplicateCount = session.reconciliations?.filter(({ status }) => status !== 'new').length ?? 0
+  const duplicateAction = duplicateReconciliations.length > 0 &&
+    duplicateReconciliations.every(({ action }) => action === duplicateReconciliations[0].action)
+    ? duplicateReconciliations[0].action ?? ''
+    : ''
 
   return (
-    <section className="flex min-h-[28rem] min-w-0 flex-col border p-3">
-      <h2 className="mb-2 font-semibold">{source.fileName}</h2>
-      <div className="min-h-0 flex-1 overflow-hidden">
-        <ImportRecordsPage
-          key={`${source.adapter.id}-${loaded.records.length}`}
-          type={source.sourceId}
-          objectTypeSlug={source.typeSlug}
-          label={csvFileNameToTypeLabel(source.fileName)}
-          pluralLabel="CSV records"
-          sourceAdapter={source.adapter}
-          csvSource
-          arraySource={Boolean(source.arrayTarget)}
-          executionBlocked={executionBlocked}
-          executionBlockMessage={executionBlockMessage}
-          onImportAttemptComplete={handleImportAttemptComplete}
-          onObjectTypeSelected={handlePanelObjectTypeSelected}
-          icon={FileSpreadsheet}
-        />
+    <>
+      <div className="grid grid-cols-1 gap-3 border-b py-3 sm:grid-cols-2 xl:grid-cols-[minmax(12rem,1.3fr)_minmax(10rem,1fr)_minmax(13rem,1fr)_auto] xl:items-center">
+        <div role="cell" className="min-w-0">
+          <span className="text-xs text-gray-500 xl:hidden">Type</span>
+          <strong className="block truncate text-sm">{objectType?.label ?? 'None'}</strong>
+          {objectType && <span className="block truncate text-xs text-gray-500">{objectType.slug}</span>}
+        </div>
+        <div role="cell" className="text-sm">
+          <span className="text-xs text-gray-500 xl:hidden">Records</span>
+          <div>
+            {validCount} valid · {invalidCount} invalid
+            {pendingValidationCount > 0 && ` · ${pendingValidationCount} pending`}
+          </div>
+        </div>
+        <div role="cell" className="min-w-0 text-sm">
+          <span className="text-xs text-gray-500 xl:hidden">Duplicate handling</span>
+          {duplicateCheckError && !session.reconciliations ? (
+            <span className="text-red-700" role="alert" title={duplicateCheckError}>
+              Duplicate check failed
+            </span>
+          ) : source.startAtImport && loaded && objectType && auth.user?.access_token &&
+            session.records === loaded.records && isValidationComplete(session) &&
+            !session.reconciliations ? (
+            <span className="text-gray-500" role="status">Checking duplicates...</span>
+          ) : duplicateReconciliations.length > 0 ? (
+            <label className="flex min-w-0 items-center gap-2">
+              <span className="shrink-0 text-xs text-gray-600">{duplicateCount} found</span>
+              <select
+                className="h-8 min-w-0 max-w-full border bg-white px-2"
+                aria-label={`Duplicate handling for ${source.fileName}`}
+                value={duplicateAction}
+                onChange={(event) => {
+                  const action = event.target.value as ImportConflictAction
+                  duplicateReconciliations.forEach(({ record }) => setConflictAction(record, action))
+                }}
+              >
+                {!duplicateAction && <option value="">Mixed handling</option>}
+                <option value="ignore">Ignore duplicates</option>
+                <option value="overwrite">Overwrite existing</option>
+                <option value="merge">Merge with existing</option>
+              </select>
+            </label>
+          ) : duplicateCount > 0 ? (
+            <span>{duplicateCount} ambiguous; review details</span>
+          ) : session.reconciliations ? (
+            <span className="text-gray-500">None found</span>
+          ) : (
+            <span className="text-gray-500">Not checked</span>
+          )}
+        </div>
+        <div role="cell" className="flex justify-start xl:justify-end">
+          <Button
+            size="xs"
+            variant="outline"
+            disabled={!loaded}
+            onClick={() => setIsDetailsOpen(true)}
+          >
+            Edit type &amp; validate
+          </Button>
+        </div>
       </div>
-    </section>
+      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+        <DialogContent className="flex h-[calc(100vh-2rem)] max-h-none w-[calc(100vw-2rem)] max-w-none flex-col overflow-hidden sm:max-w-none">
+          <DialogHeader>
+            <DialogTitle>{source.fileName}</DialogTitle>
+            <DialogDescription>
+              Select or edit the object type and schema, then validate the records.
+            </DialogDescription>
+          </DialogHeader>
+          {loaded ? (
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <ImportRecordsPage
+                key={`${source.adapter.id}-${loaded.records.length}`}
+                type={source.sourceId}
+                objectTypeSlug={source.typeSlug}
+                label={csvFileNameToTypeLabel(source.fileName)}
+                pluralLabel="CSV records"
+                sourceAdapter={source.adapter}
+                csvSource
+                arraySource={Boolean(source.arrayTarget)}
+                startAtImport={false}
+                externalImportControl={externalImportControl}
+                startImportRequest={startImportRequest}
+                executionBlocked={executionBlocked}
+                executionBlockMessage={executionBlockMessage}
+                onImportAttemptComplete={handleImportAttemptComplete}
+                onObjectTypeSelected={handlePanelObjectTypeSelected}
+                icon={FileSpreadsheet}
+              />
+            </div>
+          ) : (
+            <p className="text-sm text-gray-600">Records are still loading.</p>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
@@ -926,13 +1137,19 @@ const CSVImportPage = ({
   viewConfig?: CSVImportViewConfig
 }): ReactElement => {
   const [sources, setSources] = useState<CSVImportSource[]>([])
+  const [sourceSetupDisclosure, setSourceSetupDisclosure] = useState({
+    complete: false,
+    expanded: true,
+  })
   const [activeSourceId, setActiveSourceId] = useState<string | null>(null)
   const [step, setStep] = useState<'upload' | 'records'>('upload')
   const [activeWizardStep, setActiveWizardStep] = useState<'upload' | 'mapping' | 'import'>(
     'upload'
   )
+  const [uploadFormat, setUploadFormat] = useState<'csv' | 'xlsx'>()
   const [uploadMultipleFiles, setUploadMultipleFiles] = useState(false)
-  const [entryChoiceValues, setEntryChoiceValues] = useState<Record<string, string>>({})
+  const [schemaChoiceValues, setSchemaChoiceValues] = useState<Record<string, string>>({})
+  const [selectedWorkbookTypes, setSelectedWorkbookTypes] = useState<Record<string, string>>({})
   const [uploadKey, setUploadKey] = useState(0)
   const sourceSequence = useRef(0)
   const [isLoadingRecords, setIsLoadingRecords] = useState(false)
@@ -941,9 +1158,27 @@ const CSVImportPage = ({
     Record<string, { candidates: ImportCandidate[]; records: CanonicalImportRecord[] }>
   >({})
   const [completedSourceIds, setCompletedSourceIds] = useState<Set<string>>(() => new Set())
+  const [importRequest, setImportRequest] = useState(0)
+  const [sessionImportStarted, setSessionImportStarted] = useState(false)
+  const [pendingWorkbook, setPendingWorkbook] = useState<{
+    fileName: string
+    sheets: ParsedWorkbookSheet[]
+  }>()
+  const [activeWorkbookFileName, setActiveWorkbookFileName] = useState<string>()
+  const workbookInputRef = useRef<HTMLInputElement>(null)
+  const [selectedWorkbookSheets, setSelectedWorkbookSheets] = useState<Set<string>>(
+    () => new Set()
+  )
+  const [isReadingWorkbook, setIsReadingWorkbook] = useState(false)
   const [relationshipResults, setRelationshipResults] = useState<
     ImportRelationshipPersistenceResult[]
   >([])
+  const [existingParentLookup, setExistingParentLookup] = useState<{
+    key: string
+    candidates: ImportRelationshipCandidate[]
+  }>({ key: '', candidates: [] })
+  const [selectedRelationshipParents, setSelectedRelationshipParents] = useState<Record<string, string>>({})
+  const [ignoredRelationshipRows, setIgnoredRelationshipRows] = useState<Set<string>>(() => new Set())
   const [isLinkingRelationships, setIsLinkingRelationships] = useState(false)
   const [relationshipError, setRelationshipError] = useState<string>()
   const [contextState] = useAtom(contextStateAtom)
@@ -951,14 +1186,117 @@ const CSVImportPage = ({
   const [, setUploadedImportSources] = useAtom(uploadedImportSourcesAtom)
   const activeSource = sources.find((source) => source.sourceId === activeSourceId) ?? null
   const activeSession = useImportSession(activeSource?.sourceId ?? 'csv-upload')
-  const configuredParentSource = sources.find((source) => source.role === 'parent')
+  const configuredArraySource = sources.find((source) => source.role === 'array')
+  const configuredParentSource = configuredArraySource
+    ? sources.find(
+      (source) => source.config.key === configuredArraySource.arrayTarget?.parentSourceKey
+    )
+    : sources.find((source) => source.role === 'parent')
   const parentSession = useImportSession(
     configuredParentSource?.sourceId ?? 'csv-configured-parent'
+  )
+  const importSessions = useImportSessions()
+  const sourceConfigs = useMemo(() => {
+    const configuredSources = viewConfig.sourceConfigs ?? []
+    const configuredArrayPaths = new Set(
+      configuredSources
+        .filter((source) => source.arrayTarget)
+        .map(
+          (source) =>
+            `${source.arrayTarget?.parentSourceKey}:${source.arrayTarget?.arrayFieldPath}`
+        )
+    )
+    const optionalArraySources: CSVImportSourceConfig[] = configuredSources
+      .filter((source) => source.role !== 'array' && !source.arrayTarget)
+      .flatMap((parentSource) => {
+        const objectType = contextState.object_type_by_slug[parentSource.typeSlug]
+        const schema = objectType
+          ? (contextState.object_schema_defaults_by_object_type_uuid[objectType.uuid]
+            ?.json_schema as JSONSchema6 | undefined)
+          : undefined
+        return getCSVOptionalObjectArrayFields(schema)
+          .filter(
+            ({ path }) => !configuredArrayPaths.has(`${parentSource.key}:${path}`)
+          )
+          .map(({ path, title }) => {
+            const key = `${parentSource.key}-array-${path.replace(/[^a-zA-Z0-9]+/g, '-')}`
+            return {
+              key,
+              label: `${parentSource.label} ${title}`,
+              description: `Optional rows for the ${title} array on ${parentSource.label}.`,
+              typeSlug: parentSource.typeSlug,
+              typeKnown: true,
+              mapping: 'required' as const,
+              optional: true,
+              role: 'array' as const,
+              arrayTarget: {
+                parentSourceKey: parentSource.key,
+                arrayFieldPath: path,
+                parentMatchField: '',
+                rowMatchField: '',
+              },
+            }
+          })
+      })
+    return [...configuredSources, ...optionalArraySources]
+  }, [
+    contextState.object_schema_defaults_by_object_type_uuid,
+    contextState.object_type_by_slug,
+    viewConfig,
+  ])
+  const effectiveViewConfig = useMemo(
+    () => ({ ...viewConfig, sourceConfigs }),
+    [sourceConfigs, viewConfig]
   )
   const sourceCountLabel = useMemo(
     () => `${sources.length} CSV source${sources.length === 1 ? '' : 's'}`,
     [sources.length]
   )
+  const getSourceObjectType = (source: CSVImportSource): IObjectType | undefined =>
+    source.selectedObjectTypeUuid
+      ? contextState.object_type_by_uuid[source.selectedObjectTypeUuid]
+      : contextState.object_type_by_slug[source.typeSlug]
+  const getSourceSchema = (source: CSVImportSource): JSONSchema6 | undefined => {
+    const objectType = getSourceObjectType(source)
+    const schema = objectType
+      ? (contextState.object_schema_defaults_by_object_type_uuid[objectType.uuid]
+        ?.json_schema as JSONSchema6 | undefined)
+      : undefined
+    return source.arrayTarget
+      ? getCSVArrayItemSchema(schema, source.arrayTarget.arrayFieldPath)
+      : schema
+  }
+  const allRequiredSourcesUploaded = sourceConfigs.every(
+    (sourceConfig) =>
+      sourceConfig.optional || sources.some((source) => source.config.key === sourceConfig.key)
+  )
+  const canPrepareImport = sources.length > 0 && allRequiredSourcesUploaded
+  const inferredMappingsAreConfident = sources.every((source) =>
+    isCSVSchemaMappingComplete(
+      source.parsed.headers.map((header) => header.key),
+      source.mapping,
+      getSourceSchema(source),
+      source.relationshipFields,
+      getCSVSourceBranchSelections(source)
+    )
+  )
+  const canSourceStartAtImport = (
+    source: CSVImportSource,
+    records: CanonicalImportRecord[]
+  ): boolean => {
+    const schema = getSourceSchema(source)
+    if (source.arrayTarget || !schema || records.length === 0) return false
+    if (
+      !isCSVSchemaMappingComplete(
+        source.parsed.headers.map((header) => header.key),
+        source.mapping,
+        schema,
+        source.relationshipFields,
+        getCSVSourceBranchSelections(source)
+      )
+    ) return false
+    return validateCSVRecords(records, schema).every(({ result }) => result.isValid)
+  }
   const documentSourcesInDependencyOrder = useMemo(
     () => getCSVDocumentSourcesInDependencyOrder(sources),
     [sources]
@@ -1027,16 +1365,231 @@ const CSVImportPage = ({
     },
     [contextState, viewConfig]
   )
-  const onActiveObjectTypeSelected = useCallback(
-    (objectType: IObjectType | undefined) => {
-      if (activeSourceId) handleObjectTypeSelected(activeSourceId, objectType)
-    },
-    [activeSourceId, handleObjectTypeSelected]
+  const resolvedRelationshipRules = useMemo(
+    () => resolveCSVRelationshipRules(
+      getCSVDocumentSources(sources),
+      (source) => {
+        const objectType = source.selectedObjectTypeUuid
+          ? contextState.object_type_by_uuid[source.selectedObjectTypeUuid]
+          : contextState.object_type_by_slug[source.typeSlug]
+        return objectType?.slug
+      }
+    ),
+    [contextState.object_type_by_slug, contextState.object_type_by_uuid, sources]
   )
+  const sourceSetupIsComplete =
+    sources.length > 0 &&
+    allRequiredSourcesUploaded &&
+    sources.every((source) => {
+      if (!getSourceObjectType(source)) return false
+      if (source.role === 'array') {
+        const target = source.arrayTarget
+        return Boolean(
+          target?.parentSourceKey &&
+          sources.some(
+            (candidate) =>
+              candidate.config.key === target.parentSourceKey && candidate.role !== 'array'
+          ) &&
+          target.arrayFieldPath &&
+          target.parentMatchField &&
+          target.rowMatchField
+        )
+      }
+      if (
+        viewConfig.relationships === 'user-configured' &&
+        (source.role === 'parent' || source.role === 'child')
+      ) {
+        const rule = source.relationshipRule
+        return Boolean(
+          rule?.parentObjectTypeSlug &&
+          rule.childObjectTypeSlug &&
+          rule.parentMatchField &&
+          rule.childMatchField &&
+          rule.predicate
+        )
+      }
+      return true
+    }) &&
+    (viewConfig.relationships !== 'fixed' ||
+      (viewConfig.relationshipRules ?? []).every(
+        (rule) =>
+          rule.parentObjectTypeSlug &&
+          rule.childObjectTypeSlug &&
+          rule.parentMatchField &&
+          rule.childMatchField &&
+          rule.predicate
+      ))
+
+  const sourceSetupDefaultsExpanded =
+    viewConfig === defaultCSVImportViewConfig || !sourceSetupIsComplete
+  const isSourceSetupExpanded =
+    sourceSetupDisclosure.complete === sourceSetupIsComplete
+      ? sourceSetupDisclosure.expanded
+      : sourceSetupDefaultsExpanded
+
+  const existingParentLookupRules = useMemo(
+    () => resolvedRelationshipRules.filter(
+      (rule) => rule.existingParentPolicy === 'lookup' && rule.parentMatchField && rule.childMatchField
+    ),
+    [resolvedRelationshipRules]
+  )
+  const existingParentLookupKey = useMemo(() => JSON.stringify({
+    user: auth.user?.profile.sub,
+    rules: existingParentLookupRules,
+    inputs: sources.map((source) => {
+      const objectType = source.selectedObjectTypeUuid
+        ? contextState.object_type_by_uuid[source.selectedObjectTypeUuid]
+        : contextState.object_type_by_slug[source.typeSlug]
+      const childFields = existingParentLookupRules
+        .filter((rule) => rule.childObjectTypeSlug === (objectType?.slug ?? source.typeSlug))
+        .map((rule) => rule.childMatchField)
+      return [
+        source.sourceId,
+        (loadedSourceRecords[source.sourceId]?.records ?? []).map((record) => [
+          record.provenance.externalId,
+          childFields.map((field) => getRelationshipMatchValue({
+            record,
+            objectTypeUuid: objectType?.uuid ?? '',
+            objectTypeSlug: objectType?.slug ?? source.typeSlug,
+          }, field)),
+        ]),
+      ]
+    }),
+  }), [
+    auth.user?.profile.sub,
+    contextState.object_type_by_slug,
+    contextState.object_type_by_uuid,
+    existingParentLookupRules,
+    loadedSourceRecords,
+    sources,
+  ])
+  const existingParentCandidates = useMemo(
+    () => existingParentLookup.key === existingParentLookupKey
+      ? existingParentLookup.candidates
+      : [],
+    [existingParentLookup, existingParentLookupKey]
+  )
+  const isResolvingParents = Boolean(auth.user?.access_token) &&
+    existingParentLookupRules.length > 0 && existingParentLookup.key !== existingParentLookupKey
+
+  useEffect(() => {
+    const token = auth.user?.access_token
+    if (!token || existingParentLookupRules.length === 0) return
+    const controller = new AbortController()
+    void (async () => {
+      try {
+        const loadedCandidates = sources.flatMap((source) => {
+          const objectType = source.selectedObjectTypeUuid
+            ? contextState.object_type_by_uuid[source.selectedObjectTypeUuid]
+            : contextState.object_type_by_slug[source.typeSlug]
+          return (loadedSourceRecords[source.sourceId]?.records ?? []).map((record) => ({
+            record,
+            objectTypeUuid: objectType?.uuid ?? '',
+            objectTypeSlug: objectType?.slug ?? source.typeSlug,
+          }))
+        }).filter((candidate) => candidate.objectTypeUuid)
+        const existingByUuid = new Map<string, ImportRelationshipCandidate>()
+        for (const rule of existingParentLookupRules) {
+          const parentType = contextState.object_type_by_slug[rule.parentObjectTypeSlug]
+          if (!parentType) continue
+          const uploadedParentValues = new Set(
+            loadedCandidates
+              .filter((candidate) => candidate.objectTypeSlug === rule.parentObjectTypeSlug)
+              .map((candidate) => getRelationshipMatchValue(candidate, rule.parentMatchField))
+              .filter((value): value is string => Boolean(value))
+          )
+          const lookupValues = Array.from(new Set(
+            loadedCandidates
+              .filter((candidate) => candidate.objectTypeSlug === rule.childObjectTypeSlug)
+              .map((candidate) => getRelationshipMatchValue(candidate, rule.childMatchField))
+              .filter(
+                (value): value is string =>
+                  value !== undefined && value.length > 0 && !uploadedParentValues.has(value)
+              )
+          ))
+          if (lookupValues.length === 0) continue
+          const documents = await fetchDocumentsByDataFieldValues({
+            objectTypeUuid: parentType.uuid,
+            fieldPath: rule.parentMatchField!,
+            values: lookupValues,
+            token,
+            signal: controller.signal,
+          })
+          for (const document of documents) {
+            existingByUuid.set(document.uuid, {
+              objectTypeUuid: parentType.uuid,
+              objectTypeSlug: parentType.slug,
+              existingDocumentUuid: document.uuid,
+              record: {
+                uuid: document.uuid,
+                slug: document.slug,
+                label: document.label,
+                description: document.description ?? '',
+                data: document.data ?? {},
+                attrs: document.attrs ?? {},
+                sourceData: document.data,
+                provenance: { sourceId: `existing:${document.uuid}`, externalId: document.uuid },
+              } as CanonicalImportRecord,
+            })
+          }
+        }
+        if (!controller.signal.aborted) {
+          setRelationshipError(undefined)
+          setExistingParentLookup({
+            key: existingParentLookupKey,
+            candidates: Array.from(existingByUuid.values()),
+          })
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          setExistingParentLookup({ key: existingParentLookupKey, candidates: [] })
+          setRelationshipError(error instanceof Error ? error.message : String(error))
+        }
+      }
+    })()
+    return () => controller.abort()
+  }, [
+    auth.user?.access_token,
+    contextState.object_type_by_slug,
+    contextState.object_type_by_uuid,
+    existingParentLookupKey,
+    existingParentLookupRules,
+    loadedSourceRecords,
+    sources,
+  ])
+
+  const effectiveLoadedSourceRecords = useMemo(() => Object.fromEntries(
+    Object.entries(loadedSourceRecords).map(([sourceId, loaded]) => [
+      sourceId,
+      {
+        candidates: loaded.candidates.filter((candidate) => {
+          const source = sources.find((item) => item.sourceId === sourceId)
+          if (!source) return true
+          const objectType = source.selectedObjectTypeUuid
+            ? contextState.object_type_by_uuid[source.selectedObjectTypeUuid]
+            : contextState.object_type_by_slug[source.typeSlug]
+          const key = `${objectType?.uuid ?? source.typeSlug}:${candidate.provenance.sourceId}:${candidate.provenance.externalId}`
+          return !ignoredRelationshipRows.has(key)
+        }),
+        records: loaded.records.filter((record) => {
+          const source = sources.find((candidate) => candidate.sourceId === sourceId)
+          if (!source) return true
+          const objectType = source.selectedObjectTypeUuid
+            ? contextState.object_type_by_uuid[source.selectedObjectTypeUuid]
+            : contextState.object_type_by_slug[source.typeSlug]
+          const key = `${objectType?.uuid ?? source.typeSlug}:${record.provenance.sourceId}:${record.provenance.externalId}`
+          return !ignoredRelationshipRows.has(key)
+        }),
+      },
+    ])
+  ), [contextState.object_type_by_slug, contextState.object_type_by_uuid, ignoredRelationshipRows, loadedSourceRecords, sources])
 
   const csvRelationshipPlans = useMemo<ImportRelationshipPlan[]>(() => {
+    const documentSources = getCSVDocumentSources(sources).filter(
+      (source) => source.role !== 'array'
+    )
     const objectTypes = new Map<string, IObjectType>(
-      sources
+      documentSources
         .map((source) => {
           const objectType = source.selectedObjectTypeUuid
             ? contextState.object_type_by_uuid[source.selectedObjectTypeUuid]
@@ -1045,11 +1598,15 @@ const CSVImportPage = ({
         })
         .filter((entry): entry is readonly [string, IObjectType] => Boolean(entry))
     )
-    const candidates = sources.flatMap((source) => {
+    for (const rule of resolvedRelationshipRules) {
+      const parentType = contextState.object_type_by_slug[rule.parentObjectTypeSlug]
+      if (parentType) objectTypes.set(parentType.uuid, parentType)
+    }
+    const candidates = documentSources.flatMap((source) => {
       const objectType = source.selectedObjectTypeUuid
         ? contextState.object_type_by_uuid[source.selectedObjectTypeUuid]
         : contextState.object_type_by_slug[source.typeSlug]
-      const records = loadedSourceRecords[source.sourceId]?.records ?? []
+      const records = effectiveLoadedSourceRecords[source.sourceId]?.records ?? []
       return objectType
         ? records.map((record) => ({
           record,
@@ -1058,73 +1615,58 @@ const CSVImportPage = ({
         }))
         : []
     })
-    const relationshipRules = sources
-      .flatMap((source) => {
-        const objectType = source.selectedObjectTypeUuid
-          ? contextState.object_type_by_uuid[source.selectedObjectTypeUuid]
-          : contextState.object_type_by_slug[source.typeSlug]
-        const configuredRules = source.relationshipRule
-          ? [source.relationshipRule]
-          : (source.adapter.relationshipRules ?? [])
-        return configuredRules.map((rule) => ({
-          ...rule,
-          parentObjectTypeSlug: (() => {
-            const parentSource =
-              source.role === 'parent'
-                ? source
-                : sources.find(
-                  (candidate) =>
-                    candidate.role === 'parent' &&
-                    candidate.typeSlug === rule.parentObjectTypeSlug
-                )
-            const parentType = parentSource?.selectedObjectTypeUuid
-              ? contextState.object_type_by_uuid[parentSource.selectedObjectTypeUuid]
-              : parentSource
-                ? contextState.object_type_by_slug[parentSource.typeSlug]
-                : undefined
-            return (
-              parentType?.slug ??
-              (source.role === 'parent' && objectType ? objectType.slug : rule.parentObjectTypeSlug)
-            )
-          })(),
-          childObjectTypeSlug: (() => {
-            const childSource =
-              source.role === 'child'
-                ? source
-                : sources.find(
-                  (candidate) =>
-                    candidate.role === 'child' && candidate.typeSlug === rule.childObjectTypeSlug
-                )
-            const childType = childSource?.selectedObjectTypeUuid
-              ? contextState.object_type_by_uuid[childSource.selectedObjectTypeUuid]
-              : childSource
-                ? contextState.object_type_by_slug[childSource.typeSlug]
-                : undefined
-            return (
-              childType?.slug ??
-              (source.role === 'child' && objectType ? objectType.slug : rule.childObjectTypeSlug)
-            )
-          })(),
-        }))
-      })
-      .filter(
-        (rule, index, allRules) =>
-          allRules.findIndex((candidate) => JSON.stringify(candidate) === JSON.stringify(rule)) ===
-          index
-      )
-
     return planImportRelationships({
       parentObjectTypes: objectTypes,
-      candidates,
-      relationshipRules,
+      candidates: [...candidates, ...existingParentCandidates],
+      relationshipRules: resolvedRelationshipRules,
     })
   }, [
-    contextState.object_type,
     contextState.object_type_by_slug,
     contextState.object_type_by_uuid,
-    loadedSourceRecords,
+    effectiveLoadedSourceRecords,
+    existingParentCandidates,
+    resolvedRelationshipRules,
     sources,
   ])
+  const resolvedCSVRelationshipPlans = useMemo(
+    () => csvRelationshipPlans.map((plan) => {
+      if (plan.status !== 'ambiguous-parent') return plan
+      const selectedParentKey = selectedRelationshipParents[importRelationshipKey(plan)]
+      const selectedParent = plan.parentChoices?.find(
+        (parent) =>
+          (parent.existingDocumentUuid ?? relationshipDocumentKey(parent)) === selectedParentKey
+      )
+      return selectedParent
+        ? { ...plan, parent: selectedParent, status: 'ready' as const, reason: undefined }
+        : plan
+    }),
+    [csvRelationshipPlans, selectedRelationshipParents]
+  )
+  const cleanImportControlActive =
+    documentSourcesInDependencyOrder.length > 0 &&
+    documentSourcesInDependencyOrder.every((source) => source.startAtImport)
+  const canImportCleanSession =
+    cleanImportControlActive &&
+    documentSourcesInDependencyOrder.every((source) => {
+      const session = importSessions[source.sourceId]
+      return Boolean(
+        session &&
+        isValidationComplete(session) &&
+        Object.values(session.validationResults).every(({ isValid }) => isValid) &&
+        session.reconciliations &&
+        session.reconciliations.every(
+          ({ status, action }) =>
+            status !== 'ambiguous' && action !== undefined
+        )
+      )
+    }) &&
+    resolvedCSVRelationshipPlans.every(({ status }) => status === 'ready')
+  const readySessionRecordCount = documentSourcesInDependencyOrder.reduce((total, source) => {
+    const reconciliations = importSessions[source.sourceId]?.reconciliations ?? []
+    return total + reconciliations.filter(
+      ({ status, action }) => status !== 'ambiguous' && action !== undefined && action !== 'ignore'
+    ).length
+  }, 0)
 
   useEffect(() => {
     if (!import.meta.env.DEV) return
@@ -1170,15 +1712,16 @@ const CSVImportPage = ({
     fileData: string,
     parsed: ParsedCSV,
     fileName: string,
-    configuredSource?: CSVImportSourceConfig
+    configuredSource?: CSVImportSourceConfig,
+    workbookFileName?: string
   ) => {
     setCompletedSourceIds(new Set())
-    const sourceConfig = configuredSource ?? resolveCSVImportSourceConfig(viewConfig, fileName)
-    const entryChoiceValue = sourceConfig.entryChoiceKey
-      ? entryChoiceValues[sourceConfig.entryChoiceKey]
+    const sourceConfig = configuredSource ?? resolveCSVImportSourceConfig(effectiveViewConfig, fileName)
+    const schemaChoiceValue = sourceConfig.schemaChoice
+      ? schemaChoiceValues[sourceConfig.schemaChoice.key]
       : undefined
-    const choiceSource = { config: sourceConfig, entryChoiceValue }
-    const role = resolveCSVImportSourceRole(viewConfig, sourceConfig)
+    const choiceSource = { config: sourceConfig, schemaChoiceValue }
+    const role = resolveCSVImportSourceRole(effectiveViewConfig, sourceConfig)
     const typeSlug = sourceConfig.typeSlug
     const existingType = contextState.object_type_by_slug[typeSlug]
     const existingSchema = existingType
@@ -1201,7 +1744,7 @@ const CSVImportPage = ({
         mapping.dataColumns ?? [],
         mappingSchema,
         getCSVSourceBranchSelections(choiceSource)
-      )).filter(([, fieldPath]) => fieldPath !== sourceConfig.entryChoiceFieldPath)
+      )).filter(([, fieldPath]) => fieldPath !== sourceConfig.schemaChoice?.valuePath)
     )
     const adapter = createCSVImportAdapter({
       id: sourceId,
@@ -1227,7 +1770,8 @@ const CSVImportPage = ({
       selectedObjectTypeUuid: existingType?.uuid,
       fileName,
       fileText: fileData,
-      entryChoiceValue,
+      workbookFileName,
+      schemaChoiceValue,
       parsed,
       mapping,
       relationshipFields: sourceConfig.relationshipFields ?? [],
@@ -1242,23 +1786,112 @@ const CSVImportPage = ({
       source,
     ])
     setActiveSourceId(sourceId)
-    const uploadedKeys = new Set([
-      ...sources.map((existing) => existing.config.key),
-      sourceConfig.key,
-    ])
-    if (
-      viewConfig.sourceConfigs?.length &&
-      viewConfig.sourceConfigs.every((configured) => uploadedKeys.has(configured.key))
-    ) {
-      setActiveWizardStep('mapping')
-    }
-    if (
-      !uploadMultipleFiles &&
-      !(viewConfig.sourceConfigs && viewConfig.sourceConfigs.length > 0)
-    ) {
-      setActiveWizardStep('mapping')
-    }
     setUploadKey((key) => key + 1)
+  }
+
+  const handleWorkbookSelected = async (file?: File) => {
+    if (!file) return
+    setIsReadingWorkbook(true)
+    setLoadError(undefined)
+    setPendingWorkbook(undefined)
+    setActiveWorkbookFileName(undefined)
+    setSchemaChoiceValues({})
+    setSelectedWorkbookTypes({})
+    try {
+      const { parseWorkbookFile } = await import('../workbook')
+      const sheets = await parseWorkbookFile(file)
+      if (sheets.length === 0) throw new Error('The workbook has no worksheets with headers.')
+      setPendingWorkbook({ fileName: file.name, sheets })
+      setActiveWorkbookFileName(file.name)
+      setSelectedWorkbookSheets(new Set(sheets.map(({ name }) => name)))
+    } catch (error) {
+      setLoadError(formatCSVRecordsError(error))
+    } finally {
+      setIsReadingWorkbook(false)
+      if (workbookInputRef.current) workbookInputRef.current.value = ''
+    }
+  }
+
+  const resolveWorkbookSheetSourceConfig = (sheetName: string): CSVImportSourceConfig => {
+    const sheetFileName = `${sheetName}.csv`
+    const configuredSource = sourceConfigs.find(
+      (sourceConfig) =>
+        sourceConfig.fileName?.toLowerCase() === sheetFileName.toLowerCase() ||
+        sourceConfig.key === csvFileNameToTypeSlug(sheetFileName)
+    )
+    const sourceConfig = configuredSource ?? resolveCSVImportSourceConfig(effectiveViewConfig, sheetFileName)
+    const selectedTypeUuid = selectedWorkbookTypes[sheetName]
+    if (selectedTypeUuid === undefined) return sourceConfig
+    const selectedType = selectedTypeUuid
+      ? contextState.object_type_by_uuid[selectedTypeUuid]
+      : undefined
+    return {
+      ...sourceConfig,
+      typeSlug: selectedType?.slug ?? (
+        sourceConfig.arrayTarget ? sourceConfig.typeSlug : csvFileNameToTypeSlug(sheetFileName)
+      ),
+      typeKnown: Boolean(selectedType),
+    }
+  }
+  const selectedWorkbookSheetsMissingChoices = pendingWorkbook?.sheets.some((sheet) => {
+    if (!selectedWorkbookSheets.has(sheet.name)) return false
+    const choiceKey = resolveWorkbookSheetSourceConfig(sheet.name).schemaChoice?.key
+    return Boolean(choiceKey && !schemaChoiceValues[choiceKey])
+  }) ?? false
+  const availableObjectTypes = Object.values(contextState.object_type_by_uuid).sort(
+    (left, right) => left.label.localeCompare(right.label)
+  )
+
+  const addSelectedWorkbookSheets = () => {
+    if (!pendingWorkbook) return
+    for (const sheet of pendingWorkbook.sheets) {
+      if (!selectedWorkbookSheets.has(sheet.name)) continue
+      const sheetFileName = `${sheet.name}.csv`
+      addSource(
+        sheet.text,
+        sheet.parsed,
+        sheetFileName,
+        resolveWorkbookSheetSourceConfig(sheet.name),
+        pendingWorkbook.fileName
+      )
+    }
+    setActiveWorkbookFileName(pendingWorkbook.fileName)
+    setPendingWorkbook(undefined)
+    setSelectedWorkbookSheets(new Set())
+  }
+
+  const removeCurrentWorkbook = () => {
+    const workbookFileName = activeWorkbookFileName ?? pendingWorkbook?.fileName
+    const removedSourceIds = new Set(
+      sources
+        .filter((source) => source.workbookFileName === workbookFileName)
+        .map((source) => source.sourceId)
+    )
+    setSources((current) => current.filter((source) => !removedSourceIds.has(source.sourceId)))
+    setUploadedImportSources((current) =>
+      current.filter((source) => !removedSourceIds.has(source.sourceAdapter.id))
+    )
+    setLoadedSourceRecords((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(([sourceId]) => !removedSourceIds.has(sourceId))
+      )
+    )
+    setCompletedSourceIds((current) =>
+      new Set(Array.from(current).filter((sourceId) => !removedSourceIds.has(sourceId)))
+    )
+    setActiveSourceId((current) => current && removedSourceIds.has(current) ? null : current)
+    setPendingWorkbook(undefined)
+    setSelectedWorkbookSheets(new Set())
+    setSelectedWorkbookTypes({})
+    setSchemaChoiceValues({})
+    setActiveWorkbookFileName(undefined)
+    setRelationshipResults([])
+    setSelectedRelationshipParents({})
+    setIgnoredRelationshipRows(new Set())
+    setRelationshipError(undefined)
+    setStep('upload')
+    setActiveWizardStep('upload')
+    setUploadKey((current) => current + 1)
   }
 
   const updateSource = (sourceId: string, update: Partial<CSVImportSource>) => {
@@ -1304,12 +1937,33 @@ const CSVImportPage = ({
   }
   console.log('rules', getUniqueCSVRelationshipRules(sources))
 
-  const continueToRecords = async () => {
+  const continueToRecords = async (fromUpload = false) => {
     if (!activeSource) return
+    if (fromUpload && !inferredMappingsAreConfident) {
+      setLoadError('Some columns need mapping review. Confirm the mappings, then continue.')
+      setActiveWizardStep('mapping')
+      return
+    }
     setIsLoadingRecords(true)
     setLoadError(undefined)
     try {
       if (sources.some((source) => source.role === 'array')) {
+        const missingArrayParents = sources
+          .filter((source) => source.role === 'array')
+          .filter(
+            (source) =>
+              !source.arrayTarget?.parentSourceKey ||
+              !sources.some(
+                (candidate) => candidate.config.key === source.arrayTarget?.parentSourceKey
+              )
+          )
+        if (missingArrayParents.length > 0) {
+          throw new Error(
+            `Upload the configured document source before importing array rows: ${missingArrayParents
+              .map((source) => source.fileName)
+              .join(', ')}`
+          )
+        }
         const parentSource = configuredParentSource
         if (!parentSource) throw new Error('A parent CSV source is required.')
         const controller = new AbortController()
@@ -1322,31 +1976,52 @@ const CSVImportPage = ({
             const records = await Promise.all(
               candidates.map((candidate) => source.adapter.load({ candidate }))
             )
-            return { source, candidates, records }
+            return {
+              source: { ...source, sourceKey: source.config.key },
+              candidates,
+              records,
+            }
           })
         )
-        const parentLoaded = loadedSources.find(
+        const composedSources = loadedSources.map((loaded) =>
+          loaded.source.arrayTarget
+            ? loaded
+            : {
+              ...loaded,
+              records: mergeCSVArraySources({
+                parentSourceId: loaded.source.sourceId,
+                loadedSources,
+              }),
+            }
+        )
+        const readySourceIds = new Set(
+          composedSources
+            .filter(({ source, records }) => canSourceStartAtImport(source, records))
+            .map(({ source }) => source.sourceId)
+        )
+        setSources((current) =>
+          current.map((source) => ({
+            ...source,
+            startAtImport: readySourceIds.has(source.sourceId),
+          }))
+        )
+        const parentLoaded = composedSources.find(
           (loaded) => loaded.source.sourceId === parentSource.sourceId
         )
         if (!parentLoaded) throw new Error('The parent CSV source could not be loaded.')
 
         setLoadedSourceRecords(
           Object.fromEntries(
-            loadedSources.map(({ source, candidates, records }) => [
+            composedSources.map(({ source, candidates, records }) => [
               source.sourceId,
               { candidates, records },
             ])
           )
         )
 
-        const mergedRecords = mergeCSVArraySources({
-          parentSourceId: parentSource.sourceId,
-          loadedSources,
-        })
-
         parentSession.resetSession()
         parentSession.setCandidates(parentLoaded.candidates)
-        parentSession.setRecords(mergedRecords)
+        parentSession.setRecords(parentLoaded.records)
         const existingType = parentSource.selectedObjectTypeUuid
           ? contextState.object_type_by_uuid[parentSource.selectedObjectTypeUuid]
           : contextState.object_type_by_slug[parentSource.typeSlug]
@@ -1357,25 +2032,10 @@ const CSVImportPage = ({
           parentSession.setSelectedObjectType(existingType)
           parentSession.setSchema(existingSchema)
           parentSession.setValidationResults(
-            mergedRecords.map((record) => {
-              const errors = schemaToFormUtils.validateAgainstSchema(
-                omit(existingSchema as Record<string, unknown>, '$schema'),
-                record.data as IFormValues
-              )
-              return {
-                record,
-                result: {
-                  isValid: !errors?.length,
-                  errors: errors?.map((error) => error.message) ?? [],
-                },
-              }
-            })
+            validateCSVRecords(parentLoaded.records, existingSchema as JSONSchema6)
           )
         }
         setActiveSourceId(parentSource.sourceId)
-        updateSource(parentSource.sourceId, {
-          startAtImport: Boolean(existingType && existingSchema),
-        })
         setStep('records')
         setActiveWizardStep('import')
         return
@@ -1418,6 +2078,10 @@ const CSVImportPage = ({
       const records =
         activeLoaded?.records ??
         (await Promise.all(candidates.map((candidate) => activeSource.adapter.load({ candidate }))))
+      setLoadedSourceRecords((current) => ({
+        ...current,
+        [activeSource.sourceId]: { candidates, records },
+      }))
       activeSession.resetSession()
       activeSession.setCandidates(candidates)
       activeSession.setRecords(records)
@@ -1427,33 +2091,13 @@ const CSVImportPage = ({
       const existingSchema = existingType
         ? contextState.object_schema_defaults_by_object_type_uuid[existingType.uuid]?.json_schema
         : undefined
-      const mappingComplete = isCSVImportMappingComplete(
-        activeSource.parsed.headers.map((header) => header.key),
-        activeSource.mapping
-      )
-      const canStartAtImport = Boolean(
-        !activeSource.arrayTarget && existingType && existingSchema && mappingComplete
-      )
-      if (canStartAtImport && existingType && existingSchema) {
+      if (existingType && existingSchema) {
         activeSession.setSelectedObjectType(existingType)
         activeSession.setSchema(existingSchema)
         activeSession.setValidationResults(
-          records.map((record) => {
-            const errors = schemaToFormUtils.validateAgainstSchema(
-              omit(existingSchema as Record<string, unknown>, '$schema'),
-              record.data as IFormValues
-            )
-            return {
-              record,
-              result: {
-                isValid: !errors?.length,
-                errors: errors?.map((error) => error.message) ?? [],
-              },
-            }
-          })
+          validateCSVRecords(records, existingSchema as JSONSchema6)
         )
       }
-      updateSource(activeSource.sourceId, { startAtImport: canStartAtImport })
       setStep('records')
       setActiveWizardStep('import')
     } catch (error) {
@@ -1517,7 +2161,7 @@ const CSVImportPage = ({
         })
       }
       const results = await persistImportRelationships({
-        plans: csvRelationshipPlans,
+        plans: resolvedCSVRelationshipPlans,
         documentUuids,
         predicateUuids,
         signal: new AbortController().signal,
@@ -1588,513 +2232,812 @@ const CSVImportPage = ({
         ]}
       />
       {activeWizardStep === 'upload' && (
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-auto">
-          <section className="border-b pb-4">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-auto pr-4">
+          <section className="pb-4">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
-                <h1 className="text-2xl font-bold">Import CSV files</h1>
+                <h1 className="text-2xl font-bold">Import data files</h1>
                 <p className="text-sm text-gray-600">
-                  {sourceCountLabel}. Each file keeps its own mapping and import session.
+                  {uploadFormat === 'xlsx'
+                    ? 'Select a workbook, then choose its worksheet sources.'
+                    : uploadFormat === 'csv'
+                      ? `${sourceCountLabel}. Each file keeps its own mapping and import session.`
+                      : 'Choose an upload format to begin.'}
                 </p>
               </div>
               <FileSpreadsheet size={22} />
             </div>
-            {viewConfig.sourceConfigs && viewConfig.sourceConfigs.length > 0 ? (
-              <div className="grid gap-3 md:grid-cols-2">
-                {viewConfig.sourceConfigs.map((sourceConfig) => {
-                  const uploadedSource = sources.find(
-                    (source) => source.config.key === sourceConfig.key
-                  )
-                  const choice = viewConfig.entryChoices?.find(
-                    (candidate) => candidate.key === sourceConfig.entryChoiceKey
-                  )
-                  const selectedChoice = sourceConfig.entryChoiceKey
-                    ? entryChoiceValues[sourceConfig.entryChoiceKey]
-                    : undefined
-                  return (
-                    <section
-                      key={sourceConfig.key}
-                      className="border p-3"
-                      aria-label={sourceConfig.label}
-                    >
-                      <h2 className="font-semibold">{sourceConfig.label}</h2>
-                      {sourceConfig.description && (
-                        <p className="mb-3 text-sm text-gray-600">{sourceConfig.description}</p>
-                      )}
-                      {choice && (
-                        <label className="mb-3 flex flex-col gap-1 text-sm">
-                          <span className="font-medium">{choice.label}</span>
-                          <select
-                            className="h-9 border bg-white px-2"
-                            value={entryChoiceValues[choice.key] ?? ''}
-                            disabled={sources.some(
-                              (source) => source.config.entryChoiceKey === choice.key
-                            )}
-                            onChange={(event) =>
-                              setEntryChoiceValues((current) => ({
-                                ...current,
-                                [choice.key]: event.target.value,
-                              }))
-                            }
-                          >
-                            <option value="">Choose a location type</option>
-                            {choice.options.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      )}
-                      {sourceConfig.entryChoiceKey && !selectedChoice ? (
-                        <p className="text-sm text-gray-600" role="status">
-                          Choose {choice?.label.toLowerCase() ?? 'an option'} before uploading this file.
-                        </p>
-                      ) : (
-                        <FileUpload
-                          key={`${uploadKey}-${sourceConfig.key}`}
-                          field={{
-                            ...csvField,
-                            id: `csv-file-${sourceConfig.key}`,
-                            label: `Upload ${sourceConfig.label}`,
-                            description: sourceConfig.description ?? csvField.description,
-                          }}
-                          value={null}
-                          onChange={() => undefined}
-                          acceptFileTypes={['csv', 'text/csv']}
-                          onFileUploaded={(fileData, csvData, uploadedFileName) => {
-                            if (typeof fileData === 'string' && csvData && uploadedFileName)
-                              addSource(fileData, csvData, uploadedFileName, sourceConfig)
-                          }}
-                        />
-                      )}
-                      {uploadedSource && (
-                        <p className="mt-2 text-xs text-green-700">
-                          Using {uploadedSource.fileName} for this source.
-                        </p>
-                      )}
-                    </section>
-                  )
-                })}
-              </div>
-            ) : (
-              <>
-                <FileUpload
-                  key={uploadKey}
-                  field={csvField}
-                  value={null}
-                  onChange={() => undefined}
-                  acceptFileTypes={['csv', 'text/csv']}
-                  onFileUploaded={(fileData, csvData, uploadedFileName) => {
-                    if (typeof fileData === 'string' && csvData && uploadedFileName)
-                      addSource(fileData, csvData, uploadedFileName)
-                  }}
-                />
-                <label className="mt-3 inline-flex items-center gap-2 text-sm">
+            <div className="mb-4 inline-flex border" role="group" aria-label="Upload format">
+              <Button
+                variant={uploadFormat === 'csv' ? 'default' : 'outline'}
+                aria-pressed={uploadFormat === 'csv'}
+                disabled={sources.length > 0 || Boolean(pendingWorkbook)}
+                onClick={() => setUploadFormat('csv')}
+              >
+                CSV files
+              </Button>
+              <Button
+                variant={uploadFormat === 'xlsx' ? 'default' : 'outline'}
+                aria-pressed={uploadFormat === 'xlsx'}
+                disabled={sources.length > 0 || Boolean(pendingWorkbook)}
+                onClick={() => setUploadFormat('xlsx')}
+              >
+                Excel workbook (.xlsx)
+              </Button>
+            </div>
+            {uploadFormat === 'xlsx' && (
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3 pb-4">
+                <div className="flex min-w-0 items-center gap-3">
+                  <Button
+                    variant="outline"
+                    disabled={isReadingWorkbook || (sources.length > 0 && Boolean(activeWorkbookFileName))}
+                    onClick={() => workbookInputRef.current?.click()}
+                  >
+                    <FileSpreadsheet size={16} />
+                    Choose file
+                  </Button>
                   <input
-                    type="checkbox"
-                    checked={uploadMultipleFiles}
-                    onChange={(event) => setUploadMultipleFiles(event.target.checked)}
+                    ref={workbookInputRef}
+                    className="sr-only"
+                    type="file"
+                    accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    aria-label="Choose Excel workbook"
+                    onChange={(event) => void handleWorkbookSelected(event.target.files?.[0])}
                   />
-                  Upload multiple files in this session
-                </label>
+                  <span className="min-w-0 truncate text-sm text-gray-600" title={activeWorkbookFileName}>
+                    {activeWorkbookFileName ?? 'No workbook selected'}
+                  </span>
+                  {isReadingWorkbook && (
+                    <span className="text-xs text-gray-600" role="status">
+                      Reading workbook...
+                    </span>
+                  )}
+                </div>
+                {activeWorkbookFileName && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    disabled={isReadingWorkbook}
+                    aria-label="Remove workbook and all sheets"
+                    title="Remove workbook and all sheets"
+                    onClick={removeCurrentWorkbook}
+                  >
+                    <X size={16} />
+                  </Button>
+                )}
+              </div>
+            )}
+            {uploadFormat && (
+              <>
+                {(uploadFormat === 'csv' || sources.length > 0) &&
+                  sourceConfigs.length > 0 ? (
+                  <div className="flex flex-col gap-2">
+                    {sourceConfigs.map((sourceConfig) => {
+                      const uploadedSource = sources.find(
+                        (source) => source.config.key === sourceConfig.key
+                      )
+                      const choice = viewConfig.schemaChoices?.find(
+                        (candidate) => candidate.key === sourceConfig.schemaChoice?.key
+                      )
+                      const selectedChoice = sourceConfig.schemaChoice
+                        ? schemaChoiceValues[sourceConfig.schemaChoice.key]
+                        : undefined
+                      const choiceRequired = Boolean(sourceConfig.schemaChoice && !selectedChoice)
+                      return (
+                        <section
+                          key={sourceConfig.key}
+                          className="grid gap-2 border px-3 py-2 md:grid-cols-[minmax(12rem,1fr)_minmax(22rem,32rem)] md:items-center"
+                          aria-label={sourceConfig.label}
+                        >
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h2 className="font-semibold">{sourceConfig.label}</h2>
+                              {sourceConfig.optional && (
+                                <span className="text-xs text-gray-500">Optional</span>
+                              )}
+                            </div>
+                            {sourceConfig.description && (
+                              <p className="truncate text-xs text-gray-600" title={sourceConfig.description}>
+                                {sourceConfig.description}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex min-w-0 flex-wrap items-center gap-3">
+                            {choice && (
+                              <label
+                                className={`flex min-w-0 items-center gap-2 text-xs ${choiceRequired ? 'text-amber-950' : ''
+                                  }`}
+                              >
+                                {choice.showLabel !== false && (
+                                  <span className="font-semibold">
+                                    {choice.label}
+                                    {choiceRequired && <span className="ml-1 text-red-700">Required</span>}
+                                  </span>
+                                )}
+                                <select
+                                  className={`h-8 w-auto max-w-80 border px-1 text-xs ${choiceRequired
+                                    ? 'border-amber-700 bg-amber-50 ring-2 ring-amber-200'
+                                    : 'bg-white'
+                                    }`}
+                                  value={schemaChoiceValues[choice.key] ?? ''}
+                                  aria-label={choice.label}
+                                  aria-required="true"
+                                  aria-invalid={choiceRequired}
+                                  disabled={sources.some(
+                                    (source) => source.config.schemaChoice?.key === choice.key
+                                  )}
+                                  onChange={(event) =>
+                                    setSchemaChoiceValues((current) => ({
+                                      ...current,
+                                      [choice.key]: event.target.value,
+                                    }))
+                                  }
+                                >
+                                  <option value="">{choice.placeholder}</option>
+                                  {choice.options.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                            )}
+                            {sourceConfig.schemaChoice && !selectedChoice ? (
+                              <p className="text-xs font-medium text-amber-900" role="status">
+                                Required to continue. Choose {choice?.label.toLowerCase() ?? 'an option'}.
+                              </p>
+                            ) : uploadFormat === 'csv' ? (
+                              <FileUpload
+                                key={`${uploadKey}-${sourceConfig.key}`}
+                                field={{
+                                  ...csvField,
+                                  id: `csv-file-${sourceConfig.key}`,
+                                  label: `Upload ${sourceConfig.label}`,
+                                  description: sourceConfig.description ?? csvField.description,
+                                }}
+                                value={null}
+                                onChange={() => undefined}
+                                acceptFileTypes={['csv', 'text/csv']}
+                                onFileUploaded={(fileData, csvData, uploadedFileName) => {
+                                  if (typeof fileData === 'string' && csvData && uploadedFileName)
+                                    addSource(fileData, csvData, uploadedFileName, sourceConfig)
+                                }}
+                              />
+                            ) : (
+                              !uploadedSource && (
+                                <p className="text-xs text-gray-600" role="status">
+                                  Select a matching worksheet to add this source.
+                                </p>
+                              )
+                            )}
+                            {uploadedSource && (
+                              <p className="text-xs text-green-700">
+                                Using {uploadedSource.fileName} for this source.
+                              </p>
+                            )}
+                          </div>
+                        </section>
+                      )
+                    })}
+                  </div>
+                ) : uploadFormat === 'csv' ? (
+                  <>
+                    <FileUpload
+                      key={uploadKey}
+                      field={csvField}
+                      value={null}
+                      onChange={() => undefined}
+                      acceptFileTypes={['csv', 'text/csv']}
+                      onFileUploaded={(fileData, csvData, uploadedFileName) => {
+                        if (typeof fileData === 'string' && csvData && uploadedFileName)
+                          addSource(fileData, csvData, uploadedFileName)
+                      }}
+                    />
+                    <label className="mt-3 inline-flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={uploadMultipleFiles}
+                        onChange={(event) => setUploadMultipleFiles(event.target.checked)}
+                      />
+                      Upload multiple files in this session
+                    </label>
+                  </>
+                ) : null}
+                {uploadFormat === 'xlsx' && pendingWorkbook && (
+                  <div className="mt-4 pt-4">
+                    {pendingWorkbook && (
+                      <div className="mt-3 max-w-full border p-3">
+                        <div className="mb-2 text-sm font-semibold">{pendingWorkbook.fileName}</div>
+                        <div className="max-h-64 overflow-auto">
+                          <div className="min-w-full">
+                            {pendingWorkbook.sheets.map((sheet, index) => {
+                              const sourceConfig = resolveWorkbookSheetSourceConfig(sheet.name)
+                              const defaultTypeUuid = sourceConfig.typeKnown
+                                ? contextState.object_type_by_slug[sourceConfig.typeSlug]?.uuid ?? ''
+                                : ''
+                              const assumedTypeUuid = selectedWorkbookTypes[sheet.name] ?? defaultTypeUuid
+                              const assumedObjectType = assumedTypeUuid
+                                ? contextState.object_type_by_uuid[assumedTypeUuid]
+                                : undefined
+                              const assumedType = assumedObjectType
+                                ? sourceConfig.arrayTarget
+                                  ? `${assumedObjectType.slug}.${sourceConfig.arrayTarget.arrayFieldPath}[]`
+                                  : assumedObjectType.slug
+                                : 'None'
+                              const schemaChoice = sourceConfig.schemaChoice
+                                ? viewConfig.schemaChoices?.find(
+                                  (choice) => choice.key === sourceConfig.schemaChoice?.key
+                                )
+                                : undefined
+                              return (
+                                <div
+                                  key={sheet.name}
+                                  className="px-3 py-2 text-sm"
+                                >
+                                  <div className="flex min-w-0 items-center gap-2">
+                                    <input
+                                      id={`workbook-sheet-${index}`}
+                                      type="checkbox"
+                                      checked={selectedWorkbookSheets.has(sheet.name)}
+                                      onChange={(event) =>
+                                        setSelectedWorkbookSheets((current) => {
+                                          const next = new Set(current)
+                                          if (event.target.checked) next.add(sheet.name)
+                                          else next.delete(sheet.name)
+                                          return next
+                                        })
+                                      }
+                                    />
+                                    <label
+                                      htmlFor={`workbook-sheet-${index}`}
+                                      className="min-w-0 truncate font-medium"
+                                    >
+                                      {sheet.name}
+                                    </label>
+                                  </div>
+                                  <div className="mt-1 flex min-w-0 flex-wrap items-start gap-3">
+                                    <span className="pt-1 text-xs text-gray-600">
+                                      {sheet.parsed.data.length} rows
+                                    </span>
+                                    {schemaChoice && sourceConfig.schemaChoice ? (
+                                      <label
+                                        className={`flex w-fit max-w-full items-center gap-2 text-xs ${!schemaChoiceValues[sourceConfig.schemaChoice.key]
+                                          ? 'text-amber-950'
+                                          : ''
+                                          }`}
+                                      >
+                                        {schemaChoice.showLabel !== false && (
+                                          <span className="truncate font-semibold">
+                                            {schemaChoice.label}
+                                            {!schemaChoiceValues[sourceConfig.schemaChoice.key] && (
+                                              <span className="ml-1 text-red-700">Required</span>
+                                            )}
+                                          </span>
+                                        )}
+                                        <select
+                                          className={`h-8 w-auto max-w-80 border px-1 text-xs ${!schemaChoiceValues[sourceConfig.schemaChoice.key]
+                                            ? 'border-amber-700 bg-amber-50 ring-2 ring-amber-200'
+                                            : 'bg-white'
+                                            }`}
+                                          aria-label={`${schemaChoice.label} for ${sheet.name}`}
+                                          aria-required="true"
+                                          aria-invalid={!schemaChoiceValues[sourceConfig.schemaChoice.key]}
+                                          value={schemaChoiceValues[sourceConfig.schemaChoice.key] ?? ''}
+                                          onChange={(event) =>
+                                            setSchemaChoiceValues((current) => ({
+                                              ...current,
+                                              [sourceConfig.schemaChoice!.key]: event.target.value,
+                                            }))
+                                          }
+                                        >
+                                          <option value="">{schemaChoice.placeholder}</option>
+                                          {schemaChoice.options.map((option) => (
+                                            <option key={option.value} value={option.value}>
+                                              {option.label}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </label>
+                                    ) : <span />}
+                                    <div className="min-w-0">
+                                      <label className="flex w-fit max-w-full items-center gap-2 text-xs">
+                                        <span>Assumed type</span>
+                                        <select
+                                          className="h-8 w-auto max-w-80 border bg-white px-1 text-xs"
+                                          aria-label={`Assumed type for ${sheet.name}`}
+                                          value={assumedTypeUuid}
+                                          onChange={(event) =>
+                                            setSelectedWorkbookTypes((current) => ({
+                                              ...current,
+                                              [sheet.name]: event.target.value,
+                                            }))
+                                          }
+                                        >
+                                          <option value="">None</option>
+                                          {availableObjectTypes.map((objectType) => (
+                                            <option key={objectType.uuid} value={objectType.uuid}>
+                                              {objectType.label} ({objectType.slug})
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </label>
+                                      <span
+                                        className="mt-1 block w-full truncate text-xs text-gray-600"
+                                        title={`Resolved as: ${assumedType}`}
+                                      >
+                                        Resolved as: {assumedType}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                          {selectedWorkbookSheetsMissingChoices && (
+                            <p className="text-xs font-medium text-amber-900" role="status">
+                              Select the required option for every selected sheet to enable Add.
+                            </p>
+                          )}
+                          <div className="ml-auto flex gap-2">
+                            <Button
+                              size="xs"
+                              variant="outline"
+                              onClick={removeCurrentWorkbook}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              size="xs"
+                              disabled={selectedWorkbookSheets.size === 0 || selectedWorkbookSheetsMissingChoices}
+                              title={selectedWorkbookSheetsMissingChoices
+                                ? 'Select the required option for every selected sheet first'
+                                : undefined}
+                              onClick={addSelectedWorkbookSheets}
+                            >
+                              Add {selectedWorkbookSheets.size} selected sheets
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </>
             )}
           </section>
 
           {sources.length > 0 && (
-            <section className="border-b pb-4" aria-label="CSV sources">
-              <h2 className="mb-2 font-semibold">CSV sources</h2>
-              <div className="flex flex-col gap-2">
-                {sources.map((source) => (
-                  <div
-                    key={source.sourceId}
-                    className="flex flex-wrap items-center gap-2 border px-3 py-2"
-                  >
-                    <Button
-                      size="xs"
-                      variant={activeSourceId === source.sourceId ? 'default' : 'outline'}
-                      onClick={() => setActiveSourceId(source.sourceId)}
+            <section className="pb-4" aria-label="CSV sources">
+              <details
+                open={isSourceSetupExpanded}
+                onToggle={(event) =>
+                  setSourceSetupDisclosure({
+                    complete: sourceSetupIsComplete,
+                    expanded: event.currentTarget.open,
+                  })
+                }
+              >
+                <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 py-2">
+                  <h2 className="font-semibold">CSV sources ({sources.length})</h2>
+                  <ChevronDown
+                    size={16}
+                    aria-hidden="true"
+                    className={`transition-transform ${isSourceSetupExpanded ? 'rotate-180' : ''}`}
+                  />
+                  <span className="text-sm text-gray-600">
+                    {sourceSetupIsComplete
+                      ? 'Source types and relationships configured'
+                      : 'Review source types and relationships'}
+                  </span>
+                </summary>
+                <div className="flex flex-col gap-2">
+                  {sources.map((source) => (
+                    <div
+                      key={source.sourceId}
+                      className="flex flex-wrap items-center gap-2 border px-3 py-2"
                     >
-                      {source.fileName}
-                    </Button>
-                    <span className="text-xs text-gray-600">
-                      {source.parsed.data.length} rows, type {source.typeSlug}
-                    </span>
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      className="ml-auto"
-                      aria-label={`Remove ${source.fileName}`}
-                      onClick={() => {
-                        const remaining = sources.filter(
-                          ({ sourceId }) => sourceId !== source.sourceId
-                        )
-                        setCompletedSourceIds(new Set())
-                        setSources(remaining)
-                        if (activeSourceId === source.sourceId)
-                          setActiveSourceId(remaining[0]?.sourceId ?? null)
-                      }}
-                    >
-                      <X size={14} />
-                    </Button>
-                    <div className="basis-full" />
-                    <label className="flex items-center gap-2 text-xs">
-                      <span>Object type</span>
-                      <select
-                        value={source.selectedObjectTypeUuid ?? ''}
-                        onChange={(event) => {
-                          const objectType = contextState.object_type_by_uuid[event.target.value]
-                          handleObjectTypeSelected(source.sourceId, objectType)
-                        }}
-                        className="border px-2 py-1"
+                      <Button
+                        size="xs"
+                        variant={activeSourceId === source.sourceId ? 'default' : 'outline'}
+                        onClick={() => setActiveSourceId(source.sourceId)}
                       >
-                        <option value="">Choose type</option>
-                        {contextState.object_type.map((objectType) => (
-                          <option key={objectType.uuid} value={objectType.uuid}>
-                            {objectType.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="flex items-center gap-2 text-xs">
-                      <span>Role</span>
-                      <select
-                        value={source.role}
-                        disabled={viewConfig.relationships === 'fixed'}
-                        onChange={(event) => {
-                          const role = event.target.value as CSVImportSourceRole
-                          const arrayTarget =
-                            role === 'array'
-                              ? (source.arrayTarget ?? {
-                                parentSourceKey: '',
-                                arrayFieldPath: '',
-                                parentMatchField: '',
-                                rowMatchField: '',
-                              })
-                              : undefined
-                          updateSource(source.sourceId, {
-                            role,
-                            relationshipRule:
-                              role === 'child' ? source.relationshipRule : undefined,
-                            arrayTarget,
-                            adapter:
-                              role === 'array' || source.arrayTarget
-                                ? {
-                                  ...source.adapter,
-                                  arrayTarget,
-                                }
-                                : source.adapter,
-                          })
+                        {source.fileName}
+                      </Button>
+                      <span className="text-xs text-gray-600">
+                        {source.parsed.data.length} rows, type {source.typeSlug}
+                      </span>
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        className="ml-auto"
+                        aria-label={`Remove ${source.fileName}`}
+                        onClick={() => {
+                          const remaining = sources.filter(
+                            ({ sourceId }) => sourceId !== source.sourceId
+                          )
+                          setCompletedSourceIds(new Set())
+                          setSources(remaining)
+                          if (activeSourceId === source.sourceId)
+                            setActiveSourceId(remaining[0]?.sourceId ?? null)
                         }}
-                        className="border px-2 py-1"
                       >
-                        <option value="standalone">Standalone</option>
-                        <option value="parent">Parent</option>
-                        <option value="child">Child</option>
-                        <option value="array">Array items</option>
-                      </select>
-                    </label>
-                    {source.role === 'child' && (
-                      <span className="bg-slate-100 px-2 py-1 text-xs">Child document</span>
-                    )}
-                    {source.role === 'parent' && (
-                      <span className="bg-slate-100 px-2 py-1 text-xs">Parent document</span>
-                    )}
-                    {source.role !== 'child' && source.role !== 'array' && sources.length > 1 && (
-                      <div className="basis-full border-t pt-3 text-sm">
-                        <div className="grid gap-3 md:grid-cols-4">
-                          <label className="flex flex-col gap-1">
-                            <span className="font-medium">Related CSV</span>
-                            <select
-                              value={source.relationshipRule?.childObjectTypeSlug ?? ''}
-                              onChange={(event) => {
-                                setCompletedSourceIds(new Set())
-                                const child = sources.find(
-                                  (candidate) => candidate.typeSlug === event.target.value
-                                )
-                                const previousChild = sources.find(
-                                  (candidate) =>
-                                    candidate.typeSlug ===
-                                    source.relationshipRule?.childObjectTypeSlug
-                                )
-                                if (!child) {
+                        <X size={14} />
+                      </Button>
+                      <div className="basis-full" />
+                      <label className="flex items-center gap-2 text-xs">
+                        <span>Object type</span>
+                        <select
+                          value={source.selectedObjectTypeUuid ?? ''}
+                          onChange={(event) => {
+                            const objectType = contextState.object_type_by_uuid[event.target.value]
+                            handleObjectTypeSelected(source.sourceId, objectType)
+                          }}
+                          className="border px-2 py-1"
+                        >
+                          <option value="">Choose type</option>
+                          {contextState.object_type.map((objectType) => (
+                            <option key={objectType.uuid} value={objectType.uuid}>
+                              {objectType.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="flex items-center gap-2 text-xs">
+                        <span>Role</span>
+                        <select
+                          value={source.role}
+                          disabled={viewConfig.relationships === 'fixed'}
+                          onChange={(event) => {
+                            const role = event.target.value as CSVImportSourceRole
+                            const arrayTarget =
+                              role === 'array'
+                                ? (source.arrayTarget ?? {
+                                  parentSourceKey: '',
+                                  arrayFieldPath: '',
+                                  parentMatchField: '',
+                                  rowMatchField: '',
+                                })
+                                : undefined
+                            updateSource(source.sourceId, {
+                              role,
+                              relationshipRule:
+                                role === 'child' ? source.relationshipRule : undefined,
+                              arrayTarget,
+                              adapter:
+                                role === 'array' || source.arrayTarget
+                                  ? {
+                                    ...source.adapter,
+                                    arrayTarget,
+                                  }
+                                  : source.adapter,
+                            })
+                          }}
+                          className="border px-2 py-1"
+                        >
+                          <option value="standalone">Standalone</option>
+                          <option value="parent">Parent</option>
+                          <option value="child">Child</option>
+                          <option value="array">Array items</option>
+                        </select>
+                      </label>
+                      {source.role === 'child' && (
+                        <span className="bg-slate-100 px-2 py-1 text-xs">Child document</span>
+                      )}
+                      {source.role === 'parent' && (
+                        <span className="bg-slate-100 px-2 py-1 text-xs">Parent document</span>
+                      )}
+                      {source.role !== 'child' && source.role !== 'array' && sources.length > 1 && (
+                        <div className="basis-full pt-3 text-sm">
+                          <div className="grid gap-3 md:grid-cols-4">
+                            <label className="flex flex-col gap-1">
+                              <span className="font-medium">Related CSV</span>
+                              <select
+                                value={source.relationshipRule?.childObjectTypeSlug ?? ''}
+                                onChange={(event) => {
+                                  setCompletedSourceIds(new Set())
+                                  const child = sources.find(
+                                    (candidate) => candidate.typeSlug === event.target.value
+                                  )
+                                  const previousChild = sources.find(
+                                    (candidate) =>
+                                      candidate.typeSlug ===
+                                      source.relationshipRule?.childObjectTypeSlug
+                                  )
+                                  if (!child) {
+                                    setSources((current) =>
+                                      clearCSVRelationshipRule(
+                                        current,
+                                        source.sourceId,
+                                        previousChild?.sourceId,
+                                        viewConfig.relationships === 'fixed'
+                                          ? viewConfig.relationshipRules
+                                          : undefined
+                                      ).map((candidate, index) => {
+                                        if (candidate === current[index]) return candidate
+                                        return {
+                                          ...candidate,
+                                          adapter: createCSVImportAdapter({
+                                            id: candidate.sourceId,
+                                            label: csvFileNameToTypeLabel(candidate.fileName),
+                                            text: candidate.fileText,
+                                            mapping: candidate.mapping,
+                                            relationshipFields: candidate.relationshipFields,
+                                            relationshipRules:
+                                              viewConfig.relationships === 'fixed'
+                                                ? viewConfig.relationshipRules
+                                                : undefined,
+                                            arrayTarget: candidate.arrayTarget,
+                                            fixedFields: getCSVSourceFixedFields(candidate),
+                                            fieldMappings: candidate.arrayTarget
+                                              ? undefined
+                                              : (candidate.selectedObjectTypeUuid
+                                                ? contextState.object_type_by_uuid[candidate.selectedObjectTypeUuid]
+                                                : contextState.object_type_by_slug[candidate.typeSlug])
+                                                ?.data?.field_mappings,
+                                            sourceKey: candidate.config.key,
+                                            schema: candidate.adapter.schema,
+                                          }),
+                                        }
+                                      })
+                                    )
+                                    return
+                                  }
+                                  const relationshipRule = {
+                                    parentObjectTypeSlug: source.typeSlug,
+                                    childObjectTypeSlug: child.typeSlug,
+                                    parentMatchField: source.relationshipRule?.parentMatchField ?? '',
+                                    childMatchField: source.relationshipRule?.childMatchField ?? '',
+                                    predicate: source.relationshipRule?.predicate || 'has_parent',
+                                  }
                                   setSources((current) =>
-                                    clearCSVRelationshipRule(
-                                      current,
-                                      source.sourceId,
-                                      previousChild?.sourceId,
-                                      viewConfig.relationships === 'fixed'
-                                        ? viewConfig.relationshipRules
-                                        : undefined
-                                    ).map((candidate, index) => {
-                                      if (candidate === current[index]) return candidate
-                                      return {
-                                        ...candidate,
-                                        adapter: createCSVImportAdapter({
-                                          id: candidate.sourceId,
-                                          label: csvFileNameToTypeLabel(candidate.fileName),
-                                          text: candidate.fileText,
-                                          mapping: candidate.mapping,
-                                          relationshipFields: candidate.relationshipFields,
-                                          relationshipRules:
-                                            viewConfig.relationships === 'fixed'
-                                              ? viewConfig.relationshipRules
-                                              : undefined,
-                                          arrayTarget: candidate.arrayTarget,
-                                          fixedFields: getCSVSourceFixedFields(candidate),
-                                          fieldMappings: candidate.arrayTarget
-                                            ? undefined
-                                            : (candidate.selectedObjectTypeUuid
-                                              ? contextState.object_type_by_uuid[candidate.selectedObjectTypeUuid]
-                                              : contextState.object_type_by_slug[candidate.typeSlug])
-                                              ?.data?.field_mappings,
-                                          sourceKey: candidate.config.key,
-                                          schema: candidate.adapter.schema,
-                                        }),
+                                    current.map((candidate) => {
+                                      if (candidate.sourceId === source.sourceId) {
+                                        return {
+                                          ...candidate,
+                                          role: 'parent',
+                                          relationshipRule,
+                                        }
                                       }
+                                      if (candidate.sourceId === previousChild?.sourceId) {
+                                        return {
+                                          ...candidate,
+                                          role: 'standalone',
+                                          relationshipRule: undefined,
+                                        }
+                                      }
+                                      if (candidate.sourceId === child.sourceId) {
+                                        return { ...candidate, role: 'child', relationshipRule }
+                                      }
+                                      return candidate
                                     })
                                   )
-                                  return
-                                }
-                                const relationshipRule = {
-                                  parentObjectTypeSlug: source.typeSlug,
-                                  childObjectTypeSlug: child.typeSlug,
-                                  parentMatchField: source.relationshipRule?.parentMatchField ?? '',
-                                  childMatchField: source.relationshipRule?.childMatchField ?? '',
-                                  predicate: source.relationshipRule?.predicate || 'has_parent',
-                                }
-                                setSources((current) =>
-                                  current.map((candidate) => {
-                                    if (candidate.sourceId === source.sourceId) {
-                                      return {
-                                        ...candidate,
-                                        role: 'parent',
-                                        relationshipRule,
-                                      }
-                                    }
-                                    if (candidate.sourceId === previousChild?.sourceId) {
-                                      return {
-                                        ...candidate,
-                                        role: 'standalone',
-                                        relationshipRule: undefined,
-                                      }
-                                    }
-                                    if (candidate.sourceId === child.sourceId) {
-                                      return { ...candidate, role: 'child', relationshipRule }
-                                    }
-                                    return candidate
-                                  })
-                                )
-                              }}
-                              className="border px-2 py-1"
-                            >
-                              <option value="">Select related CSV</option>
-                              {sources
-                                .filter((candidate) => candidate.sourceId !== source.sourceId)
-                                .map((candidate) => (
-                                  <option key={candidate.sourceId} value={candidate.typeSlug}>
-                                    {candidate.fileName}
-                                  </option>
-                                ))}
-                            </select>
-                          </label>
-                          {source.relationshipRule && (
-                            <>
-                              <label className="flex flex-col gap-1">
-                                <span className="font-medium">Parent lookup column</span>
-                                <select
-                                  value={source.relationshipRule.parentMatchField ?? ''}
-                                  onChange={(event) => {
-                                    const relationshipRule = {
-                                      ...source.relationshipRule!,
-                                      parentMatchField: event.target.value,
-                                    }
-                                    updateRelationshipRule(relationshipRule)
-                                  }}
-                                  className="border px-2 py-1"
-                                >
-                                  <option value="">Select column</option>
-                                  {source.parsed.headers.map((header) => (
-                                    <option key={header.key} value={header.key}>
-                                      {header.key}
+                                }}
+                                className="border px-2 py-1"
+                              >
+                                <option value="">Select related CSV</option>
+                                {sources
+                                  .filter((candidate) => candidate.sourceId !== source.sourceId)
+                                  .map((candidate) => (
+                                    <option key={candidate.sourceId} value={candidate.typeSlug}>
+                                      {candidate.fileName}
                                     </option>
                                   ))}
-                                </select>
-                              </label>
-                              <label className="flex flex-col gap-1">
-                                <span className="font-medium">Child lookup column</span>
-                                <select
-                                  value={source.relationshipRule.childMatchField ?? ''}
-                                  onChange={(event) => {
-                                    const relationshipRule = {
-                                      ...source.relationshipRule!,
-                                      childMatchField: event.target.value,
+                              </select>
+                            </label>
+                            {source.relationshipRule && (
+                              <>
+                                <label className="flex flex-col gap-1">
+                                  <span className="font-medium">Parent lookup column</span>
+                                  <select
+                                    value={source.relationshipRule.parentMatchField ?? ''}
+                                    onChange={(event) => {
+                                      const relationshipRule = {
+                                        ...source.relationshipRule!,
+                                        parentMatchField: event.target.value,
+                                      }
+                                      updateRelationshipRule(relationshipRule)
+                                    }}
+                                    className="border px-2 py-1"
+                                  >
+                                    <option value="">Select column</option>
+                                    {source.parsed.headers.map((header) => (
+                                      <option key={header.key} value={header.key}>
+                                        {header.key}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <label className="flex flex-col gap-1">
+                                  <span className="font-medium">Child lookup column</span>
+                                  <select
+                                    value={source.relationshipRule.childMatchField ?? ''}
+                                    onChange={(event) => {
+                                      const relationshipRule = {
+                                        ...source.relationshipRule!,
+                                        childMatchField: event.target.value,
+                                      }
+                                      updateRelationshipRule(relationshipRule)
+                                    }}
+                                    className="border px-2 py-1"
+                                  >
+                                    <option value="">Select column</option>
+                                    {(
+                                      sources.find(
+                                        (candidate) =>
+                                          candidate.typeSlug ===
+                                          source.relationshipRule?.childObjectTypeSlug
+                                      )?.parsed.headers ?? []
+                                    ).map((header) => (
+                                      <option key={header.key} value={header.key}>
+                                        {header.key}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <label className="flex flex-col gap-1">
+                                  <span className="font-medium">Predicate on child</span>
+                                  <select
+                                    value={source.relationshipRule.predicate}
+                                    onChange={(event) =>
+                                      updateRelationshipRule({
+                                        ...source.relationshipRule!,
+                                        predicate: event.target.value,
+                                      })
                                     }
-                                    updateRelationshipRule(relationshipRule)
-                                  }}
-                                  className="border px-2 py-1"
-                                >
-                                  <option value="">Select column</option>
-                                  {(
-                                    sources.find(
-                                      (candidate) =>
-                                        candidate.typeSlug ===
-                                        source.relationshipRule?.childObjectTypeSlug
-                                    )?.parsed.headers ?? []
-                                  ).map((header) => (
-                                    <option key={header.key} value={header.key}>
-                                      {header.key}
-                                    </option>
-                                  ))}
-                                </select>
-                              </label>
-                              <label className="flex flex-col gap-1">
-                                <span className="font-medium">Predicate on child</span>
-                                <select
-                                  value={source.relationshipRule.predicate}
-                                  onChange={(event) =>
-                                    updateRelationshipRule({
-                                      ...source.relationshipRule!,
-                                      predicate: event.target.value,
-                                    })
+                                    className="border px-2 py-1"
+                                  >
+                                    {contextState.predicate.map((predicate) => (
+                                      <option key={predicate.uuid} value={predicate.predicate}>
+                                        {predicate.label} ({predicate.predicate})
+                                      </option>
+                                    ))}
+                                    {!contextState.predicate.some(
+                                      ({ predicate }) => predicate === 'has_parent'
+                                    ) && <option value="has_parent">Has parent (has_parent)</option>}
+                                  </select>
+                                </label>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {source.role === 'array' && sources.length > 1 && (
+                        <div className="basis-full pt-3 text-sm">
+                          <div className="grid gap-3 md:grid-cols-4">
+                            <label className="flex flex-col gap-1">
+                              <span className="font-medium">Parent CSV</span>
+                              <select
+                                value={source.arrayTarget?.parentSourceKey ?? ''}
+                                onChange={(event) => {
+                                  const parent = sources.find(
+                                    (candidate) => candidate.config.key === event.target.value
+                                  )
+                                  if (!parent) return
+                                  const arrayTarget = {
+                                    parentSourceKey: parent.config.key,
+                                    arrayFieldPath: source.arrayTarget?.arrayFieldPath ?? '',
+                                    parentMatchField: source.arrayTarget?.parentMatchField ?? '',
+                                    rowMatchField: source.arrayTarget?.rowMatchField ?? '',
                                   }
-                                  className="border px-2 py-1"
-                                >
-                                  {contextState.predicate.map((predicate) => (
-                                    <option key={predicate.uuid} value={predicate.predicate}>
-                                      {predicate.label} ({predicate.predicate})
+                                  updateSource(source.sourceId, {
+                                    arrayTarget,
+                                    typeSlug: parent.typeSlug,
+                                    selectedObjectTypeUuid: parent.selectedObjectTypeUuid,
+                                    adapter: { ...source.adapter, arrayTarget },
+                                  })
+                                }}
+                                className="border px-2 py-1"
+                              >
+                                <option value="">Select parent CSV</option>
+                                {sources
+                                  .filter((candidate) => candidate.sourceId !== source.sourceId)
+                                  .map((candidate) => (
+                                    <option key={candidate.sourceId} value={candidate.config.key}>
+                                      {candidate.fileName}
                                     </option>
                                   ))}
-                                  {!contextState.predicate.some(
-                                    ({ predicate }) => predicate === 'has_parent'
-                                  ) && <option value="has_parent">Has parent (has_parent)</option>}
-                                </select>
-                              </label>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    {source.role === 'array' && sources.length > 1 && (
-                      <div className="basis-full border-t pt-3 text-sm">
-                        <div className="grid gap-3 md:grid-cols-4">
-                          <label className="flex flex-col gap-1">
-                            <span className="font-medium">Parent CSV</span>
-                            <select
-                              value={source.arrayTarget?.parentSourceKey ?? ''}
-                              onChange={(event) => {
-                                const parent = sources.find(
-                                  (candidate) => candidate.config.key === event.target.value
-                                )
-                                if (!parent) return
-                                const arrayTarget = {
-                                  parentSourceKey: parent.config.key,
-                                  arrayFieldPath: source.arrayTarget?.arrayFieldPath ?? '',
-                                  parentMatchField: source.arrayTarget?.parentMatchField ?? '',
-                                  rowMatchField: source.arrayTarget?.rowMatchField ?? '',
-                                }
-                                updateSource(source.sourceId, {
-                                  arrayTarget,
-                                  typeSlug: parent.typeSlug,
-                                  selectedObjectTypeUuid: parent.selectedObjectTypeUuid,
-                                  adapter: { ...source.adapter, arrayTarget },
-                                })
-                              }}
-                              className="border px-2 py-1"
-                            >
-                              <option value="">Select parent CSV</option>
-                              {sources
-                                .filter((candidate) => candidate.sourceId !== source.sourceId)
-                                .map((candidate) => (
-                                  <option key={candidate.sourceId} value={candidate.config.key}>
-                                    {candidate.fileName}
+                              </select>
+                            </label>
+                            <label className="flex flex-col gap-1">
+                              <span className="font-medium">Parent array path</span>
+                              <input
+                                value={source.arrayTarget?.arrayFieldPath ?? ''}
+                                onChange={(event) => {
+                                  const arrayTarget = {
+                                    ...source.arrayTarget!,
+                                    arrayFieldPath: event.target.value,
+                                  }
+                                  updateSource(source.sourceId, {
+                                    arrayTarget,
+                                    adapter: { ...source.adapter, arrayTarget },
+                                  })
+                                }}
+                                placeholder="contacts"
+                                className="border px-2 py-1"
+                              />
+                            </label>
+                            <label className="flex flex-col gap-1">
+                              <span className="font-medium">Parent lookup column</span>
+                              <select
+                                value={source.arrayTarget?.parentMatchField ?? ''}
+                                onChange={(event) => {
+                                  const arrayTarget = {
+                                    ...source.arrayTarget!,
+                                    parentMatchField: event.target.value,
+                                  }
+                                  updateSource(source.sourceId, {
+                                    arrayTarget,
+                                    adapter: { ...source.adapter, arrayTarget },
+                                  })
+                                }}
+                                className="border px-2 py-1"
+                              >
+                                <option value="">Select column</option>
+                                {(
+                                  sources.find(
+                                    (candidate) =>
+                                      candidate.config.key === source.arrayTarget?.parentSourceKey
+                                  )?.parsed.headers ?? []
+                                ).map((header) => (
+                                  <option key={header.key} value={header.key}>
+                                    {header.key}
                                   </option>
                                 ))}
-                            </select>
-                          </label>
-                          <label className="flex flex-col gap-1">
-                            <span className="font-medium">Parent array path</span>
-                            <input
-                              value={source.arrayTarget?.arrayFieldPath ?? ''}
-                              onChange={(event) => {
-                                const arrayTarget = {
-                                  ...source.arrayTarget!,
-                                  arrayFieldPath: event.target.value,
-                                }
-                                updateSource(source.sourceId, {
-                                  arrayTarget,
-                                  adapter: { ...source.adapter, arrayTarget },
-                                })
-                              }}
-                              placeholder="contacts"
-                              className="border px-2 py-1"
-                            />
-                          </label>
-                          <label className="flex flex-col gap-1">
-                            <span className="font-medium">Parent lookup column</span>
-                            <select
-                              value={source.arrayTarget?.parentMatchField ?? ''}
-                              onChange={(event) => {
-                                const arrayTarget = {
-                                  ...source.arrayTarget!,
-                                  parentMatchField: event.target.value,
-                                }
-                                updateSource(source.sourceId, {
-                                  arrayTarget,
-                                  adapter: { ...source.adapter, arrayTarget },
-                                })
-                              }}
-                              className="border px-2 py-1"
-                            >
-                              <option value="">Select column</option>
-                              {(
-                                sources.find(
-                                  (candidate) =>
-                                    candidate.config.key === source.arrayTarget?.parentSourceKey
-                                )?.parsed.headers ?? []
-                              ).map((header) => (
-                                <option key={header.key} value={header.key}>
-                                  {header.key}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <label className="flex flex-col gap-1">
-                            <span className="font-medium">Array row lookup column</span>
-                            <select
-                              value={source.arrayTarget?.rowMatchField ?? ''}
-                              onChange={(event) => {
-                                const arrayTarget = {
-                                  ...source.arrayTarget!,
-                                  rowMatchField: event.target.value,
-                                }
-                                updateSource(source.sourceId, {
-                                  arrayTarget,
-                                  adapter: { ...source.adapter, arrayTarget },
-                                })
-                              }}
-                              className="border px-2 py-1"
-                            >
-                              <option value="">Select column</option>
-                              {source.parsed.headers.map((header) => (
-                                <option key={header.key} value={header.key}>
-                                  {header.key}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
+                              </select>
+                            </label>
+                            <label className="flex flex-col gap-1">
+                              <span className="font-medium">Array row lookup column</span>
+                              <select
+                                value={source.arrayTarget?.rowMatchField ?? ''}
+                                onChange={(event) => {
+                                  const arrayTarget = {
+                                    ...source.arrayTarget!,
+                                    rowMatchField: event.target.value,
+                                  }
+                                  updateSource(source.sourceId, {
+                                    arrayTarget,
+                                    adapter: { ...source.adapter, arrayTarget },
+                                  })
+                                }}
+                                className="border px-2 py-1"
+                              >
+                                <option value="">Select column</option>
+                                {source.parsed.headers.map((header) => (
+                                  <option key={header.key} value={header.key}>
+                                    {header.key}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </details>
+              <div className="mt-3 flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  disabled={!canPrepareImport || isLoadingRecords}
+                  onClick={() => setActiveWizardStep('mapping')}
+                >
+                  Review mappings
+                </Button>
+                <Button
+                  disabled={!canPrepareImport || isLoadingRecords}
+                  onClick={() => void continueToRecords(true)}
+                >
+                  {isLoadingRecords ? 'Preparing import...' : 'Prepare import'}
+                </Button>
               </div>
             </section>
           )}
 
           {loadError && (
-            <div className="text-sm text-red-700" role="alert">
+            <div className="whitespace-pre-line wrap-break-word text-sm text-red-700" role="alert">
               {loadError}
             </div>
           )}
@@ -2102,7 +3045,7 @@ const CSVImportPage = ({
       )}
 
       {activeWizardStep === 'mapping' && activeSource && (
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto pr-4">
           <div className="flex shrink-0 items-center justify-between gap-3 border-b pb-2">
             <div>
               <h1 className="text-lg font-semibold">{activeSource.fileName}</h1>
@@ -2130,7 +3073,7 @@ const CSVImportPage = ({
                         source={source}
                         sources={sources}
                         mode="mapping"
-                        viewConfig={viewConfig}
+                        viewConfig={effectiveViewConfig}
                         onChange={(update) => updateSource(source.sourceId, update)}
                       />
                       {viewConfig.relationships === 'fixed' && (
@@ -2138,7 +3081,7 @@ const CSVImportPage = ({
                           source={source}
                           sources={sources}
                           mode="relationships"
-                          viewConfig={viewConfig}
+                          viewConfig={effectiveViewConfig}
                           onChange={(update) => updateSource(source.sourceId, update)}
                         />
                       )}
@@ -2154,7 +3097,7 @@ const CSVImportPage = ({
                 source={activeSource}
                 sources={sources}
                 mode="mapping"
-                viewConfig={viewConfig}
+                viewConfig={effectiveViewConfig}
                 onChange={(update) => updateSource(activeSource.sourceId, update)}
               />
               {viewConfig.relationships === 'fixed' && (
@@ -2162,14 +3105,14 @@ const CSVImportPage = ({
                   source={activeSource}
                   sources={sources}
                   mode="relationships"
-                  viewConfig={viewConfig}
+                  viewConfig={effectiveViewConfig}
                   onChange={(update) => updateSource(activeSource.sourceId, update)}
                 />
               )}
             </>
           ) : null}
           {loadError && (
-            <div className="text-sm text-red-700" role="alert">
+            <div className="whitespace-pre-line wrap-break-word text-sm text-red-700" role="alert">
               {loadError}
             </div>
           )}
@@ -2190,7 +3133,7 @@ const CSVImportPage = ({
       )}
 
       {activeWizardStep === 'import' && activeSource && (
-        <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex min-h-0 flex-1 flex-col pr-4">
           <div className="mb-2 flex shrink-0 items-center justify-between gap-3 border-b pb-2">
             <div>
               <h1 className="text-lg font-semibold">
@@ -2202,43 +3145,148 @@ const CSVImportPage = ({
                   : `${activeSource.parsed.data.length} records loaded`}
               </span>
             </div>
-            <Button size="xs" variant="outline" onClick={() => setActiveWizardStep('upload')}>
-              Back to CSV sources
-            </Button>
+            <div className="flex items-center gap-2">
+              {cleanImportControlActive && (
+                <Button
+                  size="xs"
+                  disabled={
+                    sessionImportStarted || !canImportCleanSession || readySessionRecordCount === 0
+                  }
+                  onClick={() => {
+                    setSessionImportStarted(true)
+                    setImportRequest((request) => request + 1)
+                  }}
+                >
+                  {sessionImportStarted ? 'Import started' : `Import ${readySessionRecordCount} records`}
+                </Button>
+              )}
+              <Button
+                size="xs"
+                variant="outline"
+                onClick={() => {
+                  setSessionImportStarted(false)
+                  setImportRequest(0)
+                  setActiveWizardStep('upload')
+                }}
+              >
+                Back to CSV sources
+              </Button>
+            </div>
           </div>
-          {sources.length > 1 && (
+          {resolvedRelationshipRules.length > 0 && (
             <section className="mb-3 border-b pb-3" aria-label="CSV relationship review">
               <div className="flex flex-wrap items-center gap-3 text-sm">
-                <strong>CSV relationship review</strong>
-                <span>
-                  {csvRelationshipPlans.filter(({ status }) => status === 'ready').length} ready
-                </span>
-                <span>
-                  {csvRelationshipPlans.filter(({ status }) => status !== 'ready').length} blockers
-                </span>
+                <strong>{viewConfig.relationshipPresentation === 'guided' ? 'Relationships' : 'CSV relationship review'}</strong>
+                {viewConfig.relationshipPresentation === 'guided' ? (
+                  <span>
+                    {resolvedCSVRelationshipPlans.filter(({ status }) => status !== 'ready').length === 0
+                      ? 'All parent matches are resolved'
+                      : `${resolvedCSVRelationshipPlans.filter(({ status }) => status !== 'ready').length} rows need attention`}
+                  </span>
+                ) : (
+                  <>
+                    <span>
+                      {resolvedCSVRelationshipPlans.filter(({ status }) => status === 'ready').length} ready
+                    </span>
+                    <span>
+                      {resolvedCSVRelationshipPlans.filter(({ status }) => status !== 'ready').length} need resolution
+                    </span>
+                    <span>{existingParentCandidates.length} existing parent matches</span>
+                  </>
+                )}
+                {ignoredRelationshipRows.size > 0 && (
+                  <>
+                    <span>{ignoredRelationshipRows.size} rows ignored</span>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      onClick={() => setIgnoredRelationshipRows(new Set())}
+                    >
+                      Restore ignored rows
+                    </Button>
+                  </>
+                )}
                 <Button
                   size="xs"
                   variant="outline"
                   disabled={
                     isLinkingRelationships ||
-                    csvRelationshipPlans.length === 0 ||
-                    csvRelationshipPlans.some(({ status }) => status !== 'ready')
+                    isResolvingParents ||
+                    resolvedCSVRelationshipPlans.length === 0 ||
+                    resolvedCSVRelationshipPlans.some(({ status }) => status !== 'ready')
                   }
                   onClick={() => void linkCSVRelationships()}
                 >
                   {isLinkingRelationships ? 'Linking relationships...' : 'Link relationships'}
                 </Button>
               </div>
-              {csvRelationshipPlans
+              {isResolvingParents && (
+                <p className="mt-2 text-sm text-gray-600" role="status">
+                  Checking existing parent documents...
+                </p>
+              )}
+              {resolvedCSVRelationshipPlans
                 .filter(({ status }) => status !== 'ready')
-                .map((plan) => (
-                  <div
-                    key={`${plan.child.record.provenance.sourceId}:${plan.child.record.provenance.externalId}`}
-                    className="mt-2 text-sm text-red-700"
-                  >
-                    {plan.child.record.label}: {plan.reason ?? `Relationship is ${plan.status}.`}
-                  </div>
-                ))}
+                .map((plan) => {
+                  const planKey = importRelationshipKey(plan)
+                  return (
+                    <div
+                      key={planKey}
+                      className="mt-2 flex flex-wrap items-center gap-2 border-t pt-2 text-sm"
+                    >
+                      <span className="min-w-0 flex-1">
+                        {plan.child.record.label}: {plan.reason ?? `Relationship is ${plan.status}.`}
+                      </span>
+                      {plan.status === 'ambiguous-parent' && (
+                        <label className="flex items-center gap-2">
+                          <span className="sr-only">Choose parent for {plan.child.record.label}</span>
+                          <select
+                            className="h-8 max-w-64 border bg-white px-2"
+                            value={selectedRelationshipParents[planKey] ?? ''}
+                            onChange={(event) =>
+                              setSelectedRelationshipParents((current) => ({
+                                ...current,
+                                [planKey]: event.target.value,
+                              }))
+                            }
+                          >
+                            <option value="">Choose matching parent</option>
+                            {(plan.parentChoices ?? []).map((parent) => {
+                              const key = parent.existingDocumentUuid ?? relationshipDocumentKey(parent)
+                              return (
+                                <option key={key} value={key}>
+                                  {parent.record.label} ({parent.record.slug})
+                                </option>
+                              )
+                            })}
+                          </select>
+                        </label>
+                      )}
+                      {(plan.status === 'missing-parent' || plan.status === 'ambiguous-parent') && (
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          onClick={() => setActiveWizardStep('upload')}
+                        >
+                          Add parent source
+                        </Button>
+                      )}
+                      {plan.status === 'missing-parent' && (
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          onClick={() =>
+                            setIgnoredRelationshipRows((current) =>
+                              new Set(current).add(relationshipDocumentKey(plan.child))
+                            )
+                          }
+                        >
+                          Ignore child row
+                        </Button>
+                      )}
+                    </div>
+                  )
+                })}
               {relationshipResults.length > 0 && (
                 <div className="mt-2 text-sm text-gray-700">
                   <div>
@@ -2265,7 +3313,7 @@ const CSVImportPage = ({
                   {relationshipError}
                 </div>
               )}
-              <details className="mt-3 border bg-gray-50 p-2 text-xs">
+              {viewConfig.relationshipPresentation !== 'guided' && <details className="mt-3 border bg-gray-50 p-2 text-xs">
                 <summary className="cursor-pointer font-medium">Planner state</summary>
                 <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap">
                   {JSON.stringify(
@@ -2278,7 +3326,7 @@ const CSVImportPage = ({
                         relationshipRule: source.relationshipRule,
                         recordsLoaded: loadedSourceRecords[source.sourceId]?.records.length ?? 0,
                       })),
-                      plans: csvRelationshipPlans.map((plan) => ({
+                      plans: resolvedCSVRelationshipPlans.map((plan) => ({
                         parent: plan.parent?.record.label,
                         child: plan.child.record.label,
                         predicate: plan.predicate,
@@ -2290,52 +3338,63 @@ const CSVImportPage = ({
                     2
                   )}
                 </pre>
-              </details>
+              </details>}
             </section>
           )}
-          <div className="min-h-0 flex-1 overflow-hidden">
-            {sources.length > 1 ? (
-              <div className="grid min-h-0 gap-4 overflow-auto lg:grid-cols-2">
-                {documentSourcesInDependencyOrder.map((source) => {
-                  const pendingDependencies = (executionDependencies.get(source.sourceId) ?? [])
-                    .filter((dependencyId) => !completedSourceIds.has(dependencyId))
-                  const pendingFiles = pendingDependencies.map(
-                    (dependencyId) =>
-                      sources.find((candidate) => candidate.sourceId === dependencyId)?.fileName ??
-                      dependencyId
-                  )
-                  return (
-                    <CSVSourceImportPanel
-                      key={source.sourceId}
-                      source={source}
-                      loaded={loadedSourceRecords[source.sourceId]}
-                      executionBlocked={pendingDependencies.length > 0}
-                      executionBlockMessage={
-                        pendingFiles.length > 0
-                          ? `Import ${pendingFiles.join(', ')} first to preserve parent-child order.`
-                          : undefined
-                      }
-                      onObjectTypeSelected={handleObjectTypeSelected}
-                      onImportAttemptComplete={markSourceImportAttemptComplete}
-                    />
-                  )
-                })}
+          <div className="min-h-0 flex-1 overflow-auto">
+            <div role="table" aria-label="CSV import sources" className="min-w-0">
+              <div
+                role="row"
+                className="hidden grid-cols-[minmax(12rem,1.3fr)_minmax(10rem,1fr)_minmax(13rem,1fr)_auto] gap-3 border-b py-2 text-xs font-semibold text-gray-600 xl:grid"
+              >
+                <span role="columnheader">Type</span>
+                <span role="columnheader">Valid / invalid</span>
+                <span role="columnheader">Duplicate handling</span>
+                <span role="columnheader" className="sr-only">Actions</span>
               </div>
-            ) : (
-              <ImportRecordsPage
-                key={`${activeSource.adapter.id}-${activeSource.parsed.data.length}`}
-                type={activeSource.sourceId}
-                objectTypeSlug={activeSource.typeSlug}
-                label={csvFileNameToTypeLabel(activeSource.fileName)}
-                pluralLabel="CSV records"
-                sourceAdapter={activeSource.adapter}
-                csvSource
-                arraySource={Boolean(activeSource.arrayTarget)}
-                startAtImport={activeSource.startAtImport}
-                onObjectTypeSelected={onActiveObjectTypeSelected}
-                icon={FileSpreadsheet}
-              />
-            )}
+              {documentSourcesInDependencyOrder.map((source) => {
+                const objectType = source.selectedObjectTypeUuid
+                  ? contextState.object_type_by_uuid[source.selectedObjectTypeUuid]
+                  : contextState.object_type_by_slug[source.typeSlug]
+                const schema = objectType
+                  ? (contextState.object_schema_defaults_by_object_type_uuid[objectType.uuid]
+                    ?.json_schema as JSONSchema6 | undefined)
+                  : undefined
+                const pendingDependencies = (executionDependencies.get(source.sourceId) ?? [])
+                  .filter((dependencyId) => !completedSourceIds.has(dependencyId))
+                const pendingFiles = pendingDependencies.map(
+                  (dependencyId) =>
+                    sources.find((candidate) => candidate.sourceId === dependencyId)?.fileName ??
+                    dependencyId
+                )
+                const unresolvedRelationship = resolvedCSVRelationshipPlans.some(
+                  (plan) =>
+                    plan.child.record.provenance.sourceId === source.sourceId &&
+                    plan.status !== 'ready'
+                )
+                return (
+                  <CSVSourceImportPanel
+                    key={source.sourceId}
+                    source={source}
+                    loaded={effectiveLoadedSourceRecords[source.sourceId]}
+                    objectType={objectType}
+                    schema={schema}
+                    executionBlocked={pendingDependencies.length > 0 || unresolvedRelationship}
+                    externalImportControl={cleanImportControlActive}
+                    startImportRequest={importRequest}
+                    executionBlockMessage={
+                      pendingFiles.length > 0
+                        ? `Import ${pendingFiles.join(', ')} first to preserve parent-child order.`
+                        : unresolvedRelationship
+                          ? 'Resolve parent matches before importing these rows.'
+                          : undefined
+                    }
+                    onObjectTypeSelected={handleObjectTypeSelected}
+                    onImportAttemptComplete={markSourceImportAttemptComplete}
+                  />
+                )
+              })}
+            </div>
           </div>
         </div>
       )}

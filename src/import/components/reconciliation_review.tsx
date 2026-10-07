@@ -1,4 +1,4 @@
-import { useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { Button } from '@/components/ui/button'
 import { Loader } from '@axdspub/axiom-ui-utilities'
 import type { CanonicalImportRecord } from '@/import/types'
@@ -17,6 +17,7 @@ const ReconciliationReview = ({
     objectTypeUuid,
     token,
     reconciliations,
+    autoDiscover = false,
     mergeStrategy,
     serverMergeAvailable,
     onReconciled,
@@ -27,6 +28,7 @@ const ReconciliationReview = ({
     objectTypeUuid: string
     token: string
     reconciliations: ImportReconciliation[] | null
+    autoDiscover?: boolean
     mergeStrategy: ImportMergeStrategy
     serverMergeAvailable: boolean
     onReconciled: (reconciliations: ImportReconciliation[]) => void
@@ -35,8 +37,13 @@ const ReconciliationReview = ({
 }): ReactElement => {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const attemptedAutoChecks = useRef(new Set<string>())
+    const recordsKey = useMemo(
+        () => records.map(({ provenance }) => `${provenance.sourceId}:${provenance.externalId}`).join('|'),
+        [records]
+    )
 
-    const discoverDuplicates = async () => {
+    const discoverDuplicates = useCallback(async () => {
         setIsLoading(true)
         setError(null)
         try {
@@ -51,7 +58,19 @@ const ReconciliationReview = ({
         } finally {
             setIsLoading(false)
         }
-    }
+    }, [objectTypeUuid, onReconciled, records, token])
+
+    useEffect(() => {
+        if (
+            !autoDiscover ||
+            !token ||
+            records.length === 0 ||
+            reconciliations ||
+            attemptedAutoChecks.current.has(recordsKey)
+        ) return
+        attemptedAutoChecks.current.add(recordsKey)
+        void discoverDuplicates()
+    }, [autoDiscover, discoverDuplicates, records.length, recordsKey, reconciliations, token])
 
     const applyToExisting = (action: ImportConflictAction) => {
         reconciliations

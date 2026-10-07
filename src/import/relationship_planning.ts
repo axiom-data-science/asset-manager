@@ -15,10 +15,12 @@ export type ImportRelationshipCandidate = {
   record: CanonicalImportRecord
   objectTypeUuid: string
   objectTypeSlug: string
+  existingDocumentUuid?: string
 }
 
 export type ImportRelationshipPlan = {
   parent?: ImportRelationshipCandidate
+  parentChoices?: ImportRelationshipCandidate[]
   child: ImportRelationshipCandidate
   predicate: string
   status: ImportRelationshipStatus
@@ -29,6 +31,7 @@ type RelationshipRule = IHydratedExpectedChildType & {
   object_type_uuid?: string
   parentMatchField?: string
   childMatchField?: string
+  existingParentPolicy?: 'lookup'
 }
 
 const readPath = (value: unknown, path?: string): unknown => {
@@ -46,6 +49,17 @@ const identity = (candidate: ImportRelationshipCandidate, field?: string): strin
   return `${candidate.record.provenance.sourceId}:${candidate.record.provenance.externalId}`
 }
 
+export const getRelationshipMatchValue = (
+  candidate: ImportRelationshipCandidate,
+  field?: string
+): string | undefined => {
+  if (!field) return undefined
+  const fieldValue = readPath(candidate.record.data, field)
+  if (typeof fieldValue === 'string') return fieldValue.length > 0 ? fieldValue : undefined
+  if (typeof fieldValue === 'number' && Number.isFinite(fieldValue)) return String(fieldValue)
+  return undefined
+}
+
 const matchesRule = (child: ImportRelationshipCandidate, rule: RelationshipRule): boolean =>
   (rule.object_type_uuid !== undefined && child.objectTypeUuid === rule.object_type_uuid) ||
   (rule.object_type_slug !== undefined && child.objectTypeSlug === rule.object_type_slug)
@@ -59,6 +73,7 @@ const relationshipRuleKey = (rule: RelationshipRule): string =>
     object_type_slug: rule.object_type_slug,
     parentMatchField: rule.parentMatchField,
     childMatchField: rule.childMatchField,
+    existingParentPolicy: rule.existingParentPolicy,
     to_parent_predicate: rule.to_parent_predicate,
   })
 
@@ -82,9 +97,16 @@ export const planImportRelationships = ({
         object_type_slug: candidate.childObjectTypeSlug,
         parentMatchField: candidate.parentMatchField,
         childMatchField: candidate.childMatchField,
+        existingParentPolicy: candidate.existingParentPolicy,
         to_parent_predicate: candidate.predicate,
       }))
-    const rules = [...rulesFor(objectType), ...configuredRules].filter(
+    const configuredChildSlugs = new Set(
+      configuredRules.map((rule) => rule.object_type_slug).filter(Boolean)
+    )
+    const backendRules = rulesFor(objectType).filter(
+      (rule) => !rule.object_type_slug || !configuredChildSlugs.has(rule.object_type_slug)
+    )
+    const rules = [...backendRules, ...configuredRules].filter(
       (rule, index, allRules) =>
         allRules.findIndex(
           (candidate) => relationshipRuleKey(candidate) === relationshipRuleKey(rule)
@@ -128,6 +150,7 @@ export const planImportRelationships = ({
         }
         plans.push({
           parent: matchingParents[0],
+          parentChoices: matchingParents,
           child,
           predicate,
           status: matchingParents.length > 1 ? 'ambiguous-parent' : 'ready',
@@ -196,7 +219,8 @@ export const persistImportRelationships = async ({
       return { relationshipKey, status: 'blocked' as const, error: plan.reason }
     }
     const childUuid = documentUuids.get(relationshipDocumentKey(plan.child))
-    const parentUuid = documentUuids.get(relationshipDocumentKey(plan.parent))
+    const parentUuid =
+      plan.parent.existingDocumentUuid ?? documentUuids.get(relationshipDocumentKey(plan.parent))
     const predicateUuid = predicateUuids.get(plan.predicate)
     if (!childUuid || !parentUuid || !predicateUuid) {
       const missing = [

@@ -1,7 +1,7 @@
 import { Checkbox, Input, Loader } from '@axdspub/axiom-ui-utilities'
 
 import { TableVirtuoso, type TableComponents } from 'react-virtuoso'
-import { forwardRef, useCallback, useRef, useState, type ReactElement } from 'react'
+import { forwardRef, useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
 import { Button } from '@/components/ui/button'
 import { Check, TriangleAlert } from 'lucide-react'
 import { useBatchImport, type BatchProgress } from '../hooks/useBatchImport'
@@ -132,6 +132,8 @@ const BatchLoadDocuments = ({
   createDocument,
   includeRandomSelector = false,
   executionBlocked = false,
+  externalImportControl = false,
+  startImportRequest = 0,
 }: {
   documents: ImportCandidate<unknown>[]
   getFullDoc: (props: {
@@ -155,6 +157,8 @@ const BatchLoadDocuments = ({
   ) => Promise<{ error?: string; document?: IDocument }>
   includeRandomSelector?: boolean
   executionBlocked?: boolean
+  externalImportControl?: boolean
+  startImportRequest?: number
 }): ReactElement => {
   const [data, setData] = useState<ImportRowState[]>(() => createImportRows(documents))
   const documentListKey = importCandidateListKey(documents)
@@ -186,6 +190,13 @@ const BatchLoadDocuments = ({
   const [batchSize, setBatchSize] = useState(10)
   const [randomSelectCount, setRandomSelectCount] = useState(20)
   const allDocsRef = useRef<CanonicalImportRecord[]>([])
+  const handledImportRequest = useRef(0)
+
+  useEffect(() => {
+    if (startImportRequest <= handledImportRequest.current || executionBlocked) return
+    handledImportRequest.current = startImportRequest
+    setStartImport(true)
+  }, [executionBlocked, startImportRequest])
 
   const importOneRecord = useCallback(
     async (item: ImportCandidate<unknown>, { signal }: { signal: AbortSignal }) => {
@@ -290,15 +301,17 @@ const BatchLoadDocuments = ({
             onChange={(e) => setBatchSize(Number(e))}
           />
         </div>
-        <Button
-          disabled={isRunning || executionBlocked}
-          onClick={() => {
-            setStartImport(true)
-          }}
-          size="xs"
-        >
-          {isRunning ? <Loader size="sm" /> : 'Import selected'}
-        </Button>
+        {(!externalImportControl || (progress.total > 0 && !isRunning)) && (
+          <Button
+            disabled={isRunning || executionBlocked}
+            onClick={() => {
+              setStartImport(true)
+            }}
+            size="xs"
+          >
+            {isRunning ? <Loader size="sm" /> : 'Import selected'}
+          </Button>
+        )}
         {!isRunning && includeRandomSelector && (
           <span className="flex flex-row justify-end gap-2 text-xs items-center grow">
             Randomly select

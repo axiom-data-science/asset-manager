@@ -4,10 +4,12 @@ import {
   createCSVImportAdapter,
   inferCSVImportMapping,
   isCSVImportMappingComplete,
+  isCSVSchemaMappingComplete,
   csvFileNameToTypeLabel,
   csvFileNameToTypeSlug,
   getAvailableCSVSchemaFieldPaths,
   getCSVArrayItemSchema,
+  getCSVOptionalObjectArrayFields,
   getCSVSchemaFields,
   inferCSVSchemaFieldMappings,
 } from './csv_adapter'
@@ -37,6 +39,33 @@ describe('createCSVImportAdapter', () => {
     expect(isCSVImportMappingComplete(headers, { ...mapping, dataColumns: [] })).toBe(false)
   })
 
+  it('allows automatic preparation only when data columns have confident schema paths', () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+      },
+    } satisfies JSONSchema6
+    const headers = ['name', 'parent_code']
+    const mapping = {
+      label: undefined,
+      slug: undefined,
+      externalId: undefined,
+      description: undefined,
+      dataColumns: headers,
+      fieldMappings: { name: 'name' },
+    }
+
+    expect(isCSVSchemaMappingComplete(headers, mapping, schema, ['parent_code'])).toBe(true)
+    expect(
+      isCSVSchemaMappingComplete(
+        ['name', 'unknown_column'],
+        { ...mapping, dataColumns: ['name', 'unknown_column'] },
+        schema
+      )
+    ).toBe(false)
+  })
+
   it('catalogs titled nested and array schema fields with their paths', () => {
     const fields = getCSVSchemaFields({
       type: 'object',
@@ -61,6 +90,32 @@ describe('createCSVImportAdapter', () => {
       { id: 'metadata', path: 'metadata', title: 'metadata', required: false },
       { id: 'value', path: 'tags[].value', title: 'value', required: false },
     ])
+  })
+
+  it('discovers nested object-array fields for optional source slots', () => {
+    expect(
+      getCSVOptionalObjectArrayFields({
+        type: 'object',
+        required: ['requiredItems'],
+        properties: {
+          metadata: {
+            type: 'object',
+            properties: {
+              samples: {
+                type: 'array',
+                title: 'Samples',
+                items: { type: 'object', properties: { code: { type: 'string' } } },
+              },
+            },
+          },
+          tags: { type: 'array', items: { type: 'string' } },
+          requiredItems: {
+            type: 'array',
+            items: { type: 'object', properties: { code: { type: 'string' } } },
+          },
+        },
+      })
+    ).toEqual([{ path: 'metadata.samples', title: 'Samples' }])
   })
 
   it('exposes scalar array item paths for CSV column mapping', () => {

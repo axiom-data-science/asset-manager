@@ -59,6 +59,45 @@ export const fetchExistingImportDocuments = async ({
     )
 }
 
+export const fetchDocumentsByDataFieldValues = async ({
+    objectTypeUuid,
+    fieldPath,
+    values,
+    token,
+    signal,
+    batchSize = 100,
+}: {
+    objectTypeUuid: string
+    fieldPath: string
+    values: string[]
+    token: string
+    signal?: AbortSignal
+    batchSize?: number
+}): Promise<IDocument[]> => {
+    if (!/^[a-zA-Z0-9_.-]+$/.test(fieldPath)) {
+        throw new Error(`Invalid document match field: ${fieldPath}`)
+    }
+    const path = fieldPath.split('.').filter(Boolean)
+    if (path.length === 0) return []
+    const column = path.length === 1
+        ? `data->>${path[0]}`
+        : `data->${path.slice(0, -1).join('->')}->>${path[path.length - 1]}`
+    const batches = chunk(Array.from(new Set(values)), batchSize)
+    const results = await Promise.all(
+        batches.map((batch) => fetchDocuments({
+            token,
+            signal,
+            params: {
+                filters: [
+                    { column: 'object_type_uuid', operator: 'eq', value: objectTypeUuid },
+                    { column, operator: 'in', value: batch },
+                ],
+            },
+        }))
+    )
+    return Array.from(new Map(results.flat().map((document) => [document.uuid, document])).values())
+}
+
 export const fetchExistingDocumentBySlug = async ({
     slug,
     objectTypeUuid,

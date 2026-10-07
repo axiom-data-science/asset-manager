@@ -57,15 +57,39 @@ export const clearCSVRelationshipRule = <T extends CSVRelationshipSource>(
 export const getUniqueCSVRelationshipRules = (
     sources: Array<{
         relationshipRule?: ImportRelationshipRule
-        adapter: { relationshipRules?: ImportRelationshipRule[] }
+        adapter?: { relationshipRules?: ImportRelationshipRule[] }
     }>
 ): ImportRelationshipRule[] => {
     const rules = sources.flatMap((source) =>
         source.relationshipRule
             ? [source.relationshipRule]
-            : source.adapter.relationshipRules ?? []
+            : source.adapter?.relationshipRules ?? []
     )
     return rules.filter((rule, index, allRules) =>
         allRules.findIndex((candidate) => JSON.stringify(candidate) === JSON.stringify(rule)) === index
     )
+}
+
+export const resolveCSVRelationshipRules = <T extends CSVRelationshipSource>(
+    sources: T[],
+    resolveTypeSlug: (source: T) => string | undefined
+): ImportRelationshipRule[] => {
+    const documentSources = sources.filter((source) => source.role !== 'array')
+    return getUniqueCSVRelationshipRules(documentSources).map((rule) => {
+        const parentSource = documentSources.find(
+            (source) => source.typeSlug === rule.parentObjectTypeSlug
+        )
+        const childSource = documentSources.find(
+            (source) => source.typeSlug === rule.childObjectTypeSlug
+        )
+        return {
+            ...rule,
+            parentObjectTypeSlug: parentSource
+                ? resolveTypeSlug(parentSource) ?? rule.parentObjectTypeSlug
+                : rule.parentObjectTypeSlug,
+            childObjectTypeSlug: childSource
+                ? resolveTypeSlug(childSource) ?? rule.childObjectTypeSlug
+                : rule.childObjectTypeSlug,
+        }
+    })
 }

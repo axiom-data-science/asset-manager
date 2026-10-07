@@ -1,6 +1,7 @@
 import type { AppVariantDefinition } from '@/variants/types'
 import Header from '@/app-variants/pam/header'
 import WaterLevelEntry from '@/app-variants/pam/entry'
+import { AudioLines } from 'lucide-react'
 
 export const appVariant = {
     id: 'pam',
@@ -16,13 +17,17 @@ export const appVariant = {
             id: 'pam-csv',
             label: 'PAM project import',
             path: '/import/csv/pam',
+            icon: AudioLines,
             config: {
                 mapping: 'required',
                 relationships: 'fixed',
-                entryChoices: [
+                relationshipPresentation: 'guided',
+                schemaChoices: [
                     {
                         key: 'locationDetail',
                         label: 'PAM site location type',
+                        showLabel: false,
+                        placeholder: 'Choose a site location type',
                         options: [
                             { value: 'stationary_marine', label: 'Stationary marine' },
                             { value: 'stationary_terrestrial', label: 'Stationary terrestrial' },
@@ -41,6 +46,7 @@ export const appVariant = {
                         parentMatchField: 'project',
                         childMatchField: 'project',
                         predicate: 'has_parent',
+                        existingParentPolicy: 'lookup',
                     },
                     {
                         parentObjectTypeSlug: 'pam_site',
@@ -48,6 +54,7 @@ export const appVariant = {
                         parentMatchField: 'siteOrCruiseName',
                         childMatchField: 'site',
                         predicate: 'has_parent',
+                        existingParentPolicy: 'lookup',
                     },
                 ],
                 sourceConfigs: [
@@ -59,6 +66,7 @@ export const appVariant = {
                         typeSlug: 'pam_project',
                         typeKnown: true,
                         mapping: 'required',
+                        optional: true,
                         role: 'parent',
                         relationshipFields: ['project'],
                     },
@@ -70,11 +78,14 @@ export const appVariant = {
                         typeSlug: 'pam_site',
                         typeKnown: true,
                         mapping: 'required',
+                        optional: true,
                         role: 'child',
                         relationshipFields: ['project', 'siteOrCruiseName'],
-                        entryChoiceKey: 'locationDetail',
-                        entryChoiceSchemaPath: 'locationDetail',
-                        entryChoiceFieldPath: 'locationDetail.type',
+                        schemaChoice: {
+                            key: 'locationDetail',
+                            branchPath: 'locationDetail',
+                            valuePath: 'locationDetail.type',
+                        },
                     },
                     {
                         key: 'pam-deployment',
@@ -84,6 +95,7 @@ export const appVariant = {
                         typeSlug: 'pam_deployment',
                         typeKnown: true,
                         mapping: 'required',
+                        optional: true,
                         role: 'child',
                         relationshipFields: ['site', 'deploymentTitle'],
                     },
@@ -95,6 +107,7 @@ export const appVariant = {
                         typeSlug: 'pam_deployment',
                         typeKnown: true,
                         mapping: 'required',
+                        optional: true,
                         role: 'array',
                         relationshipFields: ['deploymentTitle'],
                         arrayTarget: {
@@ -112,6 +125,7 @@ export const appVariant = {
                         typeSlug: 'pam_deployment',
                         typeKnown: true,
                         mapping: 'required',
+                        optional: true,
                         role: 'array',
                         relationshipFields: ['deploymentTitle'],
                         arrayTarget: {

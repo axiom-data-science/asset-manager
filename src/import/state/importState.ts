@@ -7,7 +7,7 @@ import type {
 import type { IObjectType } from '@/types/types'
 import type { JSONSchema6 } from 'json-schema'
 import type { ImportErrorKind } from '@/import/import_errors'
-import { atom, useAtom } from 'jotai'
+import { atom, useAtom, useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 
 export type ImportRecordStage =
@@ -179,6 +179,9 @@ export const setImportConflictAction = (
 })
 
 const importSessionsState = atom<Record<string, ImportSession>>({})
+
+export const useImportSessions = (): Record<string, ImportSession> =>
+  useAtomValue(importSessionsState)
 
 export const useImportSession = (sourceId: string) => {
   const [sessions, setSessions] = useAtom(importSessionsState)

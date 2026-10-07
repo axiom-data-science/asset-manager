@@ -4,6 +4,7 @@ import { postToPostgrest } from '@/services/postgrest/services'
 import {
     fetchExistingDocumentBySlug,
     fetchExistingImportDocuments,
+    fetchDocumentsByDataFieldValues,
     mergeImportDocumentViaRpc,
 } from './reconciliation_service'
 import type { CanonicalImportRecord } from './types'
@@ -125,5 +126,43 @@ describe('fetchExistingDocumentBySlug', () => {
             },
         })
         expect(result).toBe(existing)
+    })
+})
+
+describe('fetchDocumentsByDataFieldValues', () => {
+    beforeEach(() => vi.mocked(fetchDocuments).mockReset())
+
+    it('queries exact configured data-field values within the parent type', async () => {
+        const existing = [{ uuid: 'site-1' }]
+        vi.mocked(fetchDocuments).mockResolvedValue(existing as never)
+
+        const result = await fetchDocumentsByDataFieldValues({
+            objectTypeUuid: 'site-type',
+            fieldPath: 'location.name',
+            values: ['Harbor', 'Harbor', 'Bay'],
+            token: 'token',
+        })
+
+        expect(fetchDocuments).toHaveBeenCalledWith({
+            token: 'token',
+            signal: undefined,
+            params: {
+                filters: [
+                    { column: 'object_type_uuid', operator: 'eq', value: 'site-type' },
+                    { column: 'data->location->>name', operator: 'in', value: ['Harbor', 'Bay'] },
+                ],
+            },
+        })
+        expect(result).toEqual(existing)
+    })
+
+    it('rejects match fields that cannot safely be used as PostgREST identifiers', async () => {
+        await expect(fetchDocumentsByDataFieldValues({
+            objectTypeUuid: 'site-type',
+            fieldPath: 'name);select=*',
+            values: ['Harbor'],
+            token: 'token',
+        })).rejects.toThrow('Invalid document match field')
+        expect(fetchDocuments).not.toHaveBeenCalled()
     })
 })

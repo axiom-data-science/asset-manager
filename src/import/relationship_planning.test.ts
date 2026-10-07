@@ -98,6 +98,47 @@ describe('Import relationship planning', () => {
     })
 
     expect(plans.map(({ status }) => status)).toEqual(['missing-parent', 'ambiguous-parent'])
+    expect(plans[1].parentChoices).toHaveLength(2)
+  })
+
+  it('matches an existing parent by configured field and persists its document UUID', async () => {
+    const existingParent = {
+      ...candidate('existing:parent-1', 'parent-1', 'parent-type', 'parents', { code: 'P-1' }),
+      existingDocumentUuid: 'persisted-parent-uuid',
+    }
+    const child = candidate('child-source', 'child-1', 'child-type', 'children', {
+      parentCode: 'P-1',
+    })
+    const plans = planImportRelationships({
+      parentObjectTypes: new Map([['parent-type', objectType('parent-type', 'parents', [])]]),
+      candidates: [existingParent, child],
+      relationshipRules: [{
+        parentObjectTypeSlug: 'parents',
+        childObjectTypeSlug: 'children',
+        parentMatchField: 'code',
+        childMatchField: 'parentCode',
+        predicate: 'belongs_to',
+        existingParentPolicy: 'lookup',
+      }],
+    })
+    const post = vi.fn().mockResolvedValue(undefined)
+
+    const results = await persistImportRelationships({
+      plans,
+      documentUuids: new Map([[relationshipDocumentKey(child), 'child-document-uuid']]),
+      predicateUuids: new Map([['belongs_to', 'predicate-uuid']]),
+      signal: new AbortController().signal,
+      post,
+      delayMsBetweenBatches: 0,
+    })
+
+    expect(plans[0]).toMatchObject({ status: 'ready', parent: { existingDocumentUuid: 'persisted-parent-uuid' } })
+    expect(post).toHaveBeenCalledWith({
+      from_document_uuid: 'child-document-uuid',
+      to_document_uuid: 'persisted-parent-uuid',
+      predicate_uuid: 'predicate-uuid',
+    }, expect.any(AbortSignal))
+    expect(results).toMatchObject([{ status: 'created' }])
   })
 
   it('uses configured data paths for parent and child matching', () => {
@@ -184,6 +225,38 @@ describe('Import relationship planning', () => {
 
     expect(plans).toHaveLength(1)
     expect(plans[0]).toMatchObject({ status: 'ready', predicate: 'belongs_to' })
+  })
+
+  it('uses configured lookup fields instead of duplicating sparse backend relationship metadata', () => {
+    const parent = candidate('site-source', 'site-1', 'parent-type', 'sites', {
+      siteOrCruiseName: 'Example PAM Site',
+    })
+    const child = candidate('deployment-source', 'deployment-1', 'child-type', 'deployments', {
+      site: 'Example PAM Site',
+    })
+    const plans = planImportRelationships({
+      parentObjectTypes: new Map([
+        [
+          'parent-type',
+          objectType('parent-type', 'sites', [
+            { object_type_slug: 'deployments', to_parent_predicate: 'has_parent' },
+          ]),
+        ],
+      ]),
+      candidates: [parent, child],
+      relationshipRules: [
+        {
+          parentObjectTypeSlug: 'sites',
+          childObjectTypeSlug: 'deployments',
+          parentMatchField: 'siteOrCruiseName',
+          childMatchField: 'site',
+          predicate: 'has_parent',
+        },
+      ],
+    })
+
+    expect(plans).toHaveLength(1)
+    expect(plans[0]).toMatchObject({ status: 'ready', predicate: 'has_parent' })
   })
 
   it('matches configured identities when payload fields are numbers', () => {

@@ -14,10 +14,12 @@ const record = ({
   sourceId,
   externalId,
   data,
+  sourceData = {},
 }: {
   sourceId: string
   externalId: string
   data: Record<string, unknown>
+  sourceData?: Record<string, unknown>
 }): CanonicalImportRecord => ({
   uuid: externalId,
   slug: externalId,
@@ -25,7 +27,7 @@ const record = ({
   description: '',
   data,
   attrs: {},
-  sourceData: {},
+  sourceData,
   provenance: { sourceId, externalId },
 })
 
@@ -70,6 +72,79 @@ describe('CSV import orchestration', () => {
     expect(records[0].data).toEqual({
       code: 'P-1',
       contacts: [{ parent_code: 'P-1', name: 'Ada' }],
+    })
+  })
+
+  it('merges array rows into their configured parent source instead of the generic parent', () => {
+    const loadedSources = [
+      loadedSource(
+        { sourceId: 'project-upload', sourceKey: 'pam-project' },
+        [record({ sourceId: 'project-upload', externalId: 'project-1', data: { project: 'Project' } })]
+      ),
+      loadedSource(
+        { sourceId: 'deployment-upload', sourceKey: 'pam-deployment' },
+        [
+          record({
+            sourceId: 'deployment-upload',
+            externalId: 'deployment-1',
+            data: { deploymentTitle: 'Example PAM Deployment' },
+            sourceData: { deploymentTitle: 'Example PAM Deployment' },
+          }),
+        ]
+      ),
+      loadedSource(
+        {
+          sourceId: 'recordings-upload',
+          sourceKey: 'pam-recordings',
+          fileName: 'pam_recordings.csv',
+          arrayTarget: {
+            parentSourceKey: 'pam-deployment',
+            arrayFieldPath: 'recordings',
+            parentMatchField: 'deploymentTitle',
+            rowMatchField: 'deploymentTitle',
+          },
+        },
+        [
+          record({
+            sourceId: 'recordings-upload',
+            externalId: 'recording-1',
+            data: { deploymentTitle: 'Example PAM Deployment', channels: [{ sampleRate: 48000 }] },
+            sourceData: { deploymentTitle: 'Example PAM Deployment' },
+          }),
+        ]
+      ),
+      loadedSource(
+        {
+          sourceId: 'analyses-upload',
+          sourceKey: 'pam-analyses',
+          fileName: 'pam_analyses.csv',
+          arrayTarget: {
+            parentSourceKey: 'pam-deployment',
+            arrayFieldPath: 'analyses',
+            parentMatchField: 'deploymentTitle',
+            rowMatchField: 'deploymentTitle',
+          },
+        },
+        [
+          record({
+            sourceId: 'analyses-upload',
+            externalId: 'analysis-1',
+            data: { deploymentTitle: 'Example PAM Deployment', qualityAnalyst: 'Example Analyst' },
+            sourceData: { deploymentTitle: 'Example PAM Deployment' },
+          }),
+        ]
+      ),
+    ]
+
+    expect(
+      mergeCSVArraySources({ parentSourceId: 'project-upload', loadedSources })[0].data
+    ).toEqual({ project: 'Project' })
+    expect(
+      mergeCSVArraySources({ parentSourceId: 'deployment-upload', loadedSources })[0].data
+    ).toEqual({
+      deploymentTitle: 'Example PAM Deployment',
+      recordings: [{ deploymentTitle: 'Example PAM Deployment', channels: [{ sampleRate: 48000 }] }],
+      analyses: [{ deploymentTitle: 'Example PAM Deployment', qualityAnalyst: 'Example Analyst' }],
     })
   })
 
@@ -206,9 +281,53 @@ describe('CSV import orchestration', () => {
     ).toThrow('1 array row did not match a parent record.')
   })
 
+  it('lists unmatched array rows with their filename, data row, and lookup value', () => {
+    const parentSource = { sourceId: 'parent-upload' }
+    const arraySource = {
+      sourceId: 'array-upload',
+      fileName: 'pam_recordings.csv',
+      arrayTarget: {
+        parentSourceKey: 'parent-upload',
+        arrayFieldPath: 'recordings',
+        parentMatchField: 'deploymentTitle',
+        rowMatchField: 'deploymentTitle',
+      },
+    }
+
+    expect(() =>
+      mergeCSVArraySources({
+        parentSourceId: parentSource.sourceId,
+        loadedSources: [
+          loadedSource(parentSource, [
+            record({ sourceId: parentSource.sourceId, externalId: 'parent-1', data: { deploymentTitle: 'Found' } }),
+          ]),
+          loadedSource(arraySource, [
+            record({
+              sourceId: arraySource.sourceId,
+              externalId: 'array-1',
+              data: { deploymentTitle: 'Missing' },
+              sourceData: { deploymentTitle: 'Missing' },
+            }),
+          ]),
+        ],
+      })
+    ).toThrow(
+      '1 array row did not match a parent record.\nUnmatched rows:\n- pam_recordings.csv, data row 1 (deploymentTitle="Missing")'
+    )
+  })
+
   it('formats unmatched array rows as an actionable composition blocker', () => {
     expect(formatCSVRecordsError(new Error('1 array row did not match a parent record.'))).toBe(
       'Array composition blocked: 1 array row did not match a parent record. Correct the parent and row lookup columns or add the missing parent rows, then continue again.'
+    )
+    expect(
+      formatCSVRecordsError(
+        new Error(
+          '1 array row did not match a parent record.\nUnmatched rows:\n- pam_recordings.csv, data row 1 (deploymentTitle="Missing")'
+        )
+      )
+    ).toBe(
+      'Array composition blocked: 1 array row did not match a parent record.\nUnmatched rows:\n- pam_recordings.csv, data row 1 (deploymentTitle="Missing")\nCorrect the parent and row lookup columns or add the missing parent rows, then continue again.'
     )
     expect(formatCSVRecordsError(new Error('Malformed CSV'))).toBe(
       'Could not load CSV records: Malformed CSV'

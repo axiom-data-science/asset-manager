@@ -100,6 +100,7 @@ export type ImportRelationshipRule = {
     parentMatchField?: string
     childMatchField?: string
     predicate: string
+    existingParentPolicy?: 'lookup'
 }
 
 export type ImportArraySourceTarget = {

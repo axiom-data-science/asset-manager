@@ -151,6 +151,34 @@ export const getCSVArrayItemSchema = (
   return itemSchema && typeof itemSchema !== 'boolean' ? itemSchema : undefined
 }
 
+export const getCSVOptionalObjectArrayFields = (
+  schema: JSONSchema6 | undefined
+): Array<{ path: string; title: string }> => {
+  if (!schema) return []
+  const resolved = resolveLocalSchemaRefs(schema, schema) as JSONSchema6
+  const fields: Array<{ path: string; title: string }> = []
+  const visit = (current: JSONSchema6, parentPath: string, parentRequired: boolean) => {
+    if (!current.properties || typeof current.properties !== 'object') return
+    const requiredFields = new Set(current.required ?? [])
+    for (const [id, property] of Object.entries(current.properties)) {
+      if (!property || typeof property === 'boolean') continue
+      const path = parentPath ? `${parentPath}.${id}` : id
+      const title = typeof property.title === 'string' ? property.title : id
+      const isRequired = parentRequired && requiredFields.has(id)
+      if (property.type === 'array') {
+        const itemSchema = Array.isArray(property.items) ? property.items[0] : property.items
+        if (!isRequired && itemSchema && typeof itemSchema !== 'boolean' && itemSchema.properties) {
+          fields.push({ path, title })
+        }
+      } else {
+        visit(property, path, isRequired)
+      }
+    }
+  }
+  visit(resolved, '', true)
+  return fields
+}
+
 export const inferCSVSchemaFieldMappings = (
   columns: string[],
   schema: JSONSchema6 | undefined,
@@ -210,6 +238,33 @@ export const isCSVImportMappingComplete = (
     ].filter((column): column is string => Boolean(column))
   )
   return headers.every((header) => mappedColumns.has(header))
+}
+
+export const isCSVSchemaMappingComplete = (
+  headers: string[],
+  mapping: CSVImportMapping,
+  schema: JSONSchema6 | undefined,
+  relationshipFields: string[] = [],
+  branchSelections: Record<string, string> = {}
+): boolean => {
+  if (!schema || !isCSVImportMappingComplete(headers, mapping)) return false
+
+  const availablePaths = new Set(
+    getCSVSchemaFields(schema, '', branchSelections).map((field) => field.path)
+  )
+  const passthroughColumns = new Set([
+    mapping.label,
+    mapping.slug,
+    mapping.externalId,
+    mapping.description,
+    ...relationshipFields,
+  ].filter((column): column is string => Boolean(column)))
+
+  return (mapping.dataColumns ?? []).every((column) => {
+    if (passthroughColumns.has(column)) return true
+    const mappedPath = mapping.fieldMappings?.[column]
+    return mappedPath !== undefined && availablePaths.has(mappedPath)
+  })
 }
 
 const findHeader = (headers: string[], names: string[]): string | undefined => {

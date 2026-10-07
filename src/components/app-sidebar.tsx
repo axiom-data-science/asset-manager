@@ -26,7 +26,7 @@ import {
   RotateCw,
   Share,
   User,
-  BookA,
+  BookA
 } from 'lucide-react'
 import { SidebarGroupContent, SidebarGroupLabel } from '@/components/ui/sidebar'
 import { Link, useLocation } from 'react-router-dom'
@@ -320,7 +320,7 @@ export function AppSidebar() {
       ].concat(
         (definition?.csvImportViews ?? []).map((view) => ({
           name: view.label,
-          icon: FileSpreadsheet,
+          icon: view.icon ?? FileSpreadsheet,
           url: view.path,
         })),
         importConfigs.map((config) => {

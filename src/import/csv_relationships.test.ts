@@ -3,6 +3,7 @@ import {
     clearCSVRelationshipRule,
     getUniqueCSVRelationshipRules,
     mirrorCSVRelationshipRule,
+    resolveCSVRelationshipRules,
 } from './csv_relationships'
 import type { ImportRelationshipRule } from './types'
 
@@ -61,6 +62,58 @@ describe('CSV relationship setup', () => {
         ]
 
         expect(getUniqueCSVRelationshipRules(mirroredSources)).toEqual([rule])
+    })
+
+    it('resolves each cascade rule against matching document types and excludes array sources', () => {
+        const projectToSite: ImportRelationshipRule = {
+            parentObjectTypeSlug: 'pam_project',
+            childObjectTypeSlug: 'pam_site',
+            parentMatchField: 'project',
+            childMatchField: 'project',
+            predicate: 'has_parent',
+        }
+        const siteToDeployment: ImportRelationshipRule = {
+            parentObjectTypeSlug: 'pam_site',
+            childObjectTypeSlug: 'pam_deployment',
+            parentMatchField: 'siteOrCruiseName',
+            childMatchField: 'site',
+            predicate: 'has_parent',
+        }
+        const sources = [
+            {
+                sourceId: 'project',
+                typeSlug: 'pam_project',
+                role: 'parent' as const,
+                relationshipFields: ['project'],
+                adapter: { relationshipRules: [projectToSite, siteToDeployment] },
+            },
+            {
+                sourceId: 'site',
+                typeSlug: 'pam_site',
+                role: 'child' as const,
+                relationshipFields: ['project', 'siteOrCruiseName'],
+                adapter: { relationshipRules: [projectToSite, siteToDeployment] },
+            },
+            {
+                sourceId: 'deployment',
+                typeSlug: 'pam_deployment',
+                role: 'child' as const,
+                relationshipFields: ['site', 'deploymentTitle'],
+                adapter: { relationshipRules: [projectToSite, siteToDeployment] },
+            },
+            {
+                sourceId: 'recordings',
+                typeSlug: 'pam_deployment',
+                role: 'array' as const,
+                relationshipFields: ['deploymentTitle'],
+                adapter: { relationshipRules: [projectToSite, siteToDeployment] },
+            },
+        ]
+
+        expect(resolveCSVRelationshipRules(sources, (source) => source.typeSlug)).toEqual([
+            projectToSite,
+            siteToDeployment,
+        ])
     })
 
     it('clears both mirrored rules and restores configured relationship fields', () => {

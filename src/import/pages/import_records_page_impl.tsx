@@ -216,6 +216,8 @@ export type IImportPageProps = {
   csvSource?: boolean
   arraySource?: boolean
   startAtImport?: boolean
+  externalImportControl?: boolean
+  startImportRequest?: number
   executionBlocked?: boolean
   executionBlockMessage?: string
   onImportAttemptComplete?: () => void
@@ -232,6 +234,8 @@ const ImportRecordsPage = ({
   csvSource = false,
   arraySource = false,
   startAtImport = false,
+  externalImportControl = false,
+  startImportRequest = 0,
   executionBlocked = false,
   executionBlockMessage,
   onImportAttemptComplete,
@@ -309,6 +313,9 @@ const ImportRecordsPage = ({
   const [selectedTab, setSelectedTab] = useState(
     startAtImport && canSkipImportTypeStep(session) ? 'import' : csvSource ? 'type' : 'records'
   )
+  useEffect(() => {
+    if (csvSource && startAtImport && canSkipImportTypeStep(session)) setSelectedTab('import')
+  }, [csvSource, session, startAtImport])
   const [activeDetailRoot, setActiveDetailRoot] = useState(sourceAdapter?.defaultDetailRoot)
   const getFullDoc = sourceAdapter
     ? ({
@@ -470,6 +477,7 @@ const ImportRecordsPage = ({
                           objectTypeUuid={objectTypeForRecords.uuid}
                           token={auth.user?.access_token ?? ''}
                           reconciliations={session.reconciliations}
+                          autoDiscover={csvSource && startAtImport}
                           mergeStrategy={session.mergeStrategy}
                           serverMergeAvailable={IMPORT_MERGE_RPC.trim().length > 0}
                           onReconciled={setReconciliations}
@@ -537,6 +545,8 @@ const ImportRecordsPage = ({
                         <BatchLoadDocuments
                           documents={recordsToPersist}
                           executionBlocked={executionBlocked}
+                          externalImportControl={externalImportControl}
+                          startImportRequest={startImportRequest}
                           getFullDoc={async ({ doc }) => {
                             const record = recordsToPersist.find(
                               (candidate) =>

@@ -161,11 +161,11 @@ const RemoteSourceImport = ({
 
   return (
     <>
-      {adapter.id === 'erddap_metadata' && (
+      {(adapter.id === 'erddap_metadata' || adapter.id === 'erddap_modl') && (
         <p className="text-xs text-gray-600">
-          Enter a dataset metadata URL ending in /info/{'{datasetID}'}/index.json, or the catalog
-          URL /info/index.json to discover all datasets. Full metadata loads when records are
-          preloaded.
+          Enter a dataset metadata URL ending in /info/{'{datasetID}'}/index.json, a catalog URL
+          ending in /info/index.json, or a search URL ending in /search/index.json. Full metadata
+          loads when records are preloaded.
         </p>
       )}
       <div className="flex flex-row gap-4 items-end">
@@ -216,6 +216,7 @@ const RemoteSourceImport = ({
 export type IImportPageProps = {
   type: string
   objectTypeSlug?: string
+  objectSchemaSlug?: string
   label: string
   pluralLabel?: string
   sourceAdapter?: ImportSourceAdapter
@@ -238,6 +239,7 @@ const ImportRecordsPage = ({
   pluralLabel,
   type,
   objectTypeSlug,
+  objectSchemaSlug,
   sourceAdapter,
   csvSource = false,
   arraySource = false,
@@ -449,6 +451,7 @@ const ImportRecordsPage = ({
                       type={typeSlug}
                       sourceId={sourceId}
                       recordOverrideFields={recordOverrideFields}
+                      objectSchemaSlug={objectSchemaSlug}
                     />
                   ),
                 },

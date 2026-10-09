@@ -10,11 +10,12 @@ import {
 } from 'lucide-react'
 import type { IImportPageProps } from './pages/import_records_page_impl'
 import type { JSONSchema6 } from 'json-schema'
+import modlSchema from '../formsAndSchemaJSON/modlSchema.json'
 import oikosLayerSchema from './schemas/oikos_layer.schema.json'
 import oikosLayerGroupSchema from './schemas/oikos_layer_group.schema.json'
 import oikosModuleSchema from './schemas/oikos_module.schema.json'
 import { createRemoteImportAdapter } from './adapters'
-import { createERDDAPMetadataAdapter } from './erddap_metadata'
+import { createERDDAPMetadataAdapter, createERDDAPSchemaTargetedAdapter } from './erddap_metadata'
 import {
   binninatorMetadata,
   binninatorRecords,
@@ -51,6 +52,21 @@ const importConfigs: IImportPageProps[] = [
       { path: 'dataset_id', label: 'Dataset ID' },
       { path: 'global_attributes.id', label: 'ID' },
       { path: 'global_attributes.platform_name', label: 'Platform Name' },
+    ],
+  },
+  {
+    sourceAdapter: createERDDAPSchemaTargetedAdapter({
+      id: 'erddap_modl',
+      schema: modlSchema as unknown as JSONSchema6,
+    }),
+    label: 'ERDDAP MODL Dataset',
+    pluralLabel: 'ERDDAP MODL Datasets',
+    type: 'modl',
+    objectSchemaSlug: 'modl',
+    icon: Grid2X2,
+    recordOverrideFields: [
+      { path: 'dataset_id', label: 'Dataset ID' },
+      { path: 'global_attributes.id', label: 'ID' },
     ],
   },
   {

@@ -1,4 +1,5 @@
 import type { CanonicalImportRecord, ImportCandidate, ImportSourceAdapter } from './types'
+import type { JSONSchema6 } from 'json-schema'
 
 type ERDDAPMetadataTable = {
     columnNames?: string[]
@@ -16,11 +17,29 @@ export type ERDDAPDatasetMetadata = {
     variables: Record<string, Record<string, unknown>>
 }
 
+type ERDDAPMetadataAdapterOptions = {
+    id?: string
+    coerceAttributeValues?: boolean
+}
+
 const normalizeColumnName = (columnName: string): string =>
     columnName.toLowerCase().replace(/[^a-z0-9]/g, '')
 
 const getColumnIndex = (columnNames: string[], name: string): number =>
     columnNames.findIndex((columnName) => normalizeColumnName(columnName) === normalizeColumnName(name))
+
+const coerceERDDAPAttributeValue = (value: unknown, dataType: unknown): unknown => {
+    if (typeof value !== 'string' || typeof dataType !== 'string') return value
+    if (/^(?:u?byte|u?short|u?int|u?long|integer|float|double)$/i.test(dataType)) {
+        const numericValue = Number(value)
+        return Number.isFinite(numericValue) ? numericValue : value
+    }
+    if (/^(?:boolean|bool)$/i.test(dataType)) {
+        if (value.toLowerCase() === 'true') return true
+        if (value.toLowerCase() === 'false') return false
+    }
+    return value
+}
 
 const getDatasetId = (url: string): string => {
     const match = new URL(url).pathname.match(/\/info\/([^/]+)\/index\.json\/?$/i)
@@ -28,14 +47,14 @@ const getDatasetId = (url: string): string => {
     return decodeURIComponent(match[1])
 }
 
-const isERDDAPCatalogUrl = (url: string): boolean =>
-    /\/info\/index\.json\/?$/i.test(new URL(url).pathname)
+const isERDDAPDatasetListUrl = (url: string): boolean =>
+    /\/(?:info|search)\/index\.json\/?$/i.test(new URL(url).pathname)
 
 const getDatasetMetadataUrl = (catalogUrl: string, datasetId: string): string => {
     const url = new URL(catalogUrl)
-    const infoRoot = url.pathname.match(/^(.*)\/info\/index\.json\/?$/i)?.[1]
-    if (infoRoot === undefined) throw new Error('Use an ERDDAP catalog URL ending in /info/index.json')
-    url.pathname = `${infoRoot}/info/${encodeURIComponent(datasetId)}/index.json`
+    const erddapRoot = url.pathname.match(/^(.*)\/(?:info|search)\/index\.json\/?$/i)?.[1]
+    if (erddapRoot === undefined) throw new Error('Use an ERDDAP catalog or search URL ending in /index.json')
+    url.pathname = `${erddapRoot}/info/${encodeURIComponent(datasetId)}/index.json`
     url.search = ''
     url.hash = ''
     return url.toString()
@@ -43,7 +62,8 @@ const getDatasetMetadataUrl = (catalogUrl: string, datasetId: string): string =>
 
 export const parseERDDAPMetadata = (
     response: ERDDAPMetadataResponse,
-    metadataUrl: string
+    metadataUrl: string,
+    options: Pick<ERDDAPMetadataAdapterOptions, 'coerceAttributeValues'> = {}
 ): ERDDAPDatasetMetadata => {
     const datasetId = getDatasetId(metadataUrl)
     const table = response.table
@@ -53,6 +73,7 @@ export const parseERDDAPMetadata = (
 
     const variableIndex = getColumnIndex(table.columnNames, 'VariableName')
     const attributeIndex = getColumnIndex(table.columnNames, 'AttributeName')
+    const dataTypeIndex = getColumnIndex(table.columnNames, 'Data Type')
     const valueIndex = getColumnIndex(table.columnNames, 'Value')
     if (attributeIndex < 0 || valueIndex < 0) {
         throw new Error('ERDDAP metadata table must include AttributeName and Value columns')
@@ -69,7 +90,10 @@ export const parseERDDAPMetadata = (
             typeof variableName === 'string' && variableName.length > 0 && variableName !== 'NC_GLOBAL'
                 ? (variables[variableName] ??= {})
                 : globalAttributes
-        destination[attributeName] = row[valueIndex]
+        const value = row[valueIndex]
+        destination[attributeName] = options.coerceAttributeValues
+            ? coerceERDDAPAttributeValue(value, dataTypeIndex < 0 ? undefined : row[dataTypeIndex])
+            : value
     }
 
     return {
@@ -80,9 +104,29 @@ export const parseERDDAPMetadata = (
     }
 }
 
+export const mapERDDAPMetadataToSchema = (
+    metadata: ERDDAPDatasetMetadata,
+    schema: JSONSchema6
+): Record<string, unknown> => {
+    const schemaProperties = Object.keys(schema.properties ?? {})
+    const propertyByNormalizedName = new Map(
+        schemaProperties.map((propertyName) => [normalizeColumnName(propertyName), propertyName])
+    )
+    const data: Record<string, unknown> = {}
+
+    for (const [attributeName, value] of Object.entries(metadata.global_attributes)) {
+        const propertyName = propertyByNormalizedName.get(normalizeColumnName(attributeName))
+        if (propertyName) data[propertyName] = value
+    }
+
+    if (propertyByNormalizedName.has('id') && !data.id) data.id = metadata.dataset_id
+    return data
+}
+
 export const parseERDDAPCatalog = (
     response: ERDDAPMetadataResponse,
-    catalogUrl: string
+    catalogUrl: string,
+    sourceId = 'erddap_metadata'
 ): ImportCandidate[] => {
     const table = response.table
     if (!table?.columnNames || !Array.isArray(table.rows)) {
@@ -118,7 +162,7 @@ export const parseERDDAPCatalog = (
                 variables: {},
             } satisfies ERDDAPDatasetMetadata,
             partial: true,
-            provenance: { sourceId: 'erddap_metadata', externalId: datasetId },
+            provenance: { sourceId, externalId: datasetId },
         }]
     })
 }
@@ -133,8 +177,11 @@ const getDatasetDescription = (metadata: ERDDAPDatasetMetadata): string => {
     return typeof summary === 'string' ? summary : ''
 }
 
-export const createERDDAPMetadataAdapter = (): ImportSourceAdapter => ({
-    id: 'erddap_metadata',
+export const createERDDAPMetadataAdapter = ({
+    id = 'erddap_metadata',
+    coerceAttributeValues = false,
+}: ERDDAPMetadataAdapterOptions = {}): ImportSourceAdapter => ({
+    id,
     defaultImportUrl: '',
     discover: async ({ url, signal }): Promise<ImportCandidate[]> => {
         const response = await fetch(url, {
@@ -144,9 +191,9 @@ export const createERDDAPMetadataAdapter = (): ImportSourceAdapter => ({
         if (!response.ok) throw new Error(`ERDDAP metadata request failed (${response.status})`)
 
         const responseData = (await response.json()) as ERDDAPMetadataResponse
-        if (isERDDAPCatalogUrl(url)) return parseERDDAPCatalog(responseData, url)
+        if (isERDDAPDatasetListUrl(url)) return parseERDDAPCatalog(responseData, url, id)
 
-        const metadata = parseERDDAPMetadata(responseData, url)
+        const metadata = parseERDDAPMetadata(responseData, url, { coerceAttributeValues })
         return [
             {
                 uuid: metadata.dataset_id,
@@ -155,7 +202,7 @@ export const createERDDAPMetadataAdapter = (): ImportSourceAdapter => ({
                 description: getDatasetDescription(metadata),
                 data: metadata,
                 partial: false,
-                provenance: { sourceId: 'erddap_metadata', externalId: metadata.dataset_id },
+                provenance: { sourceId: id, externalId: metadata.dataset_id },
             },
         ]
     },
@@ -172,7 +219,8 @@ export const createERDDAPMetadataAdapter = (): ImportSourceAdapter => ({
                 }
                 return parseERDDAPMetadata(
                     (await response.json()) as ERDDAPMetadataResponse,
-                    catalogMetadata.metadata_url
+                    catalogMetadata.metadata_url,
+                    { coerceAttributeValues }
                 )
             })()
             : catalogMetadata
@@ -189,3 +237,23 @@ export const createERDDAPMetadataAdapter = (): ImportSourceAdapter => ({
         }
     },
 })
+
+export const createERDDAPSchemaTargetedAdapter = ({
+    id,
+    schema,
+}: {
+    id: string
+    schema: JSONSchema6
+}): ImportSourceAdapter => {
+    const metadataAdapter = createERDDAPMetadataAdapter({ id, coerceAttributeValues: true })
+    return {
+        ...metadataAdapter,
+        load: async (options) => {
+            const record = await metadataAdapter.load(options)
+            return {
+                ...record,
+                data: mapERDDAPMetadataToSchema(record.data as ERDDAPDatasetMetadata, schema),
+            }
+        },
+    }
+}

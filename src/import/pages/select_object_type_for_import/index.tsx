@@ -94,12 +94,14 @@ export const SelectObjectTypeForImportTab = ({
   sourceId,
   label,
   sourceSchema,
+  objectSchemaSlug,
 }: {
   documents: CanonicalImportRecord[]
   type: string
   sourceId: string
   label?: string
   sourceSchema?: JSONSchema6
+  objectSchemaSlug?: string
 }): ReactElement => {
   const [contextState] = useAtom(contextStateAtom)
   const [createObjectTypeFromData, setCreateObjectTypeFromData] = useAtom(
@@ -113,14 +115,19 @@ export const SelectObjectTypeForImportTab = ({
   const [automaticallyCreatedTypeUuid, setAutomaticallyCreatedTypeUuid] = useState<string>()
   const schema = session.schema
   const selectedObjectType = session.selectedObjectType
-  const intendedObjectType = contextState.object_type_by_slug[type]
+  const targetedObjectSchema = objectSchemaSlug
+    ? contextState.object_schema_by_slug[objectSchemaSlug]
+    : undefined
+  const intendedObjectType = targetedObjectSchema
+    ? contextState.object_type_by_uuid[targetedObjectSchema.object_type_uuid]
+    : contextState.object_type_by_slug[type]
   const createdTypeIsAvailable =
     automaticallyCreatedTypeUuid !== undefined &&
     intendedObjectType?.uuid === automaticallyCreatedTypeUuid
   const initializedTypeRef = useRef<string | null>(null)
 
   const { data, isLoading, error } = useQuery({
-    enabled: createObjectTypeFromData && documents.length > 0,
+    enabled: createObjectTypeFromData && !objectSchemaSlug && documents.length > 0,
     queryKey: ['eval-object-types', documents],
     queryFn: async () => {
       if (sourceSchema) {
@@ -139,6 +146,10 @@ export const SelectObjectTypeForImportTab = ({
   })
   const getSchemaForSelectedObjectType = (objectTypeUuid: string | undefined) => {
     if (!objectTypeUuid) return null
+    if (objectSchemaSlug) {
+      const targetedSchema = contextState.object_schema_by_slug[objectSchemaSlug]
+      return targetedSchema?.object_type_uuid === objectTypeUuid ? targetedSchema.json_schema : null
+    }
     return (
       contextState.object_schema_defaults_by_object_type_uuid[objectTypeUuid]?.json_schema ?? null
     )
@@ -169,7 +180,10 @@ export const SelectObjectTypeForImportTab = ({
     }
   }
   useEffect(() => {
-    const defaultObjectType = contextState.object_type_by_slug[type]
+    const defaultObjectType = objectSchemaSlug
+      ? targetedObjectSchema &&
+      contextState.object_type_by_uuid[targetedObjectSchema.object_type_uuid]
+      : contextState.object_type_by_slug[type]
     if (!defaultObjectType) return
     if (initializedTypeRef.current === type) return
 
@@ -180,9 +194,13 @@ export const SelectObjectTypeForImportTab = ({
     setSchema(getSchemaForSelectedObjectType(defaultObjectType.uuid))
   }, [
     contextState.object_type_by_slug,
+    contextState.object_type_by_uuid,
+    contextState.object_schema_by_slug,
+    objectSchemaSlug,
     selectedObjectType?.uuid,
     setSchema,
     setSelectedObjectType,
+    targetedObjectSchema,
     type,
   ])
 
@@ -213,7 +231,7 @@ export const SelectObjectTypeForImportTab = ({
     <>
       <div className="flex flex-row gap-4 h-full">
         <div className="flex flex-col gap-2 w-1/2 h-full">
-          <Checkbox
+          {!objectSchemaSlug && <Checkbox
             id="object-type-input"
             testId="object-type-input"
             label="Create schema and object type from data"
@@ -226,8 +244,8 @@ export const SelectObjectTypeForImportTab = ({
                 : null
               setSchema(newSchema)
             }}
-          />
-          {!createObjectTypeFromData && (
+          />}
+          {!createObjectTypeFromData && !objectSchemaSlug && (
             <SelectInput
               id="object-type-select"
               testId="object-type-select"
@@ -253,7 +271,7 @@ export const SelectObjectTypeForImportTab = ({
               }}
             />
           )}
-          {createObjectTypeFromData && (
+          {createObjectTypeFromData && !objectSchemaSlug && (
             <>
               {createdTypeIsAvailable ? (
                 <div
@@ -474,6 +492,13 @@ export const SelectObjectTypeForImportTab = ({
               </ViewWithLoader>
             </>
           )}
+          {objectSchemaSlug && (
+            <div className="text-sm" role={targetedObjectSchema ? 'status' : 'alert'}>
+              {targetedObjectSchema
+                ? `Using object schema: ${targetedObjectSchema.label}`
+                : `Object schema "${objectSchemaSlug}" is not available in the loaded context.`}
+            </div>
+          )}
         </div>
         <div className="flex flex-col gap-2 w-1/2 h-full">
           {schema && (
@@ -498,6 +523,7 @@ const SelectObjectTypeForImport = ({
   type,
   sourceId,
   recordOverrideFields = [],
+  objectSchemaSlug,
 }: {
   documents: ImportCandidate[]
   getFullDoc: (props: {
@@ -511,6 +537,7 @@ const SelectObjectTypeForImport = ({
   type: string
   sourceId: string
   recordOverrideFields?: Array<{ path: string; label: string }>
+  objectSchemaSlug?: string
 }): ReactElement => {
   const [selectedTab, setSelectedTab] = useState('preload')
   const [createObjectTypeFromData] = useAtom(createObjectTypeFromDataState)
@@ -611,7 +638,7 @@ const SelectObjectTypeForImport = ({
                     ))}
                   </div>
                 ),
-                label: 'Map metadata',
+                label: 'Overrides',
               },
             ]
             : []),
@@ -622,12 +649,13 @@ const SelectObjectTypeForImport = ({
                 documents={recordsToImport}
                 type={type}
                 sourceId={sourceId}
+                objectSchemaSlug={objectSchemaSlug}
               />
             ),
             label: 'Validate against schema',
             disabled: !recordsToImport?.length,
           },
-          {
+          ...(!objectSchemaSlug ? [{
             id: 'create-new-type',
             label: 'Create new object type',
             content: (
@@ -643,7 +671,7 @@ const SelectObjectTypeForImport = ({
               </div>
             ),
             disabled: !createObjectTypeFromData,
-          },
+          }] : []),
         ]}
       />
     </div>

@@ -23,13 +23,16 @@ The implementation plan and remaining work are tracked in `src/import/TODO.md`.
 
 ### ERDDAP metadata imports
 
-- `/import/erddap_metadata` accepts either one dataset metadata URL (`/info/{datasetID}/index.json`) or a server catalog URL (`/info/index.json`).
+- **In progress:** the targeted ERDDAP import currently supports MODL dataset records from global attributes. Per-variable metadata is normalized and has a standalone nested schema, but it is not yet imported as child records; see `src/import/TODO.md` for the remaining implementation and live-browser verification.
+- `/import/erddap_metadata` accepts one dataset metadata URL (`/info/{datasetID}/index.json`), a server catalog URL (`/info/index.json`), or a search URL (`/search/index.json?...`). Catalog and search results use the ERDDAP table response shape; selected records load metadata from `/info/{datasetID}/index.json`.
 - Catalog discovery creates one candidate per `Dataset ID`, using the catalog `Title` and `Summary`. Full per-dataset metadata is fetched only when candidates are preloaded; single-dataset imports use the same canonical-record path.
 - ERDDAP metadata is normalized into `dataset_id`, `metadata_url`, `global_attributes`, and `variables`. Global attributes and variable attributes remain separate in canonical record data.
-- The `Map metadata` step exposes configured text overrides for `dataset_id`, `global_attributes.id`, and `global_attributes.platform_name`. Changing an override clears prior validation and reconciliation state.
+- The targeted `ERDDAP MODL Dataset` source projects `NC_GLOBAL` attributes onto matching MODL schema properties (case-insensitive), converts ERDDAP numeric/boolean values, and falls back to the ERDDAP dataset ID for `id`. It pins object schema slug `modl` and resolves that schema's owning object type rather than using the type's default schema.
+- `src/import/schemas/erddap_variable_metadata.schema.json` describes a dataset-level `dataset_id` and a `variables` array of variable metadata. It is a reference schema only; the variable child-object type and import path remain to be added.
+- The `Overrides` step exposes configured text overrides for `dataset_id`, `global_attributes.id`, and `global_attributes.platform_name`. Changing an override clears prior validation and reconciliation state.
 - The remote preload list can be searched by label, identifier, or description. Select-all and random selection apply to visible search results; selections outside the filter are preserved.
 - ERDDAP imports continue through shared type/schema selection, validation, duplicate reconciliation, and persistence. Browser requests require the ERDDAP server to permit cross-origin access.
-- Automated tests cover single-dataset loading, catalog discovery, lazy full-metadata loading, and metadata table parsing. Authenticated browser verification against the live single-dataset and catalog URLs remains open.
+- Automated tests cover single-dataset loading, catalog/search discovery, lazy full-metadata loading, schema-targeted mapping, and metadata table parsing. Authenticated browser verification against the live single-dataset, catalog, and targeted schema flows remains open.
 
 ### CSV imports
 

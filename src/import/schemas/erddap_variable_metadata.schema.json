@@ -1,0 +1,85 @@
+{
+	"$schema": "http://json-schema.org/draft-06/schema#",
+	"title": "ERDDAP Variable Metadata",
+	"type": "object",
+	"additionalProperties": true,
+	"properties": {
+		"dataset_id": {
+			"title": "Dataset ID",
+			"description": "ERDDAP dataset ID of the parent MODL dataset.",
+			"type": "string"
+		},
+		"variables": {
+			"title": "Variables",
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": true,
+				"properties": {
+					"variable_name": {
+						"title": "Variable Name",
+						"description": "Name of the ERDDAP data variable or dimension.",
+						"type": "string"
+					},
+					"_CoordinateAxisType": {
+						"title": "Coordinate Axis Type",
+						"type": "string"
+					},
+					"_FillValue": {
+						"title": "Fill Value",
+						"description": "Numeric value used to represent missing data.",
+						"type": "number"
+					},
+					"actual_range": {
+						"title": "Actual Range",
+						"description": "Minimum and maximum values; ERDDAP supplies these as a comma-separated pair.",
+						"type": "array",
+						"items": { "type": "number" },
+						"minItems": 2,
+						"maxItems": 2
+					},
+					"axis": {
+						"title": "Axis",
+						"type": "string",
+						"enum": ["X", "Y", "Z", "T"]
+					},
+					"colorBarMaximum": {
+						"title": "Color Bar Maximum",
+						"type": "number"
+					},
+					"colorBarMinimum": {
+						"title": "Color Bar Minimum",
+						"type": "number"
+					},
+					"ioos_category": {
+						"title": "IOOS Category",
+						"type": "string"
+					},
+					"long_name": {
+						"title": "Long Name",
+						"type": "string"
+					},
+					"point_spacing": {
+						"title": "Point Spacing",
+						"type": "string",
+						"enum": ["even", "uneven"]
+					},
+					"standard_name": {
+						"title": "Standard Name",
+						"type": "string"
+					},
+					"time_origin": {
+						"title": "Time Origin",
+						"type": "string"
+					},
+					"units": {
+						"title": "Units",
+						"type": "string"
+					}
+				},
+				"required": ["variable_name"]
+			}
+		}
+	},
+	"required": ["dataset_id"]
+}

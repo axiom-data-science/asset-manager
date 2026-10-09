@@ -35,12 +35,15 @@
 ### ERDDAP metadata import
 
 - [x] Add an ERDDAP source adapter for single-dataset `/info/{datasetID}/index.json` metadata.
-- [x] Discover datasets from `/info/index.json`, using catalog IDs, titles, and summaries; fetch full metadata only for selected candidates during preload.
+- [x] Discover datasets from `/info/index.json` and `/search/index.json` URLs, using IDs, titles, and summaries; fetch full metadata only for selected candidates during preload.
 - [x] Normalize ERDDAP global attributes and per-variable attributes into canonical record data.
 - [x] Add config-driven text overrides for `dataset_id`, `global_attributes.id`, and `global_attributes.platform_name`; edits invalidate validation and reconciliation.
+- [x] Add a targeted MODL ERDDAP source that maps typed global attributes to schema properties and pins object schema slug `modl`.
+- [x] Define the standalone variable metadata schema with top-level `dataset_id` and a nested `variables` array.
+- [ ] Add a related variable-attribute object type and import variable attributes as one child record per ERDDAP variable.
 - [x] Add searchable remote preload records, with select-all and random selection scoped to visible results while preserving hidden selections.
 - [x] Add parser, adapter, catalog-discovery, and lazy-loading tests.
-- [ ] Verify in the authenticated browser with the live AOOS single-dataset and catalog URLs, including CORS, search/filter selection, preload, metadata overrides, and schema validation.
+- [ ] Verify in the authenticated browser with live AOOS single-dataset, catalog, and targeted MODL schema imports, including CORS, search/filter selection, preload, overrides, and schema validation.
 
 ## 1. Establish tests and stabilize the current workflow
 

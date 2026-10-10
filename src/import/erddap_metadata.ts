@@ -28,8 +28,17 @@ const normalizeColumnName = (columnName: string): string =>
 const getColumnIndex = (columnNames: string[], name: string): number =>
     columnNames.findIndex((columnName) => normalizeColumnName(columnName) === normalizeColumnName(name))
 
-const coerceERDDAPAttributeValue = (value: unknown, dataType: unknown): unknown => {
-    if (typeof value !== 'string' || typeof dataType !== 'string') return value
+const coerceERDDAPAttributeValue = (
+  value: unknown,
+  dataType: unknown,
+  attributeName: string
+): unknown => {
+    if (typeof value !== 'string') return value
+    if (normalizeColumnName(attributeName) === 'actualrange') {
+        const range = value.split(',').map((part) => Number(part.trim()))
+        return range.length === 2 && range.every(Number.isFinite) ? range : value
+    }
+    if (typeof dataType !== 'string') return value
     if (/^(?:u?byte|u?short|u?int|u?long|integer|float|double)$/i.test(dataType)) {
         const numericValue = Number(value)
         return Number.isFinite(numericValue) ? numericValue : value
@@ -92,7 +101,11 @@ export const parseERDDAPMetadata = (
                 : globalAttributes
         const value = row[valueIndex]
         destination[attributeName] = options.coerceAttributeValues
-            ? coerceERDDAPAttributeValue(value, dataTypeIndex < 0 ? undefined : row[dataTypeIndex])
+            ? coerceERDDAPAttributeValue(
+                value,
+                dataTypeIndex < 0 ? undefined : row[dataTypeIndex],
+                attributeName
+            )
             : value
     }
 
@@ -122,6 +135,18 @@ export const mapERDDAPMetadataToSchema = (
     if (propertyByNormalizedName.has('id') && !data.id) data.id = metadata.dataset_id
     return data
 }
+
+export const mapERDDAPMetadataToVariableRecord = (
+    metadata: ERDDAPDatasetMetadata
+): Record<string, unknown> => ({
+    dataset_id: metadata.dataset_id,
+    variables: Object.fromEntries(
+        Object.entries(metadata.variables).map(([variableName, attributes]) => [
+            variableName,
+            { variable_name: variableName, ...attributes },
+        ])
+    ),
+})
 
 export const parseERDDAPCatalog = (
     response: ERDDAPMetadataResponse,
@@ -241,10 +266,29 @@ export const createERDDAPMetadataAdapter = ({
 export const createERDDAPSchemaTargetedAdapter = ({
     id,
     schema,
+    relationshipRules,
 }: {
     id: string
     schema: JSONSchema6
+    relationshipRules?: ImportSourceAdapter['relationshipRules']
 }): ImportSourceAdapter => {
+    const metadataAdapter = createERDDAPMetadataAdapter({ id, coerceAttributeValues: true })
+    return {
+        ...metadataAdapter,
+        relationshipRules,
+        load: async (options) => {
+            const record = await metadataAdapter.load(options)
+            return {
+                ...record,
+                data: mapERDDAPMetadataToSchema(record.data as ERDDAPDatasetMetadata, schema),
+            }
+        },
+    }
+}
+
+export const createERDDAPVariableMetadataAdapter = (
+    id = 'erddap_modl_variable_metadata'
+): ImportSourceAdapter => {
     const metadataAdapter = createERDDAPMetadataAdapter({ id, coerceAttributeValues: true })
     return {
         ...metadataAdapter,
@@ -252,7 +296,7 @@ export const createERDDAPSchemaTargetedAdapter = ({
             const record = await metadataAdapter.load(options)
             return {
                 ...record,
-                data: mapERDDAPMetadataToSchema(record.data as ERDDAPDatasetMetadata, schema),
+                data: mapERDDAPMetadataToVariableRecord(record.data as ERDDAPDatasetMetadata),
             }
         },
     }

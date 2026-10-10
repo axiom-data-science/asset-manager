@@ -15,7 +15,11 @@ import oikosLayerSchema from './schemas/oikos_layer.schema.json'
 import oikosLayerGroupSchema from './schemas/oikos_layer_group.schema.json'
 import oikosModuleSchema from './schemas/oikos_module.schema.json'
 import { createRemoteImportAdapter } from './adapters'
-import { createERDDAPMetadataAdapter, createERDDAPSchemaTargetedAdapter } from './erddap_metadata'
+import {
+  createERDDAPMetadataAdapter,
+  createERDDAPSchemaTargetedAdapter,
+  createERDDAPVariableMetadataAdapter,
+} from './erddap_metadata'
 import {
   binninatorMetadata,
   binninatorRecords,
@@ -58,6 +62,15 @@ const importConfigs: IImportPageProps[] = [
     sourceAdapter: createERDDAPSchemaTargetedAdapter({
       id: 'erddap_modl',
       schema: modlSchema as unknown as JSONSchema6,
+      relationshipRules: [
+        {
+          parentObjectTypeSlug: 'modl',
+          childObjectTypeSlug: 'modl_variable_metadata',
+          parentMatchField: 'slug',
+          childMatchField: 'dataset_id',
+          predicate: 'has_parent',
+        },
+      ],
     }),
     label: 'ERDDAP MODL Dataset',
     pluralLabel: 'ERDDAP MODL Datasets',
@@ -68,6 +81,14 @@ const importConfigs: IImportPageProps[] = [
       { path: 'dataset_id', label: 'Dataset ID' },
       { path: 'global_attributes.id', label: 'ID' },
     ],
+  },
+  {
+    sourceAdapter: createERDDAPVariableMetadataAdapter(),
+    label: 'ERDDAP MODL Variable Metadata',
+    pluralLabel: 'ERDDAP MODL Variable Metadata',
+    type: 'modl_variable_metadata',
+    objectSchemaSlug: 'modl_variable_metadata',
+    icon: Grid2X2Plus,
   },
   {
     sourceAdapter: createRemoteImportAdapter({

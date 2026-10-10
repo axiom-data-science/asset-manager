@@ -42,8 +42,18 @@ const readPath = (value: unknown, path?: string): unknown => {
   }, value)
 }
 
+const readCandidateField = (
+  candidate: ImportRelationshipCandidate,
+  field?: string
+): unknown => {
+  if (field === 'slug') return candidate.record.slug
+  const dataValue = readPath(candidate.record.data, field)
+  if (dataValue !== undefined) return dataValue
+  return undefined
+}
+
 const identity = (candidate: ImportRelationshipCandidate, field?: string): string => {
-  const fieldValue = readPath(candidate.record.data, field)
+  const fieldValue = readCandidateField(candidate, field)
   if (typeof fieldValue === 'string' && fieldValue.length > 0) return fieldValue
   if (typeof fieldValue === 'number' && Number.isFinite(fieldValue)) return String(fieldValue)
   return `${candidate.record.provenance.sourceId}:${candidate.record.provenance.externalId}`
@@ -54,7 +64,7 @@ export const getRelationshipMatchValue = (
   field?: string
 ): string | undefined => {
   if (!field) return undefined
-  const fieldValue = readPath(candidate.record.data, field)
+  const fieldValue = readCandidateField(candidate, field)
   if (typeof fieldValue === 'string') return fieldValue.length > 0 ? fieldValue : undefined
   if (typeof fieldValue === 'number' && Number.isFinite(fieldValue)) return String(fieldValue)
   return undefined

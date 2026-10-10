@@ -39,11 +39,13 @@
 - [x] Normalize ERDDAP global attributes and per-variable attributes into canonical record data.
 - [x] Add config-driven text overrides for `dataset_id`, `global_attributes.id`, and `global_attributes.platform_name`; edits invalidate validation and reconciliation.
 - [x] Add a targeted MODL ERDDAP source that maps typed global attributes to schema properties and pins object schema slug `modl`.
-- [x] Define the standalone variable metadata schema with top-level `dataset_id` and a nested `variables` array.
-- [ ] Add a related variable-attribute object type and import variable attributes as one child record per ERDDAP variable.
+- [x] Define the variable metadata schema with top-level `dataset_id` and a name-keyed `variables` object.
+- [x] Add a targeted variable-metadata source that stores every variable and its attributes in one grouped record matching the `modl_variable_metadata` schema.
+- [x] Configure the MODL dataset and grouped variable-metadata sources to link by parent canonical slug and child `dataset_id` in Import All.
+- [ ] Replace the paired ERDDAP source entries with one composite import action that loads metadata once, creates the MODL dataset and its grouped `modl_variable_metadata` record against their respective schemas, and persists their relationship.
 - [x] Add searchable remote preload records, with select-all and random selection scoped to visible results while preserving hidden selections.
 - [x] Add parser, adapter, catalog-discovery, and lazy-loading tests.
-- [ ] Verify in the authenticated browser with live AOOS single-dataset, catalog, and targeted MODL schema imports, including CORS, search/filter selection, preload, overrides, and schema validation.
+- [ ] Verify in the authenticated browser with live AOOS single-dataset, catalog, and paired targeted MODL imports, including CORS, search/filter selection, preload, overrides, schema validation, and the grouped child relationship.
 
 ## 1. Establish tests and stabilize the current workflow
 

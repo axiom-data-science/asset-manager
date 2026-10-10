@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
     createERDDAPMetadataAdapter,
     createERDDAPSchemaTargetedAdapter,
+    createERDDAPVariableMetadataAdapter,
     parseERDDAPCatalog,
     parseERDDAPMetadata,
 } from './erddap_metadata'
@@ -160,6 +161,70 @@ describe('ERDDAP metadata import', () => {
                 id: 'station_1',
                 DX: 12000,
                 infoURL: 'https://example.org/info',
+            })
+        } finally {
+            globalThis.fetch = originalFetch
+        }
+    })
+
+    it('retains configured relationship rules on the targeted adapter', () => {
+        const relationshipRules = [{
+            parentObjectTypeSlug: 'modl',
+            childObjectTypeSlug: 'modl_variable_metadata',
+            parentMatchField: 'slug',
+            childMatchField: 'dataset_id',
+            predicate: 'has_parent',
+        }]
+        const adapter = createERDDAPSchemaTargetedAdapter({
+            id: 'erddap_modl',
+            schema: { type: 'object' } as JSONSchema6,
+            relationshipRules,
+        })
+
+        expect(adapter.relationshipRules).toEqual(relationshipRules)
+    })
+
+    it('groups all variable attributes into one dataset-linked metadata record', async () => {
+        const adapter = createERDDAPVariableMetadataAdapter()
+        const originalFetch = globalThis.fetch
+        const variableResponse = {
+            table: {
+                columnNames: ['Row Type', 'Variable Name', 'Attribute Name', 'Data Type', 'Value'],
+                rows: [
+                    ['attribute', 'NC_GLOBAL', 'title', 'String', 'Station One'],
+                    ['attribute', 'temperature', 'units', 'String', 'degree_C'],
+                    ['attribute', 'temperature', 'actual_range', 'double', '-10, 45'],
+                    ['attribute', 'time', 'units', 'String', 'seconds since 2020-01-01'],
+                ],
+            },
+        }
+        globalThis.fetch = async () =>
+            new Response(JSON.stringify(variableResponse), {
+                status: 200,
+                headers: { 'content-type': 'application/json' },
+            })
+
+        try {
+            const [candidate] = await adapter.discover({
+                url: metadataUrl,
+                signal: new AbortController().signal,
+            })
+            const record = await adapter.load({ candidate })
+
+            expect(record.provenance.sourceId).toBe('erddap_modl_variable_metadata')
+            expect(record.data).toEqual({
+                dataset_id: 'station_1',
+                variables: {
+                    temperature: {
+                        variable_name: 'temperature',
+                        units: 'degree_C',
+                        actual_range: [-10, 45],
+                    },
+                    time: {
+                        variable_name: 'time',
+                        units: 'seconds since 2020-01-01',
+                    },
+                },
             })
         } finally {
             globalThis.fetch = originalFetch

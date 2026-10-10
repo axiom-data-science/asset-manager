@@ -11,8 +11,8 @@
 		},
 		"variables": {
 			"title": "Variables",
-			"type": "array",
-			"items": {
+			"type": "object",
+			"additionalProperties": {
 				"type": "object",
 				"additionalProperties": true,
 				"properties": {

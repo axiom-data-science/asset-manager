@@ -75,6 +75,34 @@ describe('Import relationship planning', () => {
     ])
   })
 
+  it('matches child dataset_id to the parent canonical slug', () => {
+    const parent = candidate('erddap_modl', 'dataset-1', 'parent-type', 'modl', {
+      id: 'station-1',
+      slug: 'not-the-dataset-id',
+    })
+    const child = candidate(
+      'erddap_modl_variable_metadata',
+      'dataset-1',
+      'child-type',
+      'modl_variable_metadata',
+      { dataset_id: 'dataset-1' }
+    )
+
+    const plans = planImportRelationships({
+      parentObjectTypes: new Map([['parent-type', objectType('parent-type', 'modl', [])]]),
+      candidates: [parent, child],
+      relationshipRules: [{
+        parentObjectTypeSlug: 'modl',
+        childObjectTypeSlug: 'modl_variable_metadata',
+        parentMatchField: 'slug',
+        childMatchField: 'dataset_id',
+        predicate: 'has_parent',
+      }],
+    })
+
+    expect(plans).toMatchObject([{ status: 'ready', predicate: 'has_parent' }])
+  })
+
   it('reports missing and ambiguous parents', () => {
     const parent = candidate('source', 'parent-1', 'parent-type', 'parents')
     const duplicateParent = candidate('source', 'parent-1', 'parent-type', 'parents', {

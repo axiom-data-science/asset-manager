@@ -6,6 +6,327 @@ The import workflow now uses source-neutral adapters and source-scoped sessions.
 
 The implementation plan and remaining work are tracked in `src/import/TODO.md`.
 
+## Blocker and document-retry UI tests (2026-10-13)
+
+- Three new real ImportAllView component tests cover schema-invalid records,
+	ambiguous existing-document matches, and failed-only document retry. The fixture
+	test file now has seven tests, including the ERDDAP preparation preview.
+- Invalid data exposes its field error; two seeded documents with the same type
+	and slug expose an ambiguous match. Both prevent execution and every document/
+	relationship write. Seeded existing documents are kept separate from new writes.
+- A fail-once child write leaves the parent and sibling successful. Retry failed
+	performs fresh reconciliation before its one retry write and retains their UUIDs
+	and data. Links remain unwritten until the subsequent Execute action; that action
+	creates both links without repeating completed document writes or patch/merge.
+- Fixture-only seed/failure options and attempt/lookup tracking support these tests.
+	No production code or authentication changes were needed. Fetch remains blocked;
+	test cleanup runs even if the network assertion fails.
+- Verified: 168 selected import tests, seven focused component tests, TypeScript,
+	and scoped lint. Visual/manual and authenticated/live-backend checks remain
+	pending; this slice did not add browser scenarios or attempt sign-in.
+
+## ERDDAP schema-mapping baseline (2026-10-13)
+
+- Open `http://127.0.0.1:4423/import-test.html?view=erddap`; Discover selected and
+	Prepare review use configured MODL composite adapters, shared composite loading,
+	and real schema validation. This is a read-only preparation preview, not the full
+	Import All controller or a field-remapping UI. No auth provider/token is needed.
+- Catalog/info responses are served in memory at exact virtual URLs. Unexpected
+	URLs/methods and authentication headers reject; only the existing exact XLSX GET
+	exception reaches native fetch. Normal production authentication is unchanged.
+- Tests cover raw versus typed values, numeric/boolean/range coercion, normalized
+	schema projection, unmapped attributes retained in sourceData, variable metadata,
+	provenance/relationship rules, and catalog/composite lazy fetch-once behavior.
+	Mapping does not itself validate required fields; the preparation view uses the
+	real configured schemas and validator separately.
+- Tests exposed an ID fallback defect: a schema field named ID received fallback
+	data under lowercase id. The mapper now uses the matched schema property name.
+- Verified: 165 selected tests, TypeScript, touched lint, normal production build,
+	and browser DOM discovery/preparation. The preview showed typed latitude 41.25,
+	range [-2.5, 32], valid dataset/variable records, and blocked unexpected requests.
+- Remaining: arbitrary config/UI remapping, full ERDDAP Import All integration,
+	visual verification, and export. Blocker/document-retry component tests are now
+	covered above; full remote workflow integration remains pending.
+
+## Actual XLSX file tests (2026-10-13)
+
+- The genuine workbook lives in [testing/fixtures/csv-mapping.xlsx](testing/fixtures/csv-mapping.xlsx),
+	not embedded base64. Tests load it from disk; the dev harness permits only its
+	exact local GET request and still blocks backend/unexpected requests. Helpers
+	asynchronously return ArrayBuffer/File. No new dependency or mocked workbook
+	parser is used. The real reader returns Sites/Deployments in order and
+	omits the empty worksheet; malformed bytes reject, and mapped Sites records equal
+	the CSV baseline, including quoted text, numbers, fixed and relationship fields.
+- The fixture's Upload XLSX workbook control parses File and offers sheet checkboxes
+	plus Add selected sheets. Tests block an empty selection, exclude unselected
+	sheets, switch independent mapping editors, and retain each sheet's edits/status.
+	The production CSV add-selected action and fixture share selectWorkbookSheets;
+	this does not test the full production selection/type/schema-choice controller.
+- Verified: 162 selected tests, TypeScript, touched lint, and production build.
+	Browser DOM upload parsed the real fixture, omitted Empty, and selected only
+	Deployments; its canonical preview retained latitude 12.5 and parent key P-2.
+	No authentication or backend calls were used. The normal build excludes the entry.
+- Remaining: full production single/multi-file workflow integration and visual
+	browser verification, ERDDAP mapping, and export-path identification/tests.
+
+## CSV and worksheet mapping fixture baseline (2026-10-13)
+
+- The existing `CSVSourceEditor` and source type are exported for fixture reuse;
+	normal CSV authentication and mapping behavior are unchanged. The dev entry
+	selects this real editor with `?view=csv`, seeded with a type/schema and mapping.
+- Open `http://127.0.0.1:4423/import-test.html?view=csv`. The preview loads canonical
+	records through the real adapter; CSV/Worksheet controls select fixture input.
+	No auth provider or live services are used; unexpected fetches are rejected.
+- New editor and worksheet tests cover nested/config mappings, quoted strings,
+	numbers, fixed discriminator values, retained relationship keys, UI schema/role
+	changes, column exclusion, and startAtImport invalidation. Config-only worksheet
+	conversion and CSV produce equal canonical records. Existing object-type label
+	mapping still takes precedence over a CSV label role when a mapped value exists.
+- Verified: 157 selected tests, TypeScript, touched lint with no warnings/errors,
+	and normal production build. Browser DOM-event checks confirmed column exclusion
+	and worksheet switching. Normal browser clicks timed out at visibility/stability;
+	the screenshot was blank despite visible DOM/computed styles. Do not claim visual
+	verification; the real-view DOM tests are separate evidence.
+- Remaining: full production single/multi-file workflow/array mapping parity,
+	visual verification, ERDDAP, and export coverage. The binary XLSX fixture gap is
+	addressed by the later actual-file tests above.
+
+## Unauthenticated Import All fixture harness (2026-10-13)
+
+- The default Import All export remains auth-connected. Its real `ImportAllView`
+	accepts explicit eligibility/token, source overrides, and complete service ports.
+	The fixture passes an empty token, in-memory services, and isolated Jotai context;
+	it does not mount OIDC or preload the live app, and rejects unexpected fetches.
+- Run `npm run dev:import-test`, then open
+	`http://127.0.0.1:4423/import-test.html`. This separate development entry has a DEV
+	guard and is absent from the normal production build. It uses the real screen,
+	not a duplicate workflow. Refresh resets the fixture's in-memory state.
+- Run `npm test -- src/import/pages/all.import-test.test.tsx` for three automatic UI
+	tests: missing-type creation/preparation plus failed-link retry; partial-link
+	cancellation/retry retaining completed links/documents; discovery cancel/resume.
+	Tests reject unexpected network calls and need no access token or auth provider.
+- Verified: 130 selected import tests, TypeScript, production build, and touched
+	lint (zero errors, existing hook warning). Browser fixture smoke check imported
+	three documents, showed one intentional link error, and retried to two links with
+	zero errors. This is fixture UI evidence, not live-backend authorization evidence.
+- Pending: CSV/XLSX and ERDDAP mapping parity, export-path identification and tests,
+	validation/ambiguity and failed-document UI cases, automatic setup dialog, and
+	live service/permission integration. Manual type selection/form is disabled in
+	this fixture because those components still use auth-backed services.
+- Dependency audit reports 13 advisories (9 high, 4 critical). Remediation was not
+	included; production build also retains existing bundling warnings.
+
+## Retry and automatic type preparation follow-up (2026-10-13)
+
+- User reported that errors and retry work in the authenticated app, but needed
+	another manual preparation pass, including after automatic type creation.
+	Duplicate-write avoidance and composite/array dependencies remain unverified.
+- A prepared source with execution attempts now stays on the Import step despite
+	execution errors; those errors no longer automatically route the caller to review.
+	Execution still passes through the existing validation/readiness gates.
+- Both automatic type entry points (bulk and setup dialog) now validate and
+	reconcile retained records using the returned type/schema before completing.
+	They do not reload source records or write documents. Genuine validation errors
+	remain visible; type/schema context refresh also runs after partial creation.
+- Automated: 127 selected import tests and TypeScript pass; scoped lint has no
+	errors and the existing hook warning remains. Authenticated follow-up retest
+	is pending for retry without Prepare and automatic creation without Prepare.
+
+## Task 2C relationship readiness and caller (2026-10-13)
+
+- Relationship links run only after the selected document sources are complete;
+	readiness is independent, so completed documents do not imply completed links.
+	Only ready relationship plans with child, parent, and predicate UUIDs can write.
+- Existing relationship duplicate checks remain active. Created/existing outcomes
+	are retained; the caller's explicit retry runs only failed or unattempted ready
+	links and does not invoke document persistence.
+- Relationship cancellation returns completed outcomes, reports an aborted attempt
+	as retryable, marks later plans unattempted, and prevents later batches. Caller
+	result/progress updates are generation-guarded against superseded operations.
+	Non-ready plans and missing UUIDs remain visible through the existing error view.
+- Pre-aborted persistence publishes unattempted outcomes through `onResult`, so the
+	caller retains retry state even when no lookup starts. Later UUID lookups fill
+	only missing identities and cannot replace retained successful document UUIDs.
+- Automated verification: 21 relationship-planning tests and 126 selected import
+	regression tests, TypeScript, diagnostics, and whitespace checks pass. Scoped lint
+	has zero errors and the existing `sourcesById` hook-dependency warning remains.
+- Next: user-performed authenticated checks for cancellation, unfinished-link
+	retry, duplicate avoidance, and composite/array parent dependencies.
+
+## Task 2C document caller wiring (2026-10-12)
+
+- `pages/all.tsx` now sends document runs and failed-record retries through
+	`executePreparedImportAllSource`, passing the resolved schema, type UUID, current
+	conflict default, Execute review acknowledgment, and token-based frontend
+	eligibility. Backend authorization remains authoritative.
+- Retries supply `retryReconciliation: { token, fetchExisting }`; the helper performs
+	one refresh and rechecks readiness. The caller-side duplicate refresh is removed.
+- Returned plans merge by record key, preserving prior results and UUIDs plus partial
+	outcomes after cancellation. An operation generation ignores superseded work.
+	Successful/ignored outcomes cannot be replaced by stale failures during merge.
+	Sources run sequentially; genuine pause, block, or cancel prevents later document
+	sources and relationship writes. Already-complete sources continue without writes
+	on resume, allowing later unattempted sources and links to proceed.
+- `importAllReadinessMessage` exposes actionable pause/block messages in the existing
+	error view. A new explicit attempt clears prior execution errors but not source
+	errors; schema/validation/reconciliation safety gates still apply.
+- Array composition passes merged parent records through shared preparation to
+	regenerate validation/reconciliation evidence. Composite loading and existing link
+	retry behavior remain unchanged; relationship orchestration was not redesigned.
+- Automated checks: 68 plan tests and 123 selected import regression tests,
+	TypeScript, diagnostics, and whitespace checks pass. Scoped lint has zero errors
+	and the existing `sourcesById` hook-dependency warning remains.
+- User-performed authenticated checks: cancel after successful document writes,
+	confirm retained results/UUIDs, resume without duplicate successes, retry failed
+	records only, and verify paused/blocked sources show messages and stop later work.
+	Check array parents validate against composed records. No browser validation ran.
+- Next: user-performed authenticated cancellation/retry verification, then a
+	separately scoped relationship-readiness integration if needed.
+
+## Task 2C document cancellation/retry helper (2026-10-12)
+
+- `executeImportAllSource` now merges attempt outcomes into retained results. An
+	implicit run takes only unattempted records; explicit `recordKeys` may retry
+	selected failed or unattempted records. Imported/ignored results are not rewritten;
+	blocked records still require resolution and are not silently retried. Retained
+	UUIDs remain available.
+- `refreshImportAllSourceReconciliation` refreshes only selected failed or
+	unattempted records. Guarded retries through `executePreparedImportAllSource`
+	require `retryReconciliation: { token, fetchExisting }`; absent dependencies pause
+	for reconciliation without writes. Readiness is checked before refresh and again
+	afterward, so newly discovered ambiguity/conflicts cannot bypass review.
+	Low-level callers retain responsibility for refreshing before explicit retries.
+- Abort returns completed outcomes, leaves later work unattempted, and marks a
+	partial prepared execution as cancelled. Successful in-flight siblings are retained
+	even when another operation aborts; cancellation during late-conflict lookup does
+	not start a POST. Persistence failures remain failed; non-abort errors propagate.
+- Automated verification at helper completion: 65 plan tests and 120 selected import
+	regression tests, scoped lint, TypeScript, diagnostics, and whitespace checks pass.
+- Caller adoption was pending at helper completion; the newer section above records
+	that partial plans are now adopted. Document completion does not imply relationship
+	completion. Authenticated browser checks remain user-performed.
+- Next at helper completion was caller adoption; see the current caller section above.
+
+## Preparation caller wiring (2026-10-12)
+
+- Document-source `prepareSelected` in `pages/all.tsx` now calls
+	`progressImportAllSourcePreparation`; the preparation action still does no
+	document writes. Array composition now also uses shared preparation after merging.
+- The helper accepts optional preloaded records. Remote sources use the existing
+	loader once; composites pass records from the existing fetch-once fan-out.
+	Validation after type setup reuses retained records rather than loading again.
+- The caller adopts the returned plan and filtered review acknowledgments. Existing
+	type/schema context remains authoritative; validation evidence retains those
+	resolved values. Reloaded changed records invalidate prior reviews after loading.
+- Authorization policy preserves existing behavior: an authenticated token makes
+	frontend operations eligible, while backend policies enforce actual permissions.
+	No capability mapping exists in the auth hook; token presence is not proof of
+	document-write or type-creation rights. No new role/scope restrictions were added.
+- Preparation passes `allowAutomaticTypeCreation: false` and `canCreateType: false`.
+	The shared creation adapter is supplied but cannot run implicitly. Existing
+	explicit creation buttons remain unchanged by this caller wiring.
+- The Luna delegate stopped on the missing capability mapping without edits.
+	Coordinator implementation preserved the existing backend-enforced policy and
+	completed this bounded preparation-only wiring; no additional agent was launched.
+- Automated checks: 60 plan tests and 115 selected import regression tests,
+	TypeScript, diagnostics, and whitespace checks pass. Scoped lint has no errors
+	and the existing `sourcesById` hook-dependency warning remains.
+- User-performed UI checks pending: prepare remote and composite records; confirm
+	schema/error reporting, missing-type inference and explicit creation, cancellation,
+	and resume. No authenticated browser validation was attempted.
+- Next at preparation completion: Task 2C execution/retry caller wiring, now recorded
+above, followed by separately scoped mode and explicit type-creation work.
+
+## Real type-creation adapter (2026-10-12)
+
+- `createImportAllTypeCreationAdapter` in `create_import_object_type.ts` implements
+	the injected creation contract with existing object-type/schema services. Default
+	services load lazily; tests/callers may inject them. Token and signal are forwarded.
+- Existing automatic-creation buttons in `pages/all.tsx` now reuse this adapter;
+	layout, mode controls, and progression wiring are unchanged.
+- The adapter looks up the source type first, creates only when missing, recovers
+	only the `object_type_slug_unique` race, and resolves defaults by owning type UUID.
+	Supplied schemas are preserved; otherwise existing defaults or no-enum inference
+	are used. No existing default is overwritten.
+- A created default must be present in refreshed owned schemas before success is
+	reported. Cancellation prevents subsequent operations/writes; unrelated creation
+	errors propagate. Partial type creation is recoverable through the initial lookup.
+- Automated checks: eight creation tests and 100 selected import regression tests,
+	TypeScript, diagnostics, and whitespace checks pass. Scoped lint has no errors;
+	an existing `sourcesById` hook-dependency warning remains in `pages/all.tsx`.
+- Authenticated UI validation remains user-performed: create a missing type and
+	inspect its inferred schema for enum removal; check existing-type reuse, schema
+	availability after context reload, and visible error recovery.
+- Next: connect this adapter and returned preparation/review state to the real
+	progression caller. The callback is callable and used by creation buttons, but
+	`progressImportAllSourcePreparation` now has preparation-only caller wiring;
+	automatic creation through that caller is deliberately disabled (see above).
+
+## Injected type creation and review state (2026-10-12)
+
+- `progressImportAllSourcePreparation` now accepts `createTypeIfMissing` and returns
+	effective `objectTypeUuid`, `schema`, and filtered `completedReviewSteps` alongside
+	the plan/decision and invalidations. Callers must adopt this returned state before
+	resume; acknowledgments are not duplicated in plan/session state.
+- The callback runs only for missing type setup with explicit automatic-creation
+	policy, real creation/write permissions, and completed opted-in schema review.
+	It receives source, prepared plan, schema, token, and abort signal. It must reuse
+	existing type-creation behavior: lookup the source type first, handle unique-slug
+	races by reusing existing types, and return the owning type UUID and usable schema.
+	The real-service adapter is now available; see the section above for current
+	creation-button wiring and pending progression-caller integration.
+- Schema precedence: explicitly supplied caller schema, then adapter fallback,
+	then the callback's returned schema when neither was supplied. Callers must pass
+	their resolved pinned schema rather than an unrelated default schema.
+- Creation is one step, never document execution. Errors/pre-abort pause safely;
+	cancellation after a successful callback retains its returned type identity so
+	resume does not create it again. Returned state must be retained even on pause.
+- Type/schema changes invalidate dependent reviews; callers receive acknowledgments
+	with those invalidations consumed and may opt back into the required review.
+- Automated checks: 56 plan tests, 92 selected import regression tests, TypeScript,
+	touched-file lint, diagnostics, and whitespace checks pass. No authenticated UI
+	validation or existing UI entry-point changes in this slice.
+- Next: wire the real-service/caller boundary, then proceed with Task 2C
+	cancellation/retry/relationship orchestration before the remote pilot.
+
+## Preparation progression slice (2026-10-12)
+
+- `progressImportAllSourcePreparation` and `ImportAllPreparationDecision` in
+	`import_all_plan.ts` perform one preparation/validation/reconciliation step with
+	preloaded canonical records. They never write documents or loop through stages.
+- `ImportAllSourcePlan` owns workflow evidence/results. Callers own review
+	acknowledgments and must remove returned `invalidatedReviewSteps` before resume;
+	no mirrored session state was introduced. Callers apply mapping/override changes
+	to canonical records before invoking progression.
+- Caller-supplied type/schema remain authoritative, including pinned schemas.
+	Record/type/schema edits clear stale validation/reconciliation before evaluating
+	readiness. Corrected invalid records can recover; disabled/completed work stays
+	idle. Required or renewed optional reviews pause before dependent validation.
+- Type creation without an injected callback and document execution pause explicitly.
+	Existing type creation services and UI/session wiring remain deferred.
+- A `GPT-6 Luna` sub-agent implemented the helper; coordinator review added invalid
+	record recovery, in-place edit invalidation, and settled-plan regression checks.
+- Automated checks: 51 plan tests and 87 selected import regression tests pass,
+	along with TypeScript, touched-file lint, diagnostics, and whitespace checks.
+	Authenticated UI validation remains pending integration.
+- Next: finish Task 2B's injected type-creation and review-invalidation boundary
+	before starting Task 2C retry/relationship orchestration.
+
+## Prepared-source execution slice (2026-10-12)
+
+- `executePreparedImportAllSource` in `import_all_plan.ts` gates existing execution
+	through `evaluateImportSourceReadiness` and aligns explicit policy conflict defaults.
+- It returns an updated plan plus a paused/executed decision. Unsupported advance
+	stages pause explicitly; execution results include freshly evaluated readiness.
+- Successful document completion and failed/blocked execution are distinct. This
+	helper does not implement acquisition, type creation, retry orchestration, or UI.
+- A `GPT-6 Luna` sub-agent implemented the execution-only slice; coordinator review
+	added post-execution readiness and direct no-write/failure regression coverage.
+- Automated checks: 44 focused plan tests, TypeScript, touched-file lint, and
+	whitespace checks pass. Authenticated UI validation is pending integration.
+- Next: Task 2B in [REFACTOR_PLAN.md](REFACTOR_PLAN.md), preparation and state
+	ownership. Existing UI execution entry points remain unchanged by this slice.
+
 ## Completed behavior
 
 ### Individual source imports
@@ -23,7 +344,7 @@ The implementation plan and remaining work are tracked in `src/import/TODO.md`.
 
 ### ERDDAP metadata imports
 
-- **In progress:** targeted ERDDAP MODL imports now have paired dataset and variable-metadata sources. In Import All, select both sources and give them the same ERDDAP URL; the dataset record is mapped from global attributes and one related `modl_variable_metadata` record stores all variables in a name-keyed object. Authenticated live-browser verification remains open; see `src/import/TODO.md`.
+- **In progress:** `/import/modl` is a dedicated targeted ERDDAP composite view for the MODL dataset and grouped variable-metadata record; `/import/erddap_metadata` remains the separate generic ERDDAP metadata view. All ERDDAP sources are excluded from `/import/all`. The composite keeps separate dataset and child plans for type-specific validation and duplicate review. Discovery runs once, and each selected dataset's full metadata is loaded once before projecting both records. The existing relationship planner persists their `has_parent` link after both documents are available. The user confirmed that the composite created and related `modl` and `modl_variable_metadata` records; remaining authenticated cases are listed in `src/import/TODO.md`.
 - `/import/erddap_metadata` accepts one dataset metadata URL (`/info/{datasetID}/index.json`), a server catalog URL (`/info/index.json`), or a search URL (`/search/index.json?...`). Catalog and search results use the ERDDAP table response shape; selected records load metadata from `/info/{datasetID}/index.json`.
 - Catalog discovery creates one candidate per `Dataset ID`, using the catalog `Title` and `Summary`. Full per-dataset metadata is fetched only when candidates are preloaded; single-dataset imports use the same canonical-record path.
 - ERDDAP metadata is normalized into `dataset_id`, `metadata_url`, `global_attributes`, and `variables`. Global attributes and variable attributes remain separate in canonical record data.

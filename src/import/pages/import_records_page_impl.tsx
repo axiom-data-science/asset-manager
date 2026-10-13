@@ -17,6 +17,7 @@ import type {
   CanonicalImportRecord,
   IDocumentImport,
   ImportCandidate,
+  ImportCompositeSourceAdapter,
   ImportSourceAdapter,
 } from '@/import/types'
 import SelectObjectTypeForImport from './select_object_type_for_import/index.tsx'
@@ -215,11 +216,13 @@ const RemoteSourceImport = ({
 
 export type IImportPageProps = {
   type: string
+  includeInImportAll?: boolean
   objectTypeSlug?: string
   objectSchemaSlug?: string
   label: string
   pluralLabel?: string
   sourceAdapter?: ImportSourceAdapter
+  compositeSourceAdapter?: ImportCompositeSourceAdapter
   objectType?: IObjectType
   csvSource?: boolean
   arraySource?: boolean

@@ -110,6 +110,31 @@ export type ImportArraySourceTarget = {
     rowMatchField: string
 }
 
+export type ImportWorkflowMode = 'simplified' | 'interactive'
+
+export type ImportReviewStep = 'mapping' | 'type-schema' | 'overrides' | 'relationships' | 'review'
+
+export type ImportWorkflowInput = {
+    key: string
+    label: string
+    step: ImportReviewStep
+    required?: boolean
+}
+
+export type ImportWorkflowPolicy = {
+    mode?: ImportWorkflowMode
+    reviewSteps?: ImportReviewStep[]
+    inputs?: ImportWorkflowInput[]
+    allowAutomaticTypeCreation?: boolean
+    defaultConflictAction?: 'ignore' | 'overwrite' | 'merge'
+}
+
+export type ImportReadinessDecision =
+    | { status: 'advance'; action: 'prepare' | 'create-type' | 'validate' | 'reconcile' | 'execute' }
+    | { status: 'needs-input'; step: ImportReviewStep; inputKeys?: string[] }
+    | { status: 'blocked'; reason: 'busy' | 'source-error' | 'permission' | 'invalid-records' | 'ambiguous-matches' | 'relationships' | 'execution-errors' }
+    | { status: 'complete' }
+
 export type ImportSourceAdapter = {
     id: string
     defaultImportUrl: string
@@ -120,4 +145,12 @@ export type ImportSourceAdapter = {
     schema?: JSONSchema6
     discover: (options: ImportDiscoveryOptions) => Promise<ImportCandidate[]>
     load: (options: ImportLoadOptions) => Promise<CanonicalImportRecord>
+}
+
+export type ImportCompositeSourceAdapter = {
+    id: string
+    memberSourceIds: [string, string]
+    defaultImportUrl: string
+    discover: ImportSourceAdapter['discover']
+    load: (options: ImportLoadOptions) => Promise<Record<string, CanonicalImportRecord>>
 }

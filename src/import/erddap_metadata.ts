@@ -1,4 +1,9 @@
-import type { CanonicalImportRecord, ImportCandidate, ImportSourceAdapter } from './types'
+import type {
+    CanonicalImportRecord,
+    ImportCandidate,
+    ImportCompositeSourceAdapter,
+    ImportSourceAdapter,
+} from './types'
 import type { JSONSchema6 } from 'json-schema'
 
 type ERDDAPMetadataTable = {
@@ -29,9 +34,9 @@ const getColumnIndex = (columnNames: string[], name: string): number =>
     columnNames.findIndex((columnName) => normalizeColumnName(columnName) === normalizeColumnName(name))
 
 const coerceERDDAPAttributeValue = (
-  value: unknown,
-  dataType: unknown,
-  attributeName: string
+    value: unknown,
+    dataType: unknown,
+    attributeName: string
 ): unknown => {
     if (typeof value !== 'string') return value
     if (normalizeColumnName(attributeName) === 'actualrange') {
@@ -132,7 +137,8 @@ export const mapERDDAPMetadataToSchema = (
         if (propertyName) data[propertyName] = value
     }
 
-    if (propertyByNormalizedName.has('id') && !data.id) data.id = metadata.dataset_id
+    const idPropertyName = propertyByNormalizedName.get('id')
+    if (idPropertyName && !data[idPropertyName]) data[idPropertyName] = metadata.dataset_id
     return data
 }
 
@@ -276,6 +282,7 @@ export const createERDDAPSchemaTargetedAdapter = ({
     return {
         ...metadataAdapter,
         relationshipRules,
+        schema,
         load: async (options) => {
             const record = await metadataAdapter.load(options)
             return {
@@ -287,11 +294,13 @@ export const createERDDAPSchemaTargetedAdapter = ({
 }
 
 export const createERDDAPVariableMetadataAdapter = (
-    id = 'erddap_modl_variable_metadata'
+    id = 'erddap_modl_variable_metadata',
+    schema?: JSONSchema6
 ): ImportSourceAdapter => {
     const metadataAdapter = createERDDAPMetadataAdapter({ id, coerceAttributeValues: true })
     return {
         ...metadataAdapter,
+        schema,
         load: async (options) => {
             const record = await metadataAdapter.load(options)
             return {
@@ -301,3 +310,44 @@ export const createERDDAPVariableMetadataAdapter = (
         },
     }
 }
+
+    export const createERDDAPCompositeSourceAdapter = ({
+        id = 'erddap_modl_composite',
+        datasetSourceId = 'erddap_modl',
+        variableSourceId = 'erddap_modl_variable_metadata',
+        schema,
+    }: {
+        id?: string
+        datasetSourceId?: string
+        variableSourceId?: string
+        schema: JSONSchema6
+    }): ImportCompositeSourceAdapter => {
+        const metadataAdapter = createERDDAPMetadataAdapter({ id, coerceAttributeValues: true })
+        return {
+            id,
+            memberSourceIds: [datasetSourceId, variableSourceId],
+            defaultImportUrl: metadataAdapter.defaultImportUrl,
+            discover: metadataAdapter.discover,
+            load: async (options) => {
+                const loaded = await metadataAdapter.load(options)
+                const metadata = loaded.sourceData as ERDDAPDatasetMetadata
+                const variableRecord: CanonicalImportRecord = {
+                    ...loaded,
+                    uuid: `${metadata.dataset_id}:variables`,
+                    label: `${loaded.label} variable metadata`,
+                    description: `Variable metadata for ${loaded.label}`,
+                    data: mapERDDAPMetadataToVariableRecord(metadata),
+                    provenance: { sourceId: variableSourceId, externalId: metadata.dataset_id },
+                }
+                const datasetRecord: CanonicalImportRecord = {
+                    ...loaded,
+                    data: mapERDDAPMetadataToSchema(metadata, schema),
+                    provenance: { sourceId: datasetSourceId, externalId: metadata.dataset_id },
+                }
+                return {
+                    [datasetSourceId]: datasetRecord,
+                    [variableSourceId]: variableRecord,
+                }
+            },
+        }
+    }

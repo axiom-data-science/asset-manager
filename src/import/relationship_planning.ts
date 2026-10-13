@@ -7,7 +7,7 @@ export type ImportRelationshipStatus =
 
 export type ImportRelationshipPersistenceResult = {
   relationshipKey: string
-  status: 'created' | 'existing' | 'blocked' | 'failed'
+  status: 'created' | 'existing' | 'blocked' | 'failed' | 'unattempted'
   error?: string
 }
 
@@ -184,6 +184,9 @@ export const relationshipDocumentKey = (candidate: ImportRelationshipCandidate):
 export const IMPORT_RELATIONSHIP_BATCH_SIZE = 10
 export const IMPORT_RELATIONSHIP_DELAY_MS = 100
 
+const isRelationshipAbort = (error: unknown): boolean =>
+  error instanceof Error && error.name === 'AbortError'
+
 export const persistImportRelationships = async ({
   plans,
   documentUuids,
@@ -194,6 +197,7 @@ export const persistImportRelationships = async ({
   batchSize = IMPORT_RELATIONSHIP_BATCH_SIZE,
   delayMsBetweenBatches = IMPORT_RELATIONSHIP_DELAY_MS,
   onProgress,
+  onResult,
 }: {
   plans: ImportRelationshipPlan[]
   documentUuids: ReadonlyMap<string, string>
@@ -218,6 +222,7 @@ export const persistImportRelationships = async ({
   batchSize?: number
   delayMsBetweenBatches?: number
   onProgress?: (completed: number, total: number) => void
+  onResult?: (result: ImportRelationshipPersistenceResult) => void
 }): Promise<ImportRelationshipPersistenceResult[]> => {
   const results: ImportRelationshipPersistenceResult[] = []
   let completed = 0
@@ -250,12 +255,21 @@ export const persistImportRelationships = async ({
       predicate_uuid: predicateUuid,
     }
     try {
-      if (findExisting && (await findExisting(relationship, signal))) {
+      const relationshipExists = findExisting && await findExisting(relationship, signal)
+      if (relationshipExists) {
         return { relationshipKey, status: 'existing' as const }
       }
+      if (signal.aborted) throw new DOMException('Relationship persistence cancelled', 'AbortError')
       await post(relationship, signal)
       return { relationshipKey, status: 'created' as const }
     } catch (error) {
+      if (isRelationshipAbort(error)) {
+        return {
+          relationshipKey,
+          status: 'failed' as const,
+          error: 'Link attempt was cancelled; retry to confirm whether it already exists.',
+        }
+      }
       return {
         relationshipKey,
         status: 'failed' as const,
@@ -281,17 +295,61 @@ export const persistImportRelationships = async ({
     })
   }
 
-  for (let start = 0; start < plans.length; start += Math.max(1, batchSize)) {
+  const unattemptedResult = (plan: ImportRelationshipPlan): ImportRelationshipPersistenceResult => ({
+    relationshipKey: importRelationshipKey(plan),
+    status: 'unattempted',
+    error: 'Link was not attempted because relationship persistence was cancelled.',
+  })
+
+  for (let start = 0; start < plans.length;) {
+    if (signal.aborted) {
+      const unattempted = plans.slice(start).map(unattemptedResult)
+      results.push(...unattempted)
+      unattempted.forEach((result) => onResult?.(result))
+      break
+    }
     const batch = plans.slice(start, start + Math.max(1, batchSize))
-    const batchResults = await Promise.all(
+    const batchResults = await Promise.allSettled(
       batch.map(async (plan) => {
         const result = await persistPlan(plan)
-        onProgress?.(++completed, plans.length)
         return result
       })
     )
-    results.push(...batchResults)
-    if (start + batch.length < plans.length) await waitBetweenBatches()
+    for (let index = 0; index < batchResults.length; index += 1) {
+      const batchResult = batchResults[index]
+      const result = batchResult.status === 'fulfilled'
+        ? batchResult.value
+        : isRelationshipAbort(batchResult.reason)
+          ? unattemptedResult(batch[index])
+          : {
+            relationshipKey: importRelationshipKey(batch[index]),
+            status: 'failed' as const,
+            error: batchResult.reason instanceof Error
+              ? batchResult.reason.message
+              : String(batchResult.reason),
+          }
+      results.push(result)
+      onResult?.(result)
+      if (result.status !== 'unattempted') onProgress?.(++completed, plans.length)
+    }
+    start += batch.length
+    if (signal.aborted) {
+      const unattempted = plans.slice(start).map(unattemptedResult)
+      results.push(...unattempted)
+      unattempted.forEach((result) => onResult?.(result))
+      break
+    }
+    if (start < plans.length) {
+      try {
+        await waitBetweenBatches()
+      } catch (error) {
+        if (!isRelationshipAbort(error)) throw error
+        const unattempted = plans.slice(start).map(unattemptedResult)
+        results.push(...unattempted)
+        unattempted.forEach((result) => onResult?.(result))
+        break
+      }
+    }
   }
   return results
 }

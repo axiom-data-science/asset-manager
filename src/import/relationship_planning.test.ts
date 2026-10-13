@@ -506,6 +506,80 @@ describe('Import relationship planning', () => {
     expect(post).toHaveBeenCalledTimes(2)
   })
 
+  it('retains completed links and leaves later links retryable when cancelled', async () => {
+    const parents = ['1', '2', '3'].map((id) => candidate('source', id, 'parent-type', 'parents'))
+    const children = ['1', '2', '3'].map((id) => candidate('source', id, 'child-type', 'children'))
+    const plans = planImportRelationships({
+      parentObjectTypes: new Map([
+        [
+          'parent-type',
+          objectType('parent-type', 'parents', [
+            { object_type_slug: 'children', to_parent_predicate: 'belongs_to' },
+          ]),
+        ],
+      ]),
+      candidates: [...parents, ...children],
+    })
+    const controller = new AbortController()
+    const post = vi.fn(async (relationship: { from_document_uuid: string }) => {
+      if (relationship.from_document_uuid === 'child-type-2') {
+        controller.abort()
+        throw new DOMException('Cancelled', 'AbortError')
+      }
+      return { uuid: 'relationship-1' }
+    })
+
+    const results = await persistImportRelationships({
+      plans,
+      documentUuids: new Map(
+        [...parents, ...children].map((item) => [
+          relationshipDocumentKey(item),
+          `${item.objectTypeUuid}-${item.record.provenance.externalId}`,
+        ])
+      ),
+      predicateUuids: new Map([['belongs_to', 'predicate-1']]),
+      signal: controller.signal,
+      post,
+      batchSize: 1,
+      delayMsBetweenBatches: 0,
+    })
+
+    expect(results.map(({ status }) => status)).toEqual(['created', 'failed', 'unattempted'])
+    expect(results[0]).toMatchObject({ status: 'created' })
+    expect(results[1]).toMatchObject({ status: 'failed', error: expect.stringContaining('retry') })
+    expect(results[2]).toMatchObject({ status: 'unattempted' })
+    expect(post).toHaveBeenCalledTimes(2)
+  })
+
+  it('publishes unattempted links to the caller when persistence starts cancelled', async () => {
+    const parent = candidate('source', 'parent-1', 'parent-type', 'parents')
+    const child = candidate('source', 'parent-1', 'child-type', 'children')
+    const plans = planImportRelationships({
+      parentObjectTypes: new Map([
+        ['parent-type', objectType('parent-type', 'parents', [
+          { object_type_slug: 'children', to_parent_predicate: 'belongs_to' },
+        ])],
+      ]),
+      candidates: [parent, child],
+    })
+    const controller = new AbortController()
+    controller.abort()
+    const post = vi.fn()
+    const findExisting = vi.fn()
+    const onResult = vi.fn()
+
+    const results = await persistImportRelationships({
+      plans, documentUuids: new Map(), predicateUuids: new Map(),
+      signal: controller.signal, post, findExisting, onResult,
+    })
+
+    expect(results).toHaveLength(1)
+    expect(results[0]).toMatchObject({ status: 'unattempted' })
+    expect(onResult).toHaveBeenCalledExactlyOnceWith(results[0])
+    expect(post).not.toHaveBeenCalled()
+    expect(findExisting).not.toHaveBeenCalled()
+  })
+
   it('does not post a relationship that already exists on repeat import', async () => {
     const parent = candidate('source', 'parent-1', 'parent-type', 'parents')
     const child = candidate('source', 'parent-1', 'child-type', 'children')
@@ -549,6 +623,43 @@ describe('Import relationship planning', () => {
     ])
     expect(findExisting).toHaveBeenCalledTimes(2)
     expect(post).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not post after cancellation during the duplicate lookup', async () => {
+    const parent = candidate('source', 'parent-1', 'parent-type', 'parents')
+    const child = candidate('source', 'parent-1', 'child-type', 'children')
+    const plans = planImportRelationships({
+      parentObjectTypes: new Map([
+        [
+          'parent-type',
+          objectType('parent-type', 'parents', [
+            { object_type_slug: 'children', to_parent_predicate: 'belongs_to' },
+          ]),
+        ],
+      ]),
+      candidates: [parent, child],
+    })
+    const controller = new AbortController()
+    const post = vi.fn()
+    const findExisting = vi.fn(async () => {
+      controller.abort()
+      return false
+    })
+
+    const results = await persistImportRelationships({
+      plans,
+      documentUuids: new Map([
+        [relationshipDocumentKey(parent), 'parent-document'],
+        [relationshipDocumentKey(child), 'child-document'],
+      ]),
+      predicateUuids: new Map([['belongs_to', 'predicate-1']]),
+      signal: controller.signal,
+      post,
+      findExisting,
+    })
+
+    expect(results[0]).toMatchObject({ status: 'failed', error: expect.stringContaining('retry') })
+    expect(post).not.toHaveBeenCalled()
   })
 
   it('reports which relationship UUID is unavailable', async () => {

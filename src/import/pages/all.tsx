@@ -6,25 +6,29 @@ import { Button } from '@/components/ui/button'
 import contextStateAtom from '@/state/contextStateAtom'
 import { useAtom } from 'jotai'
 import importConfigs from '../config'
-import type { ImportSourceAdapter } from '../types'
+import type { CanonicalImportRecord, ImportReviewStep, ImportSourceAdapter } from '../types'
 import type { IImportPageProps } from './import_records_page_impl'
 import {
   createImportAllSourcePlan,
   collectImportDocumentUuids,
   collectImportAllErrors,
   discoverImportAllSource,
-  executeImportAllSource,
+  executePreparedImportAllSource,
+  fanOutCompositeImportCandidates,
   formatUnmatchedArrayRowsError,
   importAllRecordKey,
+  importAllReadinessMessage,
+  loadCompositeImportRecords,
+  mergeImportAllExecutionPlan,
   mergeArraySourceRecordsIntoParentRecords,
   prepareImportAllSource,
-  refreshImportAllSourceReconciliation,
+  progressImportAllSourcePreparation,
   summarizeImportAllPlan,
   type ImportAllPlanSource,
   type ImportAllSourcePlan,
 } from '../import_all_plan'
 import { fetchExistingImportDocuments } from '../reconciliation_service'
-import { getDocumentImportProvenance, reconcileImportRecords } from '../reconciliation'
+import { getDocumentImportProvenance } from '../reconciliation'
 import { useAuth } from '@/auth/useAuth'
 import { omit } from 'lodash-es'
 import type { JSONSchema6 } from 'json-schema'
@@ -63,20 +67,25 @@ import { SelectObjectTypeForImportTab } from './select_object_type_for_import'
 import { requestContextReloadAtom } from '@/state/contextStateAtom'
 import { useImportSession } from '@/import/state/importState'
 import { uploadedImportSourcesAtom } from '@/import/state/uploadedImportSources'
-import { postObjectType } from '@/manage/object_type/services'
-import { postObjectSchema } from '@/manage/object_schema/services'
-import {
-  findEnumProperties,
-  removeAllEnumAtPath,
-} from './select_object_type_for_import/schema_enum_utils'
-import { quicktypeJSON } from './select_object_type_for_import'
+import { createImportAllTypeCreationAdapter } from '../create_import_object_type'
 import { ImportWizard } from '../components/import_wizard'
 
-const configuredSources = importConfigs.filter(
+const allConfiguredSources = importConfigs.filter(
   (config): config is IImportPageProps & { sourceAdapter: ImportSourceAdapter } =>
     config.sourceAdapter !== undefined
 )
+const configuredSources = allConfiguredSources.filter(
+  (source) => source.includeInImportAll !== false
+)
 
+const compositeSourceGroups = allConfiguredSources.filter(
+  (source) => source.compositeSourceAdapter !== undefined
+)
+const compositeSourceByMemberId = new Map(
+  compositeSourceGroups.flatMap((source) =>
+    source.compositeSourceAdapter!.memberSourceIds.map((sourceId) => [sourceId, source] as const)
+  )
+)
 const initialPlans = (sources: ImportAllPlanSource[]): Record<string, ImportAllSourcePlan> =>
   Object.fromEntries(
     sources.map((source) => [
@@ -169,77 +178,33 @@ const validateRecord = (schema: JSONSchema6, record: ImportAllSourcePlan['record
   }
 }
 
-const createAutomaticType = async ({
-  source,
-  plan,
-  token,
-}: {
-  source: ImportAllPlanSource
-  plan: ImportAllSourcePlan
-  token: string
-}) => {
-  const generated = await quicktypeJSON(
-    'json-schema',
-    source.type,
-    plan.records.map((record) => JSON.stringify(record.data))
-  )
-  const generatedSchema = JSON.parse(generated.lines.join('\n')) as JSONSchema6
-  const enumPaths = findEnumProperties(generatedSchema).map(({ path }) => path)
-  const schema = source.sourceAdapter.schema ?? removeAllEnumAtPath(generatedSchema, enumPaths)
-  let objectType
-  let reusedExistingType = false
-  try {
-    objectType = await postObjectType({
-      object_type: {
-        category: 'document',
-        label: source.label,
-        slug: source.type,
-      },
-      token,
-    })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    if (
-      !/status:\s*409/i.test(message) ||
-      !/duplicate key value violates unique constraint\s+["']?object_type_slug_unique["']?/i.test(
-        message
-      )
-    ) {
-      throw error
-    }
+const createAutomaticType = createImportAllTypeCreationAdapter()
 
-    const existingType = (
-      await fetchObjectTypes({
-        token,
-      })
-    ).find((candidate) => candidate.slug === source.type)
-    if (!existingType) throw error
-    objectType = existingType
-    reusedExistingType = true
-  }
-  if (reusedExistingType) {
-    const existingDefaultSchema = (
-      await fetchObjectSchemas({
-        token,
-      })
-    ).find(
-      (candidate) => candidate.object_type_uuid === objectType.uuid && candidate.is_type_default
-    )
-    if (existingDefaultSchema) return objectType
-  }
-  await postObjectSchema({
-    object_schema: {
-      object_type_uuid: objectType.uuid,
-      label: `${source.label} default schema`,
-      slug: `${source.type}_default`,
-      description: `Automatically generated from ${source.label} import records.`,
-      version: 1,
-      is_type_default: true,
-      json_schema: schema as Record<string, unknown>,
-    },
-    token,
-  })
-  return objectType
+export type ImportAllRuntime = {
+  fetchExistingImportDocuments: typeof fetchExistingImportDocuments
+  fetchObjectTypes: typeof fetchObjectTypes
+  fetchObjectSchemas: typeof fetchObjectSchemas
+  postDocument: typeof postDocument
+  patchDocument: typeof patchDocument
+  mergeImportDocumentViaRpc: typeof mergeImportDocumentViaRpc
+  fetchExistingDocumentBySlug: typeof fetchExistingDocumentBySlug
+  postRelationship: typeof postRelationship
+  fetchRelationships: typeof fetchRelationships
+  createAutomaticType: typeof createAutomaticType
+  requestContextReload: () => void
+}
+
+const productionRuntime: Omit<ImportAllRuntime, 'requestContextReload'> = {
+  fetchExistingImportDocuments,
+  fetchObjectTypes,
+  fetchObjectSchemas,
+  postDocument,
+  patchDocument,
+  mergeImportDocumentViaRpc,
+  fetchExistingDocumentBySlug,
+  postRelationship,
+  fetchRelationships,
+  createAutomaticType,
 }
 
 const TypeSetupDialog = ({
@@ -247,27 +212,34 @@ const TypeSetupDialog = ({
   plan,
   open,
   onOpenChange,
+  onCreateAutomatically,
+  canWrite,
+  requestContextReload,
+  allowManualTypeSetup,
 }: {
   source: ImportAllPlanSource
   plan: ImportAllSourcePlan
   open: boolean
   onOpenChange: (open: boolean) => void
+  onCreateAutomatically: () => Promise<boolean>
+  canWrite: boolean
+  requestContextReload: () => void
+  allowManualTypeSetup: boolean
 }): ReactElement => {
   const { session } = useImportSession(plan.sourceId)
-  const auth = useAuth()
-  const [, requestContextReload] = useAtom(requestContextReloadAtom)
   const [automaticCreateState, setAutomaticCreateState] = useState<'idle' | 'creating' | 'error'>(
     'idle'
   )
   const [automaticCreateError, setAutomaticCreateError] = useState<string | undefined>()
 
   const createAutomaticTypeForSource = async () => {
-    if (!plan.records.length || !auth.user?.access_token) return
+    if (!plan.records.length || !canWrite) return
     setAutomaticCreateState('creating')
     setAutomaticCreateError(undefined)
     try {
-      await createAutomaticType({ source, plan, token: auth.user.access_token })
-      requestContextReload()
+      if (!await onCreateAutomatically()) {
+        throw new Error('Type setup did not finish. Close this dialog to view the preparation error.')
+      }
       onOpenChange(false)
     } catch (error) {
       setAutomaticCreateState('error')
@@ -284,27 +256,29 @@ const TypeSetupDialog = ({
             Select an existing type or create one from the prepared records.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid min-h-0 gap-6 lg:grid-cols-2">
-          <section className="min-h-0 overflow-auto border p-4">
-            <h2 className="mb-3 font-medium">Select or infer a type</h2>
-            <div className="mb-4 border bg-gray-50 p-3 text-xs text-gray-700">
-              <strong>{plan.records.length} prepared records</strong>
-              {plan.records.length > 0 && (
-                <ul className="mt-2 max-h-28 overflow-auto">
-                  {plan.records.slice(0, 10).map((record) => (
-                    <li key={record.provenance.externalId} className="truncate">
-                      {record.label} ({record.slug})
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <SelectObjectTypeForImportTab
-              documents={plan.records}
-              type={source.type}
-              sourceId={plan.sourceId}
-            />
-          </section>
+        <div className={`grid min-h-0 gap-6 ${allowManualTypeSetup ? 'lg:grid-cols-2' : ''}`}>
+          {allowManualTypeSetup && (
+            <section className="min-h-0 overflow-auto border p-4">
+              <h2 className="mb-3 font-medium">Select or infer a type</h2>
+              <div className="mb-4 border bg-gray-50 p-3 text-xs text-gray-700">
+                <strong>{plan.records.length} prepared records</strong>
+                {plan.records.length > 0 && (
+                  <ul className="mt-2 max-h-28 overflow-auto">
+                    {plan.records.slice(0, 10).map((record) => (
+                      <li key={record.provenance.externalId} className="truncate">
+                        {record.label} ({record.slug})
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <SelectObjectTypeForImportTab
+                documents={plan.records}
+                type={source.type}
+                sourceId={plan.sourceId}
+              />
+            </section>
+          )}
           <section className="min-h-0 overflow-auto border p-4">
             <div className="mb-3 flex items-center justify-between gap-3">
               <h2 className="font-medium">Create a new type</h2>
@@ -321,7 +295,7 @@ const TypeSetupDialog = ({
                 {automaticCreateError}
               </div>
             )}
-            {session.schema ? (
+            {allowManualTypeSetup && session.schema ? (
               <CreateObjectType
                 initialSchema={session.schema}
                 initialLabel={source.label}
@@ -330,12 +304,12 @@ const TypeSetupDialog = ({
                   onOpenChange(false)
                 }}
               />
-            ) : (
+            ) : allowManualTypeSetup ? (
               <p className="text-sm text-gray-600">
                 Select or infer a schema first. The type form will appear here when a schema is
                 ready.
               </p>
-            )}
+            ) : null}
           </section>
         </div>
       </DialogContent>
@@ -343,17 +317,44 @@ const TypeSetupDialog = ({
   )
 }
 
-const ImportAllPage = (): ReactElement => {
+type ImportAllPageOptions = {
+  sourceIds?: string[]
+  pageTitle?: string
+  configuredSourceOverrides?: (IImportPageProps & { sourceAdapter: ImportSourceAdapter })[]
+}
+
+export const ImportAllView = ({
+  sourceIds,
+  pageTitle = 'Import All Sources',
+  configuredSourceOverrides,
+  token,
+  canWrite,
+  runtime,
+  includeUploadedSources = sourceIds === undefined,
+  allowManualTypeSetup = true,
+}: ImportAllPageOptions & {
+  token: string
+  canWrite: boolean
+  runtime: ImportAllRuntime
+  includeUploadedSources?: boolean
+  allowManualTypeSetup?: boolean
+}): ReactElement => {
   const [context] = useAtom(contextStateAtom)
   const [uploadedSources] = useAtom(uploadedImportSourcesAtom)
-  const [, requestContextReload] = useAtom(requestContextReloadAtom)
-  const auth = useAuth()
+  const pageConfiguredSources = useMemo(
+    () => configuredSourceOverrides ?? (sourceIds
+      ? allConfiguredSources.filter((source) => sourceIds.includes(source.sourceAdapter.id))
+      : configuredSources),
+    [configuredSourceOverrides, sourceIds]
+  )
   const allSources = useMemo(
     () => [
-      ...configuredSources,
-      ...uploadedSources.map((source) => ({ ...source, icon: FileSpreadsheet })),
+      ...pageConfiguredSources,
+      ...(includeUploadedSources
+        ? uploadedSources.map((source) => ({ ...source, icon: FileSpreadsheet }))
+        : []),
     ],
-    [uploadedSources]
+    [includeUploadedSources, pageConfiguredSources, uploadedSources]
   )
   const sourcesById = useMemo(
     () => Object.fromEntries(allSources.map((source) => [source.sourceAdapter.id, source])),
@@ -389,6 +390,8 @@ const ImportAllPage = (): ReactElement => {
   } | null>(null)
   const relationshipFailureInjectedRef = useRef(false)
   const controllerRef = useRef<AbortController | null>(null)
+  const operationGenerationRef = useRef(0)
+  const completedPreparationReviewsRef = useRef<Record<string, ImportReviewStep[]>>({})
 
   const shouldInjectRelationshipFailure = () => {
     if (!IMPORT_FAIL_RELATIONSHIP_ONCE || relationshipFailureInjectedRef.current) return false
@@ -474,7 +477,7 @@ const ImportAllPage = (): ReactElement => {
   const isDiscovering = planList.some(({ status }) => status === 'loading')
   const isPreparing = planList.some(({ preparationStatus }) => preparationStatus === 'loading')
   const isExecuting = planList.some(({ executionStatus }) => executionStatus === 'loading')
-  const isImportActive = isDiscovering || isPreparing || isExecuting || isPersistingRelationships
+  const isImportActive = isDiscovering || isPreparing || isExecuting || isPersistingRelationships || isCreatingMissingTypes
   const enabledPlans = planList.filter(({ enabled }) => enabled)
   const typeSetupPlan = typeSetupSourceId ? plans[typeSetupSourceId] : undefined
   const typeSetupSource = typeSetupSourceId ? sourcesById[typeSetupSourceId] : undefined
@@ -513,15 +516,18 @@ const ImportAllPage = (): ReactElement => {
     summary.conflicts > 0 ||
     relationshipPlans.some(({ status }) => status !== 'ready') ||
     importErrors.length > 0
+  const hasExecutionAttempts =
+    enabledPlans.some(({ executionStatus }) => executionStatus !== 'idle') ||
+    relationshipResults.length > 0
 
   useEffect(() => {
     if (isImportActive) return
-    if (reviewReady && !reviewHasIssues) {
+    if (reviewReady && (!reviewHasIssues || hasExecutionAttempts)) {
       setActiveWizardStep('import')
     } else if (discoveryReady) {
       setActiveWizardStep('review')
     }
-  }, [discoveryReady, isImportActive, reviewHasIssues, reviewReady])
+  }, [discoveryReady, hasExecutionAttempts, isImportActive, reviewHasIssues, reviewReady])
 
   const updatePlan = (sourceId: string, update: Partial<ImportAllSourcePlan>) => {
     setPlans((current) => ({
@@ -530,46 +536,89 @@ const ImportAllPage = (): ReactElement => {
     }))
   }
 
-  const createMissingTypes = async () => {
-    const missingTypePlans = enabledPlans.filter(
+  const createMissingTypes = async (
+    typePlans = enabledPlans.filter(
       (plan) => !context.object_type_by_slug[plan.type] && plan.records.length > 0
     )
-    if (!missingTypePlans.length || !auth.user?.access_token) return
+  ) => {
+    if (!typePlans.length || !canWrite) return false
+    const operationGeneration = ++operationGenerationRef.current
+    controllerRef.current?.abort()
+    const controller = new AbortController()
+    controllerRef.current = controller
     setIsCreatingMissingTypes(true)
     setMissingTypeCreationError(undefined)
     try {
-      for (const plan of missingTypePlans) {
+      for (const plan of typePlans) {
+        if (controller.signal.aborted || operationGenerationRef.current !== operationGeneration) return false
         const source = sourcesById[plan.sourceId]
         if (!source) continue
-        await createAutomaticType({
+        const created = await runtime.createAutomaticType({
           source: source as ImportAllPlanSource,
           plan,
-          token: auth.user.access_token,
+          token,
+          signal: controller.signal,
         })
+        if (controller.signal.aborted || operationGenerationRef.current !== operationGeneration) return false
+        updatePlan(plan.sourceId, { preparationStatus: 'loading', error: undefined })
+        const progression = await progressImportAllSourcePreparation({
+          source: source as ImportAllPlanSource,
+          plan: { ...plan, preparationStatus: 'idle', error: undefined },
+          objectTypeUuid: created.objectTypeUuid,
+          schema: source.sourceAdapter.schema ?? created.schema,
+          preloadedRecords: plan.records,
+          token,
+          signal: controller.signal,
+          validator: validateRecord,
+          fetchExisting: runtime.fetchExistingImportDocuments,
+          policy: { mode: 'interactive', allowAutomaticTypeCreation: false },
+          canWrite,
+          canCreateType: false,
+          completedReviewSteps: completedPreparationReviewsRef.current[plan.sourceId] ?? [],
+        })
+        if (controller.signal.aborted || operationGenerationRef.current !== operationGeneration) return false
+        completedPreparationReviewsRef.current[plan.sourceId] = progression.completedReviewSteps
+        updatePlan(plan.sourceId, progression.plan)
+        if (progression.plan.preparationStatus !== 'ready') {
+          throw new Error(progression.plan.error ?? 'Type setup requires additional input before preparation can finish.')
+        }
       }
-      requestContextReload()
+      return true
     } catch (error) {
-      setMissingTypeCreationError(error instanceof Error ? error.message : String(error))
+      if (!controller.signal.aborted && operationGenerationRef.current === operationGeneration) {
+        setMissingTypeCreationError(error instanceof Error ? error.message : String(error))
+      }
+      return false
     } finally {
-      setIsCreatingMissingTypes(false)
+      if (operationGenerationRef.current === operationGeneration) {
+        runtime.requestContextReload()
+        setIsCreatingMissingTypes(false)
+      }
+      if (controllerRef.current === controller) controllerRef.current = null
     }
   }
 
   const refreshTypesAndSchemas = () => {
     setMissingTypeCreationError(undefined)
-    requestContextReload()
+    runtime.requestContextReload()
   }
 
-  const persistRelationships = async (plans: ImportRelationshipPlan[]) => {
+  const persistRelationships = async (
+    plans: ImportRelationshipPlan[],
+    currentOperation?: { controller: AbortController; generation: number }
+  ) => {
     const retryContext = relationshipRetryRef.current
-    if (!retryContext) return
-    controllerRef.current?.abort()
-    const controller = new AbortController()
-    controllerRef.current = controller
+    if (!retryContext || plans.length === 0) return
+    const operationGeneration = currentOperation?.generation ?? ++operationGenerationRef.current
+    const controller = currentOperation?.controller ?? new AbortController()
+    if (!currentOperation) {
+      controllerRef.current?.abort()
+      controllerRef.current = controller
+    }
     setIsPersistingRelationships(true)
     setRelationshipProgress({ completed: 0, total: plans.length })
     try {
-      const results = await persistImportRelationships({
+      await persistImportRelationships({
         plans,
         documentUuids: retryContext.documentUuids,
         predicateUuids: retryContext.predicateUuids,
@@ -578,16 +627,16 @@ const ImportAllPage = (): ReactElement => {
           if (shouldInjectRelationshipFailure()) {
             throw new Error('Intentional relationship retry test failure')
           }
-          return postRelationship({
+          return runtime.postRelationship({
             relationship,
-            token: auth.user?.access_token ?? '',
+            token,
             signal,
           })
         },
         findExisting: async (relationship, signal) =>
           (
-            await fetchRelationships({
-              token: auth.user?.access_token ?? '',
+            await runtime.fetchRelationships({
+              token,
               signal,
               params: {
                 limit: 1,
@@ -607,30 +656,52 @@ const ImportAllPage = (): ReactElement => {
               },
             })
           ).length > 0,
-        onProgress: (completed, total) => setRelationshipProgress({ completed, total }),
+        onProgress: (completed, total) => {
+          if (operationGenerationRef.current === operationGeneration) {
+            setRelationshipProgress({ completed, total })
+          }
+        },
+        onResult: (result) => {
+          if (operationGenerationRef.current !== operationGeneration) return
+          setRelationshipResults((current) => {
+            const retained = current.find(
+              ({ relationshipKey }) => relationshipKey === result.relationshipKey
+            )
+            if (retained?.status === 'created' || retained?.status === 'existing') return current
+            return [
+              ...current.filter(({ relationshipKey }) => relationshipKey !== result.relationshipKey),
+              result,
+            ]
+          })
+        },
       })
-      setRelationshipResults((current) => [
-        ...current.filter(
-          ({ relationshipKey }) =>
-            !results.some((result) => result.relationshipKey === relationshipKey)
-        ),
-        ...results,
-      ])
     } finally {
-      setIsPersistingRelationships(false)
+      if (operationGenerationRef.current === operationGeneration) {
+        setIsPersistingRelationships(false)
+      }
       if (controllerRef.current === controller) controllerRef.current = null
     }
   }
 
   const discoverSelected = async () => {
     setActiveWizardStep('discover')
+    operationGenerationRef.current += 1
     controllerRef.current?.abort()
     const controller = new AbortController()
     controllerRef.current = controller
+    setIsPersistingRelationships(false)
     setRelationshipResults([])
     setRelationshipProgress({ completed: 0, total: 0 })
     relationshipRetryRef.current = null
     const selected = Object.values(plans).filter(({ enabled }) => enabled)
+    const selectedIds = new Set(selected.map(({ sourceId }) => sourceId))
+    const selectedCompositeGroups = compositeSourceGroups.filter((source) =>
+      source.compositeSourceAdapter!.memberSourceIds.some((sourceId) => selectedIds.has(sourceId))
+    )
+    const compositeMemberIds = new Set(
+      selectedCompositeGroups.flatMap((source) => source.compositeSourceAdapter!.memberSourceIds)
+    )
+    const independentSources = selected.filter(({ sourceId }) => !compositeMemberIds.has(sourceId))
 
     setPlans((current) =>
       Object.fromEntries(
@@ -652,8 +723,8 @@ const ImportAllPage = (): ReactElement => {
       )
     )
 
-    await Promise.all(
-      selected.map(async (plan) => {
+    await Promise.all([
+      ...independentSources.map(async (plan) => {
         const source = sourcesById[plan.sourceId]
         if (!source) return
         try {
@@ -673,8 +744,48 @@ const ImportAllPage = (): ReactElement => {
             })
           }
         }
-      })
-    )
+      }),
+      ...selectedCompositeGroups.map(async (source) => {
+        const compositeAdapter = source.compositeSourceAdapter!
+        const sourceIds = compositeAdapter.memberSourceIds
+        const anchorPlan = plans[sourceIds[0]]
+        if (!anchorPlan) return
+        try {
+          const discovered = await compositeAdapter.discover({
+            url: anchorPlan.importUrl,
+            signal: controller.signal,
+          })
+          const candidates = loadAllRecords
+            ? discovered
+            : discovered.slice(0, Math.max(0, recordLimit))
+          const candidatesBySource = fanOutCompositeImportCandidates(candidates, sourceIds)
+          for (const sourceId of sourceIds) {
+            updatePlan(sourceId, {
+              status: 'ready',
+              preparationStatus: 'idle',
+              candidates: candidatesBySource[sourceId],
+              records: [],
+              validationResults: [],
+              reconciliations: [],
+              error: undefined,
+            })
+          }
+        } catch (error) {
+          if (controller.signal.aborted) return
+          for (const sourceId of sourceIds) {
+            updatePlan(sourceId, {
+              status: 'error',
+              preparationStatus: 'idle',
+              candidates: [],
+              records: [],
+              validationResults: [],
+              reconciliations: [],
+              error: error instanceof Error ? error.message : String(error),
+            })
+          }
+        }
+      }),
+    ])
 
     if (controllerRef.current === controller) controllerRef.current = null
   }
@@ -703,22 +814,31 @@ const ImportAllPage = (): ReactElement => {
 
   const prepareSelected = async () => {
     setActiveWizardStep('review')
+    const operationGeneration = ++operationGenerationRef.current
     controllerRef.current?.abort()
     const controller = new AbortController()
     controllerRef.current = controller
+    setIsPersistingRelationships(false)
     setRelationshipResults([])
     setRelationshipProgress({ completed: 0, total: 0 })
     relationshipRetryRef.current = null
     const selected = Object.values(plans).filter(
       ({ enabled, status }) => enabled && status === 'ready'
     )
+    const selectedIds = new Set(selected.map(({ sourceId }) => sourceId))
+    const selectedCompositeGroups = compositeSourceGroups.filter((source) =>
+      source.compositeSourceAdapter!.memberSourceIds.some((sourceId) => selectedIds.has(sourceId))
+    )
+    const compositeMemberIds = new Set(
+      selectedCompositeGroups.flatMap((source) => source.compositeSourceAdapter!.memberSourceIds)
+    )
 
     let freshObjectTypes = Object.values(context.object_type_by_slug)
     let freshObjectSchemas = Object.values(context.object_schema_defaults_by_object_type_uuid)
     try {
       const [objectTypes, objectSchemas] = await Promise.all([
-        fetchObjectTypes({ token: auth.user?.access_token ?? '', signal: controller.signal }),
-        fetchObjectSchemas({ token: auth.user?.access_token ?? '', signal: controller.signal }),
+        runtime.fetchObjectTypes({ token, signal: controller.signal }),
+        runtime.fetchObjectSchemas({ token, signal: controller.signal }),
       ])
       freshObjectTypes = objectTypes
       freshObjectSchemas = objectSchemas.filter((schema) => schema.is_type_default)
@@ -765,50 +885,102 @@ const ImportAllPage = (): ReactElement => {
       )
     )
 
-    const preparedPlans = await Promise.all(
-      selected.map(async (plan) => {
-        const source = sourcesById[plan.sourceId]
-        const isArraySource = source?.sourceAdapter.arrayTarget !== undefined
-        const objectType = isArraySource ? undefined : objectTypesBySlug[plan.type]
-        const schema = objectType
-          ? defaultSchemasByTypeUuid[objectType.uuid]?.json_schema
-          : undefined
-        if (!source) return plan
-        try {
-          const prepared = await prepareImportAllSource({
-            source: source as ImportAllPlanSource,
-            plan,
-            schema: schema as JSONSchema6 | undefined,
-            objectTypeUuid: objectType?.uuid,
-            token: auth.user?.access_token ?? '',
-            signal: controller.signal,
-            validator: validateRecord,
-            fetchExisting: fetchExistingImportDocuments,
-            batchSize: 10,
-            onProgress: (completed, total) =>
-              updatePlan(plan.sourceId, {
+    const compositeRecordsBySource: Record<string, CanonicalImportRecord[]> = {}
+    const failedCompositeSourceIds = new Set<string>()
+    await Promise.all(selectedCompositeGroups.map(async (source) => {
+      const compositeAdapter = source.compositeSourceAdapter!
+      const sourceIds = compositeAdapter.memberSourceIds
+      const anchorPlan = plans[sourceIds[0]]
+      if (!anchorPlan) return
+      try {
+        const recordsBySource = await loadCompositeImportRecords({
+          adapter: compositeAdapter,
+          candidates: anchorPlan.candidates,
+          signal: controller.signal,
+          batchSize: 10,
+          onProgress: (completed, total) => {
+            for (const sourceId of sourceIds) {
+              updatePlan(sourceId, {
                 preparationCompleted: completed,
                 preparationTotal: total,
-              }),
-          })
-          if (!controller.signal.aborted) updatePlan(plan.sourceId, prepared)
-          return prepared
-        } catch {
-          if (!controller.signal.aborted) {
-            const failedPlan = {
-              ...plan,
-              preparationStatus: 'error' as const,
-              error: 'Preparation was cancelled before this source completed.',
+              })
             }
-            updatePlan(plan.sourceId, failedPlan)
-            return failedPlan
-          }
-          return plan
+          },
+        })
+        Object.assign(compositeRecordsBySource, recordsBySource)
+      } catch (error) {
+        if (controller.signal.aborted) return
+        for (const sourceId of sourceIds) {
+          failedCompositeSourceIds.add(sourceId)
+          updatePlan(sourceId, {
+            preparationStatus: 'error',
+            error: error instanceof Error ? error.message : String(error),
+          })
         }
-      })
+      }
+    }))
+
+    const preparedPlans = await Promise.all(
+      selected
+        .filter(({ sourceId }) => !failedCompositeSourceIds.has(sourceId))
+        .map(async (plan) => {
+          const source = sourcesById[plan.sourceId]
+          const isArraySource = source?.sourceAdapter.arrayTarget !== undefined
+          const objectType = isArraySource ? undefined : objectTypesBySlug[plan.type]
+          const schema = objectType
+            ? source?.sourceAdapter.schema ?? defaultSchemasByTypeUuid[objectType.uuid]?.json_schema
+            : undefined
+          if (!source) return plan
+          try {
+            const preparationOptions = {
+              source: source as ImportAllPlanSource,
+              plan: { ...plan, preparationStatus: 'idle' as const, error: undefined },
+              schema: schema as JSONSchema6 | undefined,
+              objectTypeUuid: objectType?.uuid,
+              token,
+              signal: controller.signal,
+              validator: validateRecord,
+              fetchExisting: runtime.fetchExistingImportDocuments,
+              preloadedRecords: compositeMemberIds.has(plan.sourceId)
+                ? compositeRecordsBySource[plan.sourceId]
+                : undefined,
+              batchSize: 10,
+              onProgress: (completed: number, total: number) =>
+                updatePlan(plan.sourceId, {
+                  preparationCompleted: completed,
+                  preparationTotal: total,
+                }),
+            }
+            const progression = isArraySource ? undefined : await progressImportAllSourcePreparation({
+              ...preparationOptions,
+              policy: { mode: 'interactive', allowAutomaticTypeCreation: false },
+              canWrite,
+              canCreateType: false,
+              createTypeIfMissing: runtime.createAutomaticType,
+              completedReviewSteps: completedPreparationReviewsRef.current[plan.sourceId] ?? [],
+            })
+            const prepared = progression?.plan ?? await prepareImportAllSource(preparationOptions)
+            if (progression) {
+              completedPreparationReviewsRef.current[plan.sourceId] = progression.completedReviewSteps
+            }
+            if (!controller.signal.aborted) updatePlan(plan.sourceId, prepared)
+            return prepared
+          } catch {
+            if (!controller.signal.aborted) {
+              const failedPlan = {
+                ...plan,
+                preparationStatus: 'error' as const,
+                error: 'Preparation was cancelled before this source completed.',
+              }
+              updatePlan(plan.sourceId, failedPlan)
+              return failedPlan
+            }
+            return plan
+          }
+        })
     )
 
-    if (!controller.signal.aborted) {
+    if (!controller.signal.aborted && operationGenerationRef.current === operationGeneration) {
       const nextPlans = {
         ...plans,
         ...Object.fromEntries(preparedPlans.map((plan) => [plan.sourceId, plan])),
@@ -832,40 +1004,32 @@ const ImportAllPage = (): ReactElement => {
         }
 
         const parentObjectType = objectTypesBySlug[parentPlan.type]
-        const parentSchema = parentObjectType
-          ? defaultSchemasByTypeUuid[parentObjectType.uuid]?.json_schema
-          : undefined
+        const parentSchema = parentSource?.sourceAdapter.schema ??
+          (parentObjectType ? defaultSchemasByTypeUuid[parentObjectType.uuid]?.json_schema : undefined) ??
+          parentPlan.validationContext?.schema
         const merged = mergeArraySourceRecordsIntoParentRecords({
           parentRecords: parentPlan.records,
           arrayRecords: arrayPlan.records,
           target,
         })
-        const validationResults = parentSchema
-          ? merged.records.map((record) => ({
-            record,
-            ...validateRecord(parentSchema as JSONSchema6, record),
-          }))
-          : merged.records.map((record) => ({ record, isValid: true, errors: [] }))
-        const validRecords = validationResults
-          .filter(({ isValid }) => isValid)
-          .map(({ record }) => record)
-        const existingDocuments = parentObjectType
-          ? await fetchExistingImportDocuments({
-            records: validRecords,
-            objectTypeUuid: parentObjectType.uuid,
-            token: auth.user?.access_token ?? '',
-            signal: controller.signal,
-          })
-          : []
-
-        nextPlans[parentPlan.sourceId] = {
-          ...parentPlan,
-          records: merged.records,
-          validationResults,
-          reconciliations: parentObjectType
-            ? reconcileImportRecords(validRecords, existingDocuments)
-            : [],
-        }
+        if (!parentSource) continue
+        const compositionPreparation = await progressImportAllSourcePreparation({
+          source: parentSource as ImportAllPlanSource,
+          plan: parentPlan,
+          preloadedRecords: merged.records,
+          schema: parentSchema as JSONSchema6 | undefined,
+          objectTypeUuid: parentObjectType?.uuid,
+          canWrite,
+          canCreateType: false,
+          completedReviewSteps: completedPreparationReviewsRef.current[parentPlan.sourceId] ?? [],
+          token,
+          signal: controller.signal,
+          validator: validateRecord,
+          fetchExisting: runtime.fetchExistingImportDocuments,
+        })
+        if (controller.signal.aborted || operationGenerationRef.current !== operationGeneration) break
+        completedPreparationReviewsRef.current[parentPlan.sourceId] = compositionPreparation.completedReviewSteps
+        nextPlans[parentPlan.sourceId] = compositionPreparation.plan
         if (merged.unmatchedArrayRecords.length > 0) {
           nextPlans[arrayPlan.sourceId] = {
             ...arrayPlan,
@@ -873,7 +1037,9 @@ const ImportAllPage = (): ReactElement => {
           }
         }
       }
-      setPlans(nextPlans)
+      if (!controller.signal.aborted && operationGenerationRef.current === operationGeneration) {
+        setPlans(nextPlans)
+      }
     }
 
     if (controllerRef.current === controller) controllerRef.current = null
@@ -881,11 +1047,11 @@ const ImportAllPage = (): ReactElement => {
 
   const executeSelected = async (recordKeysBySource?: Record<string, ReadonlySet<string>>) => {
     setActiveWizardStep('import')
+    const operationGeneration = ++operationGenerationRef.current
     controllerRef.current?.abort()
     const controller = new AbortController()
     controllerRef.current = controller
-    setRelationshipResults([])
-    relationshipRetryRef.current = null
+    setIsPersistingRelationships(false)
     const selected = Object.values(plans).filter(
       ({ sourceId, enabled, preparationStatus }) =>
         enabled &&
@@ -904,115 +1070,120 @@ const ImportAllPage = (): ReactElement => {
       })),
       retry: recordKeysBySource !== undefined,
     })
-    setPlans((current) =>
-      Object.fromEntries(
-        Object.entries(current).map(([sourceId, plan]) => [
-          sourceId,
-          plan.enabled &&
-            plan.preparationStatus === 'ready' &&
-            (!recordKeysBySource || recordKeysBySource[plan.sourceId] !== undefined)
-            ? {
-              ...plan,
-              executionStatus: 'loading',
-              executionCompleted: 0,
-              executionTotal:
-                recordKeysBySource?.[plan.sourceId]?.size ?? plan.reconciliations.length,
-              error: undefined,
-            }
-            : plan,
-        ])
-      )
-    )
-
     const executedPlans: ImportAllSourcePlan[] = []
-    await Promise.all(
-      selected.map(async (plan) => {
-        const objectType = context.object_type_by_slug[plan.type]
-        if (!objectType) {
-          if (!controller.signal.aborted) {
-            updatePlan(plan.sourceId, {
-              executionStatus: 'error',
-              error: `Object type "${plan.type}" was not available when execution started. Prepare the plan again.`,
-            })
-          }
-          return
-        }
-        try {
-          const recordKeys = recordKeysBySource?.[plan.sourceId]
-          const needsReconciliation = plan.reconciliations.length !== plan.records.length
-          const executionPlan =
-            recordKeys || needsReconciliation
-              ? await refreshImportAllSourceReconciliation({
-                plan,
-                recordKeys:
-                  recordKeys ?? new Set(plan.records.map((record) => importAllRecordKey(record))),
-                objectTypeUuid: objectType.uuid,
-                token: auth.user?.access_token ?? '',
-                signal: controller.signal,
-                fetchExisting: fetchExistingImportDocuments,
-              })
-              : plan
-          const executed = await executeImportAllSource({
-            plan: executionPlan,
-            objectTypeUuid: objectType.uuid,
-            signal: controller.signal,
-            mergeStrategy: 'client-patch',
-            recordKeys: recordKeysBySource?.[plan.sourceId],
-            persistence: {
-              post: (document, signal) =>
-                postDocument({ document, token: auth.user?.access_token ?? '', signal }),
-              patch: (uuid, document, signal) =>
-                patchDocument({ uuid, document, token: auth.user?.access_token ?? '', signal }),
-              mergeRpc: (uuid, document, signal) =>
-                mergeImportDocumentViaRpc({
-                  rpcPath: IMPORT_MERGE_RPC,
-                  documentUuid: uuid,
-                  incomingDocument: document,
-                  token: auth.user?.access_token ?? '',
-                  signal,
-                }),
-              fetchBySlug: (slug, objectTypeUuid, signal) =>
-                fetchExistingDocumentBySlug({
-                  slug,
-                  objectTypeUuid,
-                  token: auth.user?.access_token ?? '',
-                  signal,
-                }),
-            },
-            onProgress: (completed, total) => {
-              if (!controller.signal.aborted) {
-                updatePlan(plan.sourceId, {
-                  executionCompleted: completed,
-                  executionTotal: total,
-                })
-              }
-            },
+    let documentsReady = selected.length > 0
+    const executeReviewSteps: ImportReviewStep[] = [
+      'mapping', 'type-schema', 'overrides', 'relationships', 'review',
+    ]
+    for (const plan of selected) {
+      if (operationGenerationRef.current !== operationGeneration || controller.signal.aborted) {
+        documentsReady = false
+        break
+      }
+      const objectType = context.object_type_by_slug[plan.type]
+      const source = sourcesById[plan.sourceId]
+      if (!objectType || !source) {
+        if (operationGenerationRef.current === operationGeneration) {
+          updatePlan(plan.sourceId, {
+            executionStatus: 'error',
+            error: `Object type "${plan.type}" was not available when execution started. Prepare the plan again.`,
           })
-          executedPlans.push(executed)
-          if (!controller.signal.aborted)
-            updatePlan(plan.sourceId, {
-              ...executed,
-              executionResults: [
-                ...plan.executionResults.filter(
-                  ({ recordKey }) =>
-                    !executed.executionResults.some((result) => result.recordKey === recordKey)
-                ),
-                ...executed.executionResults,
-              ],
-            })
-        } catch (error) {
-          if (!controller.signal.aborted)
-            updatePlan(plan.sourceId, {
-              executionStatus: 'error',
-              error: error instanceof Error ? error.message : String(error),
-            })
         }
+        documentsReady = false
+        break
+      }
+      updatePlan(plan.sourceId, {
+        executionStatus: 'loading',
+        executionCompleted: 0,
+        executionTotal: recordKeysBySource?.[plan.sourceId]?.size ?? plan.reconciliations.length,
+        error: undefined,
       })
-    )
+      const importSource = source as ImportAllPlanSource
+      const schema = source.sourceAdapter.schema ??
+        context.object_schema_defaults_by_object_type_uuid[objectType.uuid]?.json_schema ??
+        plan.validationContext?.schema
+      const policy = {
+        ...(importSource.workflowPolicy ?? {}),
+        defaultConflictAction: plan.defaultConflictAction,
+      }
+      try {
+        const result = await executePreparedImportAllSource({
+          plan: { ...plan, executionStatus: 'idle', error: plan.executionStatus === 'error' ? undefined : plan.error },
+          policy,
+          objectTypeUuid: objectType.uuid,
+          schema: schema as JSONSchema6 | undefined,
+          canWrite,
+          canCreateType: false,
+          optedInReviewSteps: importSource.workflowPolicy?.reviewSteps,
+          completedReviewSteps: [...new Set([
+            ...(completedPreparationReviewsRef.current[plan.sourceId] ?? []),
+            ...executeReviewSteps,
+          ])],
+          signal: controller.signal,
+          mergeStrategy: 'client-patch',
+          recordKeys: recordKeysBySource?.[plan.sourceId],
+          retryReconciliation: {
+            token,
+            fetchExisting: runtime.fetchExistingImportDocuments,
+          },
+          persistence: {
+            post: (document, signal) => runtime.postDocument({ document, token, signal }),
+            patch: (uuid, document, signal) => runtime.patchDocument({ uuid, document, token, signal }),
+            mergeRpc: (uuid, document, signal) => runtime.mergeImportDocumentViaRpc({
+              rpcPath: IMPORT_MERGE_RPC,
+              documentUuid: uuid,
+              incomingDocument: document,
+              token,
+              signal,
+            }),
+            fetchBySlug: (slug, objectTypeUuid, signal) => runtime.fetchExistingDocumentBySlug({
+              slug,
+              objectTypeUuid,
+              token,
+              signal,
+            }),
+          },
+          onProgress: (completed, total) => {
+            if (operationGenerationRef.current === operationGeneration && !controller.signal.aborted) {
+              updatePlan(plan.sourceId, {
+                executionCompleted: completed,
+                executionTotal: total,
+              })
+            }
+          },
+        })
+        if (operationGenerationRef.current !== operationGeneration) return
+        const adoptedPlan = mergeImportAllExecutionPlan(plan, result.plan)
+        updatePlan(plan.sourceId, adoptedPlan)
+        if (!controller.signal.aborted && result.decision.readiness.status === 'complete' &&
+          (result.decision.status === 'paused' || !result.decision.cancelled)) {
+          executedPlans.push(adoptedPlan)
+          continue
+        }
+        if (!controller.signal.aborted) {
+          updatePlan(plan.sourceId, {
+            executionStatus: 'error',
+            error: importAllReadinessMessage(result.decision.readiness),
+          })
+        }
+        documentsReady = false
+        break
+      } catch (error) {
+        if (operationGenerationRef.current !== operationGeneration) return
+        if (!controller.signal.aborted && operationGenerationRef.current === operationGeneration) {
+          updatePlan(plan.sourceId, {
+            executionStatus: 'error',
+            error: error instanceof Error ? error.message : String(error),
+          })
+        }
+        documentsReady = false
+        break
+      }
+    }
 
-    if (!recordKeysBySource && !controller.signal.aborted) {
+    if (!recordKeysBySource && documentsReady && !controller.signal.aborted &&
+      operationGenerationRef.current === operationGeneration) {
       if (executedPlans.length !== selected.length) {
-        setRelationshipResults([])
         if (controllerRef.current === controller) controllerRef.current = null
         return
       }
@@ -1020,90 +1191,72 @@ const ImportAllPage = (): ReactElement => {
         executedPlans,
         objectTypesBySlug: context.object_type_by_slug,
       })
+      let uuidLookupError: string | undefined
       for (const executed of executedPlans) {
+        if (controller.signal.aborted || operationGenerationRef.current !== operationGeneration) break
         const objectType = context.object_type_by_slug[executed.type]
         if (!objectType) continue
-        const documents = await fetchExistingImportDocuments({
-          records: executed.records,
-          objectTypeUuid: objectType.uuid,
-          token: auth.user?.access_token ?? '',
-          signal: controller.signal,
-        })
-        const documentsBySlug = new Map(documents.map((document) => [document.slug, document]))
-        const documentsByExternalId = new Map(
-          documents
-            .map(
-              (document) => [getDocumentImportProvenance(document)?.external_id, document] as const
-            )
-            .filter(([externalId]) => externalId !== undefined)
-        )
-        for (const record of executed.records) {
-          const document =
-            documentsByExternalId.get(record.provenance.externalId) ??
-            documentsBySlug.get(record.slug)
-          if (!document) continue
-          documentUuids.set(
-            relationshipDocumentKey({
+        try {
+          const documents = await runtime.fetchExistingImportDocuments({
+            records: executed.records,
+            objectTypeUuid: objectType.uuid,
+            token,
+            signal: controller.signal,
+          })
+          if (controller.signal.aborted || operationGenerationRef.current !== operationGeneration) break
+          const documentsBySlug = new Map(documents.map((document) => [document.slug, document]))
+          const documentsByExternalId = new Map(
+            documents
+              .map(
+                (document) => [getDocumentImportProvenance(document)?.external_id, document] as const
+              )
+              .filter(([externalId]) => externalId !== undefined)
+          )
+          for (const record of executed.records) {
+            const documentKey = relationshipDocumentKey({
               record,
               objectTypeUuid: objectType.uuid,
               objectTypeSlug: objectType.slug,
-            }),
-            document.uuid
-          )
+            })
+            if (documentUuids.has(documentKey)) continue
+            const document =
+              documentsByExternalId.get(record.provenance.externalId) ??
+              documentsBySlug.get(record.slug)
+            if (!document) continue
+            documentUuids.set(documentKey, document.uuid)
+          }
+        } catch (error) {
+          if (!controller.signal.aborted && operationGenerationRef.current === operationGeneration) {
+            uuidLookupError = error instanceof Error ? error.message : String(error)
+          }
+          break
         }
       }
-      const predicateUuids = new Map(
-        [
-          ...Object.values(context.predicate_by_predicate),
-          ...Object.values(context.predicate_by_uuid),
-        ].map((predicate) => [predicate.predicate, predicate.uuid])
-      )
-      const results = await persistImportRelationships({
-        plans: relationshipPlans,
-        documentUuids,
-        predicateUuids,
-        signal: controller.signal,
-        post: async (relationship, signal) => {
-          if (shouldInjectRelationshipFailure()) {
-            throw new Error('Intentional relationship retry test failure')
-          }
-          return postRelationship({
-            relationship,
-            token: auth.user?.access_token ?? '',
-            signal,
+      if (uuidLookupError && operationGenerationRef.current === operationGeneration) {
+        for (const executed of executedPlans) {
+          updatePlan(executed.sourceId, {
+            error: `Could not resolve document UUIDs for relationships: ${uuidLookupError}`,
           })
-        },
-        findExisting: async (relationship, signal) =>
-          (
-            await fetchRelationships({
-              token: auth.user?.access_token ?? '',
-              signal,
-              params: {
-                limit: 1,
-                filters: [
-                  {
-                    column: 'from_document_uuid',
-                    operator: 'eq',
-                    value: relationship.from_document_uuid,
-                  },
-                  {
-                    column: 'to_document_uuid',
-                    operator: 'eq',
-                    value: relationship.to_document_uuid,
-                  },
-                  { column: 'predicate_uuid', operator: 'eq', value: relationship.predicate_uuid },
-                ],
-              },
-            })
-          ).length > 0,
-        onProgress: (completed, total) => setRelationshipProgress({ completed, total }),
-      })
-      relationshipRetryRef.current = {
-        plans: relationshipPlans,
-        documentUuids,
-        predicateUuids,
+        }
+      } else if (!controller.signal.aborted && operationGenerationRef.current === operationGeneration) {
+        const predicateUuids = new Map(
+          [
+            ...Object.values(context.predicate_by_predicate),
+            ...Object.values(context.predicate_by_uuid),
+          ].map((predicate) => [predicate.predicate, predicate.uuid])
+        )
+        relationshipRetryRef.current = {
+          plans: relationshipPlans,
+          documentUuids,
+          predicateUuids,
+        }
+        const completedKeys = new Set(relationshipResults.map(({ relationshipKey }) => relationshipKey))
+        const pendingPlans = relationshipPlans.filter(
+          (relationshipPlan) => relationshipPlan.status === 'ready' &&
+            !completedKeys.has(importRelationshipKey(relationshipPlan))
+        )
+        await persistRelationships(pendingPlans, { controller, generation: operationGeneration })
       }
-      setRelationshipResults(results)
     }
 
     if (controllerRef.current === controller) controllerRef.current = null
@@ -1113,7 +1266,7 @@ const ImportAllPage = (): ReactElement => {
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-white">
       <header className="sticky top-0 z-10 flex flex-wrap items-end gap-4 border-b bg-white px-5 py-4">
         <div className="min-w-52 grow">
-          <h1 className="text-xl font-semibold">Import All Sources</h1>
+          <h1 className="text-xl font-semibold">{pageTitle}</h1>
           <div className="mt-1 flex flex-wrap gap-4 text-sm text-gray-600">
             <span>{summary.enabledSources} sources</span>
             <span>{summary.records} records found</span>
@@ -1307,7 +1460,7 @@ const ImportAllPage = (): ReactElement => {
           <div className="flex flex-wrap items-center gap-3">
             <Button
               variant="outline"
-              disabled={isDiscovering || isPreparing || !discoveryReady || !auth.user?.access_token}
+              disabled={isImportActive || !discoveryReady || !canWrite}
               onClick={prepareSelected}
             >
               <ShieldCheck size={16} /> Prepare review
@@ -1315,12 +1468,10 @@ const ImportAllPage = (): ReactElement => {
             <Button
               variant="outline"
               disabled={
-                isDiscovering ||
-                isPreparing ||
-                isCreatingMissingTypes ||
+                isImportActive ||
                 missingTypes.length === 0 ||
                 missingTypes.some((plan) => plan.records.length === 0) ||
-                !auth.user?.access_token
+                !canWrite
               }
               onClick={() => void createMissingTypes()}
             >
@@ -1339,30 +1490,30 @@ const ImportAllPage = (): ReactElement => {
         {activeWizardStep === 'import' && (
           <div className="flex flex-wrap items-center gap-3">
             <Button
-              disabled={isImportActive || !reviewReady || !auth.user?.access_token}
+              disabled={isImportActive || !reviewReady || !canWrite}
               onClick={() => executeSelected()}
             >
               <Check size={16} /> Execute import
             </Button>
-            {relationshipResults.some(({ status }) => status === 'failed') && (
+            {relationshipResults.some(({ status }) => status === 'failed' || status === 'unattempted') && (
               <Button
                 size="xs"
                 variant="outline"
                 disabled={isExecuting || isPersistingRelationships}
                 onClick={() => {
-                  const failedKeys = new Set(
+                  const retryableKeys = new Set(
                     relationshipResults
-                      .filter(({ status }) => status === 'failed')
+                      .filter(({ status }) => status === 'failed' || status === 'unattempted')
                       .map(({ relationshipKey }) => relationshipKey)
                   )
                   const failedPlans =
                     relationshipRetryRef.current?.plans.filter((plan) =>
-                      failedKeys.has(importRelationshipKey(plan))
+                      plan.status === 'ready' && retryableKeys.has(importRelationshipKey(plan))
                     ) ?? []
                   void persistRelationships(failedPlans)
                 }}
               >
-                Retry failed links
+                Retry unfinished links
               </Button>
             )}
             <span className="text-sm text-gray-600">
@@ -1414,8 +1565,10 @@ const ImportAllPage = (): ReactElement => {
         </section>
       ) : (
         <div className="min-h-0 flex-1 overflow-auto">
-          {configuredSources.map((source, index) => {
+          {pageConfiguredSources.map((source, index) => {
             const plan = plans[source.sourceAdapter.id]
+            const compositeGroup = compositeSourceByMemberId.get(plan.sourceId)
+            const isCompositeAnchor = source.compositeSourceAdapter !== undefined
             const objectType = context.object_type_by_slug[source.type]
             const Icon = source.icon
             const invalidCount = plan.validationResults.filter(({ isValid }) => !isValid).length
@@ -1450,22 +1603,37 @@ const ImportAllPage = (): ReactElement => {
               >
                 <div className="grid grid-cols-[minmax(15rem,1fr)_9rem_11rem_auto] items-center gap-4">
                   <div className="flex min-w-0 items-center gap-3">
-                    <Checkbox
-                      id={`plan-${source.type}`}
-                      testId={`plan-${source.type}`}
-                      value={plan.enabled}
-                      onChange={(enabled) =>
-                        updatePlan(plan.sourceId, {
-                          enabled,
-                          status: enabled ? plan.status : 'idle',
-                          preparationStatus: enabled ? plan.preparationStatus : 'idle',
-                        })
-                      }
-                    />
+                    {compositeGroup && !isCompositeAnchor ? (
+                      <span className="shrink-0 text-xs text-gray-500">Included</span>
+                    ) : (
+                      <Checkbox
+                        id={`plan-${source.type}`}
+                        testId={`plan-${source.type}`}
+                        value={plan.enabled}
+                        onChange={(enabled) => {
+                          const sourceIds = source.compositeSourceAdapter?.memberSourceIds ?? [plan.sourceId]
+                          for (const sourceId of sourceIds) {
+                            const memberPlan = plans[sourceId]
+                            updatePlan(sourceId, {
+                              enabled,
+                              status: enabled ? memberPlan.status : 'idle',
+                              preparationStatus: enabled ? memberPlan.preparationStatus : 'idle',
+                            })
+                          }
+                        }}
+                      />
+                    )}
                     <Icon className="shrink-0 text-gray-700" size={20} />
                     <div className="min-w-0">
-                      <strong className="block truncate text-sm">{source.label}</strong>
-                      <span className="block truncate text-xs text-gray-500">{source.type}</span>
+                      <strong className="block truncate text-sm">
+                        {isCompositeAnchor ? 'ERDDAP MODL Composite' : source.label}
+                      </strong>
+                      <span className="block truncate text-xs text-gray-500">
+                        {isCompositeAnchor
+                          ? 'Dataset and grouped variable metadata'
+                          : source.type}
+                        {compositeGroup && !isCompositeAnchor && ' · included in composite'}
+                      </span>
                       {sourceAttention.length > 0 && (
                         <span className="mt-1 flex items-center gap-1 text-xs font-semibold text-amber-800">
                           <CircleAlert size={14} />
@@ -1510,18 +1678,21 @@ const ImportAllPage = (): ReactElement => {
                         label="Discovery URL"
                         size="sm"
                         value={plan.importUrl}
-                        onChange={(importUrl) =>
-                          updatePlan(plan.sourceId, {
-                            importUrl: importUrl ?? source.sourceAdapter.defaultImportUrl,
-                            status: 'idle',
-                            preparationStatus: 'idle',
-                            candidates: [],
-                            records: [],
-                            validationResults: [],
-                            reconciliations: [],
-                            error: undefined,
-                          })
-                        }
+                        onChange={(importUrl) => {
+                          const sourceIds = source.compositeSourceAdapter?.memberSourceIds ?? [plan.sourceId]
+                          for (const sourceId of sourceIds) {
+                            updatePlan(sourceId, {
+                              importUrl: importUrl ?? source.sourceAdapter.defaultImportUrl,
+                              status: 'idle',
+                              preparationStatus: 'idle',
+                              candidates: [],
+                              records: [],
+                              validationResults: [],
+                              reconciliations: [],
+                              error: undefined,
+                            })
+                          }
+                        }}
                       />
                     </div>
                   </details>
@@ -1818,12 +1989,30 @@ const ImportAllPage = (): ReactElement => {
           source={typeSetupSource as ImportAllPlanSource}
           plan={typeSetupPlan}
           open={typeSetupSourceId !== null}
+          onCreateAutomatically={() => createMissingTypes([typeSetupPlan])}
+          canWrite={canWrite}
+          requestContextReload={runtime.requestContextReload}
+          allowManualTypeSetup={allowManualTypeSetup}
           onOpenChange={(open) => {
             if (!open) setTypeSetupSourceId(null)
           }}
         />
       )}
     </div>
+  )
+}
+
+const ImportAllPage = (options: ImportAllPageOptions = {}): ReactElement => {
+  const auth = useAuth()
+  const [, requestContextReload] = useAtom(requestContextReloadAtom)
+  const token = auth.user?.access_token ?? ''
+  return (
+    <ImportAllView
+      {...options}
+      token={token}
+      canWrite={Boolean(token)}
+      runtime={{ ...productionRuntime, requestContextReload }}
+    />
   )
 }
 

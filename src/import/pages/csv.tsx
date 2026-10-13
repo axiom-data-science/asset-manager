@@ -79,6 +79,7 @@ import { ImportWizard } from '../components/import_wizard'
 import { fetchRelationships, postRelationship } from '@/manage/relationship/services'
 import { useAuth } from '@/auth/useAuth'
 import type { ParsedWorkbookSheet } from '../workbook'
+import { selectWorkbookSheets } from '../workbook_selection'
 
 const csvField = {
   id: 'csv-file',
@@ -86,7 +87,7 @@ const csvField = {
   description: 'Upload CSV files to preview and import them as independent sources.',
 } as IFieldInputProps['field']
 
-type CSVImportSource = {
+export type CSVImportSource = {
   sourceId: string
   config: CSVImportSourceConfig
   role: CSVImportSourceRole
@@ -235,7 +236,7 @@ const SchemaFieldOptionView = ({ title, path, required }: ISelectOptionProps): R
   </div>
 )
 
-const CSVSourceEditor = ({
+export const CSVSourceEditor = ({
   source,
   sources,
   onChange,
@@ -1867,8 +1868,7 @@ const CSVImportPage = ({
 
   const addSelectedWorkbookSheets = () => {
     if (!pendingWorkbook) return
-    for (const sheet of pendingWorkbook.sheets) {
-      if (!selectedWorkbookSheets.has(sheet.name)) continue
+    for (const sheet of selectWorkbookSheets(pendingWorkbook.sheets, selectedWorkbookSheets)) {
       const sheetFileName = `${sheet.name}.csv`
       addSource(
         sheet.text,

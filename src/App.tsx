@@ -619,7 +619,14 @@ function App(): ReactElement {
                       path={config.type}
                       element={
                         <SidebarLayout>
-                          <ImportRecordsPage {...config} />
+                          {config.compositeSourceAdapter ? (
+                            <ImportAllPage
+                              sourceIds={config.compositeSourceAdapter.memberSourceIds}
+                              pageTitle={config.label}
+                            />
+                          ) : (
+                            <ImportRecordsPage {...config} />
+                          )}
                         </SidebarLayout>
                       }
                     />

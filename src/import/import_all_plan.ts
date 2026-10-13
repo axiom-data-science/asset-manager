@@ -1,4 +1,13 @@
-import type { CanonicalImportRecord, ImportCandidate, ImportSourceAdapter } from './types'
+import type {
+  CanonicalImportRecord,
+  ImportCandidate,
+  ImportCompositeSourceAdapter,
+  ImportSourceAdapter,
+  ImportWorkflowPolicy,
+  ImportReviewStep,
+  ImportReadinessDecision,
+} from './types'
+import { cloneDeep, isEqual } from 'lodash-es'
 import type { ImportReconciliation } from './reconciliation'
 import { reconcileImportRecords } from './reconciliation'
 import type { JSONSchema6 } from 'json-schema'
@@ -55,15 +64,58 @@ export type ImportAllSourcePlan = {
   candidates: ImportCandidate[]
   records: CanonicalImportRecord[]
   validationResults: ImportAllValidationResult[]
+  validationContext?: {
+    schema: JSONSchema6
+    objectTypeUuid?: string
+    records: CanonicalImportRecord[]
+  }
   reconciliations: ImportReconciliation[]
   executionResults: ImportAllExecutionResult[]
   error?: string
+}
+
+export const mergeImportAllExecutionPlan = (
+  currentPlan: ImportAllSourcePlan,
+  returnedPlan: ImportAllSourcePlan
+): ImportAllSourcePlan => {
+  const executionResults = new Map(
+    currentPlan.executionResults.map((result) => [result.recordKey, result])
+  )
+  for (const result of returnedPlan.executionResults) {
+    const retained = executionResults.get(result.recordKey)
+    if (retained?.status !== 'imported' && retained?.status !== 'ignored') {
+      executionResults.set(result.recordKey, result)
+    }
+  }
+  return { ...currentPlan, ...returnedPlan, executionResults: [...executionResults.values()] }
+}
+
+export const importAllReadinessMessage = (readiness: ImportReadinessDecision): string | undefined => {
+  if (readiness.status === 'complete') return undefined
+  if (readiness.status === 'advance') {
+    return `Source requires ${readiness.action}. Prepare the source again before executing.`
+  }
+  if (readiness.status === 'needs-input') {
+    return `Complete ${readiness.step} before executing${readiness.inputKeys?.length ? `: ${readiness.inputKeys.join(', ')}` : '.'}`
+  }
+  const messages: Record<typeof readiness.reason, string> = {
+    busy: 'Another import operation is still running.',
+    'source-error': 'Resolve the source error and prepare again.',
+    permission: 'Import is not permitted for this session.',
+    'invalid-records': 'Correct or exclude invalid records and prepare again.',
+    'ambiguous-matches': 'Resolve ambiguous document matches and prepare again.',
+    relationships: 'Resolve relationship blockers before executing.',
+    'execution-errors': 'Retry failed records or resolve blocked document results.',
+  }
+  return messages[readiness.reason]
 }
 
 export type ImportAllPlanSource = {
   type: string
   label: string
   sourceAdapter: ImportSourceAdapter
+  compositeSourceAdapter?: ImportCompositeSourceAdapter
+  workflowPolicy?: ImportWorkflowPolicy
 }
 
 export type ImportAllError = {
@@ -132,7 +184,7 @@ export const collectImportAllErrors = ({
   }
 
   for (const result of relationshipResults) {
-    if (result.status === 'failed' || result.status === 'blocked') {
+    if (result.status === 'failed' || result.status === 'blocked' || result.status === 'unattempted') {
       errors.push({
         sourceId: result.relationshipKey.split(':')[1] ?? 'relationship',
         sourceLabel: 'Relationship',
@@ -159,7 +211,7 @@ export const createImportAllSourcePlan = (source: ImportAllPlanSource): ImportAl
   executionStatus: 'idle',
   executionCompleted: 0,
   executionTotal: 0,
-  defaultConflictAction: 'ignore',
+  defaultConflictAction: source.workflowPolicy?.defaultConflictAction ?? 'ignore',
   conflictActions: {},
   candidates: [],
   records: [],
@@ -170,6 +222,112 @@ export const createImportAllSourcePlan = (source: ImportAllPlanSource): ImportAl
 
 export const importAllRecordKey = (record: CanonicalImportRecord): string =>
   `${record.provenance.sourceId}:${record.provenance.externalId}`
+
+export const evaluateImportSourceReadiness = ({
+  plan,
+  policy = {},
+  objectTypeUuid,
+  schema,
+  canWrite,
+  canCreateType = false,
+  inputValues = {},
+  optedInReviewSteps = [],
+  completedReviewSteps = [],
+  relationshipBlockers = [],
+}: {
+  plan: ImportAllSourcePlan
+  policy?: ImportWorkflowPolicy
+  objectTypeUuid?: string
+  schema?: JSONSchema6
+  canWrite: boolean
+  canCreateType?: boolean
+  inputValues?: Record<string, unknown>
+  optedInReviewSteps?: ImportReviewStep[]
+  completedReviewSteps?: ImportReviewStep[]
+  relationshipBlockers?: readonly string[]
+}): ImportReadinessDecision => {
+  if (!plan.enabled) return { status: 'complete' }
+  if (!canWrite) return { status: 'blocked', reason: 'permission' }
+  if ([plan.status, plan.preparationStatus, plan.executionStatus].includes('loading')) {
+    return { status: 'blocked', reason: 'busy' }
+  }
+  if (plan.error || plan.status === 'error' || plan.preparationStatus === 'error') {
+    return { status: 'blocked', reason: 'source-error' }
+  }
+  const missingInputs = (policy.inputs ?? []).filter(({ key, required }) => {
+    const value = inputValues[key]
+    return required && (value === undefined || value === null ||
+      (typeof value === 'string' && value.trim() === '') ||
+      (Array.isArray(value) && value.length === 0))
+  })
+  const missingStep = missingInputs[0]?.step
+  if (missingStep) {
+    return {
+      status: 'needs-input',
+      step: missingStep,
+      inputKeys: missingInputs.filter(({ step }) => step === missingStep).map(({ key }) => key),
+    }
+  }
+  if (plan.preparationStatus !== 'ready') return { status: 'advance', action: 'prepare' }
+  if (plan.records.length === 0) return { status: 'complete' }
+  const reviewSteps = new Set([
+    ...(policy.reviewSteps ?? []),
+    ...optedInReviewSteps,
+    ...(policy.mode === 'interactive' ? ['review' as const] : []),
+  ])
+  for (const step of reviewSteps) {
+    if ((step === 'mapping' || step === 'overrides' || step === 'type-schema') &&
+      !completedReviewSteps.includes(step)) {
+      return { status: 'needs-input', step }
+    }
+  }
+  if (!objectTypeUuid) {
+    if (!policy.allowAutomaticTypeCreation) return { status: 'needs-input', step: 'type-schema' }
+    return canCreateType
+      ? { status: 'advance', action: 'create-type' }
+      : { status: 'blocked', reason: 'permission' }
+  }
+  if (!schema) return { status: 'needs-input', step: 'type-schema' }
+  const context = plan.validationContext
+  const validationByKey = new Map(plan.validationResults.map((result) =>
+    [importAllRecordKey(result.record), result]))
+  if (!context || context.objectTypeUuid !== objectTypeUuid ||
+    !isEqual(context.schema, schema) || !isEqual(context.records, plan.records) ||
+    validationByKey.size !== plan.records.length ||
+    !plan.records.every((record) => isEqual(validationByKey.get(importAllRecordKey(record))?.record, record))) {
+    return { status: 'advance', action: 'validate' }
+  }
+  if (plan.validationResults.some(({ isValid }) => !isValid)) {
+    return { status: 'blocked', reason: 'invalid-records' }
+  }
+  const reconciliationByKey = new Map(plan.reconciliations.map((result) =>
+    [importAllRecordKey(result.record), result]))
+  if (reconciliationByKey.size !== plan.records.length ||
+    !plan.records.every((record) => isEqual(reconciliationByKey.get(importAllRecordKey(record))?.record, record))) {
+    return { status: 'advance', action: 'reconcile' }
+  }
+  if (plan.reconciliations.some(({ status }) => status === 'ambiguous')) {
+    return { status: 'blocked', reason: 'ambiguous-matches' }
+  }
+  if (relationshipBlockers.length > 0) return { status: 'blocked', reason: 'relationships' }
+  if (plan.executionStatus === 'error' ||
+    plan.executionResults.some(({ status }) => status === 'failed' || status === 'blocked')) {
+    return { status: 'blocked', reason: 'execution-errors' }
+  }
+  const completedKeys = new Set(plan.executionResults.filter(({ status }) =>
+    status === 'imported' || status === 'ignored').map(({ recordKey }) => recordKey))
+  if (plan.records.every((record) => completedKeys.has(importAllRecordKey(record)))) {
+    return { status: 'complete' }
+  }
+  if ((!policy.defaultConflictAction || policy.defaultConflictAction !== plan.defaultConflictAction) && plan.reconciliations.some((result) =>
+    result.status === 'conflicting' && !plan.conflictActions[importAllRecordKey(result.record)])) {
+    reviewSteps.add('review')
+  }
+  for (const step of reviewSteps) {
+    if (!completedReviewSteps.includes(step)) return { status: 'needs-input', step }
+  }
+  return { status: 'advance', action: 'execute' }
+}
 
 const getRecordPathValue = (value: unknown, path: string): unknown =>
   path.split('.').reduce<unknown>((current, segment) => {
@@ -315,6 +473,44 @@ type ImportAllPersistence = {
   ) => Promise<IDocument | undefined>
 }
 
+const getRetryableImportAllRecordKeys = (
+  plan: ImportAllSourcePlan,
+  requestedKeys: ReadonlySet<string>,
+  allowFailed: boolean
+): Set<string> => {
+  const priorResults = new Map(plan.executionResults.map((result) => [result.recordKey, result]))
+  return new Set(
+    plan.records.flatMap((record) => {
+      const recordKey = importAllRecordKey(record)
+      const priorResult = priorResults.get(recordKey)
+      return requestedKeys.has(recordKey) &&
+        (!priorResult || (allowFailed && priorResult.status === 'failed'))
+        ? [recordKey]
+        : []
+    })
+  )
+}
+
+const mergeImportAllExecutionResults = (
+  plan: ImportAllSourcePlan,
+  updatedResults: ImportAllExecutionResult[]
+): ImportAllExecutionResult[] => {
+  const resultsByKey = new Map(plan.executionResults.map((result) => [result.recordKey, result]))
+  for (const result of updatedResults) resultsByKey.set(result.recordKey, result)
+  const orderedResults = plan.records.flatMap((record) => {
+    const result = resultsByKey.get(importAllRecordKey(record))
+    return result ? [result] : []
+  })
+  const recordKeys = new Set(plan.records.map(importAllRecordKey))
+  return [
+    ...orderedResults,
+    ...[...resultsByKey.values()].filter((result) => !recordKeys.has(result.recordKey)),
+  ]
+}
+
+const isExecutionAbort = (error: unknown): boolean =>
+  error instanceof Error && error.name === 'AbortError'
+
 export const executeImportAllSource = async ({
   plan,
   objectTypeUuid,
@@ -347,9 +543,11 @@ export const executeImportAllSource = async ({
     plan.validationResults.map((result) => [importAllRecordKey(result.record), result])
   )
   const results: ImportAllExecutionResult[] = []
+  const requestedKeys = recordKeys ?? new Set(plan.records.map(importAllRecordKey))
+  const retryableKeys = getRetryableImportAllRecordKeys(plan, requestedKeys, recordKeys !== undefined)
   const reconciliations = plan.reconciliations.filter((reconciliation) => {
     const recordKey = importAllRecordKey(reconciliation.record)
-    return !recordKeys || recordKeys.has(recordKey)
+    return retryableKeys.has(recordKey)
   })
   const total = reconciliations.length
   let completed = 0
@@ -425,6 +623,7 @@ export const executeImportAllSource = async ({
         const existing = await persistence.fetchBySlug(record.slug, objectTypeUuid, signal)
         if (existing)
           throw new Error(`Document "${record.slug}" already exists. Return to duplicate check.`)
+        signal.throwIfAborted()
         console.log('[Import All] about to POST document', {
           sourceId: plan.sourceId,
           recordKey,
@@ -460,6 +659,7 @@ export const executeImportAllSource = async ({
       }
       return { recordKey, action, status: 'imported', documentUuid: existing.uuid }
     } catch (error) {
+      if (isExecutionAbort(error)) throw error
       return {
         recordKey,
         action,
@@ -470,24 +670,186 @@ export const executeImportAllSource = async ({
   }
 
   for (let start = 0; start < reconciliations.length; start += Math.max(1, batchSize)) {
+    if (signal.aborted) break
     const batch = reconciliations.slice(start, start + Math.max(1, batchSize))
-    const batchResults = await Promise.all(
+    const batchResults = await Promise.allSettled(
       batch.map(async (reconciliation) => {
         const result = await executeReconciliation(reconciliation)
-        onProgress?.(++completed, total)
+        completed += 1
+        onProgress?.(completed, total)
         return result
       })
     )
-    results.push(...batchResults)
-    if (start + batch.length < reconciliations.length) await waitBetweenBatches()
+    let cancelled = false
+    for (const batchResult of batchResults) {
+      if (batchResult.status === 'fulfilled') {
+        results.push(batchResult.value)
+      } else if (isExecutionAbort(batchResult.reason)) {
+        cancelled = true
+      } else {
+        throw batchResult.reason
+      }
+    }
+    if (signal.aborted) cancelled = true
+    if (cancelled) break
+    if (start + batch.length < reconciliations.length) {
+      try {
+        await waitBetweenBatches()
+      } catch (error) {
+        if (!isExecutionAbort(error)) throw error
+        break
+      }
+    }
   }
 
   return {
     ...plan,
     executionStatus: 'ready',
-    executionCompleted: total,
+    executionCompleted: completed,
     executionTotal: total,
-    executionResults: results,
+    executionResults: mergeImportAllExecutionResults(plan, results),
+  }
+}
+
+type ImportAllPreparedSourceDecision =
+  | { status: 'paused'; readiness: ImportReadinessDecision; reason: 'readiness' }
+  | {
+    status: 'paused'
+    readiness: Extract<ImportReadinessDecision, { status: 'advance' }>
+    reason: 'unsupported-stage'
+    unsupportedAction: Exclude<Extract<ImportReadinessDecision, { status: 'advance' }>['action'], 'execute'>
+  }
+  | {
+    status: 'executed'
+    readiness: ImportReadinessDecision
+    cancelled?: boolean
+  }
+
+export const executePreparedImportAllSource = async ({
+  plan,
+  policy = {},
+  objectTypeUuid,
+  schema,
+  canWrite,
+  canCreateType,
+  inputValues,
+  optedInReviewSteps,
+  completedReviewSteps,
+  relationshipBlockers,
+  signal,
+  mergeStrategy,
+  persistence,
+  recordKeys,
+  batchSize,
+  delayMsBetweenBatches,
+  onProgress,
+  retryReconciliation,
+}: Omit<Parameters<typeof evaluateImportSourceReadiness>[0], 'plan' | 'policy' | 'objectTypeUuid'> &
+  Omit<Parameters<typeof executeImportAllSource>[0], 'plan' | 'objectTypeUuid'> & {
+    plan: ImportAllSourcePlan
+    policy?: ImportWorkflowPolicy
+    objectTypeUuid?: string
+    retryReconciliation?: { token: string; fetchExisting: ExistingDocumentFetcher }
+  }): Promise<{ plan: ImportAllSourcePlan; decision: ImportAllPreparedSourceDecision }> => {
+  let preparedPlan = policy.defaultConflictAction
+    ? { ...plan, defaultConflictAction: policy.defaultConflictAction }
+    : plan
+  const retryableKeys = recordKeys
+    ? getRetryableImportAllRecordKeys(preparedPlan, recordKeys, true)
+    : new Set<string>()
+  const readinessPlan = retryableKeys.size > 0
+    ? {
+      ...preparedPlan,
+      executionResults: preparedPlan.executionResults.filter(({ status }) => status !== 'failed'),
+    }
+    : preparedPlan
+  let readinessOptions = {
+    plan: readinessPlan,
+    policy,
+    objectTypeUuid,
+    schema,
+    canWrite,
+    canCreateType,
+    inputValues,
+    optedInReviewSteps,
+    completedReviewSteps,
+    relationshipBlockers,
+  }
+  let readiness = evaluateImportSourceReadiness(readinessOptions)
+
+  if (readiness.status !== 'advance') {
+    return { plan: preparedPlan, decision: { status: 'paused', readiness, reason: 'readiness' } }
+  }
+  if (readiness.action !== 'execute') {
+    return {
+      plan: preparedPlan,
+      decision: {
+        status: 'paused',
+        readiness,
+        reason: 'unsupported-stage',
+        unsupportedAction: readiness.action,
+      },
+    }
+  }
+
+  if (retryableKeys.size > 0) {
+    if (!retryReconciliation) {
+      return {
+        plan: preparedPlan,
+        decision: {
+          status: 'paused', reason: 'unsupported-stage', unsupportedAction: 'reconcile',
+          readiness: { status: 'advance', action: 'reconcile' },
+        },
+      }
+    }
+    try {
+      signal.throwIfAborted()
+      preparedPlan = await refreshImportAllSourceReconciliation({
+        plan: preparedPlan, recordKeys: retryableKeys, objectTypeUuid: objectTypeUuid!,
+        token: retryReconciliation.token, signal, fetchExisting: retryReconciliation.fetchExisting,
+      })
+      signal.throwIfAborted()
+    } catch (error) {
+      if (!isExecutionAbort(error)) throw error
+      return {
+        plan: preparedPlan,
+        decision: { status: 'executed', cancelled: true, readiness: evaluateImportSourceReadiness({ ...readinessOptions, plan: preparedPlan }) },
+      }
+    }
+    readinessOptions = {
+      ...readinessOptions,
+      plan: { ...preparedPlan, executionResults: preparedPlan.executionResults.filter(({ status }) => status !== 'failed') },
+    }
+    readiness = evaluateImportSourceReadiness(readinessOptions)
+    if (readiness.status !== 'advance') {
+      return { plan: preparedPlan, decision: { status: 'paused', readiness, reason: 'readiness' } }
+    }
+    if (readiness.action !== 'execute') {
+      return {
+        plan: preparedPlan,
+        decision: { status: 'paused', reason: 'unsupported-stage', unsupportedAction: readiness.action, readiness },
+      }
+    }
+  }
+
+  const executedPlan = await executeImportAllSource({
+    plan: preparedPlan,
+    objectTypeUuid: objectTypeUuid!,
+    signal,
+    mergeStrategy,
+    persistence,
+    recordKeys,
+    batchSize,
+    delayMsBetweenBatches,
+    onProgress,
+  })
+  return {
+    plan: executedPlan,
+    decision: {
+      status: 'executed',
+      readiness: evaluateImportSourceReadiness({ ...readinessOptions, plan: executedPlan }),
+      ...(executedPlan.executionCompleted < executedPlan.executionTotal ? { cancelled: true } : {}),
+    },
   }
 }
 
@@ -554,7 +916,8 @@ export const refreshImportAllSourceReconciliation = async ({
   signal: AbortSignal
   fetchExisting: ExistingDocumentFetcher
 }): Promise<ImportAllSourcePlan> => {
-  const records = plan.records.filter((record) => recordKeys.has(importAllRecordKey(record)))
+  const retryableKeys = getRetryableImportAllRecordKeys(plan, recordKeys, true)
+  const records = plan.records.filter((record) => retryableKeys.has(importAllRecordKey(record)))
   const existingDocuments =
     records.length > 0 ? await fetchExisting({ records, objectTypeUuid, token, signal }) : []
   const refreshed = reconcileImportRecords(records, existingDocuments)
@@ -587,6 +950,58 @@ export type ImportAllRecordValidator = (
   record: CanonicalImportRecord
 ) => { isValid: boolean; errors: string[] }
 
+export const fanOutCompositeImportCandidates = (
+  candidates: ImportCandidate[],
+  memberSourceIds: string[]
+): Record<string, ImportCandidate[]> =>
+  Object.fromEntries(
+    memberSourceIds.map((sourceId) => [
+      sourceId,
+      candidates.map((candidate) => ({
+        ...candidate,
+        provenance: { ...candidate.provenance, sourceId },
+      })),
+    ])
+  )
+
+export const loadCompositeImportRecords = async ({
+  adapter,
+  candidates,
+  signal,
+  batchSize = 10,
+  onProgress,
+}: {
+  adapter: ImportCompositeSourceAdapter
+  candidates: ImportCandidate[]
+  signal: AbortSignal
+  batchSize?: number
+  onProgress?: (completed: number, total: number) => void
+}): Promise<Record<string, CanonicalImportRecord[]>> => {
+  const recordsBySource = Object.fromEntries(
+    adapter.memberSourceIds.map((sourceId) => [sourceId, [] as CanonicalImportRecord[]])
+  )
+  let completed = 0
+  onProgress?.(0, candidates.length)
+  for (let start = 0; start < candidates.length; start += Math.max(1, batchSize)) {
+    if (signal.aborted) throw new DOMException('Preparation cancelled', 'AbortError')
+    const batch = candidates.slice(start, start + Math.max(1, batchSize))
+    const results = await Promise.all(
+      batch.map((candidate) => adapter.load({ candidate, signal }))
+    )
+    for (const records of results) {
+      for (const sourceId of adapter.memberSourceIds) {
+        const record = records[sourceId]
+        if (!record) throw new Error(`Composite source did not produce a record for ${sourceId}`)
+        recordsBySource[sourceId].push(record)
+      }
+    }
+    completed += batch.length
+    onProgress?.(completed, candidates.length)
+    await new Promise<void>((resolve) => setTimeout(resolve, 0))
+  }
+  return recordsBySource
+}
+
 export const prepareImportAllSource = async ({
   source,
   plan,
@@ -596,6 +1011,7 @@ export const prepareImportAllSource = async ({
   signal,
   validator,
   fetchExisting,
+  preloadedRecords,
   batchSize = 10,
   onProgress,
 }: {
@@ -607,42 +1023,46 @@ export const prepareImportAllSource = async ({
   signal: AbortSignal
   validator?: ImportAllRecordValidator
   fetchExisting: ExistingDocumentFetcher
+  preloadedRecords?: CanonicalImportRecord[]
   batchSize?: number
   onProgress?: (completed: number, total: number) => void
 }): Promise<ImportAllSourcePlan> => {
   try {
-    const loadResults: PromiseSettledResult<CanonicalImportRecord>[] = []
-    const total = plan.candidates.length
-    onProgress?.(0, total)
-    for (let index = 0; index < total; index += Math.max(1, batchSize)) {
-      const batch = plan.candidates.slice(index, index + Math.max(1, batchSize))
-      const results = await Promise.allSettled(
-        batch.map((candidate) =>
-          source.sourceAdapter.load({
-            candidate,
-            detailRoot: source.sourceAdapter.defaultDetailRoot,
-            signal,
-          })
+    let records = preloadedRecords
+    if (!records) {
+      const loadResults: PromiseSettledResult<CanonicalImportRecord>[] = []
+      const total = plan.candidates.length
+      onProgress?.(0, total)
+      for (let index = 0; index < total; index += Math.max(1, batchSize)) {
+        const batch = plan.candidates.slice(index, index + Math.max(1, batchSize))
+        const results = await Promise.allSettled(
+          batch.map((candidate) =>
+            source.sourceAdapter.load({
+              candidate,
+              detailRoot: source.sourceAdapter.defaultDetailRoot,
+              signal,
+            })
+          )
         )
-      )
-      loadResults.push(...results)
-      onProgress?.(loadResults.length, total)
-      await new Promise<void>((resolve) => setTimeout(resolve, 0))
-    }
-    if (signal.aborted) throw new DOMException('Preparation cancelled', 'AbortError')
+        loadResults.push(...results)
+        onProgress?.(loadResults.length, total)
+        await new Promise<void>((resolve) => setTimeout(resolve, 0))
+      }
+      if (signal.aborted) throw new DOMException('Preparation cancelled', 'AbortError')
 
-    const loadErrors = loadResults.filter(
-      (result): result is PromiseRejectedResult => result.status === 'rejected'
-    )
-    if (loadErrors.length > 0) {
-      throw new Error(
-        `${loadErrors.length} of ${plan.candidates.length} records could not be loaded: ${String(loadErrors[0].reason)}`
+      const loadErrors = loadResults.filter(
+        (result): result is PromiseRejectedResult => result.status === 'rejected'
+      )
+      if (loadErrors.length > 0) {
+        throw new Error(
+          `${loadErrors.length} of ${plan.candidates.length} records could not be loaded: ${String(loadErrors[0].reason)}`
+        )
+      }
+
+      records = loadResults.map(
+        (result) => (result as PromiseFulfilledResult<CanonicalImportRecord>).value
       )
     }
-
-    const records = loadResults.map(
-      (result) => (result as PromiseFulfilledResult<CanonicalImportRecord>).value
-    )
     const validationResults = records.map((record) => ({
       record,
       ...(schema && validator ? validator(schema, record) : { isValid: true, errors: [] }),
@@ -662,6 +1082,9 @@ export const prepareImportAllSource = async ({
       preparationTotal: records.length,
       records,
       validationResults,
+      validationContext: schema && validator
+        ? { schema: cloneDeep(schema), objectTypeUuid, records: cloneDeep(records) }
+        : undefined,
       reconciliations: objectTypeUuid
         ? reconcileImportRecords(validRecords, existingDocuments)
         : [],
@@ -676,10 +1099,264 @@ export const prepareImportAllSource = async ({
       preparationTotal: plan.candidates.length,
       records: [],
       validationResults: [],
+      validationContext: undefined,
       reconciliations: [],
       error: error instanceof Error ? error.message : String(error),
     }
   }
+}
+
+export type ImportAllPreparationDecision =
+  | { status: 'progressed'; readiness: ImportReadinessDecision }
+  | {
+    status: 'paused'
+    reason: 'readiness'
+    readiness: Exclude<ImportReadinessDecision, { status: 'advance' }>
+  }
+  | {
+    status: 'paused'
+    reason: 'unsupported-stage'
+    unsupportedAction: 'create-type' | 'validate' | 'reconcile' | 'execute'
+    readiness: Extract<ImportReadinessDecision, { status: 'advance' }>
+  }
+  | { status: 'paused'; reason: 'type-creation'; error?: string; cancelled?: boolean }
+
+export const progressImportAllSourcePreparation = async ({
+  source,
+  plan,
+  preloadedRecords,
+  policy = {},
+  objectTypeUuid,
+  schema,
+  canWrite,
+  canCreateType,
+  inputValues,
+  optedInReviewSteps,
+  completedReviewSteps = [],
+  relationshipBlockers,
+  token,
+  signal,
+  validator,
+  createTypeIfMissing,
+  fetchExisting,
+  batchSize,
+  onProgress,
+}: {
+  source: ImportAllPlanSource
+  plan: ImportAllSourcePlan
+  preloadedRecords?: CanonicalImportRecord[]
+  policy?: ImportWorkflowPolicy
+  objectTypeUuid?: string
+  schema?: JSONSchema6
+  canWrite: boolean
+  canCreateType?: boolean
+  inputValues?: Record<string, unknown>
+  optedInReviewSteps?: ImportReviewStep[]
+  completedReviewSteps?: ImportReviewStep[]
+  relationshipBlockers?: readonly string[]
+  token: string
+  signal: AbortSignal
+  validator?: ImportAllRecordValidator
+  createTypeIfMissing?: (options: {
+    source: ImportAllPlanSource
+    plan: ImportAllSourcePlan
+    schema?: JSONSchema6
+    token: string
+    signal: AbortSignal
+  }) => Promise<{ objectTypeUuid: string; schema: JSONSchema6 }>
+  fetchExisting: ExistingDocumentFetcher
+  batchSize?: number
+  onProgress?: (completed: number, total: number) => void
+}): Promise<{
+  plan: ImportAllSourcePlan
+  decision: ImportAllPreparationDecision
+  invalidatedReviewSteps: ImportReviewStep[]
+  completedReviewSteps: ImportReviewStep[]
+  objectTypeUuid?: string
+  schema?: JSONSchema6
+}> => {
+  let effectiveObjectTypeUuid = objectTypeUuid
+  let effectiveSchema = schema ?? source.sourceAdapter.schema
+  const incomingRecords = preloadedRecords ?? plan.records
+  const recordsChanged = plan.preparationStatus === 'ready' &&
+    (!isEqual(plan.records, incomingRecords) ||
+      (plan.validationContext !== undefined && !isEqual(plan.validationContext.records, incomingRecords)))
+  const typeSchemaChanged = plan.validationContext !== undefined &&
+    (plan.validationContext.objectTypeUuid !== effectiveObjectTypeUuid ||
+      !isEqual(plan.validationContext.schema, effectiveSchema))
+  const validationContextChanged = plan.validationContext !== undefined &&
+    (typeSchemaChanged || !isEqual(plan.validationContext.records, incomingRecords))
+  const invalidatedReviewSteps = [
+    ...(recordsChanged ? ['mapping', 'overrides', 'review', 'relationships'] as const : []),
+    ...(typeSchemaChanged ? ['type-schema', 'review', 'relationships'] as const : []),
+  ].filter((step, index, steps) => steps.indexOf(step) === index)
+  let currentCompletedReviewSteps = completedReviewSteps.filter(
+    (step) => !invalidatedReviewSteps.includes(step)
+  )
+  const evidenceChanged = recordsChanged || validationContextChanged
+  const currentPlan = evidenceChanged ? {
+    ...plan,
+    records: incomingRecords,
+    validationContext: undefined,
+    validationResults: [],
+    reconciliations: [],
+  } : plan
+  const readinessOptions = {
+    plan: currentPlan,
+    policy,
+    objectTypeUuid: effectiveObjectTypeUuid,
+    schema: effectiveSchema,
+    canWrite,
+    canCreateType,
+    inputValues,
+    optedInReviewSteps,
+    completedReviewSteps: currentCompletedReviewSteps,
+    relationshipBlockers,
+  }
+  let readiness = evaluateImportSourceReadiness(readinessOptions)
+  const result = (nextPlan: ImportAllSourcePlan, decision: ImportAllPreparationDecision) => ({
+    plan: nextPlan,
+    decision,
+    invalidatedReviewSteps,
+    completedReviewSteps: currentCompletedReviewSteps,
+    objectTypeUuid: effectiveObjectTypeUuid,
+    schema: effectiveSchema,
+  })
+  if (readiness.status !== 'advance') {
+    return result(currentPlan, { status: 'paused', reason: 'readiness', readiness })
+  }
+  const requestedAction = readiness.action
+  if (requestedAction === 'create-type' && createTypeIfMissing) {
+    if (signal.aborted) {
+      return result(currentPlan, { status: 'paused', reason: 'type-creation', cancelled: true })
+    }
+    try {
+      const created = await createTypeIfMissing({
+        source,
+        plan: currentPlan,
+        schema: effectiveSchema,
+        token,
+        signal,
+      })
+      if (!created.objectTypeUuid || !created.schema) {
+        throw new Error('Type creation did not return an object type and schema.')
+      }
+      effectiveObjectTypeUuid = created.objectTypeUuid
+      effectiveSchema = schema ?? source.sourceAdapter.schema ?? created.schema
+      const typeWasUpdated = objectTypeUuid !== effectiveObjectTypeUuid
+      const schemaWasUpdated = !isEqual(schema ?? source.sourceAdapter.schema, effectiveSchema)
+      const creationInvalidations = typeWasUpdated || schemaWasUpdated
+        ? ['type-schema', 'review', 'relationships'] as ImportReviewStep[]
+        : []
+      const returnedInvalidations = [...new Set([...invalidatedReviewSteps, ...creationInvalidations])]
+      const returnedCompletedReviewSteps = completedReviewSteps.filter(
+        (step) => !returnedInvalidations.includes(step)
+      )
+      if (signal.aborted) {
+        return {
+          ...result(currentPlan, { status: 'paused', reason: 'type-creation', cancelled: true }),
+          invalidatedReviewSteps: returnedInvalidations,
+          completedReviewSteps: returnedCompletedReviewSteps,
+        }
+      }
+      const nextReadiness = evaluateImportSourceReadiness({
+        ...readinessOptions,
+        objectTypeUuid: effectiveObjectTypeUuid,
+        schema: effectiveSchema,
+        completedReviewSteps: returnedCompletedReviewSteps,
+      })
+      return {
+        plan: currentPlan,
+        decision: nextReadiness.status === 'advance'
+          ? { status: 'progressed' as const, readiness: nextReadiness }
+          : { status: 'paused' as const, reason: 'readiness' as const, readiness: nextReadiness },
+        invalidatedReviewSteps: returnedInvalidations,
+        completedReviewSteps: returnedCompletedReviewSteps,
+        objectTypeUuid: effectiveObjectTypeUuid,
+        schema: effectiveSchema,
+      }
+    } catch (error) {
+      return result(currentPlan, signal.aborted
+        ? { status: 'paused', reason: 'type-creation', cancelled: true }
+        : {
+          status: 'paused',
+          reason: 'type-creation',
+          error: error instanceof Error ? error.message : String(error),
+        })
+    }
+  }
+  if (requestedAction === 'create-type' || requestedAction === 'execute') {
+    return result(currentPlan, {
+      status: 'paused',
+      reason: 'unsupported-stage',
+      unsupportedAction: requestedAction,
+      readiness: { status: 'advance', action: requestedAction },
+    })
+  }
+  if (requestedAction === 'validate' && !validator) {
+    return result(currentPlan, {
+      status: 'paused',
+      reason: 'unsupported-stage',
+      unsupportedAction: 'validate',
+      readiness: { status: 'advance', action: 'validate' },
+    })
+  }
+
+  let updatedPlan: ImportAllSourcePlan
+  if (requestedAction === 'reconcile' && !evidenceChanged) {
+    updatedPlan = await refreshImportAllSourceReconciliation({
+      plan: currentPlan,
+      recordKeys: new Set(currentPlan.records.map(importAllRecordKey)),
+      objectTypeUuid: objectTypeUuid!,
+      token,
+      signal,
+      fetchExisting,
+    })
+  } else {
+    updatedPlan = await prepareImportAllSource({
+      source,
+      plan: currentPlan,
+      preloadedRecords: requestedAction === 'prepare' ? preloadedRecords : incomingRecords,
+      schema: effectiveSchema,
+      objectTypeUuid: effectiveObjectTypeUuid,
+      token,
+      signal,
+      validator,
+      fetchExisting,
+      batchSize,
+      onProgress,
+    })
+  }
+
+  if (plan.validationContext && !isEqual(plan.validationContext.records, updatedPlan.records)) {
+    for (const step of ['mapping', 'overrides', 'review', 'relationships'] as const) {
+      if (!invalidatedReviewSteps.includes(step)) invalidatedReviewSteps.push(step)
+    }
+    currentCompletedReviewSteps = currentCompletedReviewSteps.filter(
+      (step) => !invalidatedReviewSteps.includes(step)
+    )
+  }
+  readiness = evaluateImportSourceReadiness({
+    ...readinessOptions,
+    plan: updatedPlan,
+    objectTypeUuid: effectiveObjectTypeUuid,
+    schema: effectiveSchema,
+    completedReviewSteps: currentCompletedReviewSteps,
+  })
+  if (readiness.status === 'advance' &&
+    (readiness.action === 'create-type' || readiness.action === 'validate' ||
+      readiness.action === 'reconcile' || readiness.action === 'execute')) {
+    return result(updatedPlan, {
+      status: 'paused',
+      reason: 'unsupported-stage',
+      unsupportedAction: readiness.action,
+      readiness,
+    })
+  }
+  if (readiness.status !== 'advance') {
+    return result(updatedPlan, { status: 'paused', reason: 'readiness', readiness })
+  }
+  return result(updatedPlan, { status: 'progressed', readiness })
 }
 
 export const summarizeImportAllPlan = (plans: ImportAllSourcePlan[]) => ({

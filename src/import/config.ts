@@ -11,11 +11,13 @@ import {
 import type { IImportPageProps } from './pages/import_records_page_impl'
 import type { JSONSchema6 } from 'json-schema'
 import modlSchema from '../formsAndSchemaJSON/modlSchema.json'
+import erddapVariableMetadataSchema from './schemas/erddap_variable_metadata.schema.json'
 import oikosLayerSchema from './schemas/oikos_layer.schema.json'
 import oikosLayerGroupSchema from './schemas/oikos_layer_group.schema.json'
 import oikosModuleSchema from './schemas/oikos_module.schema.json'
 import { createRemoteImportAdapter } from './adapters'
 import {
+  createERDDAPCompositeSourceAdapter,
   createERDDAPMetadataAdapter,
   createERDDAPSchemaTargetedAdapter,
   createERDDAPVariableMetadataAdapter,
@@ -48,6 +50,7 @@ import {
 const importConfigs: IImportPageProps[] = [
   {
     sourceAdapter: createERDDAPMetadataAdapter(),
+    includeInImportAll: false,
     label: 'ERDDAP Dataset',
     pluralLabel: 'ERDDAP Datasets',
     type: 'erddap_metadata',
@@ -72,8 +75,12 @@ const importConfigs: IImportPageProps[] = [
         },
       ],
     }),
-    label: 'ERDDAP MODL Dataset',
-    pluralLabel: 'ERDDAP MODL Datasets',
+    includeInImportAll: false,
+    compositeSourceAdapter: createERDDAPCompositeSourceAdapter({
+      schema: modlSchema as unknown as JSONSchema6,
+    }),
+    label: 'ERDDAP MODL Dataset and Variables',
+    pluralLabel: 'ERDDAP MODL Dataset and Variable Metadata',
     type: 'modl',
     objectSchemaSlug: 'modl',
     icon: Grid2X2,
@@ -83,7 +90,11 @@ const importConfigs: IImportPageProps[] = [
     ],
   },
   {
-    sourceAdapter: createERDDAPVariableMetadataAdapter(),
+    sourceAdapter: createERDDAPVariableMetadataAdapter(
+      'erddap_modl_variable_metadata',
+      erddapVariableMetadataSchema as unknown as JSONSchema6
+    ),
+    includeInImportAll: false,
     label: 'ERDDAP MODL Variable Metadata',
     pluralLabel: 'ERDDAP MODL Variable Metadata',
     type: 'modl_variable_metadata',

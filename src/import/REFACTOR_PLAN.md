@@ -35,13 +35,18 @@ The policy/readiness foundation is implemented:
   readiness evaluator does not authorize automatic writes from it.
 - Automatic type creation requires both policy permission and creation permission.
 - Opted-in mapping, override, and schema reviews pause before dependent work.
-- Latest verification: 21 relationship tests and 168 selected import regression tests,
+- Latest verification: 21 relationship tests and 178 selected import regression tests,
   TypeScript, touched-file lint, and whitespace checks passed. Authenticated UI
   error display and retry worked per user report; broader checks remain pending.
 
 The prepared execution helper and preparation helper use this evaluator.
 Document-source Import All preparation and execution/retry now call the shared
-helpers. Mode UI integration remains pending. The evaluator's `complete` result
+helpers. Import All now pilots Simplified/Interactive mode selection: Interactive
+preserves explicit stage actions, while Simplified advances using returned plan
+snapshots and stops for configured reviews, required inputs, errors, or missing-type
+setup. Missing-type creation remains explicit. File workflow integration, extra
+opt-in review/input panels, and complete composite/array UI parity remain pending.
+The evaluator's `complete` result
 means source documents are complete, not that session relationships have completed.
 Consult the TODO/handoff for current verification totals.
 
@@ -76,10 +81,11 @@ fetches, rejects production mode, and is excluded from the normal production bui
 Production authentication remains unchanged.
 
 Use `npm run dev:import-test` and `http://127.0.0.1:4423/import-test.html` for the
-fixture screen; `npm test -- src/import/pages/all.import-test.test.tsx` runs seven
+fixture screen; `npm test -- src/import/pages/all.import-test.test.tsx` runs 17
 automated component tests. They cover preparation/type creation, document import,
 error display/link retry, discovery/link cancellation, validation/ambiguity blockers,
-failed-only document retry, and the ERDDAP preparation preview. Retry checks prove
+failed-only document retry in both modes, Simplified progression/pauses/cancellation,
+and the ERDDAP preparation preview. Retry checks prove
 fresh reconciliation precedes the retry write, successful documents remain intact,
 and a subsequent Execute action completes links without rewriting documents.
 Browser fixture verification completed type creation/import/retry without login.

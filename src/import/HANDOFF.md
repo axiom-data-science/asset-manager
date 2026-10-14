@@ -6,6 +6,33 @@ The import workflow now uses source-neutral adapters and source-scoped sessions.
 
 The implementation plan and remaining work are tracked in `src/import/TODO.md`.
 
+## Import All mode pilot (2026-10-13)
+
+- Import All now has a Simplified/Interactive selector. Interactive is the default,
+	preserving existing Discover selected, Prepare review, and Execute import actions.
+	Simplified uses Import to advance through discovery/preparation, guarded documents,
+	and links; pauses require correction or explicit review/type-setup actions.
+- Preparation/discovery return plan snapshots used by the next stage, rather than
+	reading stale rendered state. Context refresh starts with preparation marked busy
+	and cannot continue after cancellation or operation replacement. New operations
+	own a generation; cancellation lets the current operation retain settled and
+	unattempted link results so retry remains available.
+- Configured review steps have explicit acknowledgment checkboxes. The implicit
+	Interactive final review is acknowledged by Execute; required inputs are never
+	satisfied by a review checkbox. Mode changes clear review acknowledgments.
+- Missing types still require Create missing types or existing setup actions. Then
+	Import resumes without another Prepare click. This pilot does not grant automatic
+	type-creation authority, add arbitrary mapping editors, or complete file integration.
+- Verified: 178 selected import tests and 17 fixture component tests, TypeScript,
+	behavior-file lint, production build, and auth-free browser DOM smoke reaching
+	three documents/two links/zero errors. Failed-document retry is tested in both modes;
+	reviews, required inputs, invalid/ambiguous data, eligibility, and cancellation are
+	covered. The individual-import page has an unchanged baseline set-state-in-effect
+	lint error; only its policy type declaration changed in this slice.
+- Visual/authenticated UI checks, full CSV/XLSX/composite/array UI parity, optional
+	additional review/input panels, and ERDDAP interactive mapping remain pending.
+	Keep ERDDAP's separate read-only preview until interactive UI testing needs it.
+
 ## Blocker and document-retry UI tests (2026-10-13)
 
 - Three new real ImportAllView component tests cover schema-invalid records,

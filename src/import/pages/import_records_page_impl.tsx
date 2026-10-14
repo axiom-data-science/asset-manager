@@ -19,6 +19,7 @@ import type {
   ImportCandidate,
   ImportCompositeSourceAdapter,
   ImportSourceAdapter,
+  ImportWorkflowPolicy,
 } from '@/import/types'
 import SelectObjectTypeForImport from './select_object_type_for_import/index.tsx'
 import { SelectObjectTypeForImportTab } from './select_object_type_for_import/index.tsx'
@@ -216,6 +217,7 @@ const RemoteSourceImport = ({
 
 export type IImportPageProps = {
   type: string
+  workflowPolicy?: ImportWorkflowPolicy
   includeInImportAll?: boolean
   objectTypeSlug?: string
   objectSchemaSlug?: string

@@ -32,7 +32,10 @@ describe('Import All fixture UI', () => {
         }
     })
 
-    const mountFixture = (options: Parameters<typeof createImportAllFixtureRuntime>[0] = {}) => {
+    const mountFixture = (
+        options: Parameters<typeof createImportAllFixtureRuntime>[0] = {},
+        canWrite = true
+    ) => {
         const fixture = createImportAllFixtureRuntime(options)
         const store = createStore()
         store.set(contextStateAtom, fixture.makeContextState())
@@ -50,7 +53,7 @@ describe('Import All fixture UI', () => {
                         pageTitle="Import All fixture"
                         configuredSourceOverrides={fixture.sources}
                         token=""
-                        canWrite
+                        canWrite={canWrite}
                         runtime={fixture.runtime}
                         includeUploadedSources={false}
                         allowManualTypeSetup={false}
@@ -60,6 +63,134 @@ describe('Import All fixture UI', () => {
         )
         return { fixture, user }
     }
+
+    it('imports documents and links from one Simplified action', async () => {
+        const { fixture, user } = mountFixture()
+
+        await user.click(screen.getByRole('radio', { name: 'Simplified' }))
+        await user.click(screen.getByRole('button', { name: 'Import' }))
+
+        await waitFor(() => {
+            expect(fixture.documents).toHaveLength(3)
+            expect(fixture.relationships).toHaveLength(2)
+        })
+        expect(fixture.portCalls.postDocument).toBe(3)
+        expect(fixture.portCalls.postRelationship).toBe(2)
+    })
+
+    it('keeps Interactive as the default and waits for explicit execution', async () => {
+        const { fixture, user } = mountFixture()
+
+        expect((screen.getByRole('radio', { name: 'Interactive' }) as HTMLInputElement).checked).toBe(true)
+        await user.click(screen.getByRole('button', { name: 'Discover selected' }))
+        await user.click(await screen.findByRole('button', { name: 'Prepare review' }))
+
+        expect(fixture.documents).toHaveLength(0)
+        expect(fixture.relationships).toHaveLength(0)
+        expect(fixture.portCalls.postDocument).toBe(0)
+        await user.click(await screen.findByRole('button', { name: 'Execute import' }))
+        await waitFor(() => {
+            expect(fixture.documents).toHaveLength(3)
+            expect(fixture.relationships).toHaveLength(2)
+        })
+    })
+
+    it('pauses Simplified mode for configured reviews until acknowledged', async () => {
+        const { fixture, user } = mountFixture()
+        fixture.sources[1].workflowPolicy = { reviewSteps: ['mapping'] }
+
+        await user.click(screen.getByRole('radio', { name: 'Simplified' }))
+        expect((screen.getByRole('radio', { name: 'Simplified' }) as HTMLInputElement).checked).toBe(true)
+        await user.click(screen.getByRole('button', { name: 'Import' }))
+
+        expect(await screen.findByText(/Complete mapping before executing/)).toBeTruthy()
+        expect(fixture.documents).toHaveLength(0)
+        await user.click(screen.getByRole('checkbox', { name: /Confirm mapping review/ }))
+        expect((screen.getByRole('radio', { name: 'Simplified' }) as HTMLInputElement).checked).toBe(true)
+        await user.click(screen.getByRole('button', { name: 'Import' }))
+
+        await waitFor(() => {
+            expect(fixture.documents).toHaveLength(3)
+            expect(fixture.relationships).toHaveLength(2)
+        })
+    })
+
+    it('does not skip configured required inputs in Simplified mode', async () => {
+        const { fixture, user } = mountFixture()
+        fixture.sources[1].workflowPolicy = {
+            inputs: [{ key: 'required-code', label: 'Required code', step: 'mapping', required: true }],
+        }
+
+        await user.click(screen.getByRole('radio', { name: 'Simplified' }))
+        await user.click(screen.getByRole('button', { name: 'Import' }))
+
+        expect(await screen.findByText(/Complete mapping before executing: required-code/)).toBeTruthy()
+        expect(fixture.documents).toHaveLength(0)
+        expect(fixture.relationships).toHaveLength(0)
+        expect(fixture.portCalls.postDocument).toBe(0)
+    })
+
+    it('pauses Simplified mode for an unavailable type instead of creating it implicitly', async () => {
+        const { fixture, user } = mountFixture({ omitChildType: true })
+
+        await user.click(screen.getByRole('radio', { name: 'Simplified' }))
+        await user.click(screen.getByRole('button', { name: 'Import' }))
+
+        expect(await screen.findByText(/Complete type-schema before executing/)).toBeTruthy()
+        expect(screen.getByRole('button', { name: 'Create missing types' })).toBeTruthy()
+        expect(fixture.portCalls.createObjectType).toBe(0)
+        expect(fixture.documents).toHaveLength(0)
+        expect(fixture.portCalls.postDocument).toBe(0)
+        await user.click(screen.getByRole('button', { name: 'Create missing types' }))
+        await waitFor(() => expect(fixture.portCalls.contextReload).toBe(1))
+        await user.click(screen.getByRole('button', { name: 'Import' }))
+        await waitFor(() => {
+            expect(fixture.documents).toHaveLength(3)
+            expect(fixture.relationships).toHaveLength(2)
+        })
+        expect(fixture.portCalls.createObjectType).toBe(1)
+    })
+
+    it('blocks Simplified writes for invalid and ambiguous plans', async () => {
+        const invalid = mountFixture()
+        const adapter = invalid.fixture.sources[1].sourceAdapter
+        const load = adapter.load
+        adapter.load = async (input) => {
+            const record = await load(input)
+            return record.provenance.externalId === 'child-1'
+                ? { ...record, data: { parentCode: 'P-1', value: 42 } }
+                : record
+        }
+        await invalid.user.click(screen.getByRole('radio', { name: 'Simplified' }))
+        await invalid.user.click(screen.getByRole('button', { name: 'Import' }))
+        expect(await screen.findByText(/Correct or exclude invalid records/)).toBeTruthy()
+        expect(invalid.fixture.portCalls.postDocument).toBe(0)
+        expect(invalid.fixture.portCalls.postRelationship).toBe(0)
+        expect(invalid.fixture.documents).toHaveLength(0)
+        expect(invalid.fixture.relationships).toHaveLength(0)
+    })
+
+    it('blocks Simplified writes for ambiguous existing-document matches', async () => {
+        const { fixture, user } = mountFixture({ seedAmbiguousChildMatch: true })
+
+        await user.click(screen.getByRole('radio', { name: 'Simplified' }))
+        await user.click(screen.getByRole('button', { name: 'Import' }))
+
+        expect(await screen.findByText(/Resolve ambiguous document matches/)).toBeTruthy()
+        expect(fixture.documents).toHaveLength(0)
+        expect(fixture.relationships).toHaveLength(0)
+        expect(fixture.portCalls.postDocument).toBe(0)
+        expect(fixture.portCalls.postRelationship).toBe(0)
+    })
+
+    it('disables Simplified import without write eligibility', async () => {
+        const { fixture, user } = mountFixture({}, false)
+
+        await user.click(screen.getByRole('radio', { name: 'Simplified' }))
+        expect((screen.getByRole('button', { name: 'Import' }) as HTMLButtonElement).disabled).toBe(true)
+        expect(fixture.portCalls.postDocument).toBe(0)
+        expect(fixture.portCalls.postRelationship).toBe(0)
+    })
 
     it('blocks all writes when a discovered record fails schema validation', async () => {
         const { fixture, user } = mountFixture()
@@ -110,12 +241,17 @@ describe('Import All fixture UI', () => {
         expect(fixture.portCalls.postRelationship).toBe(0)
     })
 
-    it('retries only a failed document after fresh reconciliation and then completes links', async () => {
+    it.each(['interactive', 'simplified'] as const)('retries only a failed document after fresh reconciliation and then completes links (%s)', async (mode) => {
         const { fixture, user } = mountFixture({ failDocumentSlugOnce: 'fixture-child-1' })
 
-        await user.click(screen.getByRole('button', { name: 'Discover selected' }))
-        await user.click(await screen.findByRole('button', { name: 'Prepare review' }))
-        await user.click(await screen.findByRole('button', { name: 'Execute import' }))
+        if (mode === 'simplified') {
+            await user.click(screen.getByRole('radio', { name: 'Simplified' }))
+            await user.click(screen.getByRole('button', { name: 'Import' }))
+        } else {
+            await user.click(screen.getByRole('button', { name: 'Discover selected' }))
+            await user.click(await screen.findByRole('button', { name: 'Prepare review' }))
+            await user.click(await screen.findByRole('button', { name: 'Execute import' }))
+        }
 
         await waitFor(() => {
             expect(fixture.documents).toHaveLength(2)
@@ -163,7 +299,7 @@ describe('Import All fixture UI', () => {
         expect(fixture.portCalls.patchDocument).toBe(0)
         expect(fixture.portCalls.mergeImportDocumentViaRpc).toBe(0)
 
-        await user.click(screen.getByRole('button', { name: 'Execute import' }))
+        await user.click(screen.getByRole('button', { name: mode === 'simplified' ? 'Import' : 'Execute import' }))
         await waitFor(() => {
             expect(fixture.relationships).toHaveLength(2)
             expect(screen.getByRole('button', { name: 'Errors (0)' })).toBeTruthy()
@@ -257,6 +393,25 @@ describe('Import All fixture UI', () => {
         await user.click(screen.getByRole('button', { name: 'Discover selected' }))
         expect(await screen.findByRole('button', { name: 'Prepare review' })).toBeTruthy()
         expect(fixture.documents).toHaveLength(0)
+    })
+
+    it('cancels and resumes the Simplified one-action flow without losing its mode', async () => {
+        const { fixture, user } = mountFixture()
+        fixture.holdDiscovery()
+
+        await user.click(screen.getByRole('radio', { name: 'Simplified' }))
+        await user.click(screen.getByRole('button', { name: 'Import' }))
+        await user.click(await screen.findByRole('button', { name: 'Cancel' }))
+        await waitFor(() => {
+            expect(screen.getByRole('button', { name: 'Import' })).toBeTruthy()
+        })
+
+        fixture.releaseDiscovery()
+        await user.click(screen.getByRole('button', { name: 'Import' }))
+        await waitFor(() => {
+            expect(fixture.documents).toHaveLength(3)
+            expect(fixture.relationships).toHaveLength(2)
+        })
     })
 
     it('discovers and prepares real ERDDAP composite records with typed schema evidence and no auth', async () => {

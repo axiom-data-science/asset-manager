@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { Check, CircleAlert, FileSpreadsheet, LoaderCircle, Search, ShieldCheck, Square, X } from 'lucide-react'
 import { Checkbox, Input, Tabs } from '@axdspub/axiom-ui-utilities'
 import { schemaToFormUtils, type IFormValues } from '@axdspub/axiom-ui-forms'
@@ -6,13 +6,19 @@ import { Button } from '@/components/ui/button'
 import contextStateAtom from '@/state/contextStateAtom'
 import { useAtom } from 'jotai'
 import importConfigs from '../config'
-import type { CanonicalImportRecord, ImportReviewStep, ImportSourceAdapter } from '../types'
+import type {
+  CanonicalImportRecord,
+  ImportReviewStep,
+  ImportSourceAdapter,
+  ImportWorkflowMode,
+} from '../types'
 import type { IImportPageProps } from './import_records_page_impl'
 import {
   createImportAllSourcePlan,
   collectImportDocumentUuids,
   collectImportAllErrors,
   discoverImportAllSource,
+  evaluateImportSourceReadiness,
   executePreparedImportAllSource,
   fanOutCompositeImportCandidates,
   formatUnmatchedArrayRowsError,
@@ -361,6 +367,9 @@ export const ImportAllView = ({
     [allSources]
   )
   const [plans, setPlans] = useState(() => initialPlans(allSources))
+  const [workflowMode, setWorkflowMode] = useState<ImportWorkflowMode>('interactive')
+  const [readinessPauses, setReadinessPauses] = useState<Record<string, string>>({})
+  const [reviewAcknowledgmentVersion, setReviewAcknowledgmentVersion] = useState(0)
   useEffect(() => {
     setPlans((current) =>
       Object.fromEntries(
@@ -401,24 +410,19 @@ export const ImportAllView = ({
 
   const planList = useMemo(() => Object.values(plans), [plans])
   const summary = useMemo(() => summarizeImportAllPlan(planList), [planList])
-  const relationshipRules = useMemo(
-    () =>
-      planList
-        .filter(({ enabled }) => enabled)
-        .flatMap(({ sourceId }) => sourcesById[sourceId]?.sourceAdapter.relationshipRules ?? []),
-    [planList]
-  )
-  const relationshipPlans = useMemo(
-    () =>
-      planImportRelationships({
+  const buildRelationshipPlans = useCallback((sourcePlans: ImportAllSourcePlan[]) => {
+    const rules = sourcePlans
+      .filter(({ enabled }) => enabled)
+      .flatMap(({ sourceId }) => sourcesById[sourceId]?.sourceAdapter.relationshipRules ?? [])
+    return planImportRelationships({
         parentObjectTypes: new Map(
           Object.values(context.object_type_by_slug).map((objectType) => [
             objectType.uuid,
             objectType,
           ])
         ),
-        relationshipRules,
-        candidates: planList.flatMap((plan) => {
+        relationshipRules: rules,
+        candidates: sourcePlans.flatMap((plan) => {
           const objectType = context.object_type_by_slug[plan.type]
           return objectType
             ? plan.records.map((record) => {
@@ -462,8 +466,11 @@ export const ImportAllView = ({
             })
             : []
         }),
-      }),
-    [context.object_type_by_slug, planList, relationshipRules]
+      })
+  }, [context.object_type_by_slug, sourcesById])
+  const relationshipPlans = useMemo(
+    () => buildRelationshipPlans(planList),
+    [buildRelationshipPlans, planList]
   )
   const importErrors = useMemo(
     () =>
@@ -522,18 +529,62 @@ export const ImportAllView = ({
 
   useEffect(() => {
     if (isImportActive) return
+    if (Object.keys(readinessPauses).length > 0) {
+      setActiveWizardStep('review')
+      return
+    }
     if (reviewReady && (!reviewHasIssues || hasExecutionAttempts)) {
       setActiveWizardStep('import')
     } else if (discoveryReady) {
       setActiveWizardStep('review')
     }
-  }, [discoveryReady, hasExecutionAttempts, isImportActive, reviewHasIssues, reviewReady])
+  }, [discoveryReady, hasExecutionAttempts, isImportActive, readinessPauses, reviewHasIssues, reviewReady])
 
   const updatePlan = (sourceId: string, update: Partial<ImportAllSourcePlan>) => {
     setPlans((current) => ({
       ...current,
       [sourceId]: { ...current[sourceId], ...update },
     }))
+  }
+
+  const policyForSource = (source: ImportAllPlanSource) => ({
+    ...(source.workflowPolicy ?? {}),
+    mode: workflowMode,
+  })
+
+  const isImplicitInteractiveReview = (
+    readiness: Parameters<typeof importAllReadinessMessage>[0],
+    source: ImportAllPlanSource | undefined
+  ) => workflowMode === 'interactive' &&
+    readiness.status === 'needs-input' && readiness.step === 'review' &&
+    !readiness.inputKeys?.length && !source?.workflowPolicy?.reviewSteps?.includes('review')
+
+  const setReviewAcknowledged = (
+    sourceId: string,
+    step: ImportReviewStep,
+    acknowledged: boolean
+  ) => {
+    const completed = new Set(completedPreparationReviewsRef.current[sourceId] ?? [])
+    if (acknowledged) completed.add(step)
+    else completed.delete(step)
+    completedPreparationReviewsRef.current[sourceId] = [...completed]
+    setReadinessPauses((current) => {
+      const next = { ...current }
+      delete next[sourceId]
+      return next
+    })
+    setReviewAcknowledgmentVersion((version) => version + 1)
+  }
+
+  const changeWorkflowMode = (mode: ImportWorkflowMode) => {
+    if (mode === workflowMode || isImportActive) return
+    operationGenerationRef.current += 1
+    controllerRef.current?.abort()
+    controllerRef.current = null
+    completedPreparationReviewsRef.current = {}
+    setReadinessPauses({})
+    setReviewAcknowledgmentVersion((version) => version + 1)
+    setWorkflowMode(mode)
   }
 
   const createMissingTypes = async (
@@ -571,7 +622,7 @@ export const ImportAllView = ({
           signal: controller.signal,
           validator: validateRecord,
           fetchExisting: runtime.fetchExistingImportDocuments,
-          policy: { mode: 'interactive', allowAutomaticTypeCreation: false },
+          policy: policyForSource(source as ImportAllPlanSource),
           canWrite,
           canCreateType: false,
           completedReviewSteps: completedPreparationReviewsRef.current[plan.sourceId] ?? [],
@@ -579,6 +630,16 @@ export const ImportAllView = ({
         if (controller.signal.aborted || operationGenerationRef.current !== operationGeneration) return false
         completedPreparationReviewsRef.current[plan.sourceId] = progression.completedReviewSteps
         updatePlan(plan.sourceId, progression.plan)
+        setReadinessPauses((current) => {
+          const next = { ...current }
+          delete next[plan.sourceId]
+          if (progression.decision.status === 'paused' && progression.decision.reason === 'readiness' &&
+            !isImplicitInteractiveReview(progression.decision.readiness, source as ImportAllPlanSource)) {
+            const message = importAllReadinessMessage(progression.decision.readiness)
+            if (message) next[plan.sourceId] = message
+          }
+          return next
+        })
         if (progression.plan.preparationStatus !== 'ready') {
           throw new Error(progression.plan.error ?? 'Type setup requires additional input before preparation can finish.')
         }
@@ -683,9 +744,11 @@ export const ImportAllView = ({
     }
   }
 
-  const discoverSelected = async () => {
+  const discoverSelected = async (
+    planSnapshot = plans
+  ): Promise<Record<string, ImportAllSourcePlan> | undefined> => {
     setActiveWizardStep('discover')
-    operationGenerationRef.current += 1
+    const operationGeneration = ++operationGenerationRef.current
     controllerRef.current?.abort()
     const controller = new AbortController()
     controllerRef.current = controller
@@ -693,7 +756,10 @@ export const ImportAllView = ({
     setRelationshipResults([])
     setRelationshipProgress({ completed: 0, total: 0 })
     relationshipRetryRef.current = null
-    const selected = Object.values(plans).filter(({ enabled }) => enabled)
+    completedPreparationReviewsRef.current = {}
+    setReadinessPauses({})
+    setReviewAcknowledgmentVersion((version) => version + 1)
+    const selected = Object.values(planSnapshot).filter(({ enabled }) => enabled)
     const selectedIds = new Set(selected.map(({ sourceId }) => sourceId))
     const selectedCompositeGroups = compositeSourceGroups.filter((source) =>
       source.compositeSourceAdapter!.memberSourceIds.some((sourceId) => selectedIds.has(sourceId))
@@ -702,26 +768,25 @@ export const ImportAllView = ({
       selectedCompositeGroups.flatMap((source) => source.compositeSourceAdapter!.memberSourceIds)
     )
     const independentSources = selected.filter(({ sourceId }) => !compositeMemberIds.has(sourceId))
-
-    setPlans((current) =>
-      Object.fromEntries(
-        Object.entries(current).map(([sourceId, plan]) => [
-          sourceId,
-          plan.enabled
-            ? {
-              ...plan,
-              status: 'loading',
-              preparationStatus: 'idle',
-              candidates: [],
-              records: [],
-              validationResults: [],
-              reconciliations: [],
-              error: undefined,
-            }
-            : plan,
-        ])
-      )
+    const loadingPlans = Object.fromEntries(
+      Object.entries(planSnapshot).map(([sourceId, plan]) => [
+        sourceId,
+        plan.enabled
+          ? {
+            ...plan,
+            status: 'loading' as const,
+            preparationStatus: 'idle' as const,
+            candidates: [],
+            records: [],
+            validationResults: [],
+            reconciliations: [],
+            error: undefined,
+          }
+          : plan,
+      ])
     )
+    setPlans(loadingPlans)
+    const discoveredPlans: Record<string, ImportAllSourcePlan> = {}
 
     await Promise.all([
       ...independentSources.map(async (plan) => {
@@ -730,25 +795,28 @@ export const ImportAllView = ({
         try {
           const result = await discoverImportAllSource({
             source: source as ImportAllPlanSource,
-            plan,
+            plan: loadingPlans[plan.sourceId],
             limit: loadAllRecords ? undefined : recordLimit,
             signal: controller.signal,
           })
-          if (!controller.signal.aborted) updatePlan(plan.sourceId, result)
+          if (!controller.signal.aborted && operationGenerationRef.current === operationGeneration) {
+            discoveredPlans[plan.sourceId] = result
+          }
         } catch {
-          if (!controller.signal.aborted) {
-            updatePlan(plan.sourceId, {
+          if (!controller.signal.aborted && operationGenerationRef.current === operationGeneration) {
+            discoveredPlans[plan.sourceId] = {
+              ...loadingPlans[plan.sourceId],
               status: 'error',
               candidates: [],
               error: 'Discovery was cancelled before this source completed.',
-            })
+            }
           }
         }
       }),
       ...selectedCompositeGroups.map(async (source) => {
         const compositeAdapter = source.compositeSourceAdapter!
         const sourceIds = compositeAdapter.memberSourceIds
-        const anchorPlan = plans[sourceIds[0]]
+        const anchorPlan = planSnapshot[sourceIds[0]]
         if (!anchorPlan) return
         try {
           const discovered = await compositeAdapter.discover({
@@ -760,7 +828,8 @@ export const ImportAllView = ({
             : discovered.slice(0, Math.max(0, recordLimit))
           const candidatesBySource = fanOutCompositeImportCandidates(candidates, sourceIds)
           for (const sourceId of sourceIds) {
-            updatePlan(sourceId, {
+            discoveredPlans[sourceId] = {
+              ...loadingPlans[sourceId],
               status: 'ready',
               preparationStatus: 'idle',
               candidates: candidatesBySource[sourceId],
@@ -768,12 +837,13 @@ export const ImportAllView = ({
               validationResults: [],
               reconciliations: [],
               error: undefined,
-            })
+            }
           }
         } catch (error) {
-          if (controller.signal.aborted) return
+          if (controller.signal.aborted || operationGenerationRef.current !== operationGeneration) return
           for (const sourceId of sourceIds) {
-            updatePlan(sourceId, {
+            discoveredPlans[sourceId] = {
+              ...loadingPlans[sourceId],
               status: 'error',
               preparationStatus: 'idle',
               candidates: [],
@@ -781,18 +851,25 @@ export const ImportAllView = ({
               validationResults: [],
               reconciliations: [],
               error: error instanceof Error ? error.message : String(error),
-            })
+            }
           }
         }
       }),
     ])
 
+    if (controller.signal.aborted || operationGenerationRef.current !== operationGeneration) return undefined
+    const nextPlans = { ...loadingPlans, ...discoveredPlans }
+    setPlans(nextPlans)
     if (controllerRef.current === controller) controllerRef.current = null
+    return nextPlans
   }
 
   const cancelDiscovery = () => {
     controllerRef.current?.abort()
     controllerRef.current = null
+    setIsPersistingRelationships(false)
+    setIsCreatingMissingTypes(false)
+    if (hasExecutionAttempts) setActiveWizardStep('import')
     setPlans((current) =>
       Object.fromEntries(
         Object.entries(current).map(([sourceId, plan]) => [
@@ -812,7 +889,9 @@ export const ImportAllView = ({
     )
   }
 
-  const prepareSelected = async () => {
+  const prepareSelected = async (
+    planSnapshot = plans
+  ): Promise<Record<string, ImportAllSourcePlan> | undefined> => {
     setActiveWizardStep('review')
     const operationGeneration = ++operationGenerationRef.current
     controllerRef.current?.abort()
@@ -822,7 +901,8 @@ export const ImportAllView = ({
     setRelationshipResults([])
     setRelationshipProgress({ completed: 0, total: 0 })
     relationshipRetryRef.current = null
-    const selected = Object.values(plans).filter(
+    setReadinessPauses({})
+    const selected = Object.values(planSnapshot).filter(
       ({ enabled, status }) => enabled && status === 'ready'
     )
     const selectedIds = new Set(selected.map(({ sourceId }) => sourceId))
@@ -832,6 +912,24 @@ export const ImportAllView = ({
     const compositeMemberIds = new Set(
       selectedCompositeGroups.flatMap((source) => source.compositeSourceAdapter!.memberSourceIds)
     )
+
+    const loadingPlans: Record<string, ImportAllSourcePlan> = Object.fromEntries(
+      Object.entries(planSnapshot).map(([sourceId, plan]) => [
+        sourceId,
+        plan.enabled && plan.status === 'ready'
+          ? {
+            ...plan,
+            preparationStatus: 'loading',
+            preparationCompleted: 0,
+            preparationTotal: plan.candidates.length,
+            executionStatus: 'idle',
+            executionResults: [],
+            error: undefined,
+          }
+          : plan,
+      ])
+    )
+    setPlans(loadingPlans)
 
     let freshObjectTypes = Object.values(context.object_type_by_slug)
     let freshObjectSchemas = Object.values(context.object_schema_defaults_by_object_type_uuid)
@@ -859,30 +957,12 @@ export const ImportAllView = ({
           )
         )
       }
-      return
+      return undefined
     }
+    if (controller.signal.aborted || operationGenerationRef.current !== operationGeneration) return undefined
     const objectTypesBySlug = Object.fromEntries(freshObjectTypes.map((type) => [type.slug, type]))
     const defaultSchemasByTypeUuid = Object.fromEntries(
       freshObjectSchemas.map((schema) => [schema.object_type_uuid, schema])
-    )
-
-    setPlans((current) =>
-      Object.fromEntries(
-        Object.entries(current).map(([sourceId, plan]) => [
-          sourceId,
-          plan.enabled && plan.status === 'ready'
-            ? {
-              ...plan,
-              preparationStatus: 'loading',
-              preparationCompleted: 0,
-              preparationTotal: plan.candidates.length,
-              executionStatus: 'idle',
-              executionResults: [],
-              error: undefined,
-            }
-            : plan,
-        ])
-      )
     )
 
     const compositeRecordsBySource: Record<string, CanonicalImportRecord[]> = {}
@@ -890,7 +970,7 @@ export const ImportAllView = ({
     await Promise.all(selectedCompositeGroups.map(async (source) => {
       const compositeAdapter = source.compositeSourceAdapter!
       const sourceIds = compositeAdapter.memberSourceIds
-      const anchorPlan = plans[sourceIds[0]]
+      const anchorPlan = planSnapshot[sourceIds[0]]
       if (!anchorPlan) return
       try {
         const recordsBySource = await loadCompositeImportRecords({
@@ -953,7 +1033,7 @@ export const ImportAllView = ({
             }
             const progression = isArraySource ? undefined : await progressImportAllSourcePreparation({
               ...preparationOptions,
-              policy: { mode: 'interactive', allowAutomaticTypeCreation: false },
+              policy: policyForSource(source as ImportAllPlanSource),
               canWrite,
               canCreateType: false,
               createTypeIfMissing: runtime.createAutomaticType,
@@ -962,6 +1042,13 @@ export const ImportAllView = ({
             const prepared = progression?.plan ?? await prepareImportAllSource(preparationOptions)
             if (progression) {
               completedPreparationReviewsRef.current[plan.sourceId] = progression.completedReviewSteps
+              if (progression.decision.status === 'paused' && progression.decision.reason === 'readiness' &&
+                !isImplicitInteractiveReview(progression.decision.readiness, source as ImportAllPlanSource)) {
+                const message = importAllReadinessMessage(progression.decision.readiness)
+                if (message) {
+                  setReadinessPauses((current) => ({ ...current, [plan.sourceId]: message }))
+                }
+              }
             }
             if (!controller.signal.aborted) updatePlan(plan.sourceId, prepared)
             return prepared
@@ -982,7 +1069,7 @@ export const ImportAllView = ({
 
     if (!controller.signal.aborted && operationGenerationRef.current === operationGeneration) {
       const nextPlans = {
-        ...plans,
+        ...planSnapshot,
         ...Object.fromEntries(preparedPlans.map((plan) => [plan.sourceId, plan])),
       } as Record<string, ImportAllSourcePlan>
 
@@ -1019,6 +1106,7 @@ export const ImportAllView = ({
           preloadedRecords: merged.records,
           schema: parentSchema as JSONSchema6 | undefined,
           objectTypeUuid: parentObjectType?.uuid,
+          policy: parentSource ? policyForSource(parentSource as ImportAllPlanSource) : {},
           canWrite,
           canCreateType: false,
           completedReviewSteps: completedPreparationReviewsRef.current[parentPlan.sourceId] ?? [],
@@ -1029,6 +1117,13 @@ export const ImportAllView = ({
         })
         if (controller.signal.aborted || operationGenerationRef.current !== operationGeneration) break
         completedPreparationReviewsRef.current[parentPlan.sourceId] = compositionPreparation.completedReviewSteps
+        if (compositionPreparation.decision.status === 'paused' && compositionPreparation.decision.reason === 'readiness' &&
+          !isImplicitInteractiveReview(compositionPreparation.decision.readiness, parentSource as ImportAllPlanSource | undefined)) {
+          const message = importAllReadinessMessage(compositionPreparation.decision.readiness)
+          if (message) {
+            setReadinessPauses((current) => ({ ...current, [parentPlan.sourceId]: message }))
+          }
+        }
         nextPlans[parentPlan.sourceId] = compositionPreparation.plan
         if (merged.unmatchedArrayRecords.length > 0) {
           nextPlans[arrayPlan.sourceId] = {
@@ -1039,26 +1134,43 @@ export const ImportAllView = ({
       }
       if (!controller.signal.aborted && operationGenerationRef.current === operationGeneration) {
         setPlans(nextPlans)
+        if (controllerRef.current === controller) controllerRef.current = null
+        return nextPlans
       }
     }
 
     if (controllerRef.current === controller) controllerRef.current = null
+    return undefined
   }
 
-  const executeSelected = async (recordKeysBySource?: Record<string, ReadonlySet<string>>) => {
+  const executeSelected = async (
+    recordKeysBySource?: Record<string, ReadonlySet<string>>,
+    planSnapshot = plans,
+    acknowledgeGeneralReview = false
+  ) => {
     setActiveWizardStep('import')
     const operationGeneration = ++operationGenerationRef.current
     controllerRef.current?.abort()
     const controller = new AbortController()
     controllerRef.current = controller
     setIsPersistingRelationships(false)
-    const selected = Object.values(plans).filter(
+    const selected = Object.values(planSnapshot).filter(
       ({ sourceId, enabled, preparationStatus }) =>
         enabled &&
         preparationStatus === 'ready' &&
         !sourcesById[sourceId]?.sourceAdapter.arrayTarget &&
         (!recordKeysBySource || recordKeysBySource[sourceId] !== undefined)
     )
+    const snapshotPlans = Object.values(planSnapshot)
+    const relationshipPlansForExecution = buildRelationshipPlans(snapshotPlans)
+    if (acknowledgeGeneralReview) {
+      for (const plan of selected) {
+        const completed = new Set(completedPreparationReviewsRef.current[plan.sourceId] ?? [])
+        completed.add('review')
+        completedPreparationReviewsRef.current[plan.sourceId] = [...completed]
+      }
+      setReviewAcknowledgmentVersion((version) => version + 1)
+    }
     console.log('[Import All] selected sources for execution', {
       sources: selected.map((plan) => ({
         sourceId: plan.sourceId,
@@ -1072,9 +1184,6 @@ export const ImportAllView = ({
     })
     const executedPlans: ImportAllSourcePlan[] = []
     let documentsReady = selected.length > 0
-    const executeReviewSteps: ImportReviewStep[] = [
-      'mapping', 'type-schema', 'overrides', 'relationships', 'review',
-    ]
     for (const plan of selected) {
       if (operationGenerationRef.current !== operationGeneration || controller.signal.aborted) {
         documentsReady = false
@@ -1103,9 +1212,14 @@ export const ImportAllView = ({
         context.object_schema_defaults_by_object_type_uuid[objectType.uuid]?.json_schema ??
         plan.validationContext?.schema
       const policy = {
-        ...(importSource.workflowPolicy ?? {}),
+        ...policyForSource(importSource),
         defaultConflictAction: plan.defaultConflictAction,
       }
+      const relationshipBlockers = relationshipPlansForExecution
+        .filter(({ child, status }) =>
+          child.record.provenance.sourceId === plan.sourceId && status !== 'ready'
+        )
+        .map(({ reason }) => reason ?? 'Relationship dependency is not ready.')
       try {
         const result = await executePreparedImportAllSource({
           plan: { ...plan, executionStatus: 'idle', error: plan.executionStatus === 'error' ? undefined : plan.error },
@@ -1114,11 +1228,9 @@ export const ImportAllView = ({
           schema: schema as JSONSchema6 | undefined,
           canWrite,
           canCreateType: false,
-          optedInReviewSteps: importSource.workflowPolicy?.reviewSteps,
-          completedReviewSteps: [...new Set([
-            ...(completedPreparationReviewsRef.current[plan.sourceId] ?? []),
-            ...executeReviewSteps,
-          ])],
+          optedInReviewSteps: policy.reviewSteps,
+          completedReviewSteps: completedPreparationReviewsRef.current[plan.sourceId] ?? [],
+          relationshipBlockers,
           signal: controller.signal,
           mergeStrategy: 'client-patch',
           recordKeys: recordKeysBySource?.[plan.sourceId],
@@ -1155,6 +1267,17 @@ export const ImportAllView = ({
         if (operationGenerationRef.current !== operationGeneration) return
         const adoptedPlan = mergeImportAllExecutionPlan(plan, result.plan)
         updatePlan(plan.sourceId, adoptedPlan)
+        if (result.decision.status === 'paused' && result.decision.readiness.status !== 'complete') {
+          const message = importAllReadinessMessage(result.decision.readiness)
+          if (message) setReadinessPauses((current) => ({ ...current, [plan.sourceId]: message }))
+          setActiveWizardStep('review')
+        } else {
+          setReadinessPauses((current) => {
+            const next = { ...current }
+            delete next[plan.sourceId]
+            return next
+          })
+        }
         if (!controller.signal.aborted && result.decision.readiness.status === 'complete' &&
           (result.decision.status === 'paused' || !result.decision.cancelled)) {
           executedPlans.push(adoptedPlan)
@@ -1246,12 +1369,12 @@ export const ImportAllView = ({
           ].map((predicate) => [predicate.predicate, predicate.uuid])
         )
         relationshipRetryRef.current = {
-          plans: relationshipPlans,
+          plans: relationshipPlansForExecution,
           documentUuids,
           predicateUuids,
         }
         const completedKeys = new Set(relationshipResults.map(({ relationshipKey }) => relationshipKey))
-        const pendingPlans = relationshipPlans.filter(
+        const pendingPlans = relationshipPlansForExecution.filter(
           (relationshipPlan) => relationshipPlan.status === 'ready' &&
             !completedKeys.has(importRelationshipKey(relationshipPlan))
         )
@@ -1260,6 +1383,75 @@ export const ImportAllView = ({
     }
 
     if (controllerRef.current === controller) controllerRef.current = null
+  }
+
+  const runSimplifiedImport = async () => {
+    if (isImportActive || !canWrite) return
+    let snapshot = plans
+    let enabledPlans = Object.values(snapshot).filter(({ enabled }) => enabled)
+    if (enabledPlans.length === 0) return
+    if (enabledPlans.some(({ status }) => status !== 'ready')) {
+      const discovered = await discoverSelected(snapshot)
+      if (!discovered) return
+      snapshot = discovered
+    }
+    enabledPlans = Object.values(snapshot).filter(({ enabled }) => enabled)
+    if (enabledPlans.some(({ status }) => status !== 'ready')) return
+    if (enabledPlans.some(({ preparationStatus }) => preparationStatus !== 'ready')) {
+      const prepared = await prepareSelected(snapshot)
+      if (!prepared) return
+      snapshot = prepared
+    }
+
+    const relationshipPlansForSnapshot = buildRelationshipPlans(Object.values(snapshot))
+    const pauses: Record<string, string> = {}
+    for (const plan of Object.values(snapshot).filter(({ enabled }) => enabled)) {
+      const source = sourcesById[plan.sourceId]
+      if (!source) continue
+      const arrayTarget = source.sourceAdapter.arrayTarget
+      if (arrayTarget) {
+        if (plan.error || plan.preparationStatus !== 'ready') {
+          const parent = Object.values(sourcesById).find(
+            (candidate) => candidate.sourceAdapter.sourceKey === arrayTarget.parentSourceKey
+          )
+          const parentId = parent?.sourceAdapter.id ?? plan.sourceId
+          pauses[parentId] = plan.error ?? `Prepare array source ${plan.sourceId} before importing its parent.`
+        }
+        continue
+      }
+      const objectType = context.object_type_by_slug[plan.type]
+      const relationshipBlockers = relationshipPlansForSnapshot
+        .filter(({ child, status }) =>
+          child.record.provenance.sourceId === plan.sourceId && status !== 'ready'
+        )
+        .map(({ reason }) => reason ?? 'Relationship dependency is not ready.')
+      const schema = source.sourceAdapter.schema ??
+        (objectType
+          ? context.object_schema_defaults_by_object_type_uuid[objectType.uuid]?.json_schema
+          : undefined) ??
+        plan.validationContext?.schema
+      const readiness = evaluateImportSourceReadiness({
+        plan,
+        policy: policyForSource(source as ImportAllPlanSource),
+        objectTypeUuid: objectType?.uuid,
+        schema: schema as JSONSchema6 | undefined,
+        canWrite,
+        canCreateType: false,
+        optedInReviewSteps: source.workflowPolicy?.reviewSteps,
+        completedReviewSteps: completedPreparationReviewsRef.current[plan.sourceId] ?? [],
+        relationshipBlockers,
+      })
+      if (readiness.status === 'advance' && readiness.action === 'execute') continue
+      if (readiness.status === 'complete') continue
+      const message = importAllReadinessMessage(readiness)
+      if (message) pauses[plan.sourceId] = message
+    }
+    setReadinessPauses(pauses)
+    if (Object.keys(pauses).length > 0) {
+      setActiveWizardStep('review')
+      return
+    }
+    await executeSelected(undefined, snapshot)
   }
 
   return (
@@ -1300,6 +1492,29 @@ export const ImportAllView = ({
               </span>
             )}
           </div>
+          <fieldset
+            aria-label="Import mode"
+            disabled={isImportActive}
+            className="mt-3 inline-flex items-center rounded-md border border-gray-300 p-0.5 text-sm"
+          >
+            <legend className="sr-only">Import mode</legend>
+            {(['simplified', 'interactive'] as const).map((mode) => (
+              <label
+                key={mode}
+                className={`cursor-pointer rounded px-3 py-1 ${workflowMode === mode ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100'} ${isImportActive ? 'cursor-not-allowed opacity-60' : ''}`}
+              >
+                <input
+                  className="sr-only"
+                  type="radio"
+                  name="import-workflow-mode"
+                  value={mode}
+                  checked={workflowMode === mode}
+                  onChange={() => changeWorkflowMode(mode)}
+                />
+                {mode === 'simplified' ? 'Simplified' : 'Interactive'}
+              </label>
+            ))}
+          </fieldset>
         </div>
       </header>
 
@@ -1450,21 +1665,36 @@ export const ImportAllView = ({
                 <X size={16} /> Cancel
               </Button>
             ) : (
-              <Button disabled={enabledPlans.length === 0} onClick={discoverSelected}>
-                <Search size={16} /> Discover selected
+              <Button
+                disabled={enabledPlans.length === 0 || (workflowMode === 'simplified' && !canWrite)}
+                onClick={() => workflowMode === 'simplified'
+                  ? void runSimplifiedImport()
+                  : void discoverSelected()}
+              >
+                {workflowMode === 'simplified' ? <Check size={16} /> : <Search size={16} />}
+                {workflowMode === 'simplified' ? 'Import' : 'Discover selected'}
               </Button>
             )}
           </div>
         )}
         {activeWizardStep === 'review' && (
           <div className="flex flex-wrap items-center gap-3">
-            <Button
-              variant="outline"
-              disabled={isImportActive || !discoveryReady || !canWrite}
-              onClick={prepareSelected}
-            >
-              <ShieldCheck size={16} /> Prepare review
-            </Button>
+            {workflowMode === 'simplified' ? (
+              <Button
+                disabled={isImportActive || !discoveryReady || !canWrite}
+                onClick={() => void runSimplifiedImport()}
+              >
+                <Check size={16} /> Import
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                disabled={isImportActive || !discoveryReady || !canWrite}
+                onClick={() => void prepareSelected()}
+              >
+                <ShieldCheck size={16} /> Prepare review
+              </Button>
+            )}
             <Button
               variant="outline"
               disabled={
@@ -1487,14 +1717,45 @@ export const ImportAllView = ({
             </span>
           </div>
         )}
+        {activeWizardStep === 'review' && enabledPlans.some(
+          (plan) => (sourcesById[plan.sourceId]?.workflowPolicy?.reviewSteps?.length ?? 0) > 0
+        ) && (
+          <div
+            key={reviewAcknowledgmentVersion}
+            className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm"
+            aria-label="Configured review acknowledgments"
+          >
+            {enabledPlans.flatMap((plan) =>
+              (sourcesById[plan.sourceId]?.workflowPolicy?.reviewSteps ?? []).map((step) => (
+                <label key={`${plan.sourceId}:${step}`} className="inline-flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={completedPreparationReviewsRef.current[plan.sourceId]?.includes(step) ?? false}
+                    onChange={(event) => setReviewAcknowledged(plan.sourceId, step, event.target.checked)}
+                  />
+                  Confirm {step} review for {plan.sourceId}
+                </label>
+              ))
+            )}
+          </div>
+        )}
         {activeWizardStep === 'import' && (
           <div className="flex flex-wrap items-center gap-3">
-            <Button
-              disabled={isImportActive || !reviewReady || !canWrite}
-              onClick={() => executeSelected()}
-            >
-              <Check size={16} /> Execute import
-            </Button>
+            {workflowMode === 'simplified' ? (
+              <Button
+                disabled={isImportActive || !discoveryReady || !canWrite}
+                onClick={() => void runSimplifiedImport()}
+              >
+                <Check size={16} /> Import
+              </Button>
+            ) : (
+              <Button
+                disabled={isImportActive || !reviewReady || !canWrite}
+                onClick={() => void executeSelected(undefined, plans, true)}
+              >
+                <Check size={16} /> Execute import
+              </Button>
+            )}
             {relationshipResults.some(({ status }) => status === 'failed' || status === 'unattempted') && (
               <Button
                 size="xs"
@@ -1521,6 +1782,11 @@ export const ImportAllView = ({
             </span>
           </div>
         )}
+        {Object.entries(readinessPauses).map(([sourceId, message]) => (
+          <p key={sourceId} className="mt-2 text-sm text-amber-900" role="alert">
+            {sourceId}: {message}
+          </p>
+        ))}
       </section>
 
       <nav className="flex gap-1 border-b px-5 pt-3" aria-label="Import views">

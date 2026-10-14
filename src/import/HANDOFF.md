@@ -1,5 +1,27 @@
 # Import Refactor Handoff
 
+## Latest checkpoint (2026-10-13)
+
+- Continue on `refactor-import-process`. The redundant assistant-created branch
+	was deleted; no commits have been pushed.
+- Completed work is checkpointed in three commits:
+	- `da11ff6`: shared preparation, readiness, guarded execution, and retry.
+	- `438319c`: auth-free UI/source-mapping fixtures, regression tests, and documentation.
+	- `a2bdec9`: Import All Simplified/Interactive mode pilot.
+- Latest automated validation: 178 selected import tests, including 17 fixture
+	component tests, pass. TypeScript, behavior-file lint, whitespace checks, and the
+	production build pass; the dev entry and workbook are excluded from production.
+	The unchanged individual-import effect lint error is not a clean full-lint result.
+- Browser DOM validation reached three imported documents, two links, and zero
+	errors in the auth-free fixture. Visual and authenticated/live-backend validation
+	are still pending; DOM/component tests do not establish either.
+- Next proposed slice: connect CSV/XLSX to shared mode progression while preserving
+	config/UI mappings, sheet selection, multi-file imports, fixed fields, and
+	parent/array relationships. This integration has not started and awaits approval.
+- Keep ERDDAP's current read-only fixture until interactive ERDDAP UI testing is
+	needed. The unrelated PAM workbook and Excel lock file were excluded from commits
+	and remain untouched. No other repository changes were made.
+
 ## Current state
 
 The import workflow now uses source-neutral adapters and source-scoped sessions. Individual source imports support canonical loading, schema validation, duplicate reconciliation, conflict policies, and batch result reporting. Import All supports real multi-source discovery, preparation, controlled execution, conflict defaults, row overrides, and per-record results.

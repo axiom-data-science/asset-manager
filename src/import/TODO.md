@@ -1,5 +1,22 @@
 # Import Refactor TODO
 
+## Current checkpoint (2026-10-13)
+
+- [x] Save completed work on `refactor-import-process`: `da11ff6` (shared workflow),
+  `438319c` (fixtures/tests/docs), and `a2bdec9` (mode pilot). Redundant branch deleted;
+  nothing pushed. Unrelated PAM workbook/lock files remain excluded and untouched.
+- [x] Verify the latest pilot with 178 selected import tests, including 17 fixture
+  component tests, TypeScript, behavior-file lint, whitespace, and production build/
+  fixture exclusion. Auth-free browser DOM smoke reached three documents/two links/
+  zero errors. The existing individual-import effect lint error remains unchanged.
+- [ ] Next proposed slice, not started: connect CSV/XLSX to shared mode progression,
+  preserving all existing mapping, sheet-selection, multi-file, and relationship
+  behavior. Begin only after approval; the detailed parity ledger below stays open.
+- [ ] Complete visual and user-performed authenticated/live-backend verification;
+  automated/component and browser DOM results do not replace these checks.
+- Defer moving the ERDDAP fixture into the shared UI until interactive UI testing
+  requires it; its current normalization/preparation preview remains unchanged.
+
 ## Working agreements
 
 - [x] Keep import behavior behind source-neutral contracts rather than adding source-specific page logic.

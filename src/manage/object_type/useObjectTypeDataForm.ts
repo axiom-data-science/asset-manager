@@ -40,6 +40,14 @@ export const useObjectTypeDataForm = ({
                 ]
             },
             {
+                "prop": "required_fields_on_save",
+                "description": "Specify fields that are required for initial save or update of this type. Schema validation will be ignored until the document is published.",
+                "settings": {
+                    "boldLabel": true
+                }
+            },
+
+            {
                 "prop": "expected_child_types",
                 "type": "object",
                 "multiple": true,
@@ -60,7 +68,8 @@ export const useObjectTypeDataForm = ({
                             "className": "bg-transparent px-0"
                         }
 
-                    }, {
+                    },
+                    {
                         "id": "predicate_wrapper",
                         "label": "Predicate selection",
                         "type": "objectWrapper",

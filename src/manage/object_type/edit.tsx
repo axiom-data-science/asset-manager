@@ -13,6 +13,8 @@ import { BookPlus, Check, Network, Plus } from 'lucide-react'
 import type { JSONSchema6 } from 'json-schema'
 import { useObjectTypeDataForm } from '@/manage/object_type/useObjectTypeDataForm'
 import { useFormAndFormState } from '@/manage/components/useFormAndFormState'
+import useCacheInvalidator from '../components/useCacheInvalidator'
+import { objectTypeListQueryKey } from './useObjectTypeList'
 
 const EditObjectTypeForm = ({
   object_type,
@@ -30,6 +32,7 @@ const EditObjectTypeForm = ({
   const [saving, setSaving] = useState(false)
   const auth = useAuth()
   const navigate = useNavigate()
+  const invalidateCache = useCacheInvalidator({ queryKey: objectTypeListQueryKey() })
 
   const {
     form,
@@ -88,6 +91,7 @@ const EditObjectTypeForm = ({
       setSaving(false)
       queryClient.invalidateQueries({ queryKey: objectTypeQueryKey(object_type.uuid) })
       queryClient.invalidateQueries({ queryKey: ['object_type_list'] })
+      invalidateCache()
       navigate('/object_type')
     })
   }
@@ -247,7 +251,7 @@ const EditObjectTypeForm = ({
                   </span>
                 )}
                 <h2 className="font-semibold">
-                  {schema.label} (version: {schema.version})
+                  <Link to={`/object_schema/edit/${schema.uuid}`}>{schema.label} (version: {schema.version})</Link>
                 </h2>
                 <CopyFields
                   stack={true}

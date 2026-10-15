@@ -16,14 +16,15 @@ import {
   resolveRefs,
   schemaToFormUtils,
   type IForm,
+  type IFormCreatorHandle,
   type IFormFieldOverride,
   type IFormOverride,
 } from '@axdspub/axiom-ui-forms'
 import { Button, Loader, utils, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
-import { useState, type ReactElement } from 'react'
+import { useRef, useState, type ReactElement } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { omit } from 'lodash-es'
-import { buildStringFromTemplate, validate } from '@/lib/utils'
+import { buildStringFromTemplate, validate, validateSelected } from '@/lib/utils'
 import Errors from '@/manage/components/errors'
 import Link from '@/manage/components/link'
 import { useObjectTypesAndFormsAndSchemas } from '@/manage/object_type/useObjectTypeList'
@@ -149,7 +150,8 @@ const CreateDocumentForm = ({
     setSaving(true)
     const cleanFormValues = getters.getFormPayload(formValues, form)
     const valuesToSave = filterForSave(cleanFormValues)
-    const valid = await validate({ form, formValues: valuesToSave, schema: resolveRefs(schema.json_schema) as Record<string, unknown> })
+    const requiredFieldOnSave = type.data?.required_fields_on_save ?? ['label']
+    const valid = validateSelected({ form, formValues: valuesToSave, requiredFields: requiredFieldOnSave })
     if (!valid.valid && valid.errors.length > 0) {
       setErrors(valid.errors)
       setSaving(false)
@@ -234,7 +236,7 @@ const CreateDocumentForm = ({
           : (new URLSearchParams(window.location.search).get('returnToOnSuccess') ?? undefined)
 
       setSaving(false)
-      navigate(`${navPath ?? '/document'}?uuid=${newDoc.uuid}`)
+      navigate(`${navPath ? `${navPath}?uuid=${newDoc.uuid}` : '/document'}`)
     } catch (e: unknown) {
       setSaving(false)
       setErrors([
@@ -250,7 +252,42 @@ const CreateDocumentForm = ({
     }
   }
 
+  const [validated, setValidated] = useState(false)
+
+  const onValidate = async () => {
+    setSaving(true)
+    const cleanFormValues = getters.getFormPayload(formValues, form)
+    const valuesToSave = filterForSave(cleanFormValues)
+    const valid = await validate({ form, formValues: valuesToSave, schema: resolveRefs(schema.json_schema) as Record<string, unknown> })
+    if (!valid.valid && valid.errors.length > 0) {
+      setErrors(valid.errors)
+      setSaving(false)
+      setValidated(false)
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth', // Adds a gradual animation
+      })
+      return
+    }
+    setErrors([])
+    setSaving(false)
+    setValidated(true)
+
+  }
+
   const includeSaveButton = form.wizard_steps !== undefined || form.pages !== undefined
+  const saveButton = (
+    <>
+      <Button onClick={onSave} type="default" disabled={saving}>
+        {saving ? <Loader className="animate-spin" /> : 'Save'}
+      </Button>
+      <Button onClick={onValidate} type="outline" disabled={saving}>
+        {saving ? <Loader className="animate-spin" /> : <>{validated ? <Check className="inline-block" color='green' /> : ''} Validate</>}
+      </Button>
+    </>
+  )
+
+  const formRef = useRef<IFormCreatorHandle>(null)
 
   return (
     <div className="flex flex-col gap-4">
@@ -275,8 +312,9 @@ const CreateDocumentForm = ({
       <h1 className="text-2xl font-bold">
         {assetForm?.label ?? `Create new ${type.label} document`}
       </h1>
-      <Errors errors={errors} />
+      <Errors errors={errors} formRef={formRef} />
       <FormCreator
+        ref={formRef}
         form={{
           ...form,
           label: undefined,
@@ -295,17 +333,13 @@ const CreateDocumentForm = ({
         }}
         SubmitButton={
           includeSaveButton && (
-            <Button onClick={onSave} type="default" disabled={saving}>
-              {saving ? <Loader className="animate-spin" /> : 'Save'}
-            </Button>
+            saveButton
           )
         }
       />
       {!includeSaveButton && (
-        <div className="flex flex-row gap-4  p-4 sticky bottom-0 bg-white/80 z-10 -mx-1 justify-end">
-          <Button onClick={onSave} type="default" disabled={saving}>
-            {saving ? <Loader className="animate-spin" /> : 'Save'}
-          </Button>
+        <div className="sticky bottom-0 bg-white/80 z-10 -mx-1 justify-end">
+          {saveButton}
         </div>
       )}
     </div>

@@ -1,10 +1,13 @@
 import { useAuth } from '@/auth/useAuth'
-import { type IValidationError, type IObjectSchema, type IObjectTypeFieldMappings } from '@/types/types'
-import type { IAssetForm, IDocument, IFormToFieldConfigWithDetails } from '@/types/types'
+import { type IValidationError, type IObjectSchema } from '@/types/types'
+import type { IAssetForm, IDocument, IFormToFieldConfigWithDetails, IObjectType } from '@/types/types'
 import {
   FormCreator,
+  getters,
+  resolveRefs,
   schemaToFormUtils,
   type IForm,
+  type IFormCreatorHandle,
   type IFormFieldOverride,
   type IFormOverride,
   type IFormValues,
@@ -15,19 +18,22 @@ import { Button as ShadCNButton } from '@/components/ui/button'
 import { useEffect, useEffectEvent, useRef, useState, type ReactElement } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { omit } from 'lodash-es'
-import { cn, validate } from '@/lib/utils'
+import { buildStringFromTemplate, cn, removeUndefinedAndNullKeys, validate, validateSelected } from '@/lib/utils'
 import Errors from '@/manage/components/errors'
-import { useDocument, useLockDocumentMutation, useSaveDocumentMutation } from './useDocument'
+import { useDocument, useLockDocumentMutation } from './useDocument'
 import { useFormAndSchemaAtObjectType } from '@/manage/form/useForm'
 import FileUpload from '@/manage/custom_inputs/file_upload'
 import StationSearch from '@/manage/custom_inputs/station_search'
 import SampleFileObject from '../custom_inputs/sample_file_object'
 import CSVUploadForSampleFile from '../custom_inputs/csv_upload_for_sample_file'
 
-import { ChevronDown, ChevronUp, Circle, Lock, Unlock } from 'lucide-react'
+import { Check, ChevronDown, ChevronUp, Circle, Lock, Unlock } from 'lucide-react'
 import ShareDocument from '@/components/custom/share-document'
 import DocumentTabs from './document_tabs'
 import StateSelector from '@/manage/custom_inputs/state_selector'
+import { getDocumentMetadata } from './documentMetadata'
+import { patchDocument } from './services'
+import { useQueryClient } from '@tanstack/react-query'
 
 const isComplexSchema = (schema: unknown): boolean => {
   const pending: Array<{ value: unknown; depth: number }> = [{ value: schema, depth: 0 }]
@@ -218,13 +224,15 @@ const EditDocumentForm = ({
   schema,
   assetForm,
   fieldConfigs,
-  fieldMappings,
+  type,
+  returnToOnSuccess
 }: {
   document: IDocument
   schema: IObjectSchema
   assetForm?: IAssetForm | null
   fieldConfigs?: IFormToFieldConfigWithDetails[]
-  fieldMappings?: IObjectTypeFieldMappings
+  type: IObjectType
+  returnToOnSuccess?: string
 }): ReactElement => {
   const navigate = useNavigate()
   const [errors, setErrors] = useState<IValidationError[]>([])
@@ -296,26 +304,78 @@ const EditDocumentForm = ({
     ...(isUsingDataForm ? (document.data as JSON) : document),
   } as unknown as IFormValues)
 
-  const { mutateAsync, isPending } = useSaveDocumentMutation()
+  const [saving, setSaving] = useState(false)
+  const auth = useAuth()
+  const queryClient = useQueryClient()
 
   const onSave = async () => {
+
+    setSaving(true)
+
+    const cleanValues = removeUndefinedAndNullKeys(
+      // get only form values intended for saving according to the form
+      getters.getFormPayload(formValues, form)
+    )
+    const mergedData = {
+      ...(document.data as JSON),
+      ...(isUsingDataForm ? cleanValues : (cleanValues.data as JSON)),
+    }
+    const fieldMappings = type.data?.field_mappings
+    const { label, description } = getDocumentMetadata({
+      formValues,
+      valuesToSave: cleanValues as IFormValues,
+      labelPath: fieldMappings?.label,
+      descriptionPath: fieldMappings?.description,
+    })
+
+    const mergedDocument = {
+      ...document,
+      label,
+      description,
+      data: mergedData,
+    } as IDocument
+
+
+    const requiredFieldOnSave = type.data?.required_fields_on_save ?? ['label']
+    const valid = validateSelected({ form, formValues: cleanValues as IFormValues, requiredFields: requiredFieldOnSave })
+    if (!valid.valid && valid.errors.length > 0) {
+      setErrors(valid.errors)
+      setSaving(false)
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth', // Adds a gradual animation
+      })
+      return
+    }
+    setErrors([])
+
+
+
     try {
-      const result = await mutateAsync({
-        document,
-        form,
-        formValues,
-        isUsingDataForm,
-        fieldMappings,
-        schema: schema.json_schema,
-        validate,
+
+      const updatedDoc = await patchDocument({
+        uuid: document.uuid,
+        document: mergedDocument,
+        token: auth.user?.access_token ?? '',
       })
 
-      if (result.valid === false) {
-        setErrors(result.errors)
-        return
-      }
+      queryClient.invalidateQueries({
+        queryKey: ['document'],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['document', document.uuid],
+      })
 
-      navigate('/document')
+      const navPath =
+        returnToOnSuccess !== undefined
+          ? buildStringFromTemplate(returnToOnSuccess, {
+            ...updatedDoc,
+            ...{ object_type: type },
+          })
+          : (new URLSearchParams(window.location.search).get('returnToOnSuccess') ?? undefined)
+
+
+      navigate(navPath ?? '/document')
     } catch (error) {
       setErrors([
         {
@@ -326,17 +386,57 @@ const EditDocumentForm = ({
     }
   }
 
+  const [validated, setValidated] = useState(false)
+
+  const onValidate = async () => {
+    setSaving(true)
+    const valuesToSave = removeUndefinedAndNullKeys(
+      // get only form values intended for saving according to the form
+      getters.getFormPayload(formValues, form)
+    )
+    const valid = await validate({ form, formValues: valuesToSave as IFormValues, schema: resolveRefs(schema.json_schema) as Record<string, unknown> })
+    if (!valid.valid && valid.errors.length > 0) {
+      setErrors(valid.errors)
+      setSaving(false)
+      setValidated(false)
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth', // Adds a gradual animation
+      })
+      return
+    }
+    setErrors([])
+    setSaving(false)
+    setValidated(true)
+
+  }
+
+  const includeSaveButton = form.wizard_steps !== undefined || form.pages !== undefined
+  const saveButton = (
+    <>
+      <Button onClick={onSave} type="default" disabled={saving}>
+        {saving ? <Loader className="animate-spin" /> : 'Save'}
+      </Button>
+      <Button onClick={onValidate} type="outline" disabled={saving}>
+        {saving ? <Loader className="animate-spin" /> : <>{validated ? <Check className="inline-block" color='green' /> : ''} Validate</>}
+      </Button>
+    </>
+  )
+
+  const formRef = useRef<IFormCreatorHandle>(null)
+
+
   return (
     <div className="flex flex-col gap-4 relative">
       <h1 className="text-2xl font-bold flex flex-row justify-between items-center">
-        <span>Edit document{isPending ? <Loader size="sm" /> : null}</span>
+        <span>Edit {type.label} document{saving ? <Loader size="sm" /> : null}</span>
         <div className="flex flex-row gap-2 items-center">
           <ShareDocument document={document} />
           <DocumentLockStatus document={document} />
           <AutoSaveStatus
             lastUpdate={lastUpdate}
             lastSave={lastSave}
-            isUpdating={isPending}
+            isUpdating={saving}
             onTriggerUpdate={() => {
               const d = new Date()
               setLastSave(d)
@@ -345,13 +445,14 @@ const EditDocumentForm = ({
           />
         </div>
       </h1>
-      <Errors errors={errors} />
+      <Errors errors={errors} formRef={formRef} />
       {complexSchema && !hasConfiguredForm && (
         <div className="border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
           This schema is too complex for generated fields, so the document data is shown as JSON.
         </div>
       )}
       <FormCreator
+        ref={formRef}
         form={{
           ...form,
           label: undefined,
@@ -371,12 +472,17 @@ const EditDocumentForm = ({
         onChange={() => {
           setLastUpdate(new Date())
         }}
+        SubmitButton={
+          includeSaveButton && (
+            saveButton
+          )
+        }
       />
-      <div className="flex flex-row gap-4  p-4 sticky bottom-0 bg-white/80 z-10">
-        <Button onClick={onSave} type="default" disabled={isPending}>
-          {isPending ? <Loader className="animate-spin" /> : 'Save'}
-        </Button>
-      </div>
+      {!includeSaveButton && (
+        <div className="sticky bottom-0 bg-white/80 z-10 -mx-1 justify-end">
+          {saveButton}
+        </div>
+      )}
     </div>
   )
 }
@@ -384,28 +490,33 @@ const EditDocumentForm = ({
 const LoadSchemaAndCreateDocumentForm = ({
   document,
   skip_tabs,
+  returnToOnSuccess,
 }: {
   document: IDocument
   skip_tabs?: boolean
+  returnToOnSuccess?: string
 }): ReactElement => {
   const { data, isLoading, error } = useFormAndSchemaAtObjectType({
     object_type_uuid: document.object_type_uuid,
   })
   const objectType = data?.object_schema?.object_type
+  const urlSkipTabs = new URLSearchParams(window.location.search).get('skip_tabs')
+  const skipTabsToUse = skip_tabs ?? (urlSkipTabs === 'true')
   const editView =
     data && objectType ? (
       <EditDocumentForm
         document={document}
         schema={data.object_schema}
         assetForm={data.forms.find((f) => f.is_schema_and_version_default) ?? data.forms[0]}
-        fieldMappings={objectType.data?.field_mappings}
+        type={objectType}
+        returnToOnSuccess={returnToOnSuccess}
       />
     ) : null
   return (
     <ViewWithLoader isLoading={isLoading} error={error} data={data}>
       {editView &&
         objectType &&
-        (skip_tabs ? (
+        (skipTabsToUse ? (
           editView
         ) : (
           <DocumentTabs
@@ -422,9 +533,11 @@ const LoadSchemaAndCreateDocumentForm = ({
 const EditDocument = ({
   document_uuid,
   skip_tabs,
+  returnToOnSuccess,
 }: {
   document_uuid?: string
   skip_tabs?: boolean
+  returnToOnSuccess?: string
 }): ReactElement => {
   const params = useParams()
   const uuid = document_uuid ?? params.uuid ?? null
@@ -440,7 +553,11 @@ const EditDocument = ({
   return (
     <ViewWithLoader isLoading={isLoading} error={error} data={document}>
       {document && (
-        <LoadSchemaAndCreateDocumentForm skip_tabs={skip_tabs} document={document as IDocument} />
+        <LoadSchemaAndCreateDocumentForm
+          skip_tabs={skip_tabs} document={document as IDocument}
+          returnToOnSuccess={returnToOnSuccess}
+
+        />
       )}
     </ViewWithLoader>
   )

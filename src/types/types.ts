@@ -151,6 +151,7 @@ export type IObjectTypeData = {
   field_mappings?: IObjectTypeFieldMappings;
   api_overrides?: IObjectTypeApiOverrides;
   expected_child_types?: IObjectTypeExpectedChildTypes[];
+  required_fields_on_save?: string[]
 };
 
 export interface IObjectType {

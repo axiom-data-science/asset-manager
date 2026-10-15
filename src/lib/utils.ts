@@ -11,6 +11,43 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export const validateSelected = ({
+  form,
+  formValues,
+  requiredFields
+}: {
+  form: IForm
+  formValues: IFormValues
+  requiredFields: string[]
+}): {
+  valid: boolean
+  errors: IValidationError[]
+} => {
+
+  const errors: IValidationError[] = []
+  let valid = true
+
+  const flattenedFields = getters.getFieldsFromFormSection(form)
+  const fieldsById = Object.fromEntries(flattenedFields.map((f) => [f.id, f]))
+
+
+  for (const field of requiredFields) {
+    if (!formValues[field]) {
+      const f = fieldsById[field]
+      errors.push({
+        field: f.id,
+        fieldLabel: f.label ?? undefined,
+        message: `${f.label ?? f.id} is required.`,
+        path: f.path?.map(d => d.id).join('.') ?? undefined,
+      })
+      valid = false
+    }
+  }
+
+  return { valid, errors }
+
+}
+
 export const validate = async ({
   form,
   formValues,

@@ -1,5 +1,4 @@
 import { useDocumentAndObjectTypeAndObjectTypeConfig } from '@/manage/document/useDocument'
-import ButtonLink from '@/manage/components/button_link'
 import { ViewWithLoader, Button } from '@axdspub/axiom-ui-utilities'
 import type { ReactElement } from 'react'
 import { useSearchParams } from 'react-router-dom'

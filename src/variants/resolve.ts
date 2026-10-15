@@ -18,6 +18,8 @@ export const resolveAppVariantId = ({
     if (configured) return configured
 
     if (hostname?.toLowerCase().includes('modl-asset')) return 'modl'
+    if (hostname?.toLowerCase().includes('water-level-asset')) return 'water-level'
+    if (hostname?.toLowerCase().includes('pam-asset')) return 'pam'
 
     return normalizeVariantId(queryVariant)
 }

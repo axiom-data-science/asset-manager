@@ -1,6 +1,7 @@
 import type { AppVariantDefinition } from '@/variants/types'
 import Header from '@/app-variants/water-level/header'
 import WaterLevelEntry from '@/app-variants/water-level/entry'
+import WaterLevelCreateDocumentSuccess from '@/app-variants/water-level/create_document_success'
 
 export const appVariant = {
     id: 'water-level',
@@ -10,5 +11,7 @@ export const appVariant = {
     components: {
         Header,
         HomePage: WaterLevelEntry,
+        CreateDocumentEntry: WaterLevelEntry,
+        DocumentSuccessPage: WaterLevelCreateDocumentSuccess,
     },
 } satisfies AppVariantDefinition

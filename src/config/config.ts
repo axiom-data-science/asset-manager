@@ -18,15 +18,15 @@ export const OIDC_CLIENT_ID = twconfig(
 )
 
 export const OIDC_REDIRECT_URI = twconfig(
+  '{CURRENT_DOMAIN}/authed',
   '$TWOWOLVES_OIDC_REDIRECT_URI',
-  'VITE_OIDC_REDIRECT_URI',
-  '{CURRENT_DOMAIN}/authed'
+  'VITE_OIDC_REDIRECT_URI'
 ).replace('{CURRENT_DOMAIN}', CURRENT_DOMAIN)
 
 export const OIDC_POST_LOGOUT_REDIRECT_URI = twconfig(
+  '{CURRENT_DOMAIN}/loggedout',
   '$TWOWOLVES_OIDC_POST_LOGOUT_REDIRECT_URI',
   'VITE_OIDC_POST_LOGOUT_REDIRECT_URI',
-  '{CURRENT_DOMAIN}/loggedout'
 ).replace('{CURRENT_DOMAIN}', CURRENT_DOMAIN)
 
 export const OIDC_SCOPE = twconfig(

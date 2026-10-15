@@ -68,10 +68,12 @@ export const PersonLoader = ({
 const ShareDocument = ({
   document,
   onUpdate,
+  SelectButton
 }: {
   document: IDocument
   className?: string
   onUpdate?: (subs: string[]) => void
+  SelectButton?: ReactElement
 }) => {
   const auth = useAuth()
   const [isUpdating, setIsUpdating] = useState(false)
@@ -100,9 +102,11 @@ const ShareDocument = ({
   return (
     <Dialog modal={true}>
       <DialogTrigger asChild>
-        <Button variant="outline">
-          <Share />
-        </Button>
+        {SelectButton ?? (
+          <Button variant="outline">
+            <Share />
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="w-125 mr-2 flex flex-col gap-4">
         <DialogHeader className="flex flex-col gap-2 border-b pb-2">

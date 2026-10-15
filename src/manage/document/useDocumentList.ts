@@ -1,7 +1,6 @@
 import { useAuth } from '@/auth/useAuth'
 import {
   fetchDocumentRollup,
-  fetchDocuments,
   fetchDocumentWithPermissions,
 } from '@/manage/document/services'
 import { getObjectTypeListQuery } from '@/manage/object_type/useObjectTypeList'
@@ -30,7 +29,7 @@ export const getDocumentListQuery = ({
   return queryOptions({
     queryKey: documentListQueryKey({ params }),
     queryFn: async ({ signal }) => {
-      const items = await fetchDocuments({
+      const items = await fetchDocumentWithPermissions({
         params: {
           ...params,
           limit: 100,
@@ -143,8 +142,8 @@ export const useDocumentListWithObjectTypes = ({ params }: { params?: IPostgrest
         error: results.find((r) => r.error)?.error ?? null,
         data: !isLoading
           ? Object.fromEntries(
-              results.map((r, index) => (r.data ? [Object.keys(queryObject)[index], r.data] : []))
-            )
+            results.map((r, index) => (r.data ? [Object.keys(queryObject)[index], r.data] : []))
+          )
           : null,
       }
     },

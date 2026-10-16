@@ -616,7 +616,8 @@ New requirements to carry into that refactor:
 - [x] Replace the native workbook input with a filename-aware Choose file button and an X that removes the workbook and all of its imported sheets.
 - [x] Render configured source slots as compact rows instead of tall cards.
 - [ ] Authenticated UI verification: select multiple sheets and confirm each appears as an independent source with its own type and mapping.
-- [ ] Authenticated UI verification: confirm clean known-schema sources expose one final Import action, while mapping, validation, and conflict issues remain reviewable.
+- [x] Authenticated XLSX readiness check: user reports Type `None`, `0 valid`, `0 invalid`, `1 pending` at first; after choosing a type in the modal, status became `1 valid · 0 invalid`. Returning via Back to CSV sources and Continue to import recalculated readiness and exposed the page-level Import button. User did not click Import/Link; this confirms readiness only, not persistence.
+- [ ] Authenticated UI verification: confirm mapping, validation, and conflict issues remain reviewable and verify multi-sheet/array behavior. The clean known-type source now exposes its page-level Import action after readiness is recalculated.
 - [ ] Authenticated UI verification: confirm schema-derived optional array slots use parent and row lookup columns and embed matched rows in the parent.
 - [ ] Evaluate legacy `.xls` support separately; the current upload picker accepts `.xlsx` only.
 - [ ] Extend workbook tests for formula results, date cells, duplicate headers, and large workbooks.

@@ -1,5 +1,20 @@
 # Import Refactor Handoff
 
+## Authenticated XLSX readiness check (2026-10-15)
+
+- User-performed review selected a workbook sheet and reached Import Records.
+	Initially Type was `None`, with `0 valid`, `0 invalid`, and `1 pending`, so no
+	page-level Import button appeared. Selecting an object type in the modal changed
+	the row to `1 valid · 0 invalid`; the modal had its own Import action, but the
+	page-level button remained hidden after closing it.
+- `handleObjectTypeSelected` resets `startAtImport: false` when the type changes.
+	Returning with Back to CSV sources and choosing Continue to import recalculates
+	readiness; the user confirmed the page-level Import button then appeared. No
+	Import or Link action was clicked.
+- This confirms the known-type page-level readiness path only, not persistence.
+	The automated production-page test uses a known fixture type/schema and verifies
+	a mocked write. Broader authenticated parity and blocked-state checks remain open.
+
 ## Legacy XLSX execution test completed (2026-10-15)
 
 - The approved test-only production-page case imports the selected Deployments

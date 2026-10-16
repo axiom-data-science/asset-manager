@@ -29,6 +29,7 @@ const CreateWaterLevelDocumentButton = ({
                                 pathname: `${documentCreatePath.replace(/\/$/, '')}/${form.object_type_uuid}/object_type/${form.uuid}/form`,
                                 search: new URLSearchParams({
                                     returnToOnSuccess,
+                                    skip_tabs: 'true'
                                 }).toString(),
                             }}
                             className={utils.createButtonClass({ size: 'md', variant: 'default' })}

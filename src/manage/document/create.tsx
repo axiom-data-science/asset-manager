@@ -464,8 +464,10 @@ export const CreateChildDocumentFromObjectType = ({
 
 export const CreateDocumentFromSchema = ({
   returnToOnSuccess,
+  skip_tabs,
 }: {
   returnToOnSuccess?: string
+  skip_tabs?: boolean
 }): ReactElement => {
   const params = useParams()
   const [context] = useAtom(contextStateAtom)
@@ -478,20 +480,28 @@ export const CreateDocumentFromSchema = ({
       data.object_types[0])
     : null
 
+  const skipTabsFromUrl = new URLSearchParams(window.location.search).get('skip_tabs') === 'true'
+  const skipTabsToUse = skip_tabs ?? skipTabsFromUrl
+
+  const formView = !isLoading && data && objectType ?
+    <CreateDocumentForm
+      schema={data.object_schema}
+      type={objectType}
+      returnToOnSuccess={returnToOnSuccess}
+    /> : null
+
   return (
     <ViewWithLoader isLoading={isLoading} error={error} data={data}>
-      {data && objectType && (
-        <DocumentTabs
-          objectType={objectType}
-          viewLabel={`${objectType.label}`}
-          View={
-            <CreateDocumentForm
-              schema={data.object_schema}
-              type={objectType}
-              returnToOnSuccess={returnToOnSuccess}
-            />
-          }
-        />
+      {formView && data && objectType && (
+        skipTabsToUse ?
+          formView
+          : <DocumentTabs
+            objectType={objectType}
+            viewLabel={`${objectType.label}`}
+            View={
+              formView
+            }
+          />
       )}
     </ViewWithLoader>
   )
@@ -499,31 +509,41 @@ export const CreateDocumentFromSchema = ({
 
 export const CreateDocumentFromForm = ({
   returnToOnSuccess,
+  skip_tabs
 }: {
   returnToOnSuccess?: string
+  skip_tabs?: boolean
 }): ReactElement => {
   const params = useParams()
   const [context] = useAtom(contextStateAtom)
   const form_identifier = params.form_uuid as string
   const form_uuid = context.form_by_slug[form_identifier]?.uuid ?? form_identifier
   const { data, isLoading, error } = useFullForm({ form_uuid })
+  const skipTabsFromUrl = new URLSearchParams(window.location.search).get('skip_tabs') === 'true'
+  const skipTabsToUse = skip_tabs ?? skipTabsFromUrl
+
+  const formView = !isLoading && data ?
+    <CreateDocumentForm
+      schema={omit(data.object_schema, 'object_type')}
+      type={data.object_schema.object_type}
+      assetForm={data.form}
+      fieldConfigs={data.field_configs}
+      returnToOnSuccess={returnToOnSuccess}
+    /> : null
+
 
   return (
     <ViewWithLoader isLoading={isLoading} error={error} data={data}>
-      {data && (
-        <DocumentTabs
-          objectType={data.object_schema.object_type}
-          viewLabel={`${data.object_schema.object_type.label}`}
-          View={
-            <CreateDocumentForm
-              schema={omit(data.object_schema, 'object_type')}
-              type={data.object_schema.object_type}
-              assetForm={data.form}
-              fieldConfigs={data.field_configs}
-              returnToOnSuccess={returnToOnSuccess}
-            />
-          }
-        />
+      {formView && data && (
+        skipTabsToUse
+          ? formView
+          : <DocumentTabs
+            objectType={data.object_schema.object_type}
+            viewLabel={`${data.object_schema.object_type.label}`}
+            View={
+              formView
+            }
+          />
       )}
     </ViewWithLoader>
   )

@@ -1,6 +1,6 @@
 # Unified Import Refactor Plan
 
-Updated: 2026-10-13.
+Updated: 2026-10-14.
 
 ## Goal
 
@@ -35,8 +35,8 @@ The policy/readiness foundation is implemented:
   readiness evaluator does not authorize automatic writes from it.
 - Automatic type creation requires both policy permission and creation permission.
 - Opted-in mapping, override, and schema reviews pause before dependent work.
-- Latest verification: 21 relationship tests and 178 selected import regression tests,
-  TypeScript, touched-file lint, and whitespace checks passed. Authenticated UI
+- Latest verification: 21 relationship tests and 186 selected import regression tests,
+  TypeScript, behavior-file lint, production build, and whitespace checks passed. Authenticated UI
   error display and retry worked per user report; broader checks remain pending.
 
 The prepared execution helper and preparation helper use this evaluator.
@@ -44,8 +44,13 @@ Document-source Import All preparation and execution/retry now call the shared
 helpers. Import All now pilots Simplified/Interactive mode selection: Interactive
 preserves explicit stage actions, while Simplified advances using returned plan
 snapshots and stops for configured reviews, required inputs, errors, or missing-type
-setup. Missing-type creation remains explicit. File workflow integration, extra
-opt-in review/input panels, and complete composite/array UI parity remain pending.
+setup. Missing-type creation remains explicit. File integration has started with
+an opt-in, current-upload-only handoff for clean standalone CSV/XLSX sources into
+the same controller. Legacy execution remains available; arrays, parent/child
+relationships, ignored rows, and already-started CSV imports are gated out. Tests
+cover shared-controller mapped records and a selected real XLSX sheet, not the
+full production file-controller/handoff UI. That UI coverage, broader file parity,
+extra opt-in review/input panels, and complete composite/array UI parity remain pending.
 The evaluator's `complete` result
 means source documents are complete, not that session relationships have completed.
 Consult the TODO/handoff for current verification totals.

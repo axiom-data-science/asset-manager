@@ -1,6 +1,457 @@
 # Import Refactor Handoff
 
-## Latest checkpoint (2026-10-13)
+## Legacy XLSX execution test completed (2026-10-15)
+
+- The approved test-only production-page case imports the selected Deployments
+	worksheet through the legacy CSV Import control. Its test schema includes the
+	workbook's `external_key` column so required-mode mapping is complete.
+- The embedded `BatchLoadDocuments` progress is intentionally hidden in this page;
+	the test waits for its mocked `postDocument` call and verifies the saved payload
+	instead of querying hidden UI text. The test uses the production mapping selector
+	to assign `external_key` the Slug role, then verifies the resulting `deploy-2`
+	slug and mapped data. All 16 CSV mapping tests and the full 248-test suite pass.
+	The production build also passes with Vite dependency/chunk-size warnings. Backend
+	ports are mocked, so no live writes occurred; no application code changed.
+
+## Production XLSX selection coverage added (2026-10-15)
+
+- Two approved test-only cases in `pages/csv.mapping.test.tsx` mount the production
+	`CSVImportPage` and upload the real binary workbook. One deselects Sites and adds
+	only Deployments; the other adds both sheets and verifies their separate mapping
+-	panels show their own rows when open, then prepares the workbook and confirms
+	two separate sources are loaded. Document, patch, and relationship write counts
+	remain unchanged; no import or relationship linking was executed.
+- The focused tests and all fifteen CSV mapping tests pass, as do fresh TypeScript,
+	scoped test-file ESLint, and whitespace checks. Test refinements used distinct
+	configured source keys, required-preview mode, and `<details>` open-state
+	assertions because collapsed content remains in the DOM. No application code
+	changed. Full-suite/build and authenticated/visual checks were not rerun for
+	this slice.
+- Remaining parity: production sheet-selection coverage is now present; full
+	single/multi-file import workflows, broader CSV/XLSX parity, and visual/manual
+	verification remain pending. Obtain approval before another implementation slice.
+
+## Saved-parent lookup controls added (2026-10-15)
+
+- One approved CSV UI slice adds saved parent object type, parent match field,
+	and child match field controls for a Child source in the CSV source setup.
+	Selecting a type configures the existing `lookup` policy without requiring a
+	parent CSV; match fields come from the saved type's schema and child headers.
+- The ambiguous-parent production-page test now configures those values through
+	the UI, returns two saved parents with the same `P-1` key, and verifies the
+	ambiguity/selection gates and unchanged document, patch, and relationship write
+	counts. No writes were executed.
+- All thirteen CSV mapping tests, fresh TypeScript (`npx tsc -b --force`), scoped
+	ESLint, and whitespace checks pass. The first test edit landed in the adjacent
+	single-parent case; it was restored, moved to the ambiguity test, and verified.
+- User reports the saved-parent controls appear and work in the authenticated CSV
+	UI, and that the duplicate-match and parent-selection behavior and shared-flow
+	gates work as expected. No Import or Link relationships action was reported.
+	Visual checks do not establish network-level zero-write proof. Do not create or
+	modify backend records to manufacture test data.
+- Corrected the Oikos test fixture helper to keep external ID `model-1` separate
+	from canonical `record.slug` `forecast-model`, matching the production
+	`oikosModels` adapter contract. No Oikos runtime code changed. The focused Oikos
+	test and full project suite pass (245 tests); fresh TypeScript and scoped ESLint
+	pass. The earlier production build passes; it reported quicktype Node-module
+	externalization and chunk-size warnings.
+- The authenticated parent-selection review, production build, and full automated
+	test suite are complete. Broader CSV/XLSX parity remains pending; obtain approval
+	before the next bounded implementation slice.
+
+## Corrected array-upload Import readiness verified (2026-10-15)
+
+- One approved `GPT-6 Luna (copilot)` test-only correction changes the recovered
+	legacy Import query from synchronous `getByRole` to awaited `findByRole` in the
+	existing unmatched-row/corrected-upload test. The enabled-state wait and all
+	blocker, correction/resume, shared-gate, and no-write assertions remain intact.
+	No application code, fixtures, or timeouts changed; no parent repairs.
+- Parent review and focused test pass. All thirteen CSV mapping tests pass,
+	including standalone handoff, parent selection, and corrected array-upload
+	resume. Fresh TypeScript (`npx tsc -b --force`), test-file lint, and editor
+	diagnostics pass. This supersedes the earlier file-wide failure checkpoints.
+- No full-suite/build or browser/authenticated/visual checks ran. No imports or
+	relationships were executed in this slice; no commits or pushes. Automated
+	checks do not replace user-performed authenticated UI verification or establish
+	relationship persistence and full CSV/XLSX parity.
+- Stop after this slice. Next proposed step, awaiting approval: user-performed
+	authenticated parent-selection review, checking unselected ambiguity blocks
+	Import, selecting one parent enables legacy Import, and shared flow stays gated,
+	without clicking Import or Link relationships. No additional agent is approved.
+
+## Standalone upload readiness corrected (2026-10-15)
+
+- One approved `GPT-6 Luna (copilot)` test-only correction makes the standalone
+	production handoff test await `Prepare import` and its enabled state after
+	upload. Upload-count, both handoffs, return-to-mapping, and no-write assertions
+	remain unchanged. No application code or timeouts changed; no parent repairs.
+- Parent review and focused test pass. Fresh TypeScript (`npx tsc -b --force`)
+	and test-file lint pass. Editor diagnostics still reference old code despite
+	the fresh compiler passing.
+- Latest CSV mapping file result: 12 passing, one failing. Standalone handoff and
+	parent selection pass. Corrected array-upload resume still cannot synchronously
+	find `Import 1 records` (line 1171). Its cause remains unconfirmed; stop at this
+	neighboring-test boundary without additional agents or implementation.
+- No full-suite/build or browser/authenticated/visual checks ran. No imports or
+	relationships were executed in this slice; no commits or pushes. Automated
+	component checks do not replace user-performed authenticated UI verification.
+- Next proposed bounded slice, awaiting approval: investigate corrected
+	array-upload resume's legacy Import readiness query, retaining all original
+	blocker, correction/resume, shared-gate, and no-write assertions.
+
+## Parent-selection extension: focused pass, file-wide pause (2026-10-15)
+
+- One approved `GPT-6 Luna (copilot)` test-only extension selects
+	`existing-parent-1` through the real parent control in the existing ambiguous
+	lookup test. All original ambiguity, unselected-choice, disabled-action,
+	blocked-click, and no-write assertions remain before selection. Selection yields
+	one ready link, zero needing resolution, and enabled legacy Import. The chooser
+	and ambiguity message disappear; relationship linking and shared handoff remain
+	disabled. A blocked shared click retains review and all write counts.
+- Parent repair one moves Luna's block from the neighboring duplicate-ambiguity
+	test into the intended parent test. The initial focused pass ran the unchanged
+	parent test; the first file-wide run exposed the misplaced block (12 pass,
+	one fail), and TypeScript found its out-of-scope variables.
+- After repair, the extended focused test passes. Fresh TypeScript
+	(`npx tsc -b --force`) and test-file lint pass. Editor diagnostics still reference
+	old code despite the fresh compiler passing. No application code changed.
+- Latest CSV mapping file result: 11 passing, two failing. The extended parent
+	test passes. The standalone production handoff test cannot synchronously find
+	`Prepare import` (line 328); corrected array-upload resume cannot synchronously
+	find `Import 1 records` (line 1169). Cause is not established. Stop at this
+	neighboring-test scope boundary; do not claim the thirteen-test file is green.
+- No imports or relationship writes were executed in this extension. No full-suite,
+	build, browser/authenticated/visual checks, commits, or pushes ran. Authenticated
+	UI verification remains user-performed; automated checks do not establish it.
+- Next proposed bounded slice, awaiting approval: investigate upload/Prepare
+	readiness in the standalone production handoff test without weakening its
+	handoff, return, or no-write assertions. Do not launch another agent yet.
+
+## Ambiguous existing-parent test complete (2026-10-14)
+
+- One approved `GPT-6 Luna (copilot)` test-only slice seeds two saved parents
+	with distinct UUIDs and the same lookup key for a child-only CSV upload. Review
+	reports zero ready links, one needing resolution, and two existing-parent matches.
+	Both parent choices are offered with no selection. Legacy Import, relationship
+	linking, and shared handoff stay disabled; blocked clicks preserve review and
+	all write counts remain unchanged. The lookup mock restores in `finally`.
+- One parent repair scopes the visible ambiguity message away from the development
+	planner snapshot and makes the disabled legacy Import assertion mandatory rather
+	than conditional. No application code or timeouts changed.
+- Verified: focused test and all thirteen CSV mapping tests pass, as do fresh
+	TypeScript (`npx tsc -b --force`), test-file lint, and whitespace checks. Editor
+	diagnostics still reference old code; the fresh compiler reports no errors.
+- No full-suite/build, browser/authenticated/visual checks, commits, or pushes.
+	Choosing a parent and relationship persistence are not covered by this slice.
+- Stop before additional agents or implementation. Next proposed bounded slice,
+	awaiting approval: one Luna test-only extension selecting an ambiguous parent
+	and verifying review resolves and legacy Import becomes ready without writes.
+
+## Existing-parent lookup test complete (2026-10-14)
+
+- One approved `GPT-6 Luna (copilot)` test-only slice uploads a child CSV without
+	a parent file and seeds one typed saved parent. The production page looks up the
+	configured parent type UUID, `code`, and `P-1`; review reports one ready link,
+	zero needing resolution, and one existing-parent match. Legacy Import is enabled,
+	shared handoff remains relationship-gated, and no writes occur after a blocked
+	handoff click. The lookup mock restores its prior implementation in `finally`.
+- The lookup double now has a `Promise<IDocument[]>` annotation, matching adjacent
+	typed service doubles. No application changes or parent repairs were needed.
+- Verified: focused test and all twelve CSV mapping tests pass, as do fresh
+	TypeScript (`npx tsc -b --force`), test-file lint, and whitespace checks. Editor
+	diagnostics still reference old code; the fresh compiler reports no errors.
+- No full-suite/build, browser/authenticated/visual checks, commits, or pushes.
+	This verifies lookup and review readiness, not actual relationship persistence.
+- The subsequently approved ambiguous existing-parent slice is complete above;
+	its latest verification and proposed next step supersede this earlier checkpoint.
+
+## Corrected array-upload resume test complete (2026-10-14)
+
+- One approved `GPT-6 Luna (copilot)` test-only slice extends the existing
+	unmatched-row test rather than adding another case. All original blocker checks
+	remain. In the same mounted page, replacing the item upload with a matching
+	parent key and retrying Prepare clears the error and yields exactly two sources,
+	one valid composed parent, and enabled legacy Import. The array shared-flow gate
+	remains in force and all document/patch/relationship write counts stay unchanged.
+- Verified: focused block-then-correct test and all eleven CSV mapping tests pass,
+	as do fresh TypeScript (`npx tsc -b --force`), test-file lint, and whitespace checks.
+	No parent repairs or application changes. Editor diagnostics still reference old
+	code; the fresh compiler reports no errors.
+- Full-suite/build, browser/authenticated/visual checks, commits, and pushes were
+	not run. This covers preparation resume, not execution or complete file parity.
+- The subsequently approved existing-parent lookup slice is complete above;
+	its latest verification and proposed next step supersede this earlier checkpoint.
+
+## Unmatched array-row blocker test complete (2026-10-14)
+
+- One approved `GPT-6 Luna (copilot)` test-only slice adds a production-page
+	parent/item upload with a nonmatching `parent_code`. Preparation reports the
+	existing array-composition blocker, file/data-row/key details, and corrective
+	message. Uploaded sources and mapping/retry controls remain available; records,
+	shared handoff, and execution controls are absent. All write counts stay unchanged.
+- Verified: focused test and all eleven CSV mapping tests pass, as do fresh
+	TypeScript (`npx tsc -b --force`), test-file lint, and whitespace checks. No parent
+	repairs or application changes. Editor diagnostics still reference old code;
+	the fresh compiler reports no errors.
+- Full-suite/build, browser/authenticated/visual checks, commits, and pushes were
+	not run. Control availability is covered, not successful corrected-input resume.
+- The subsequently approved corrected-upload resume slice is complete above;
+	its latest verification and proposed next step supersede this earlier checkpoint.
+
+## Busy-test readiness correction complete (2026-10-14)
+
+- One approved `GPT-6 Luna (copilot)` test-only correction awaits the Prepare
+	button and its enabled state after upload in the busy-return test. The deferred
+	reconciliation gate, lock/no-write assertions, cleanup, and default timeouts are
+	unchanged. No application code changed and no parent repairs were needed.
+- Verified: focused busy-return test and all ten CSV mapping tests pass, as do
+	TypeScript, a fresh `npx tsc -b --force`, test-file lint, and whitespace checks.
+	Editor diagnostics still reference old unrelated code; the fresh compiler passes.
+	The array-source case also completes all safety assertions in this latest run.
+- Full-suite/build and browser/authenticated/visual checks were not run. No
+	commits or pushes. Real application parity remains user-performed and incomplete.
+- The subsequent approved unmatched-array-row blocker slice is complete above;
+	its latest verification and proposed next step supersede this earlier checkpoint.
+
+## Historical array gate and busy-test pause (2026-10-14)
+
+- One approved `GPT-6 Luna (copilot)` test-only slice adds a matched parent/item
+	upload case in `pages/csv.mapping.test.tsx`. The parent schema requires the
+	composed `items` array; no application code was changed.
+- First focused run stopped at mapping review. Parent repair one declares
+	`parent_code` as an array-source relationship passthrough field; the focused
+	test then passed. The file-wide run was nine passing/one failing at a synchronous
+	legacy Import query. Parent repair two waits for the original enabled
+	`Import 1 records` assertion with the default `waitFor` timeout.
+- That slice exhausted both repairs with a duplicate post-click title query. A
+	separately approved Luna query-only correction now scopes that assertion to the
+	existing loaded-source summary container. Only one test query changed. The
+	focused array test passes, and the array case also passes in the file-wide run,
+	including composed-parent validation, enabled legacy Import, the array gate,
+	blocked handoff, no shared-controller controls, and unchanged write counts.
+- Latest file-wide result is nine passing/one failing in the neighboring busy
+	return-guard test, not the array case. It fails looking for `Prepare import`
+	immediately after upload, before the page has finished loading the source. That
+	test uses a synchronous lookup; an asynchronous readiness query is the local
+	hypothesis, not a verified correction. Parent stopped at this scope boundary.
+	TypeScript, test-file lint, editor diagnostics, and whitespace checks pass.
+- Stop before more edits, agents, or test runs. Next proposed bounded slice,
+	awaiting approval: one Luna test-only correction awaiting upload/Prepare readiness
+	in the busy-return test, preserving the deferred reconciliation gate and all
+	lock/no-write assertions, then focused and file-wide checks. No full-suite/build,
+	browser/authenticated checks, commits, or pushes ran in the query-only slice.
+
+## Parent/child gate repair complete (2026-10-14)
+
+- One approved `GPT-6 Luna (copilot)` repair adds a panel-local ref that ignores
+	undefined type reports until a concrete type has been reported. Later clears
+	still reach the controller; callback dependencies remain unchanged. This avoids
+	treating the initially unset session type as a change to the prepared CSV source.
+- Temporary controller logging, test trace subscriptions, console capture, and
+	diagnostic-only helper output are removed. The original enabled legacy Import
+	control, relationship-ready, shared feature-gate, and no-write assertions remain.
+- Verified by parent: focused parent/child test passes; all nine CSV mapping tests
+	pass; `npx tsc -b`, a fresh `npx tsc -b --force`, and scoped lint for both touched
+	files pass. Editor test diagnostics still point to old code; the forced compiler
+	check reports no errors. No local repair
+	attempts were needed. No full-suite/build, browser, authenticated/visual checks,
+	commits, or pushes ran in this slice. Real-UI reproduction and type-change/clear
+	behavior still need user-performed verification.
+- The subsequent approved array-source gate slice is paused above. Parent/child
+	completion remains valid; further implementation or agents require approval.
+
+### Historical diagnostic sequence
+
+- User approved one retry with parent-selected `GPT-6 Luna (copilot)` after the
+	first delegation stopped without edits. The retry added one production-page
+	parent/child gate test and test-helper options for cloned type/schema/config
+	fixtures. No application changes were made.
+- Two parent local repairs corrected configured upload selectors and multi-file
+	transition expectations. The earlier isolated test passed: two CSV sources load, one
+	relationship is ready, shared handoff is feature-gated, the legacy Import control
+	is enabled, and no writes occur. That isolated result predates the provider fix.
+- Latest full CSV mapping file run: eight passing, one failing. The new relationship
+	test now fails waiting for the legacy `Import 2 records` control. The multi-file
+	summary, ready relationship, and shared feature-gate assertions pass before it.
+	The enabled legacy-control assertion remains intact; no root cause is established.
+- A separately approved diagnostic probe captured a missing QueryClientProvider
+	error in object-type selection. The approved Luna correction now gives each
+	production-page mount an isolated client with retries disabled, clears clients
+	after unmount, and removes the temporary boundary. Unexpected-fetch rejection
+	and service doubles remain active. One parent local repair scopes the outer title
+	query to `2 sources loaded`, avoiding duplicate nested headings. TypeScript/lint
+	pass after these changes. No application code or timeouts changed.
+- A subsequent approved Luna callback guard suppressed undefined type reports
+	while panel records were unsynchronized. Its focused test passed, but the full
+	file regressed to three passing/six failing. Parent removed only this new guard;
+	the rerun restored eight passing/one failing at `Import 2 records`. The attempted
+	fix is not retained. It added callback dependencies that can retrigger the child's
+	type-reporting effect; that is a risk to investigate, not a confirmed root cause.
+- The later approved test-only trace remains installed. Its one full-file run
+	still reports eight passing/one failing. Uploaded source metadata and the existing
+	planner snapshot show both configured type UUIDs retained after Prepare, one
+	loaded record per source, and a ready relationship; legacy Import remains absent.
+	Private session state and local `startAtImport` are not captured, so this trace
+	cannot confirm an initialization clear or identify the failing readiness check.
+	Subscriptions clean up in `finally`; failure output includes the trace. No
+	callback dependencies, assertions, gates, or timeouts changed. TypeScript/lint
+	were not rerun for this diagnostic slice.
+- The approved controller-side Luna trace is now installed in `pages/csv.tsx`,
+	with scoped console capture in the relationship test. The one normal-order file
+	run remains eight passing/one failing. Both sources pass eligibility with one
+	valid record. A subsequent undefined parent-type report resets the parent's
+	`startAtImport` from true to false and clears its selected UUID. The next report
+	restores the parent UUID but leaves readiness false; the child report is a no-op
+	with readiness true. This confirms the reset sequence in the test, not why the
+	empty report occurs or whether it reproduces in the authenticated application.
+	Callback dependencies, gates, assertions, and timeouts are unchanged. The debug
+	spy forwards output and restores in `finally`. Editor checks report no test-file
+	errors and only existing Tailwind suggestions in the controller. TypeScript/lint
+	were not rerun for this slice; temporary diagnostics remain installed.
+- Stop before repairs or more test runs. Next proposed bounded slice, awaiting
+	approval: one Luna fix for the transient undefined parent-type report at its
+	nearest reporting/handling boundary, preserving intended type changes and stable
+	callback dependencies, followed by focused and file-wide checks. Do not repeat
+	the rolled-back dependency-changing guard, weaken the enabled-control assertion,
+	or remove safety gates. Diagnostic cleanup must be included explicitly in the
+	approved scope. No full-suite/build, browser, authenticated/visual checks,
+	commits, or pushes ran in this diagnostic slice.
+
+## Ambiguous-duplicate handoff test (2026-10-14)
+
+- One approved Luna test-only slice uses two typed existing documents with the
+	same type/slug/external ID. The real production CSV page reports one valid record
+	and an ambiguous duplicate, disables shared handoff with its explanation, and
+	retains the CSV view after a blocked click. Document/patch/relationship write
+	counts do not change. The seeded lookup implementation is restored in `finally`.
+- The focused test passed first. One parent local repair removed an exact lookup
+	count assumption exposed by the file-wide run; lookup occurrence and settled
+	ambiguity are still asserted, with exact no-write checks preserved. All eight
+	CSV mapping tests, TypeScript, and test-file lint now pass. No application edits,
+	full-suite/build reruns, browser checks, commits, or pushes were made.
+- The later parent/child test slice above is implemented but paused after a
+	file-wide failure; it is not complete. Other feature gates and parity remain.
+
+## Schema-invalid handoff test (2026-10-14)
+
+- An approved exact-model retry produced one Luna test-only slice. The production
+	CSV helper accepts an optional schema; the test maps `value` normally but sets
+	`minLength: 8` against `deep`. Preparation reports zero valid and one invalid
+	record. Shared handoff stays disabled with its explanation; clicking cannot enter
+	the shared view, and document/patch/relationship write counts stay unchanged.
+- One parent local repair waits for the asynchronous upload's Prepare button
+	before clicking. The focused test and all seven CSV mapping tests pass, as do
+	TypeScript and test-file lint. No application changes, commits, pushes, full-suite/
+	build reruns, or browser checks were made. Authenticated/visual parity is pending.
+- The later ambiguous-duplicate test above covers that next blocked-input case.
+	Other blocked-input and relationship/file parity cases remain incomplete.
+
+## Post-execution mapping lock test (2026-10-14)
+
+- One approved Luna test-only slice verifies the real production CSV/shared
+	controller keeps Back to CSV mapping disabled after execution starts. A deferred
+	document write exposes the active lock; after one successful import and the
+	controller's Cancel action disappearing, the lock and explanation persist.
+	Clicking cannot return to mapping in either state. Exactly one document write
+	and no patch/relationship writes are asserted; the gate and mock are restored
+	in `finally`. No application changes were needed.
+- Verified: the new focused test, all six CSV mapping tests, TypeScript, and
+	test-file lint pass. No full-suite/build, browser, authenticated, or visual
+	checks ran. Earlier editor diagnostics remain stale against passing compiler
+	checks. No commits or pushes were made.
+- The later schema-invalid gate test above covers one blocked-input case.
+	Other blockers, full CSV/XLSX/relationship parity, and real UI checks remain.
+
+## Busy handoff guard test (2026-10-14)
+
+- One approved Luna test-only slice covers the real production CSV page's return
+	guard during shared preparation. A deferred reconciliation service holds the
+	operation open: Back to CSV mapping is disabled, clicking cannot leave the shared
+	view, and no document/patch/relationship writes occur. Settling preparation
+	re-enables the button and permits returning to mapping. The gate and temporary
+	service mock are released/restored in `finally`.
+- Verified: the new focused test, all five `pages/csv.mapping.test.tsx` tests,
+	TypeScript (`npx tsc -b`), and test-file lint pass. No application code changes,
+	commits, pushes, or browser checks ran; the full suite/build was not rerun.
+- Post-execution locking is now covered by the later approved slice above.
+	Blocked-input gates, full file parity, and authenticated/visual checks remain.
+
+## Standalone readiness follow-up (2026-10-14)
+
+- User approved one bounded Luna implementation slice after read-only review.
+	Non-array preparation now sets `startAtImport` from the existing mapping/schema
+	validation eligibility helper using loaded records; final reconciliation and
+	relationship gates and the legacy path remain unchanged.
+- The production-page test now passes both shared handoffs and return to mapping,
+	with no writes before handoff. All 29 tests across `pages/csv.mapping.test.tsx`
+	and `csv_adapter.test.ts` pass. This is automated auth/service-double evidence,
+	not authenticated, visual, busy/lock, or complete file-page parity verification.
+- Two parent local repairs corrected unsupported enabled-button matchers and
+	waited for second-handoff readiness. That repair allowance is exhausted.
+- A separately approved Luna mock-type-only slice annotated `fetchObjectTypes`
+	and `fetchObjectSchemas` with the existing object type/schema array types.
+	TypeScript (`npx tsc -b`) and the same 29 focused tests now pass. No runtime
+	behavior changed in that correction. Further slices still require approval.
+	No commits, pushes, or browser checks ran; the full suite/build was not rerun.
+- The earlier parked-test status below is historical, not the latest result.
+
+## New session start (2026-10-14)
+
+- Work remains on `refactor-import-process`, with uncommitted integration, test,
+	and documentation edits. Check current Git state and read changed files before
+	editing; preserve user/formatter changes and unrelated PAM workbook files.
+- Budget concern: implementation is paused. Do not automatically retry the parked
+	test or launch an agent. Give a brief status and propose one small next step for
+	approval first; reuse this handoff instead of repeating broad investigation.
+- One implementation agent per approved slice, exactly `GPT-6 Luna (copilot)`.
+	No extra agents or model fallback without approval. Parent owns review/validation.
+	Budgets are advisory, not measured usage or hard caps; do not invent token totals.
+- After an initial focused failure, allow at most two local repair attempts, then
+	stop and reassess with the user. No commits, pushes, or scope expansion without
+	approval. Keep authenticated browser checks user-performed.
+- Last passing baseline: 186 selected tests. A subsequently added production-page
+	test in `pages/csv.mapping.test.tsx` is incomplete: latest run was three existing
+	tests passing and one new test failing while waiting for Import 1 records after
+	Prepare. The handoff assertions have not run; no production bug is established.
+	The two repair attempts are exhausted. No additional repairs were approved.
+- The new test uses the real CSV page/controller with test-only auth/service
+	doubles. Busy/lock/gate and complete production file-page parity remain unverified.
+	Do not describe the current whole suite as green or silently skip the new test.
+- Preserve all CSV/XLSX mapping and relationship functionality; keep gated legacy
+	paths until parity. Leave ERDDAP's read-only preview until interactive testing is
+	needed. No application changes, test runs, or commits were made for this handoff.
+
+## CSV/XLSX integration started (2026-10-14)
+
+- On `refactor-import-process`, the CSV final import step now offers an opt-in
+	Use shared import flow action. It opens the real auth-connected Import All
+	controller for only this upload session; configured remote and unrelated uploaded
+	sources are excluded. Legacy file execution remains available.
+- This first slice permits clean standalone sources before any CSV writes. Array
+	item sources, parent/child relationships, ignored relationship rows, incomplete
+	mapping/validation/duplicate review, and already-started CSV execution stay on the
+	legacy path with an explanation. No existing workflow has been retired.
+- Back to CSV mapping is disabled during shared activity and locked after shared
+	execution starts. Same-ID adapter/type/schema edits invalidate preparation/review
+	evidence; changes after recorded successful writes retain results and block reuse.
+	Late uploaded-source additions safely render before their plans synchronize.
+- Verified: 186 selected import tests, including 28 focused UI tests, TypeScript,
+	behavior-file lint, and production build. Tests exercise scoped shared-controller
+	imports of mapped CSV in both modes and a genuinely parsed/selected XLSX sheet,
+	source revision invalidation, retained post-write results, late uploads, and the
+	busy/cancellation signal used by the handoff.
+- These tests do not establish full production CSV upload/type/schema-choice or
+	handoff-button UI parity. No new browser, visual, authenticated, or live-backend
+	verification was performed for this slice. Parent/array/external-parent migration,
+	ignored-row behavior, and full multi-file orchestration remain pending.
+- Next: exercise the production file-controller/handoff controls in auth-free UI
+	tests before expanding the feature gates. Preserve all config/UI mapping, fixed
+	fields, worksheet, and relationship behavior. ERDDAP preview remains deferred.
+- One Luna implementation agent was used; parent review added late-upload and
+	activity regressions. Existing formatting edits were preserved. No commit/push or
+	changes to the unrelated PAM workbook files were made in this slice.
+
+## Committed baseline (2026-10-13)
 
 - Continue on `refactor-import-process`. The redundant assistant-created branch
 	was deleted; no commits have been pushed.

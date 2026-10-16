@@ -37,7 +37,7 @@ export const validateSelected = ({
       errors.push({
         field: f.id,
         fieldLabel: f.label ?? undefined,
-        message: `${f.label ?? f.id} is required.`,
+        message: `is required.`,
         path: f.path?.map(d => d.id).join('.') ?? undefined,
       })
       valid = false
@@ -105,11 +105,12 @@ export const validate = async ({
         const fieldLabel = field?.label ?? undefined
         const currentValue = get(formValues, fieldKey)
         if (!errors.find(e => e.field === fieldKey)) {
+          const message = `${e.message.split(' ').slice(1).join(' ')}${typeof currentValue !== 'undefined' ? `. Current value: ${JSON.stringify(currentValue)}` : ''}`
           errors.push({
             field: fieldKey,
             fieldLabel,
             path: field?.path?.map(d => d.id).join('.') ?? undefined,
-            message: `${e.message.split(' ').slice(1).join(' ')}${typeof currentValue !== 'undefined' ? `. Current value: ${JSON.stringify(currentValue)}` : ''}`,
+            message: message.includes('must have required property') && fieldLabel?.length ? 'is required' : message,
           })
         }
       })

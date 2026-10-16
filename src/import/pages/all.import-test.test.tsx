@@ -7,6 +7,13 @@ import { MemoryRouter } from 'react-router-dom'
 import contextStateAtom from '@/state/contextStateAtom'
 import { uploadedImportSourcesAtom } from '@/import/state/uploadedImportSources'
 import { ImportAllView } from './all'
+import { createCSVImportAdapter } from '../csv_adapter'
+import { parseWorkbookFile } from '../workbook'
+import { selectWorkbookSheets } from '../workbook_selection'
+import {
+    createCSVMappingFixture,
+    createCSVMappingWorkbookFile,
+} from '../testing/csvMappingFixture'
 import { createImportAllFixtureRuntime } from '../testing/fixtureRuntime'
 import { ERDDAPFixtureView } from '../testing/ERDDAPFixtureView'
 import {
@@ -34,7 +41,8 @@ describe('Import All fixture UI', () => {
 
     const mountFixture = (
         options: Parameters<typeof createImportAllFixtureRuntime>[0] = {},
-        canWrite = true
+        canWrite = true,
+        onActivityChange?: (active: boolean) => void
     ) => {
         const fixture = createImportAllFixtureRuntime(options)
         const store = createStore()
@@ -45,7 +53,6 @@ describe('Import All fixture UI', () => {
             store.set(contextStateAtom, fixture.makeContextState())
         }
         const user = userEvent.setup()
-
         render(
             <Provider store={store}>
                 <MemoryRouter initialEntries={['/import-test']}>
@@ -57,12 +64,105 @@ describe('Import All fixture UI', () => {
                         runtime={fixture.runtime}
                         includeUploadedSources={false}
                         allowManualTypeSetup={false}
+                        onActivityChange={onActivityChange}
                     />
                 </MemoryRouter>
             </Provider>
         )
         return { fixture, user }
     }
+
+    const mountMappedCSV = (mappedSource: ReturnType<typeof createCSVMappingFixture>['source']) => {
+        const fixture = createImportAllFixtureRuntime()
+        const store = createStore()
+        const mappingFixture = createCSVMappingFixture(mappedSource.fileText, {
+            sourceId: mappedSource.sourceId,
+            fileName: mappedSource.fileName,
+            label: mappedSource.config.label,
+        })
+        const source = mappingFixture.source
+        const adapter = createCSVImportAdapter({
+            id: source.sourceId,
+            label: source.config.label,
+            text: source.fileText,
+            mapping: source.mapping,
+            relationshipFields: source.relationshipFields,
+            fixedFields: { 'locationDetail.type': source.schemaChoiceValue ?? '' },
+            fieldMappings: mappingFixture.contextState.object_type_by_uuid[
+                source.selectedObjectTypeUuid ?? ''
+            ]?.data?.field_mappings,
+            sourceKey: source.config.key,
+            schema: source.adapter.schema,
+        })
+        fixture.runtime.fetchObjectTypes = async () => mappingFixture.contextState.object_type
+        fixture.runtime.fetchObjectSchemas = async () => mappingFixture.contextState.object_schema
+        fixture.runtime.requestContextReload = () => undefined
+        store.set(contextStateAtom, mappingFixture.contextState)
+        store.set(uploadedImportSourcesAtom, [{
+            type: source.typeSlug,
+            label: source.config.label,
+            sourceAdapter: adapter,
+        }])
+        const user = userEvent.setup()
+        render(
+            <Provider store={store}>
+                <MemoryRouter initialEntries={['/import-test']}>
+                    <ImportAllView
+                        pageTitle="Mapped CSV fixture"
+                        sourceIds={[]}
+                        uploadedSourceIds={[source.sourceId]}
+                        token=""
+                        canWrite
+                        runtime={fixture.runtime}
+                        includeUploadedSources
+                        allowManualTypeSetup={false}
+                    />
+                </MemoryRouter>
+            </Provider>
+        )
+        return { fixture, user }
+    }
+
+    const mountSingleUploadedFixtureSource = () => {
+        const fixture = createImportAllFixtureRuntime()
+        const store = createStore()
+        const source = fixture.sources[0]
+        store.set(contextStateAtom, fixture.makeContextState())
+        store.set(uploadedImportSourcesAtom, [source])
+        fixture.runtime.requestContextReload = () => {
+            fixture.portCalls.contextReload += 1
+            store.set(contextStateAtom, fixture.makeContextState())
+        }
+        const user = userEvent.setup()
+        render(
+            <Provider store={store}>
+                <MemoryRouter initialEntries={['/import-test']}>
+                    <ImportAllView
+                        pageTitle="Source revision fixture"
+                        sourceIds={[]}
+                        uploadedSourceIds={fixture.sources.map(({ sourceAdapter }) => sourceAdapter.id)}
+                        token=""
+                        canWrite
+                        runtime={fixture.runtime}
+                        includeUploadedSources
+                        allowManualTypeSetup={false}
+                    />
+                </MemoryRouter>
+            </Provider>
+        )
+        return { fixture, source, store, user }
+    }
+
+    it('reports active work and cancellation to the file handoff', async () => {
+        const activity = vi.fn()
+        const { fixture, user } = mountFixture({}, true, activity)
+        fixture.holdDiscovery()
+        await user.click(screen.getByRole('button', { name: 'Discover selected' }))
+        await waitFor(() => expect(activity).toHaveBeenLastCalledWith(true))
+        await user.click(screen.getByRole('button', { name: 'Cancel' }))
+        await waitFor(() => expect(activity).toHaveBeenLastCalledWith(false))
+        expect(fixture.portCalls.postDocument).toBe(0)
+    })
 
     it('imports documents and links from one Simplified action', async () => {
         const { fixture, user } = mountFixture()
@@ -93,6 +193,152 @@ describe('Import All fixture UI', () => {
             expect(fixture.documents).toHaveLength(3)
             expect(fixture.relationships).toHaveLength(2)
         })
+    })
+
+    it('limits uploaded sources to the explicit handoff scope', async () => {
+        const fixture = createImportAllFixtureRuntime()
+        const store = createStore()
+        store.set(contextStateAtom, fixture.makeContextState())
+        const allowedUpload = {
+            ...fixture.sources[0],
+            label: 'Allowed upload',
+            sourceAdapter: { ...fixture.sources[0].sourceAdapter, id: 'allowed-upload' },
+        }
+        const unrelatedUpload = {
+            ...fixture.sources[1],
+            label: 'Unrelated upload',
+            sourceAdapter: { ...fixture.sources[1].sourceAdapter, id: 'unrelated-upload' },
+        }
+        store.set(uploadedImportSourcesAtom, [allowedUpload, unrelatedUpload])
+
+        render(
+            <Provider store={store}>
+                <MemoryRouter initialEntries={['/import-test']}>
+                    <ImportAllView
+                        pageTitle="Scoped upload fixture"
+                        configuredSourceOverrides={[fixture.sources[0]]}
+                        uploadedSourceIds={['allowed-upload']}
+                        token=""
+                        canWrite
+                        runtime={fixture.runtime}
+                        includeUploadedSources
+                        allowManualTypeSetup={false}
+                    />
+                </MemoryRouter>
+            </Provider>
+        )
+
+        expect(screen.getByText('Allowed upload')).toBeTruthy()
+        expect(screen.queryByText('Unrelated upload')).toBeNull()
+        expect(screen.queryByText(fixture.sources[1].label)).toBeNull()
+    })
+
+    it.each(['simplified', 'interactive'] as const)(
+        'prepares and imports real mapped CSV records in %s mode',
+        async (mode) => {
+            const mappedSource = createCSVMappingFixture().source
+            const { fixture, user } = mountMappedCSV(mappedSource)
+
+            if (mode === 'simplified') {
+                await user.click(screen.getByRole('radio', { name: 'Simplified' }))
+                await user.click(screen.getByRole('button', { name: 'Import' }))
+            } else {
+                await user.click(screen.getByRole('button', { name: 'Discover selected' }))
+                await user.click(await screen.findByRole('button', { name: 'Prepare review' }))
+                await user.click(await screen.findByRole('button', { name: 'Execute import' }))
+            }
+
+            await waitFor(() => expect(fixture.documents).toHaveLength(1))
+            expect(fixture.documents[0].data).toMatchObject({
+                metadata: {
+                    name: 'North, Bay',
+                    summary: 'Line "one", checked',
+                    owner: { name: 'Ada' },
+                },
+                locationDetail: {
+                    type: 'stationary_marine',
+                    deploymentLocation: { latitude: 44.25 },
+                },
+                parent_code: 'P-9',
+            })
+            expect(fixture.portCalls.postRelationship).toBe(0)
+        }
+    )
+
+    it('imports only a selected sheet from a genuine XLSX workbook through the shared controller', async () => {
+        const workbook = await createCSVMappingWorkbookFile()
+        const sheets = await parseWorkbookFile(workbook)
+        const [selectedSheet] = selectWorkbookSheets(sheets, new Set(['Deployments']))
+        expect(selectedSheet).toBeDefined()
+        const mappedSource = createCSVMappingFixture(selectedSheet.text, {
+            sourceId: 'uploaded-deployments',
+            fileName: `${selectedSheet.name}.csv`,
+        }).source
+        const { fixture, user } = mountMappedCSV(mappedSource)
+
+        await user.click(screen.getByRole('radio', { name: 'Simplified' }))
+        await user.click(screen.getByRole('button', { name: 'Import' }))
+
+        await waitFor(() => expect(fixture.documents).toHaveLength(1))
+        expect(fixture.documents[0].slug).toBe('deploy-2')
+        expect(fixture.documents[0].data).toMatchObject({
+            metadata: { name: 'South Dock' },
+            locationDetail: { deploymentLocation: { latitude: 12.5 } },
+            parent_code: 'P-2',
+        })
+    })
+
+    it('adds uploaded sources after the shared view has mounted', async () => {
+        const { fixture, store, user } = mountSingleUploadedFixtureSource()
+        store.set(uploadedImportSourcesAtom, fixture.sources)
+        expect(await screen.findByText('Fixture children', { selector: 'strong' })).toBeTruthy()
+        await user.click(screen.getByRole('button', { name: 'Discover selected' }))
+        await user.click(await screen.findByRole('button', { name: 'Prepare review' }))
+        await user.click(await screen.findByRole('button', { name: 'Execute import' }))
+        await waitFor(() => {
+            expect(fixture.documents).toHaveLength(3)
+            expect(fixture.relationships).toHaveLength(2)
+        })
+    })
+
+    it('invalidates prepared evidence when an adapter changes under the same source ID', async () => {
+        const { fixture, source, store, user } = mountSingleUploadedFixtureSource()
+        await user.click(screen.getByRole('button', { name: 'Discover selected' }))
+        await user.click(await screen.findByRole('button', { name: 'Prepare review' }))
+        expect(await screen.findByRole('button', { name: 'Execute import' })).toBeTruthy()
+
+        store.set(uploadedImportSourcesAtom, [{
+            ...source,
+            sourceAdapter: {
+                ...source.sourceAdapter,
+                schema: { ...source.sourceAdapter.schema, title: 'Changed mapped schema' },
+            },
+        }])
+
+        await waitFor(() => expect(screen.getByText(/0 of 1 sources discovered/)).toBeTruthy())
+        expect(fixture.documents).toHaveLength(0)
+    })
+
+    it('retains successful results and blocks execution after a post-write source change', async () => {
+        const { fixture, source, store, user } = mountSingleUploadedFixtureSource()
+        await user.click(screen.getByRole('radio', { name: 'Simplified' }))
+        await user.click(screen.getByRole('button', { name: 'Import' }))
+        await waitFor(() => expect(fixture.documents).toHaveLength(1))
+        const savedUuid = fixture.documents[0].uuid
+        const writeAttempts = fixture.portCalls.postDocument
+
+        store.set(uploadedImportSourcesAtom, [{
+            ...source,
+            sourceAdapter: {
+                ...source.sourceAdapter,
+                schema: { ...source.sourceAdapter.schema, title: 'Changed after write' },
+            },
+        }])
+
+        expect(await screen.findByText(/Source mapping changed after execution began/)).toBeTruthy()
+        expect((screen.getByRole('button', { name: 'Import' }) as HTMLButtonElement).disabled).toBe(true)
+        expect(fixture.documents[0].uuid).toBe(savedUuid)
+        expect(fixture.portCalls.postDocument).toBe(writeAttempts)
     })
 
     it('pauses Simplified mode for configured reviews until acknowledged', async () => {

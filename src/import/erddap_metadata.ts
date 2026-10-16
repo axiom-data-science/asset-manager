@@ -311,43 +311,43 @@ export const createERDDAPVariableMetadataAdapter = (
     }
 }
 
-    export const createERDDAPCompositeSourceAdapter = ({
-        id = 'erddap_modl_composite',
-        datasetSourceId = 'erddap_modl',
-        variableSourceId = 'erddap_modl_variable_metadata',
-        schema,
-    }: {
-        id?: string
-        datasetSourceId?: string
-        variableSourceId?: string
-        schema: JSONSchema6
-    }): ImportCompositeSourceAdapter => {
-        const metadataAdapter = createERDDAPMetadataAdapter({ id, coerceAttributeValues: true })
-        return {
-            id,
-            memberSourceIds: [datasetSourceId, variableSourceId],
-            defaultImportUrl: metadataAdapter.defaultImportUrl,
-            discover: metadataAdapter.discover,
-            load: async (options) => {
-                const loaded = await metadataAdapter.load(options)
-                const metadata = loaded.sourceData as ERDDAPDatasetMetadata
-                const variableRecord: CanonicalImportRecord = {
-                    ...loaded,
-                    uuid: `${metadata.dataset_id}:variables`,
-                    label: `${loaded.label} variable metadata`,
-                    description: `Variable metadata for ${loaded.label}`,
-                    data: mapERDDAPMetadataToVariableRecord(metadata),
-                    provenance: { sourceId: variableSourceId, externalId: metadata.dataset_id },
-                }
-                const datasetRecord: CanonicalImportRecord = {
-                    ...loaded,
-                    data: mapERDDAPMetadataToSchema(metadata, schema),
-                    provenance: { sourceId: datasetSourceId, externalId: metadata.dataset_id },
-                }
-                return {
-                    [datasetSourceId]: datasetRecord,
-                    [variableSourceId]: variableRecord,
-                }
-            },
-        }
+export const createERDDAPCompositeSourceAdapter = ({
+    id = 'erddap_modl_composite',
+    datasetSourceId = 'erddap_modl',
+    variableSourceId = 'erddap_modl_variable_metadata',
+    schema,
+}: {
+    id?: string
+    datasetSourceId?: string
+    variableSourceId?: string
+    schema: JSONSchema6
+}): ImportCompositeSourceAdapter => {
+    const metadataAdapter = createERDDAPMetadataAdapter({ id, coerceAttributeValues: true })
+    return {
+        id,
+        memberSourceIds: [datasetSourceId, variableSourceId],
+        defaultImportUrl: metadataAdapter.defaultImportUrl,
+        discover: metadataAdapter.discover,
+        load: async (options) => {
+            const loaded = await metadataAdapter.load(options)
+            const metadata = loaded.sourceData as ERDDAPDatasetMetadata
+            const variableRecord: CanonicalImportRecord = {
+                ...loaded,
+                uuid: `${metadata.dataset_id}:variables`,
+                label: `${loaded.label} variable metadata`,
+                description: `Variable metadata for ${loaded.label}`,
+                data: mapERDDAPMetadataToVariableRecord(metadata),
+                provenance: { sourceId: variableSourceId, externalId: metadata.dataset_id },
+            }
+            const datasetRecord: CanonicalImportRecord = {
+                ...loaded,
+                data: mapERDDAPMetadataToSchema(metadata, schema),
+                provenance: { sourceId: datasetSourceId, externalId: metadata.dataset_id },
+            }
+            return {
+                [datasetSourceId]: datasetRecord,
+                [variableSourceId]: variableRecord,
+            }
+        },
     }
+}

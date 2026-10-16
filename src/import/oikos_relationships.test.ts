@@ -31,13 +31,14 @@ const candidate = (
     externalId: string,
     objectTypeUuid: string,
     objectTypeSlug: string,
-    data: Record<string, unknown>
+    data: Record<string, unknown>,
+    recordSlug = externalId
 ): ImportRelationshipCandidate => ({
     objectTypeUuid,
     objectTypeSlug,
     record: {
         uuid: externalId,
-        slug: externalId,
+        slug: recordSlug,
         label: externalId,
         description: '',
         data,
@@ -62,7 +63,7 @@ describe('Oikos relationship rules', () => {
     it('matches model variables to models by model slug', () => {
         const parent = candidate('oikos', 'model-1', 'model-type', 'oikos_model', {
             slug: 'forecast-model',
-        })
+        }, 'forecast-model')
         const child = candidate('oikos', 'variable-1', 'variable-type', 'oikos_model_variable', {
             modelSlug: 'forecast-model',
         })

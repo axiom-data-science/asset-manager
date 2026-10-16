@@ -76,6 +76,7 @@ import {
 } from '../csv_relationships'
 import { updateCSVImportSource } from '../csv_import_source_state'
 import { ImportWizard } from '../components/import_wizard'
+import ImportAllPage from './all'
 import { fetchRelationships, postRelationship } from '@/manage/relationship/services'
 import { useAuth } from '@/auth/useAuth'
 import type { ParsedWorkbookSheet } from '../workbook'
@@ -940,8 +941,13 @@ const CSVSourceImportPanel = ({
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [duplicateCheckError, setDuplicateCheckError] = useState<string>()
   const auth = useAuth()
+  const hasReportedObjectType = useRef(false)
   const handlePanelObjectTypeSelected = useCallback(
-    (objectType: IObjectType | undefined) => onObjectTypeSelected(source.sourceId, objectType),
+    (objectType: IObjectType | undefined) => {
+      if (!objectType && !hasReportedObjectType.current) return
+      if (objectType) hasReportedObjectType.current = true
+      onObjectTypeSelected(source.sourceId, objectType)
+    },
     [onObjectTypeSelected, source.sourceId]
   )
   const handleImportAttemptComplete = useCallback(
@@ -1184,6 +1190,9 @@ const CSVImportPage = ({
   const [importRequest, setImportRequest] = useState(0)
   const autoLinkedImportRequest = useRef(0)
   const [sessionImportStarted, setSessionImportStarted] = useState(false)
+  const [sharedImportStarted, setSharedImportStarted] = useState(false)
+  const [sharedExecutionStarted, setSharedExecutionStarted] = useState(false)
+  const [sharedImportActive, setSharedImportActive] = useState(false)
   const [pendingWorkbook, setPendingWorkbook] = useState<{
     fileName: string
     sheets: ParsedWorkbookSheet[]
@@ -1319,7 +1328,8 @@ const CSVImportPage = ({
         getCSVSourceBranchSelections(source)
       )
     ) return false
-    return validateCSVRecords(records, schema).every(({ result }) => result.isValid)
+    const validationResults = validateCSVRecords(records, schema)
+    return validationResults.every(({ result }) => result.isValid)
   }
   const documentSourcesInDependencyOrder = useMemo(
     () => getCSVDocumentSourcesInDependencyOrder(sources),
@@ -1349,8 +1359,7 @@ const CSVImportPage = ({
           if (
             source.selectedObjectTypeUuid === objectType?.uuid &&
             source.typeSlug === objectType?.slug
-          )
-            return source
+          ) return source
           const typeSlug = objectType?.slug ?? source.typeSlug
           const selectedType = objectType ?? contextState.object_type_by_slug[typeSlug]
           const selectedSchema = selectedType
@@ -1360,7 +1369,7 @@ const CSVImportPage = ({
           const schema = source.arrayTarget
             ? getCSVArrayItemSchema(selectedSchema, source.arrayTarget.arrayFieldPath)
             : selectedSchema
-          return {
+          const nextSource = {
             ...source,
             selectedObjectTypeUuid: objectType?.uuid,
             typeSlug,
@@ -1384,6 +1393,7 @@ const CSVImportPage = ({
             }),
             startAtImport: false,
           }
+          return nextSource
         })
       )
     },
@@ -1691,7 +1701,32 @@ const CSVImportPage = ({
       ({ status, action }) => status !== 'ambiguous' && action !== undefined && action !== 'ignore'
     ).length
   }, 0)
-
+  const sharedSourceRevision = JSON.stringify(sources.map((source) => ({
+    sourceId: source.sourceId,
+    typeSlug: source.typeSlug,
+    selectedObjectTypeUuid: source.selectedObjectTypeUuid,
+    schemaChoiceValue: source.schemaChoiceValue,
+    role: source.role,
+    arrayTarget: source.arrayTarget,
+    config: source.config,
+    mapping: source.mapping,
+    relationshipFields: source.relationshipFields,
+    relationshipRule: source.relationshipRule,
+    schema: source.adapter.schema,
+  })))
+  const sharedHandoffFeatureGate = sources.some(({ role }) => role === 'array')
+    ? 'Array item sources still use CSV array composition; continue with the CSV import workflow.'
+    : resolvedRelationshipRules.length > 0 || ignoredRelationshipRows.size > 0
+      ? 'CSV parent/child relationships and ignored relationship rows still use the CSV relationship workflow.'
+      : undefined
+  const sharedHandoffMessage = sharedHandoffFeatureGate ?? (
+    sessionImportStarted || completedSourceIds.size > 0 || relationshipResults.length > 0
+      ? 'Start the shared workflow before writing from CSV; completed CSV results stay in this workflow.'
+      : !canImportCleanSession || readySessionRecordCount === 0
+        ? 'Complete required mappings, validation, and duplicate review in CSV before using the shared workflow.'
+        : undefined
+  )
+  const canUseSharedImport = sharedHandoffMessage === undefined
   useEffect(() => {
     if (!import.meta.env.DEV) return
     console.groupCollapsed('[CSV relationship planner] updated')
@@ -1922,6 +1957,47 @@ const CSVImportPage = ({
     setSources((current) => updateCSVImportSource(current, sourceId, update))
   }
 
+  const getObjectTypeMatchFields = (typeSlug?: string): string[] => {
+    if (!typeSlug) return []
+    const objectType = contextState.object_type_by_slug[typeSlug]
+    const schema = objectType
+      ? (contextState.object_schema_defaults_by_object_type_uuid[objectType.uuid]
+        ?.json_schema as JSONSchema6 | undefined)
+      : undefined
+    return getCSVSchemaFields(schema, '', {}).map(({ path }) => path)
+  }
+
+  const updateChildRelationshipRule = (
+    source: CSVImportSource,
+    relationshipRule?: ImportRelationshipRule
+  ) => {
+    const relationshipFields = relationshipRule
+      ? relationshipRule.childMatchField && !source.relationshipFields.includes(relationshipRule.childMatchField)
+        ? [...source.relationshipFields, relationshipRule.childMatchField]
+        : source.relationshipFields
+      : source.config.relationshipFields ?? []
+    const selectedType = source.selectedObjectTypeUuid
+      ? contextState.object_type_by_uuid[source.selectedObjectTypeUuid]
+      : contextState.object_type_by_slug[source.typeSlug]
+    updateSource(source.sourceId, {
+      relationshipRule,
+      relationshipFields,
+      adapter: createCSVImportAdapter({
+        id: source.sourceId,
+        label: csvFileNameToTypeLabel(source.fileName),
+        text: source.fileText,
+        mapping: source.mapping,
+        relationshipFields,
+        relationshipRules: relationshipRule ? [relationshipRule] : undefined,
+        arrayTarget: source.arrayTarget,
+        fixedFields: getCSVSourceFixedFields(source),
+        fieldMappings: source.arrayTarget ? undefined : selectedType?.data?.field_mappings,
+        sourceKey: source.config.key,
+        schema: source.adapter.schema,
+      }),
+    })
+  }
+
   const updateRelationshipRule = (rule: ImportRelationshipRule) => {
     setCompletedSourceIds(new Set())
     setSources((current) =>
@@ -2105,6 +2181,18 @@ const CSVImportPage = ({
         ...current,
         [activeSource.sourceId]: { candidates, records },
       }))
+      const preparedRecordsBySourceId = new Map(
+        loadedSources.map(({ source, records: loadedRecords }) => [source.sourceId, loadedRecords])
+      )
+      preparedRecordsBySourceId.set(activeSource.sourceId, records)
+      setSources((current) =>
+        current.map((source) => {
+          const preparedRecords = preparedRecordsBySourceId.get(source.sourceId)
+          return preparedRecords
+            ? { ...source, startAtImport: canSourceStartAtImport(source, preparedRecords) }
+            : source
+        })
+      )
       activeSession.resetSession()
       activeSession.setCandidates(candidates)
       activeSession.setRecords(records)
@@ -2250,6 +2338,42 @@ const CSVImportPage = ({
     autoLinkedImportRequest.current = importRequest
     void linkCSVRelationships()
   }, [completedSourceIds, documentSourcesInDependencyOrder, importRequest, linkCSVRelationships])
+
+  if (sharedImportStarted) {
+    return (
+      <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+        <div className="flex shrink-0 items-center gap-3 border-b px-4 py-2">
+          <Button
+            size="xs"
+            variant="outline"
+            disabled={sharedExecutionStarted || sharedImportActive}
+            onClick={() => {
+              setSharedImportStarted(false)
+              setActiveWizardStep('mapping')
+            }}
+          >
+            Back to CSV mapping
+          </Button>
+          {sharedExecutionStarted && (
+            <span className="text-sm text-gray-600" role="status">
+              Mapping is locked after shared execution starts so completed import results are preserved.
+            </span>
+          )}
+        </div>
+        <div className="min-h-0 flex-1">
+          <ImportAllPage
+            key={sharedSourceRevision}
+            pageTitle="Import mapped CSV sources"
+            sourceIds={[]}
+            uploadedSourceIds={sources.map(({ sourceId }) => sourceId)}
+            includeUploadedSources
+            onExecutionStarted={() => setSharedExecutionStarted(true)}
+            onActivityChange={setSharedImportActive}
+          />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden p-4">
@@ -2771,7 +2895,105 @@ const CSVImportPage = ({
                         </select>
                       </label>
                       {source.role === 'child' && (
-                        <span className="bg-slate-100 px-2 py-1 text-xs">Child document</span>
+                        <>
+                          <span className="bg-slate-100 px-2 py-1 text-xs">Child document</span>
+                          {viewConfig.relationships === 'user-configured' && (
+                            <div className="basis-full pt-3 text-sm">
+                              <p className="mb-2 text-gray-600">
+                                Look up a saved parent without uploading a parent CSV.
+                              </p>
+                              <div className="grid gap-3 md:grid-cols-3">
+                                <label className="flex flex-col gap-1">
+                                  <span className="font-medium">Parent object type</span>
+                                  <select
+                                    aria-label="Parent object type"
+                                    value={
+                                      source.relationshipRule?.existingParentPolicy === 'lookup'
+                                        ? source.relationshipRule.parentObjectTypeSlug
+                                        : ''
+                                    }
+                                    onChange={(event) => {
+                                      const objectType = contextState.object_type_by_slug[event.target.value]
+                                      const sameParent =
+                                        objectType?.slug === source.relationshipRule?.parentObjectTypeSlug
+                                      updateChildRelationshipRule(
+                                        source,
+                                        objectType
+                                          ? {
+                                            parentObjectTypeSlug: objectType.slug,
+                                            childObjectTypeSlug: source.typeSlug,
+                                            parentMatchField: sameParent
+                                              ? source.relationshipRule?.parentMatchField ?? ''
+                                              : '',
+                                            childMatchField: sameParent
+                                              ? source.relationshipRule?.childMatchField ?? ''
+                                              : '',
+                                            predicate: source.relationshipRule?.predicate || 'has_parent',
+                                            existingParentPolicy: 'lookup',
+                                          }
+                                          : undefined
+                                      )
+                                    }}
+                                    className="border px-2 py-1"
+                                  >
+                                    <option value="">Select saved parent type</option>
+                                    {contextState.object_type.map((objectType) => (
+                                      <option key={objectType.uuid} value={objectType.slug}>
+                                        {objectType.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                                {source.relationshipRule?.existingParentPolicy === 'lookup' && (
+                                  <>
+                                    <label className="flex flex-col gap-1">
+                                      <span className="font-medium">Parent match field</span>
+                                      <select
+                                        aria-label="Parent match field"
+                                        value={source.relationshipRule.parentMatchField ?? ''}
+                                        onChange={(event) =>
+                                          updateChildRelationshipRule(source, {
+                                            ...source.relationshipRule!,
+                                            parentMatchField: event.target.value,
+                                          })
+                                        }
+                                        className="border px-2 py-1"
+                                      >
+                                        <option value="">Select a field</option>
+                                        {getObjectTypeMatchFields(
+                                          source.relationshipRule.parentObjectTypeSlug
+                                        ).map((field) => (
+                                          <option key={field} value={field}>{field}</option>
+                                        ))}
+                                      </select>
+                                    </label>
+                                    <label className="flex flex-col gap-1">
+                                      <span className="font-medium">Child match field</span>
+                                      <select
+                                        aria-label="Child match field"
+                                        value={source.relationshipRule.childMatchField ?? ''}
+                                        onChange={(event) =>
+                                          updateChildRelationshipRule(source, {
+                                            ...source.relationshipRule!,
+                                            childMatchField: event.target.value,
+                                          })
+                                        }
+                                        className="border px-2 py-1"
+                                      >
+                                        <option value="">Select a field</option>
+                                        {source.parsed.headers.map((header) => (
+                                          <option key={header.key} value={header.key}>
+                                            {header.key}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </label>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </>
                       )}
                       {source.role === 'parent' && (
                         <span className="bg-slate-100 px-2 py-1 text-xs">Parent document</span>
@@ -3194,6 +3416,18 @@ const CSVImportPage = ({
               </span>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                size="xs"
+                variant="outline"
+                disabled={!canUseSharedImport}
+                title={sharedHandoffMessage}
+                onClick={() => {
+                  setSharedExecutionStarted(false)
+                  setSharedImportStarted(true)
+                }}
+              >
+                Use shared import flow
+              </Button>
               {cleanImportControlActive && (
                 <Button
                   size="xs"
@@ -3222,6 +3456,11 @@ const CSVImportPage = ({
               </Button>
             </div>
           </div>
+          {!canUseSharedImport && (
+            <p className="mb-2 text-sm text-gray-600" role="status">
+              {sharedHandoffMessage}
+            </p>
+          )}
           {resolvedRelationshipRules.length > 0 && (
             <section className="mb-3 border-b pb-3" aria-label="CSV relationship review">
               <div className="flex flex-wrap items-center gap-3 text-sm">

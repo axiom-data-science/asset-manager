@@ -4,3 +4,5 @@
 - Introduce form editor UI on form edit page
 - [x] Update `custom_inputs/file_upload.tsx` to use `Inputs.FileUploadInput` while preserving PostgREST persistence and parsed-file callbacks. Authenticated browser verification remains; see `manage/custom_inputs/HANDOFF.md`.
 - [ ] Update `csv_upload_for_sample_file.tsx` to use the shared forms CSV/file input while preserving sample-file-specific behavior.
+- [x] Refresh the MODL variant entry and success pages with accessible records, expected-child creation, existing collector/variable metadata records, and collapsible record groups. See `app-variants/modl/HANDOFF.md`.
+- [ ] Verify MODL `expected_child_types`, predicates, and collector/variable metadata slugs against the live backend configuration.

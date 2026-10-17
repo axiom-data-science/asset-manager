@@ -1,10 +1,16 @@
-import ButtonLink from '@/manage/components/button_link'
 import ExpectedChildTypeLoader from '@/manage/components/expected_child_types_loader'
+import ButtonLink from '@/manage/components/button_link'
 import type { ICreateDocumentSuccessProps } from '@/manage/document/create_success'
 import { useDocumentAndObjectTypeAndObjectTypeConfig } from '@/manage/document/useDocument'
-import { ViewWithLoader } from '@axdspub/axiom-ui-utilities'
+import { Button, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
 import type { ReactElement } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { Check, Share } from 'lucide-react'
+import ShareDocument from '@/components/custom/share-document'
+import Link from '@/manage/components/link'
+import MODLDocuments from './modl_documents'
+import { MODLDocumentSelector } from './create_document_entry'
+import { MODLSuccessChildTypeActions } from './modl_child_type_actions'
 
 const MODLCreateDocumentSuccess = ({
   action = 'created',
@@ -12,7 +18,7 @@ const MODLCreateDocumentSuccess = ({
   const [searchParams] = useSearchParams()
   const uuid = searchParams.get('uuid')
   const { data, isLoading, error } = useDocumentAndObjectTypeAndObjectTypeConfig(uuid ?? '')
-  const created = action === 'created'
+  const updated = action === 'updated' || searchParams.get('action') === 'edit'
 
   if (!uuid) {
     return <div>Invalid document ID</div>
@@ -21,34 +27,45 @@ const MODLCreateDocumentSuccess = ({
   return (
     <ViewWithLoader isLoading={isLoading} error={error} data={data}>
       {data?.document && (
-        <div className="flex flex-col p-10 gap-8 max-w-300 mx-auto bg-slate-100 shadow-md">
-          <h1 className="font-medium text-2xl">
-            Document {created ? 'Created' : 'Updated'} Successfully
+        <div className="flex flex-col gap-10 p-10">
+          <h1 className="text-2xl font-medium">
+            MODL document {updated ? 'updated' : 'created'}
           </h1>
-          {
-            data.objectType.slug.match(/modl_coll/i) ?
-              <div className='flex flex-row'>
-                <ButtonLink to={`/submit-document`}>
+          <div className="flex flex-row gap-10">
+            <div className="flex w-[40%] flex-col gap-8">
+              <div className="flex flex-wrap items-center gap-3">
+                <Check className="text-green-500" size={24} />
+                <Link to={`/documents/${uuid}`} className="font-bold">
+                  {data.document.label}
+                </Link>
+                {updated ? 'updated' : 'created'}
+                <ShareDocument
+                  document={data.document}
+                  SelectButton={
+                    <Button size="xs" variant="outline">
+                      Share <Share />
+                    </Button>
+                  }
+                />
+              </div>
+              {data.objectType.slug.match(/modl_coll/i) && (
+                <ButtonLink to="/submit-document">
                   Submit metadata and collection metadata for data ingestion
                 </ButtonLink>
-              </div>
-              :
+              )}
               <ExpectedChildTypeLoader
                 parentDocument={data.document}
                 objectType={data.objectType}
+                View={MODLSuccessChildTypeActions}
               />
-          }
-          <div className="flex flex-row gap-4">
-            <ButtonLink size="xs" variant="secondary" to={`/document`}>
-              All documents
-            </ButtonLink>
-
-            <ButtonLink size="xs" variant="secondary" to={`/`}>
-              Create another document
-            </ButtonLink>
-            <ButtonLink size="xs" variant="secondary" to={`/document/edit/${uuid}`}>
-              Edit this document
-            </ButtonLink>
+              <MODLDocumentSelector />
+            </div>
+            <div className="flex-1 min-w-0">
+              <MODLDocuments
+                Heading={<h2 className="font-semibold">MODL metadata records in progress</h2>}
+                excludeDocumentUUID={updated ? undefined : uuid}
+              />
+            </div>
           </div>
         </div>
       )}

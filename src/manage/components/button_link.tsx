@@ -17,7 +17,7 @@ const ButtonLink = ({
   disabled?: boolean
   target?: string
   className?: string
-  variant?: 'default' | 'secondary' | 'link' | 'ghost'
+  variant?: 'default' | 'secondary' | 'outline' | 'link' | 'ghost'
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
 }): ReactElement => {
   return (

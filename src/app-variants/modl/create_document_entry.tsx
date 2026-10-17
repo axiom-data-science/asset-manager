@@ -1,5 +1,5 @@
 import { useObjectTypesAndFormsAndSchemas } from '@/manage/object_type/useObjectTypeList'
-import { ViewWithLoader } from '@axdspub/axiom-ui-utilities'
+import { utils, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
 import { Book } from 'lucide-react'
 import type { ReactElement } from 'react'
 import { Link } from 'react-router-dom'
@@ -8,7 +8,7 @@ import type { CreateDocumentEntryProps } from '@/variants/types'
 export type MODLCreateDocumentEntryProps = CreateDocumentEntryProps
 
 export const MODLDocumentSelector = ({
-  returnToOnSuccess,
+  returnToOnSuccess = '/create-document-success',
   documentCreatePath,
 }: MODLCreateDocumentEntryProps = {}): ReactElement => {
   const { data, isLoading, error } = useObjectTypesAndFormsAndSchemas({
@@ -22,34 +22,30 @@ export const MODLDocumentSelector = ({
       ],
     },
   })
-
-  documentCreatePath = documentCreatePath ?? '/document/create'
-
+  const createPath = documentCreatePath ?? '/create-document'
   return (
-    <>
-      <ViewWithLoader isLoading={isLoading} error={error} data={data}>
-        {data &&
-          data.object_types.map((type) => {
-            const forms = data.forms.filter((f) => f.object_type_uuid === type.uuid)
-            return (
-              <div className="flex flex-row gap-4" key={type.uuid}>
-                {forms.map((form) => {
-                  return (
-                    <div key={form.uuid} className="flex flex-col gap-2">
-                      <Link
-                        to={`${documentCreatePath.replace(/\/$/, '')}/${type.uuid}/object_type/${form.uuid}/form${returnToOnSuccess ? `?returnToOnSuccess=${returnToOnSuccess}` : ''}`}
-                        className="bg-[#003087] text-white px-4 py-2 rounded-md hover:bg-[#0056b3] transition-colors duration-300"
-                      >
-                        {form.label}
-                      </Link>
-                    </div>
-                  )
-                })}
-              </div>
-            )
-          })}
-      </ViewWithLoader>
-    </>
+    <ViewWithLoader isLoading={isLoading} error={error} data={data}>
+      <div className="flex flex-row gap-3">
+        {data?.object_types.flatMap((type) =>
+          data.forms
+            .filter((form) => form.object_type_uuid === type.uuid)
+            .map((form) => (
+              <Link
+                key={form.uuid}
+                to={{
+                  pathname: `${createPath.replace(/\/$/, '')}/${type.uuid}/object_type/${form.uuid}/form`,
+                  search: new URLSearchParams({
+                    returnToOnSuccess,
+                  }).toString(),
+                }}
+                className={utils.createButtonClass({ size: 'lg', variant: 'default' })}
+              >
+                Create another MODL metadata record
+              </Link>
+            ))
+        )}
+      </div>
+    </ViewWithLoader>
   )
 }
 
@@ -57,7 +53,7 @@ const MODLCreateDocumentEntry = (props: MODLCreateDocumentEntryProps = {}): Reac
   return (
     <>
       <h2 className="text-2xl font-bold mb-2 flex flex-row items-center gap-2">
-        <Book size={18} /> Create asset metadata
+        <Book size={18} /> Create MODL metadata
       </h2>
       <MODLDocumentSelector {...(props ?? {})} />
     </>

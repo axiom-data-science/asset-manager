@@ -1,5 +1,52 @@
 # Import Refactor Handoff
 
+## Pause checkpoint (2026-10-16)
+
+- The user paused before the authenticated conflict-review check. It has not been
+	performed. When resuming, use a workbook row known to match an existing record,
+	inspect the conflict indication/details and available handling options, and
+	do not click Import or Link. If no known match is available, do not create
+	persistent data just for the check.
+- The remaining authenticated conflict and array-parity checks are UI checks
+	only; they do not establish backend writes.
+
+## Authenticated XLSX validation review (2026-10-16)
+
+- User confirmed a workbook source with a schema-invalid record showed its invalid
+	count and validation details in **Edit type and validate**; the review remained
+	available after closing and reopening the editor. The other sheet's type and
+	mapping remained unchanged.
+- This confirms authenticated UI reviewability only. No Import or Link action was
+	reported, and this is not evidence of backend writes.
+
+## XLSX Import Records type-switch fix (2026-10-16)
+
+- The user reported that **Edit type and validate** did not allow switching types
+	after selecting two workbook sheets. An auth-free production-page test
+	reproduced a blocked pointer interaction when choosing a type from the modal:
+	the small-list SelectInput rendered a portaled dropdown under the modal's
+	`pointer-events: none` body state.
+- The CSV source type picker now uses the utility's native select whenever a
+	source schema is supplied, avoiding the portaled menu in this modal. The
+	regression test selects an alternate type for Sites and verifies Deployments
+	keeps its original type. All 17 CSV mapping tests and `npm run build` pass;
+	mocks confirm no document or relationship writes in the test. Build reports
+	the existing Vite dependency/chunk-size warnings.
+- User-performed authenticated recheck confirmed a source's type can be changed
+	in this step while the other source retains its type. This verifies the UI
+	behavior after the fix only; it is not evidence of backend writes.
+
+## Authenticated multi-sheet XLSX review (2026-10-16)
+
+- User selected two workbook sheets and reported that their types and mappings
+	appeared independent in both the Upload files and Map fields steps.
+- At Import Records, selecting **Edit type and validate** did not allow the user
+	to change to a different type. The later authenticated recheck above confirmed
+	that the type-switch fix resolves this behavior.
+- The initial review and recheck cover setup and type editing only, not backend
+	writes. No Import or Link action was reported; the automated XLSX execution test
+	uses mocked persistence.
+
 ## Authenticated XLSX readiness check (2026-10-15)
 
 - User-performed review selected a workbook sheet and reached Import Records.

@@ -619,6 +619,99 @@ describe('CSV mapping editor fixture', () => {
         expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipCallsBefore)
     })
 
+    it('keeps object type selection isolated when editing one workbook source', async () => {
+        const fixture = createCSVMappingFixture()
+        const originalObjectType = fixture.contextState.object_type[0]
+        const alternateObjectType: IObjectType = {
+            ...originalObjectType,
+            uuid: 'fixture-alternate-site-type',
+            label: 'Alternate fixture sites',
+            slug: 'alternate_fixture_site',
+        }
+        const alternateSchema: IObjectSchema = {
+            ...fixture.contextState.object_schema[0],
+            uuid: 'fixture-alternate-site-schema',
+            object_type_uuid: alternateObjectType.uuid,
+            slug: 'alternate_fixture_site_default',
+            label: 'Alternate fixture site default',
+        }
+        const { user } = mountProductionCSVPage(undefined, {
+            viewConfig: {
+                mapping: 'required',
+                relationships: 'fixed',
+                sourceConfigs: ['Sites', 'Deployments'].map((name) => ({
+                    key: name.toLowerCase(),
+                    label: name,
+                    fileName: `${name}.csv`,
+                    typeSlug: originalObjectType.slug,
+                    typeKnown: true,
+                    mapping: 'required',
+                })),
+            },
+            additionalObjectTypes: [alternateObjectType],
+            additionalSchemas: [alternateSchema],
+        })
+        const postDocumentCallsBefore = testPorts.postDocument.mock.calls.length
+        const patchDocumentCallsBefore = testPorts.patchDocument.mock.calls.length
+        const relationshipCallsBefore = testPorts.postRelationship.mock.calls.length
+
+        await user.click(screen.getByRole('button', { name: 'Excel workbook (.xlsx)' }))
+        await user.upload(
+            screen.getByLabelText('Choose Excel workbook'),
+            await createCSVMappingWorkbookFile()
+        )
+        await screen.findByRole('checkbox', { name: 'Sites' })
+        await user.click(screen.getByRole('button', { name: 'Add 2 selected sheets' }))
+        await user.click(screen.getByRole('button', { name: /Map fields/ }))
+        await user.click(screen.getByRole('button', { name: 'Continue to import' }))
+
+        const importSources = screen.getByRole('table', { name: 'CSV import sources' })
+        const editTypeButtons = await screen.findAllByRole('button', {
+            name: 'Edit type & validate',
+        })
+        expect(editTypeButtons).toHaveLength(2)
+        await user.click(editTypeButtons[0])
+
+        let dialog = await screen.findByRole('dialog')
+        expect(within(dialog).getByRole('heading', { name: 'Sites.csv' })).toBeTruthy()
+        const createTypeCheckbox = await within(dialog).findByRole('checkbox', {
+            name: 'Create schema and object type from data',
+        })
+        if (
+            createTypeCheckbox.getAttribute('aria-checked') === 'true' ||
+            (createTypeCheckbox instanceof HTMLInputElement && createTypeCheckbox.checked)
+        ) {
+            await user.click(createTypeCheckbox)
+        }
+        const sitesTypeControl = within(dialog).getAllByRole('combobox')[0]
+        if (sitesTypeControl instanceof HTMLSelectElement) {
+            await user.selectOptions(sitesTypeControl, alternateObjectType.uuid)
+        } else {
+            await user.click(sitesTypeControl)
+            await user.click(await screen.findByRole('option', { name: alternateObjectType.label }))
+        }
+        await waitFor(() =>
+            expect(within(importSources).getByText(alternateObjectType.label)).toBeTruthy()
+        )
+
+        await user.keyboard('{Escape}')
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+        await user.click(screen.getAllByRole('button', { name: 'Edit type & validate' })[1])
+
+        dialog = await screen.findByRole('dialog')
+        expect(within(dialog).getByRole('heading', { name: 'Deployments.csv' })).toBeTruthy()
+        const deploymentsTypeControl = within(dialog).getAllByRole('combobox')[0]
+        if (deploymentsTypeControl instanceof HTMLSelectElement) {
+            expect(deploymentsTypeControl.value).toBe(originalObjectType.uuid)
+        } else {
+            expect(deploymentsTypeControl.textContent).toContain(originalObjectType.label)
+        }
+        expect(within(importSources).getByText(originalObjectType.label)).toBeTruthy()
+        expect(testPorts.postDocument).toHaveBeenCalledTimes(postDocumentCallsBefore)
+        expect(testPorts.patchDocument).toHaveBeenCalledTimes(patchDocumentCallsBefore)
+        expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipCallsBefore)
+    })
+
     it('blocks shared handoff for configured parent and child CSV relationships', async () => {
         const fixture = createCSVMappingFixture()
         const childObjectType = fixture.contextState.object_type[0]

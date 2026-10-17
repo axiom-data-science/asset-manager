@@ -1,7 +1,28 @@
 # Import Refactor TODO
 
-## Current progress (2026-10-15)
+## Current progress (2026-10-16)
 
+- [ ] Resume with authenticated conflict-review check: use a row known to match an
+  existing record, inspect its conflict details/options without clicking Import
+  or Link. If no known match is available, do not create persistent data solely
+  for this check. This check has not yet been performed.
+- [x] User-performed authenticated validation review: a schema-invalid workbook
+  source showed its invalid count and validation details in **Edit type and
+  validate**, including after closing and reopening the editor. The other sheet's
+  type and mapping remained unchanged. No Import or Link was reported; this UI
+  check does not establish backend writes.
+- [x] Reproduced and fixed the Import Records type-picker interaction through an
+  auth-free production-page test: changing Sites to another type works without
+  changing Deployments. The CSV source type picker uses a native select in the
+  source-schema modal to avoid the blocked portaled menu. The 17 CSV mapping tests
+  and production build pass; mocks confirm no writes. User-performed authenticated
+  recheck confirms the type switch works and the other source retains its type.
+  This does not establish backend writes.
+- [x] User-performed authenticated multi-sheet review: two selected sheets appeared
+  to retain independent types and mappings in Upload files and Map fields. At
+  Import Records, **Edit type and validate** did not allow changing to a different
+  type; a later recheck confirmed the fix. No Import or Link action was reported,
+  and these UI checks do not establish backend writes.
 - [x] Resolve the parked production-page handoff behavior through an approved Luna
   readiness slice. Both handoffs and return to mapping pass with no writes before
   handoff; all 29 CSV mapping/adapter tests pass. Final safety gates remain intact.
@@ -615,9 +636,21 @@ New requirements to carry into that refactor:
 - [x] Make the assumed type editable, show array destinations as `type.path[]`, and widen the pre-add worksheet controls to avoid overlap.
 - [x] Replace the native workbook input with a filename-aware Choose file button and an X that removes the workbook and all of its imported sheets.
 - [x] Render configured source slots as compact rows instead of tall cards.
-- [ ] Authenticated UI verification: select multiple sheets and confirm each appears as an independent source with its own type and mapping.
+- [x] Authenticated UI verification: user selected two sheets and reported their
+  types and mappings appeared independent in Upload files and Map fields.
+- [x] Authenticated UI observation: **Edit type and validate** did not allow
+  changing to a different type; an auth-free production-page test reproduced and
+  fixed the blocked picker interaction.
+- [x] User-performed authenticated recheck: confirmed changing one workbook
+  source's type from **Edit type and validate** leaves the other source's type
+  unchanged. This confirms UI behavior only, not backend writes.
+- [x] User-performed authenticated validation review: confirmed a schema-invalid
+  record's count and details remain available after reopening **Edit type and
+  validate**, with the other sheet unchanged. This confirms UI review only.
 - [x] Authenticated XLSX readiness check: user reports Type `None`, `0 valid`, `0 invalid`, `1 pending` at first; after choosing a type in the modal, status became `1 valid · 0 invalid`. Returning via Back to CSV sources and Continue to import recalculated readiness and exposed the page-level Import button. User did not click Import/Link; this confirms readiness only, not persistence.
-- [ ] Authenticated UI verification: confirm mapping, validation, and conflict issues remain reviewable and verify multi-sheet/array behavior. The clean known-type source now exposes its page-level Import action after readiness is recalculated.
+- [ ] Authenticated UI verification: confirm conflict issues remain reviewable and
+  complete remaining multi-sheet/array parity checks. Schema-invalid record
+  reviewability is now confirmed above.
 - [ ] Authenticated UI verification: confirm schema-derived optional array slots use parent and row lookup columns and embed matched rows in the parent.
 - [ ] Evaluate legacy `.xls` support separately; the current upload picker accepts `.xlsx` only.
 - [ ] Extend workbook tests for formula results, date cells, duplicate headers, and large workbooks.

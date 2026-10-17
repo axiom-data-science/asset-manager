@@ -258,6 +258,7 @@ export const SelectObjectTypeForImportTab = ({
                 }
               })}
               value={selectedObjectType?.uuid}
+              useNative={sourceSchema !== undefined}
               onChange={(o) => {
                 const newObjectType =
                   o?.value !== undefined ? contextState.object_type_by_uuid[o.value] : undefined

@@ -35,10 +35,10 @@ export const validateSelected = ({
     if (!formValues[field]) {
       const f = fieldsById[field]
       errors.push({
-        field: f.id,
-        fieldLabel: f.label ?? undefined,
+        field: f?.id ?? field,
+        fieldLabel: f?.label ?? field ?? undefined,
         message: `is required.`,
-        path: f.path?.map(d => d.id).join('.') ?? undefined,
+        path: f?.path?.map(d => d.id).join('.') ?? undefined,
       })
       valid = false
     }

@@ -743,7 +743,7 @@ const AuthPreload = (): ReactElement => {
   // make sure auth is done loading
   return (
     <ViewWithLoader isLoading={auth.isLoading} error={null} data={{}}>
-      {!auth.isLoading && (auth.isAuthenticated ? <AppPreload /> : <LoginPage />)}
+      {!auth.isLoading && (auth.isAuthenticated ? <AppPreload /> : <App />)}
     </ViewWithLoader>
   )
 }

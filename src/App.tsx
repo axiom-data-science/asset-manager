@@ -126,7 +126,7 @@ const LoginPage = (): ReactElement => {
 
   return (
     <div className="p-20">
-      <Button onClick={() => void auth.login()}>Log in</Button>
+      <Button onClick={() => void auth.login()}>Log in or create account</Button>
     </div>
   )
 }

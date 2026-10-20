@@ -3,168 +3,172 @@
 ## Current progress (2026-10-16)
 
 - [ ] Resume with authenticated conflict-review check: use a row known to match an
-  existing record, inspect its conflict details/options without clicking Import
-  or Link. If no known match is available, do not create persistent data solely
-  for this check. This check has not yet been performed.
+      existing record, inspect its conflict details/options without clicking Import
+      or Link. If no known match is available, do not create persistent data solely
+      for this check. This check has not yet been performed.
 - [x] User-performed authenticated validation review: a schema-invalid workbook
-  source showed its invalid count and validation details in **Edit type and
-  validate**, including after closing and reopening the editor. The other sheet's
-  type and mapping remained unchanged. No Import or Link was reported; this UI
-  check does not establish backend writes.
+      source showed its invalid count and validation details in **Edit type and
+      validate**, including after closing and reopening the editor. The other sheet's
+      type and mapping remained unchanged. No Import or Link was reported; this UI
+      check does not establish backend writes.
 - [x] Reproduced and fixed the Import Records type-picker interaction through an
-  auth-free production-page test: changing Sites to another type works without
-  changing Deployments. The CSV source type picker uses a native select in the
-  source-schema modal to avoid the blocked portaled menu. The 17 CSV mapping tests
-  and production build pass; mocks confirm no writes. User-performed authenticated
-  recheck confirms the type switch works and the other source retains its type.
-  This does not establish backend writes.
+      auth-free production-page test: changing Sites to another type works without
+      changing Deployments. The CSV source type picker uses a native select in the
+      source-schema modal to avoid the blocked portaled menu. The 17 CSV mapping tests
+      and production build pass; mocks confirm no writes. User-performed authenticated
+      recheck confirms the type switch works and the other source retains its type.
+      This does not establish backend writes.
 - [x] User-performed authenticated multi-sheet review: two selected sheets appeared
-  to retain independent types and mappings in Upload files and Map fields. At
-  Import Records, **Edit type and validate** did not allow changing to a different
-  type; a later recheck confirmed the fix. No Import or Link action was reported,
-  and these UI checks do not establish backend writes.
+      to retain independent types and mappings in Upload files and Map fields. At
+      Import Records, **Edit type and validate** did not allow changing to a different
+      type; a later recheck confirmed the fix. No Import or Link action was reported,
+      and these UI checks do not establish backend writes.
 - [x] Resolve the parked production-page handoff behavior through an approved Luna
-  readiness slice. Both handoffs and return to mapping pass with no writes before
-  handoff; all 29 CSV mapping/adapter tests pass. Final safety gates remain intact.
+      readiness slice. Both handoffs and return to mapping pass with no writes before
+      handoff; all 29 CSV mapping/adapter tests pass. Final safety gates remain intact.
 - [x] Resolve the TypeScript blocker through a separately approved Luna mock-type
-  correction: use existing object type/schema array types for the two service
-  mocks. TypeScript and the same 29 focused tests pass; no runtime behavior changed.
+      correction: use existing object type/schema array types for the two service
+      mocks. TypeScript and the same 29 focused tests pass; no runtime behavior changed.
 - [x] Test the production-page busy return guard through one approved Luna test-only
-  slice: return is disabled during deferred shared preparation, cannot leave the
-  view while busy, and works after settling without document/relationship writes.
-  All five CSV mapping tests, TypeScript, and test-file lint pass.
+      slice: return is disabled during deferred shared preparation, cannot leave the
+      view while busy, and works after settling without document/relationship writes.
+      All five CSV mapping tests, TypeScript, and test-file lint pass.
 - [x] Test persistent post-execution mapping locking through one approved Luna
-  test-only slice: return stays disabled during a document write and after one
-  successful import settles; clicks cannot return to mapping. All six CSV mapping
-  tests, TypeScript, and test-file lint pass. No application changes were needed.
+      test-only slice: return stays disabled during a document write and after one
+      successful import settles; clicks cannot return to mapping. All six CSV mapping
+      tests, TypeScript, and test-file lint pass. No application changes were needed.
 - [x] Test the schema-invalid production-page handoff gate through an approved Luna
-  test-only slice: complete field mapping produces one schema-invalid record,
-  shared handoff is disabled, blocked clicks cannot enter shared flow, and no
-  writes occur. All seven CSV mapping tests, TypeScript, and test-file lint pass.
+      test-only slice: complete field mapping produces one schema-invalid record,
+      shared handoff is disabled, blocked clicks cannot enter shared flow, and no
+      writes occur. All seven CSV mapping tests, TypeScript, and test-file lint pass.
 - [x] Test the ambiguous-duplicate production-page handoff gate through an approved
-  Luna test-only slice: a schema-valid record has two existing matches, real review
-  reports ambiguity, shared handoff stays disabled, and no writes occur. All eight
-  CSV mapping tests, TypeScript, and test-file lint pass; one read-count assertion
-  repair was needed. No application changes were made.
+      Luna test-only slice: a schema-valid record has two existing matches, real review
+      reports ambiguity, shared handoff stays disabled, and no writes occur. All eight
+      CSV mapping tests, TypeScript, and test-file lint pass; one read-count assertion
+      repair was needed. No application changes were made.
 - [x] Parent/child production-page feature-gate test and initial type-report repair:
-  the approved Luna panel-local ref suppresses undefined reports only until the
-  first concrete type is reported; later clears still forward. Callback dependencies
-  remain stable. Both temporary traces are removed. The focused test and all nine
-  CSV mapping tests pass, with the enabled legacy `Import 2 records` assertion,
-  ready relationship, shared legacy gate, and no-write checks intact. TypeScript
-  and scoped lint pass; no parent local repairs were needed. Authenticated/UI
-  reproduction and type-change/clear verification remain user-performed.
+      the approved Luna panel-local ref suppresses undefined reports only until the
+      first concrete type is reported; later clears still forward. Callback dependencies
+      remain stable. Both temporary traces are removed. The focused test and all nine
+      CSV mapping tests pass, with the enabled legacy `Import 2 records` assertion,
+      ready relationship, shared legacy gate, and no-write checks intact. TypeScript
+      and scoped lint pass; no parent local repairs were needed. Authenticated/UI
+      reproduction and type-change/clear verification remain user-performed.
 - [x] Array-source production-page shared-handoff gate test: approved Luna test-only
-  case requires a composed parent array. Parent repair one declares the join key
-  as a relationship passthrough field; parent repair two waits for enabled legacy
-  Import. A separately approved Luna query-only correction scopes the post-click
-  title to the existing summary container. The focused array test and its case in
-  the file-wide run pass, including all no-shared-controller/no-write assertions.
-  TypeScript and test-file lint pass. No application changes or real-UI checks.
+      case requires a composed parent array. Parent repair one declares the join key
+      as a relationship passthrough field; parent repair two waits for enabled legacy
+      Import. A separately approved Luna query-only correction scopes the post-click
+      title to the existing summary container. The focused array test and its case in
+      the file-wide run pass, including all no-shared-controller/no-write assertions.
+      TypeScript and test-file lint pass. No application changes or real-UI checks.
 - [x] Busy-return test upload-readiness follow-up: approved Luna test-only correction
-  awaits Prepare and its enabled state after upload, with the deferred gate,
-  lock/no-write assertions, cleanup, and timeouts intact. Focused test and all ten
-  CSV mapping tests pass; TypeScript (including a fresh forced check) and test-file
-  lint pass. No parent repairs or application changes. Editor messages remain
-  stale against the passing compiler; authenticated/visual checks remain pending.
+      awaits Prepare and its enabled state after upload, with the deferred gate,
+      lock/no-write assertions, cleanup, and timeouts intact. Focused test and all ten
+      CSV mapping tests pass; TypeScript (including a fresh forced check) and test-file
+      lint pass. No parent repairs or application changes. Editor messages remain
+      stale against the passing compiler; authenticated/visual checks remain pending.
 - [x] Unmatched array-row production-page blocker test: approved Luna test-only
-  case rejects a nonmatching parent key with file/row/key details and corrective
-  guidance, retains uploaded sources and mapping/retry controls, exposes no
-  records/shared execution controls, and preserves all write counts. Focused test
-  and all eleven CSV mapping tests, fresh TypeScript, and test-file lint pass.
-  No parent repairs or application changes. Real-UI parity remains unverified.
+      case rejects a nonmatching parent key with file/row/key details and corrective
+      guidance, retains uploaded sources and mapping/retry controls, exposes no
+      records/shared execution controls, and preserves all write counts. Focused test
+      and all eleven CSV mapping tests, fresh TypeScript, and test-file lint pass.
+      No parent repairs or application changes. Real-UI parity remains unverified.
 - [x] Corrected array-upload preparation resume: approved Luna test-only extension
-  preserves the blocker assertions, replaces the unmatched item file in the same
-  mounted page, and retries Prepare. Exactly two sources, a valid composed parent,
-  cleared error, enabled legacy Import, retained array gate, and unchanged write
-  counts are verified. Focused test and all eleven CSV mapping tests, fresh
-  TypeScript, and test-file lint pass. No parent repairs or application changes;
-  execution and authenticated/visual parity remain pending.
+      preserves the blocker assertions, replaces the unmatched item file in the same
+      mounted page, and retries Prepare. Exactly two sources, a valid composed parent,
+      cleared error, enabled legacy Import, retained array gate, and unchanged write
+      counts are verified. Focused test and all eleven CSV mapping tests, fresh
+      TypeScript, and test-file lint pass. No parent repairs or application changes;
+      execution and authenticated/visual parity remain pending.
 - [x] Existing-parent production-page relationship lookup: approved Luna test-only
-  child upload uses a typed saved parent without uploading a parent file. Correct
-  lookup type/field/value arguments, one ready link, one existing-parent match,
-  enabled legacy Import, retained relationship gate, and unchanged write counts
-  are verified. Mock implementation restores in `finally`; its return annotation
-  uses `IDocument[]`. Focused test and all twelve CSV mapping tests, fresh
-  TypeScript, and test-file lint pass. No parent repairs or application changes;
-  relationship persistence and authenticated/visual parity remain pending.
+      child upload uses a typed saved parent without uploading a parent file. Correct
+      lookup type/field/value arguments, one ready link, one existing-parent match,
+      enabled legacy Import, retained relationship gate, and unchanged write counts
+      are verified. Mock implementation restores in `finally`; its return annotation
+      uses `IDocument[]`. Focused test and all twelve CSV mapping tests, fresh
+      TypeScript, and test-file lint pass. No parent repairs or application changes;
+      relationship persistence and authenticated/visual parity remain pending.
 - [x] Ambiguous existing-parent production-page lookup: approved Luna test-only
-  case returns two distinct saved parents with the same key. Review shows zero
-  ready links, one unresolved row, both unselected parent choices, and disabled
-  legacy Import/link/shared actions. Blocked clicks retain review without writes;
-  lookup mock restores in `finally`. One parent query repair avoids the duplicate
-  debug message and requires the disabled Import assertion unconditionally.
-  Focused test and all thirteen CSV mapping tests, fresh TypeScript, and test-file
-  lint pass. No application changes. Parent selection, persistence, and real-UI
-  parity remain unverified.
+      case returns two distinct saved parents with the same key. Review shows zero
+      ready links, one unresolved row, both unselected parent choices, and disabled
+      legacy Import/link/shared actions. Blocked clicks retain review without writes;
+      lookup mock restores in `finally`. One parent query repair avoids the duplicate
+      debug message and requires the disabled Import assertion unconditionally.
+      Focused test and all thirteen CSV mapping tests, fresh TypeScript, and test-file
+      lint pass. No application changes. Parent selection, persistence, and real-UI
+      parity remain unverified.
 - [x] Ambiguous existing-parent selection: approved Luna test-only extension uses
-  the real control after preserving every original blocker assertion. Selecting
-  one parent yields one ready link, zero unresolved, and enabled legacy Import;
-  linking/shared handoff remain disabled, blocked shared clicks retain review,
-  and document/patch/relationship write counts remain unchanged. Parent repair one
-  moved the initially misplaced block into the intended test. The extended focused
-  test, fresh TypeScript, and scoped lint pass; no application code changed.
+      the real control after preserving every original blocker assertion. Selecting
+      one parent yields one ready link, zero unresolved, and enabled legacy Import;
+      linking/shared handoff remain disabled, blocked shared clicks retain review,
+      and document/patch/relationship write counts remain unchanged. Parent repair one
+      moved the initially misplaced block into the intended test. The extended focused
+      test, fresh TypeScript, and scoped lint pass; no application code changed.
 - [x] Add user-configurable saved-parent lookup to the CSV source setup: a Child
-  source can select an existing parent object type and schema match field without
-  uploading a Parent CSV, then select its child lookup column. The ambiguous-parent
-  production-page test exercises those controls, duplicate matches, parent choice,
-  safety gates, and unchanged write counts. All thirteen CSV mapping tests, fresh
-  TypeScript, scoped ESLint, and whitespace checks pass. The initial test edit
-  targeted the neighboring single-parent case and was corrected before validation.
+      source can select an existing parent object type and schema match field without
+      uploading a Parent CSV, then select its child lookup column. The ambiguous-parent
+      production-page test exercises those controls, duplicate matches, parent choice,
+      safety gates, and unchanged write counts. All thirteen CSV mapping tests, fresh
+      TypeScript, scoped ESLint, and whitespace checks pass. The initial test edit
+      targeted the neighboring single-parent case and was corrected before validation.
+- [ ] Extend saved-parent lookup to support top-level `uuid`, `slug`, and `label`
+      fields, including field choices, candidate matching, and PostgREST lookup
+      queries; add focused tests for all three fields. This is a bounded follow-up
+      slice and still requires approval before implementation.
 - [x] User-performed authenticated parent-selection review: user reports the
-  saved-parent controls appear and work, duplicate matches block Import until a
-  parent is selected, and shared flow remains gated. No Import or Link relationships
-  action was reported. Visual review does not establish network-level zero-write
-  proof.
+      saved-parent controls appear and work, duplicate matches block Import until a
+      parent is selected, and shared flow remains gated. No Import or Link relationships
+      action was reported. Visual review does not establish network-level zero-write
+      proof.
 - [x] Run the full project test suite and production build after the saved-parent
-  UI change. The build passes with Vite externalization/chunk-size warnings. The
-  suite initially had one Oikos relationship test failure; its fixture incorrectly
-  used external ID `model-1` as canonical `record.slug` instead of upstream model
-  slug `forecast-model`. An approved test-only helper correction separates those
-  values. Focused Oikos test, all 245 project tests, fresh TypeScript, and scoped
-  test-file ESLint pass. No Oikos runtime code changed.
+      UI change. The build passes with Vite externalization/chunk-size warnings. The
+      suite initially had one Oikos relationship test failure; its fixture incorrectly
+      used external ID `model-1` as canonical `record.slug` instead of upstream model
+      slug `forecast-model`. An approved test-only helper correction separates those
+      values. Focused Oikos test, all 245 project tests, fresh TypeScript, and scoped
+      test-file ESLint pass. No Oikos runtime code changed.
 - [x] Standalone production handoff upload readiness: approved Luna test-only
-  correction awaits Prepare and its enabled state after upload. Upload-count,
-  handoff/return/second-handoff, and no-write assertions remain intact, with no
-  application changes, timeout changes, or parent repairs. Focused test, fresh
-  TypeScript, and scoped lint pass; this test also passes in the file-wide run.
+      correction awaits Prepare and its enabled state after upload. Upload-count,
+      handoff/return/second-handoff, and no-write assertions remain intact, with no
+      application changes, timeout changes, or parent repairs. Focused test, fresh
+      TypeScript, and scoped lint pass; this test also passes in the file-wide run.
 - [x] Restore a passing CSV mapping file: approved Luna test-only correction awaits
-  the recovered legacy Import control with `findByRole`, retaining its enabled-state
-  wait and every blocker, correction/resume, shared-gate, and no-write assertion.
-  Focused test and all thirteen CSV mapping tests pass, including standalone
-  handoff and extended parent selection. Fresh TypeScript, scoped lint, and editor
-  diagnostics pass. No application/timeouts changes or parent repairs. This
-  supersedes earlier file-wide failures; full-suite/build and user-performed
-  authenticated/visual verification were not rerun.
+      the recovered legacy Import control with `findByRole`, retaining its enabled-state
+      wait and every blocker, correction/resume, shared-gate, and no-write assertion.
+      Focused test and all thirteen CSV mapping tests pass, including standalone
+      handoff and extended parent selection. Fresh TypeScript, scoped lint, and editor
+      diagnostics pass. No application/timeouts changes or parent repairs. This
+      supersedes earlier file-wide failures; full-suite/build and user-performed
+      authenticated/visual verification were not rerun.
 - [ ] Obtain approval before another implementation slice. Broader visual checks,
-  remaining blocked-input gates, and full CSV/XLSX file-page parity remain pending.
+      remaining blocked-input gates, and full CSV/XLSX file-page parity remain pending.
 - [x] Save completed work on `refactor-import-process`: `da11ff6` (shared workflow),
-  `438319c` (fixtures/tests/docs), and `a2bdec9` (mode pilot). Redundant branch deleted;
-  nothing pushed. Unrelated PAM workbook/lock files remain excluded and untouched.
+      `438319c` (fixtures/tests/docs), and `a2bdec9` (mode pilot). Redundant branch deleted;
+      nothing pushed. Unrelated PAM workbook/lock files remain excluded and untouched.
 - [x] Verify the latest pilot with 178 selected import tests, including 17 fixture
-  component tests, TypeScript, behavior-file lint, whitespace, and production build/
-  fixture exclusion. Auth-free browser DOM smoke reached three documents/two links/
-  zero errors. The existing individual-import effect lint error remains unchanged.
+      component tests, TypeScript, behavior-file lint, whitespace, and production build/
+      fixture exclusion. Auth-free browser DOM smoke reached three documents/two links/
+      zero errors. The existing individual-import effect lint error remains unchanged.
 - [x] Start CSV/XLSX integration with an opt-in shared-controller handoff for clean
-  standalone file sources before writes. Scope to the current upload IDs; exclude
-  remote/unrelated sources. Keep legacy execution and gate unsupported arrays,
-  parent/child relationships, ignored rows, and already-started CSV imports.
+      standalone file sources before writes. Scope to the current upload IDs; exclude
+      remote/unrelated sources. Keep legacy execution and gate unsupported arrays,
+      parent/child relationships, ignored rows, and already-started CSV imports.
 - [x] Verify shared mapped CSV in both modes and a real selected XLSX sheet;
-  same-ID source edits invalidate stale evidence, recorded successes survive
-  blocked post-write edits, and late uploads/activity cancellation are covered.
-  186 selected tests (including 28 focused UI tests), TypeScript, behavior-file
-  lint, and production build pass. No new browser/live-backend validation here.
+      same-ID source edits invalidate stale evidence, recorded successes survive
+      blocked post-write edits, and late uploads/activity cancellation are covered.
+      186 selected tests (including 28 focused UI tests), TypeScript, behavior-file
+      lint, and production build pass. No new browser/live-backend validation here.
 - [ ] Test the actual production file-controller/handoff controls, including
-  return-to-mapping and post-execution locking, before broadening feature gates.
-  The standalone CSV upload/prepare/handoff/return case now passes with auth/service
-  doubles, as do the busy preparation guard and persistent post-execution lock;
-  schema-invalid and ambiguous-duplicate handoff gates also pass. Other blocked-input
-  and feature-gate cases and full parity remain.
+      return-to-mapping and post-execution locking, before broadening feature gates.
+      The standalone CSV upload/prepare/handoff/return case now passes with auth/service
+      doubles, as do the busy preparation guard and persistent post-execution lock;
+      schema-invalid and ambiguous-duplicate handoff gates also pass. Other blocked-input
+      and feature-gate cases and full parity remain.
 - [ ] Complete CSV/XLSX integration and parity for parent/array/external-parent
-  relationships, ignored rows, full sheet/type/schema selection, and multi-file
-  orchestration before retiring legacy execution. Config/UI mappings remain required.
+      relationships, ignored rows, full sheet/type/schema selection, and multi-file
+      orchestration before retiring legacy execution. Config/UI mappings remain required.
 - [ ] Complete visual and user-performed authenticated/live-backend verification;
-  automated/component and browser DOM results do not replace these checks.
+      automated/component and browser DOM results do not replace these checks.
 - Defer moving the ERDDAP fixture into the shared UI until interactive UI testing
   requires it; its current normalization/preparation preview remains unchanged.
 
@@ -637,20 +641,20 @@ New requirements to carry into that refactor:
 - [x] Replace the native workbook input with a filename-aware Choose file button and an X that removes the workbook and all of its imported sheets.
 - [x] Render configured source slots as compact rows instead of tall cards.
 - [x] Authenticated UI verification: user selected two sheets and reported their
-  types and mappings appeared independent in Upload files and Map fields.
+      types and mappings appeared independent in Upload files and Map fields.
 - [x] Authenticated UI observation: **Edit type and validate** did not allow
-  changing to a different type; an auth-free production-page test reproduced and
-  fixed the blocked picker interaction.
+      changing to a different type; an auth-free production-page test reproduced and
+      fixed the blocked picker interaction.
 - [x] User-performed authenticated recheck: confirmed changing one workbook
-  source's type from **Edit type and validate** leaves the other source's type
-  unchanged. This confirms UI behavior only, not backend writes.
+      source's type from **Edit type and validate** leaves the other source's type
+      unchanged. This confirms UI behavior only, not backend writes.
 - [x] User-performed authenticated validation review: confirmed a schema-invalid
-  record's count and details remain available after reopening **Edit type and
-  validate**, with the other sheet unchanged. This confirms UI review only.
+      record's count and details remain available after reopening **Edit type and
+      validate**, with the other sheet unchanged. This confirms UI review only.
 - [x] Authenticated XLSX readiness check: user reports Type `None`, `0 valid`, `0 invalid`, `1 pending` at first; after choosing a type in the modal, status became `1 valid · 0 invalid`. Returning via Back to CSV sources and Continue to import recalculated readiness and exposed the page-level Import button. User did not click Import/Link; this confirms readiness only, not persistence.
 - [ ] Authenticated UI verification: confirm conflict issues remain reviewable and
-  complete remaining multi-sheet/array parity checks. Schema-invalid record
-  reviewability is now confirmed above.
+      complete remaining multi-sheet/array parity checks. Schema-invalid record
+      reviewability is now confirmed above.
 - [ ] Authenticated UI verification: confirm schema-derived optional array slots use parent and row lookup columns and embed matched rows in the parent.
 - [ ] Evaluate legacy `.xls` support separately; the current upload picker accepts `.xlsx` only.
 - [ ] Extend workbook tests for formula results, date cells, duplicate headers, and large workbooks.

@@ -1,6 +1,11 @@
 import { useAuth } from '@/auth/useAuth'
 import { type IValidationError, type IObjectSchema } from '@/types/types'
-import type { IAssetForm, IDocument, IFormToFieldConfigWithDetails, IObjectType } from '@/types/types'
+import type {
+  IAssetForm,
+  IDocument,
+  IFormToFieldConfigWithDetails,
+  IObjectType,
+} from '@/types/types'
 import {
   FormCreator,
   getters,
@@ -18,7 +23,13 @@ import { Button as ShadCNButton } from '@/components/ui/button'
 import { useEffect, useEffectEvent, useRef, useState, type ReactElement } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { omit } from 'lodash-es'
-import { buildStringFromTemplate, cn, removeUndefinedAndNullKeys, validate, validateSelected } from '@/lib/utils'
+import {
+  buildStringFromTemplate,
+  cn,
+  removeUndefinedAndNullKeys,
+  validate,
+  validateSelected,
+} from '@/lib/utils'
 import Errors from '@/manage/components/errors'
 import { useDocument, useLockDocumentMutation } from './useDocument'
 import { useFormAndSchemaAtObjectType } from '@/manage/form/useForm'
@@ -179,18 +190,18 @@ const AutoSaveStatus = ({
             style={
               intervalId !== null
                 ? {
-                  strokeDasharray: `${CIRCLE_CIRCUMFERENCE} ${CIRCLE_CIRCUMFERENCE}`,
-                  strokeDashoffset: strokeDashoffset,
-                  stroke: '#666',
-                  strokeWidth: 2,
-                  transition: 'stroke-dashoffset 1.1s ease-in-out',
-                }
+                    strokeDasharray: `${CIRCLE_CIRCUMFERENCE} ${CIRCLE_CIRCUMFERENCE}`,
+                    strokeDashoffset: strokeDashoffset,
+                    stroke: '#666',
+                    strokeWidth: 2,
+                    transition: 'stroke-dashoffset 1.1s ease-in-out',
+                  }
                 : {
-                  strokeDasharray: '0 0',
-                  strokeDashoffset: CIRCLE_CIRCUMFERENCE,
-                  stroke: '#FFF',
-                  strokeWidth: 2,
-                }
+                    strokeDasharray: '0 0',
+                    strokeDashoffset: CIRCLE_CIRCUMFERENCE,
+                    stroke: '#FFF',
+                    strokeWidth: 2,
+                  }
             }
           />
           <>
@@ -225,7 +236,7 @@ const EditDocumentForm = ({
   assetForm,
   fieldConfigs,
   type,
-  returnToOnSuccess
+  returnToOnSuccess,
 }: {
   document: IDocument
   schema: IObjectSchema
@@ -265,31 +276,31 @@ const EditDocumentForm = ({
   }
   //const dataForm = omit(schemaToFormUtils.schemaToFormObject(schema.json_schema), 'label')
   const fieldConfigJSON =
-    fieldConfigs?.map((fc) => fc.fields_override_config.config as unknown as IFormFieldOverride) ??
-    []
+    fieldConfigs?.map(
+      (fc) => fc.fields_override_config.config as unknown as IFormFieldOverride[]
+    ) ?? []
   const hasConfiguredForm =
     assetForm?.use_form_config === true &&
     assetForm.form_config !== undefined &&
     assetForm.form_config !== null
   const complexSchema = isComplexSchema(schema.json_schema)
-  const dataForm = hasConfiguredForm || !complexSchema
-    ? (
-      hasConfiguredForm
-        ? assetForm.form_config
-        : assetForm?.schema_override_config !== undefined || fieldConfigJSON !== undefined
-          ? omit(
-            schemaToFormUtils.overridesAndSchemaToFormObject({
-              schema: schema.json_schema,
-              formOverrides: assetForm?.schema_override_config
-                ? [assetForm?.schema_override_config as IFormOverride]
-                : undefined,
-              formFieldOverrides: fieldConfigJSON ? [fieldConfigJSON] : undefined,
-            }),
-            'label'
-          )
-          : schemaToFormUtils.schemaToFormObject(schema.json_schema)
-    ) as IForm
-    : undefined
+  const dataForm =
+    hasConfiguredForm || !complexSchema
+      ? ((hasConfiguredForm
+          ? assetForm.form_config
+          : assetForm?.schema_override_config !== undefined || fieldConfigJSON !== undefined
+            ? omit(
+                schemaToFormUtils.overridesAndSchemaToFormObject({
+                  schema: schema.json_schema,
+                  formOverrides: assetForm?.schema_override_config
+                    ? [assetForm?.schema_override_config as IFormOverride]
+                    : undefined,
+                  formFieldOverrides: fieldConfigJSON ? fieldConfigJSON : undefined,
+                }),
+                'label'
+              )
+            : schemaToFormUtils.schemaToFormObject(schema.json_schema)) as IForm)
+      : undefined
 
   const isUsingDataForm = !!(
     dataForm?.fields?.length ||
@@ -309,7 +320,6 @@ const EditDocumentForm = ({
   const queryClient = useQueryClient()
 
   const onSave = async () => {
-
     setSaving(true)
 
     const cleanValues = removeUndefinedAndNullKeys(
@@ -335,9 +345,12 @@ const EditDocumentForm = ({
       data: mergedData,
     } as IDocument
 
-
     const requiredFieldOnSave = type.data?.required_fields_on_save ?? ['label']
-    const valid = validateSelected({ form, formValues: cleanValues as IFormValues, requiredFields: requiredFieldOnSave })
+    const valid = validateSelected({
+      form,
+      formValues: cleanValues as IFormValues,
+      requiredFields: requiredFieldOnSave,
+    })
     if (!valid.valid && valid.errors.length > 0) {
       setErrors(valid.errors)
       setSaving(false)
@@ -349,10 +362,7 @@ const EditDocumentForm = ({
     }
     setErrors([])
 
-
-
     try {
-
       const updatedDoc = await patchDocument({
         uuid: document.uuid,
         document: mergedDocument,
@@ -369,11 +379,10 @@ const EditDocumentForm = ({
       const navPath =
         returnToOnSuccess !== undefined
           ? buildStringFromTemplate(returnToOnSuccess, {
-            ...updatedDoc,
-            ...{ object_type: type },
-          })
+              ...updatedDoc,
+              ...{ object_type: type },
+            })
           : (new URLSearchParams(window.location.search).get('returnToOnSuccess') ?? undefined)
-
 
       navigate(navPath ?? '/document')
     } catch (error) {
@@ -394,7 +403,11 @@ const EditDocumentForm = ({
       // get only form values intended for saving according to the form
       getters.getFormPayload(formValues, form)
     )
-    const valid = await validate({ form, formValues: valuesToSave as IFormValues, schema: resolveRefs(schema.json_schema) as Record<string, unknown> })
+    const valid = await validate({
+      form,
+      formValues: valuesToSave as IFormValues,
+      schema: resolveRefs(schema.json_schema) as Record<string, unknown>,
+    })
     if (!valid.valid && valid.errors.length > 0) {
       setErrors(valid.errors)
       setSaving(false)
@@ -408,7 +421,6 @@ const EditDocumentForm = ({
     setErrors([])
     setSaving(false)
     setValidated(true)
-
   }
 
   const includeSaveButton = form.wizard_steps !== undefined || form.pages !== undefined
@@ -418,18 +430,23 @@ const EditDocumentForm = ({
         {saving ? <Loader className="animate-spin" /> : 'Save'}
       </Button>
       <Button onClick={onValidate} type="outline" disabled={saving}>
-        {saving ? <Loader className="animate-spin" /> : <>{validated ? <Check className="inline-block" color='green' /> : ''} Validate</>}
+        {saving ? (
+          <Loader className="animate-spin" />
+        ) : (
+          <>{validated ? <Check className="inline-block" color="green" /> : ''} Validate</>
+        )}
       </Button>
     </>
   )
 
   const formRef = useRef<IFormCreatorHandle>(null)
 
-
   return (
     <div className="flex flex-col gap-4 relative">
       <h1 className="text-2xl font-bold flex flex-row justify-between items-center">
-        <span>Edit {type.label} document{saving ? <Loader size="sm" /> : null}</span>
+        <span>
+          Edit {type.label} document{saving ? <Loader size="sm" /> : null}
+        </span>
         <div className="flex flex-row gap-2 items-center">
           <ShareDocument document={document} />
           <DocumentLockStatus document={document} />
@@ -472,16 +489,10 @@ const EditDocumentForm = ({
         onChange={() => {
           setLastUpdate(new Date())
         }}
-        SubmitButton={
-          includeSaveButton && (
-            saveButton
-          )
-        }
+        SubmitButton={includeSaveButton && saveButton}
       />
       {!includeSaveButton && (
-        <div className="sticky bottom-0 bg-white/80 z-10 -mx-1 justify-end">
-          {saveButton}
-        </div>
+        <div className="sticky bottom-0 bg-white/80 z-10 -mx-1 justify-end">{saveButton}</div>
       )}
     </div>
   )
@@ -501,7 +512,7 @@ const LoadSchemaAndCreateDocumentForm = ({
   })
   const objectType = data?.object_schema?.object_type
   const urlSkipTabs = new URLSearchParams(window.location.search).get('skip_tabs')
-  const skipTabsToUse = skip_tabs ?? (urlSkipTabs === 'true')
+  const skipTabsToUse = skip_tabs ?? urlSkipTabs === 'true'
   const editView =
     data && objectType ? (
       <EditDocumentForm
@@ -509,6 +520,7 @@ const LoadSchemaAndCreateDocumentForm = ({
         schema={data.object_schema}
         assetForm={data.forms.find((f) => f.is_schema_and_version_default) ?? data.forms[0]}
         type={objectType}
+        fieldConfigs={data.field_configs}
         returnToOnSuccess={returnToOnSuccess}
       />
     ) : null
@@ -554,9 +566,9 @@ const EditDocument = ({
     <ViewWithLoader isLoading={isLoading} error={error} data={document}>
       {document && (
         <LoadSchemaAndCreateDocumentForm
-          skip_tabs={skip_tabs} document={document as IDocument}
+          skip_tabs={skip_tabs}
+          document={document as IDocument}
           returnToOnSuccess={returnToOnSuccess}
-
         />
       )}
     </ViewWithLoader>

@@ -144,6 +144,28 @@ describe('fetchExistingDocumentBySlug', () => {
 describe('fetchDocumentsByDataFieldValues', () => {
     beforeEach(() => vi.mocked(fetchDocuments).mockReset())
 
+    it.each(['uuid', 'slug', 'label'])('queries top-level %s directly', async (fieldPath) => {
+        vi.mocked(fetchDocuments).mockResolvedValue([] as never)
+
+        await fetchDocumentsByDataFieldValues({
+            objectTypeUuid: 'parent-type',
+            fieldPath,
+            values: ['parent-value'],
+            token: 'token',
+        })
+
+        expect(fetchDocuments).toHaveBeenCalledWith({
+            token: 'token',
+            signal: undefined,
+            params: {
+                filters: [
+                    { column: 'object_type_uuid', operator: 'eq', value: 'parent-type' },
+                    { column: fieldPath, operator: 'in', value: ['parent-value'] },
+                ],
+            },
+        })
+    })
+
     it('queries exact configured data-field values within the parent type', async () => {
         const existing = [{ uuid: 'site-1' }]
         vi.mocked(fetchDocuments).mockResolvedValue(existing as never)

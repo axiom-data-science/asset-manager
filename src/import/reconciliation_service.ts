@@ -84,9 +84,13 @@ export const fetchDocumentsByDataFieldValues = async ({
     }
     const path = fieldPath.split('.').filter(Boolean)
     if (path.length === 0) return []
-    const column = path.length === 1
-        ? `data->>${path[0]}`
-        : `data->${path.slice(0, -1).join('->')}->>${path[path.length - 1]}`
+    const isTopLevelField =
+        fieldPath === 'uuid' || fieldPath === 'slug' || fieldPath === 'label'
+    const column = isTopLevelField
+        ? fieldPath
+        : path.length === 1
+            ? `data->>${path[0]}`
+            : `data->${path.slice(0, -1).join('->')}->>${path[path.length - 1]}`
     const batches = chunk(Array.from(new Set(values)), batchSize)
     const results = await Promise.all(
         batches.map((batch) => fetchDocuments({

@@ -46,9 +46,16 @@ const readCandidateField = (
   candidate: ImportRelationshipCandidate,
   field?: string
 ): unknown => {
+  if (candidate.existingDocumentUuid !== undefined) {
+    if (field === 'uuid') return candidate.existingDocumentUuid
+    if (field === 'slug') return candidate.record.slug
+    if (field === 'label') return candidate.record.label
+  }
   if (field === 'slug') return candidate.record.slug
   const dataValue = readPath(candidate.record.data, field)
   if (dataValue !== undefined) return dataValue
+  if (field === 'uuid') return candidate.record.uuid
+  if (field === 'label') return candidate.record.label
   return undefined
 }
 

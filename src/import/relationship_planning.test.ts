@@ -169,6 +169,46 @@ describe('Import relationship planning', () => {
     expect(results).toMatchObject([{ status: 'created' }])
   })
 
+  it.each([
+    ['uuid', 'saved-parent-uuid'],
+    ['slug', 'saved-parent-slug'],
+    ['label', 'Saved parent label'],
+  ])('matches an existing parent by its top-level %s field', (field, value) => {
+    const existingParent = {
+      ...candidate('existing:parent-1', 'transport-parent', 'parent-type', 'parents', {
+        uuid: 'data-uuid',
+        slug: 'data-slug',
+        label: 'Data label',
+      }),
+      record: {
+        ...candidate('existing:parent-1', 'transport-parent', 'parent-type', 'parents').record,
+        uuid: 'transport-parent',
+        slug: 'saved-parent-slug',
+        label: 'Saved parent label',
+      },
+      existingDocumentUuid: 'saved-parent-uuid',
+    }
+    const child = candidate('child-source', 'child-1', 'child-type', 'children', {
+      parentReference: value,
+    })
+    const plans = planImportRelationships({
+      parentObjectTypes: new Map([['parent-type', objectType('parent-type', 'parents', [])]]),
+      candidates: [existingParent, child],
+      relationshipRules: [{
+        parentObjectTypeSlug: 'parents',
+        childObjectTypeSlug: 'children',
+        parentMatchField: field,
+        childMatchField: 'parentReference',
+        predicate: 'belongs_to',
+        existingParentPolicy: 'lookup',
+      }],
+    })
+
+    expect(plans).toMatchObject([
+      { status: 'ready', parent: { existingDocumentUuid: 'saved-parent-uuid' } },
+    ])
+  })
+
   it('uses configured data paths for parent and child matching', () => {
     const parent = candidate('source', 'parent-1', 'parent-type', 'parents', { code: 'A-1' })
     const child = candidate('source', 'child-1', 'child-type', 'children', { parentCode: 'A-1' })

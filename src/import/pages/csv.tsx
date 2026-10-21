@@ -1969,7 +1969,12 @@ const CSVImportPage = ({
       ? (contextState.object_schema_defaults_by_object_type_uuid[objectType.uuid]
         ?.json_schema as JSONSchema6 | undefined)
       : undefined
-    return getCSVSchemaFields(schema, '', {}).map(({ path }) => path)
+    return Array.from(new Set([
+      'uuid',
+      'slug',
+      'label',
+      ...getCSVSchemaFields(schema, '', {}).map(({ path }) => path),
+    ]))
   }
 
   const updateChildRelationshipRule = (

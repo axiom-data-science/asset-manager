@@ -1095,6 +1095,10 @@ describe('CSV mapping editor fixture', () => {
             )
             expect(await screen.findByText('Using children.csv for this source.')).toBeTruthy()
             await user.selectOptions(screen.getByLabelText('Parent object type'), parentObjectType.slug)
+            expect(
+                Array.from((screen.getByLabelText('Parent match field') as HTMLSelectElement).options)
+                    .map((option) => option.value)
+            ).toEqual(expect.arrayContaining(['uuid', 'slug', 'label', 'code', 'name']))
             await user.selectOptions(screen.getByLabelText('Parent match field'), 'code')
             await user.selectOptions(screen.getByLabelText('Child match field'), 'parent_code')
 

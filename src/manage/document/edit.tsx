@@ -190,18 +190,18 @@ const AutoSaveStatus = ({
             style={
               intervalId !== null
                 ? {
-                    strokeDasharray: `${CIRCLE_CIRCUMFERENCE} ${CIRCLE_CIRCUMFERENCE}`,
-                    strokeDashoffset: strokeDashoffset,
-                    stroke: '#666',
-                    strokeWidth: 2,
-                    transition: 'stroke-dashoffset 1.1s ease-in-out',
-                  }
+                  strokeDasharray: `${CIRCLE_CIRCUMFERENCE} ${CIRCLE_CIRCUMFERENCE}`,
+                  strokeDashoffset: strokeDashoffset,
+                  stroke: '#666',
+                  strokeWidth: 2,
+                  transition: 'stroke-dashoffset 1.1s ease-in-out',
+                }
                 : {
-                    strokeDasharray: '0 0',
-                    strokeDashoffset: CIRCLE_CIRCUMFERENCE,
-                    stroke: '#FFF',
-                    strokeWidth: 2,
-                  }
+                  strokeDasharray: '0 0',
+                  strokeDashoffset: CIRCLE_CIRCUMFERENCE,
+                  stroke: '#FFF',
+                  strokeWidth: 2,
+                }
             }
           />
           <>
@@ -287,19 +287,19 @@ const EditDocumentForm = ({
   const dataForm =
     hasConfiguredForm || !complexSchema
       ? ((hasConfiguredForm
-          ? assetForm.form_config
-          : assetForm?.schema_override_config !== undefined || fieldConfigJSON !== undefined
-            ? omit(
-                schemaToFormUtils.overridesAndSchemaToFormObject({
-                  schema: schema.json_schema,
-                  formOverrides: assetForm?.schema_override_config
-                    ? [assetForm?.schema_override_config as IFormOverride]
-                    : undefined,
-                  formFieldOverrides: fieldConfigJSON ? fieldConfigJSON : undefined,
-                }),
-                'label'
-              )
-            : schemaToFormUtils.schemaToFormObject(schema.json_schema)) as IForm)
+        ? assetForm.form_config
+        : assetForm?.schema_override_config !== undefined || fieldConfigJSON !== undefined
+          ? omit(
+            schemaToFormUtils.overridesAndSchemaToFormObject({
+              schema: schema.json_schema,
+              formOverrides: assetForm?.schema_override_config
+                ? [assetForm?.schema_override_config as IFormOverride]
+                : undefined,
+              formFieldOverrides: fieldConfigJSON ? fieldConfigJSON : undefined,
+            }),
+            'label'
+          )
+          : schemaToFormUtils.schemaToFormObject(schema.json_schema)) as IForm)
       : undefined
 
   const isUsingDataForm = !!(
@@ -345,11 +345,12 @@ const EditDocumentForm = ({
       data: mergedData,
     } as IDocument
 
-    const requiredFieldOnSave = type.data?.required_fields_on_save ?? ['label']
+    const requiredFieldsOnSave = type.data?.required_fields_on_save
+    const valuesToEval = requiredFieldsOnSave ? cleanValues : mergedDocument
     const valid = validateSelected({
       form,
-      formValues: cleanValues as IFormValues,
-      requiredFields: requiredFieldOnSave,
+      formValues: valuesToEval as IFormValues,
+      requiredFields: requiredFieldsOnSave ?? ['label'],
     })
     if (!valid.valid && valid.errors.length > 0) {
       setErrors(valid.errors)
@@ -379,9 +380,9 @@ const EditDocumentForm = ({
       const navPath =
         returnToOnSuccess !== undefined
           ? buildStringFromTemplate(returnToOnSuccess, {
-              ...updatedDoc,
-              ...{ object_type: type },
-            })
+            ...updatedDoc,
+            ...{ object_type: type },
+          })
           : (new URLSearchParams(window.location.search).get('returnToOnSuccess') ?? undefined)
 
       navigate(navPath ?? '/document')

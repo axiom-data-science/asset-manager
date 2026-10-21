@@ -19,6 +19,7 @@ import {
   type IFormCreatorHandle,
   type IFormFieldOverride,
   type IFormOverride,
+  type IFormValues,
 } from '@axdspub/axiom-ui-forms'
 import { Button, Loader, utils, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
 import { useRef, useState, type ReactElement } from 'react'
@@ -150,8 +151,25 @@ const CreateDocumentForm = ({
     setSaving(true)
     const cleanFormValues = getters.getFormPayload(formValues, form)
     const valuesToSave = filterForSave(cleanFormValues)
-    const requiredFieldOnSave = type.data?.required_fields_on_save ?? ['label']
-    const valid = validateSelected({ form, formValues: valuesToSave, requiredFields: requiredFieldOnSave })
+    const requiredFieldsOnSave = type.data?.required_fields_on_save
+    const { label, description } = getDocumentMetadata({
+      formValues,
+      valuesToSave,
+      labelPath: type.data?.field_mappings?.label,
+      descriptionPath: type.data?.field_mappings?.description,
+    })
+    const slug = formValues.slug ?? null
+
+    const docToSave = {
+      object_type_uuid: type.uuid,
+      label,
+      description,
+      slug,
+      data: useDataForm ? valuesToSave : (valuesToSave.data as JSON),
+    } as Omit<IDocument, 'uuid' | 'created_at' | 'updated_at'>
+
+    const valuesToEval = requiredFieldsOnSave ? valuesToSave : docToSave
+    const valid = validateSelected({ form, formValues: valuesToEval as IFormValues, requiredFields: requiredFieldsOnSave ?? ['label'] })
     if (!valid.valid && valid.errors.length > 0) {
       setErrors(valid.errors)
       setSaving(false)
@@ -163,21 +181,6 @@ const CreateDocumentForm = ({
     }
     setErrors([])
     try {
-      const { label, description } = getDocumentMetadata({
-        formValues,
-        valuesToSave,
-        labelPath: type.data?.field_mappings?.label,
-        descriptionPath: type.data?.field_mappings?.description,
-      })
-      const slug = formValues.slug ?? null
-
-      const docToSave = {
-        object_type_uuid: type.uuid,
-        label,
-        description,
-        slug,
-        data: useDataForm ? valuesToSave : (valuesToSave.data as JSON),
-      } as Omit<IDocument, 'uuid' | 'created_at' | 'updated_at'>
       const newDoc = await postDocument({
         document: docToSave,
         token: auth.user?.access_token ?? '',

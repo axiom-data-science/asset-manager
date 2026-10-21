@@ -1,11 +1,26 @@
 # Import Refactor TODO
 
-## Current progress (2026-10-16)
+## Current progress (2026-10-20)
 
-- [ ] Resume with authenticated conflict-review check: use a row known to match an
-      existing record, inspect its conflict details/options without clicking Import
-      or Link. If no known match is available, do not create persistent data solely
-      for this check. This check has not yet been performed.
+- Branch: `refactor-import-process`; type-prefixed slug reconciliation is committed
+  as `e56a5d7`. Resume from the remaining file-parity and authenticated
+  verification items below; no live backend write verification was performed for
+  the slug change.
+- [x] Authenticated conflict-review check: on Import Records, the user reported
+      one duplicate for a row whose label differed from the matched record. This
+      confirms that duplicate reporting is not limited to identical labels; the
+      report does not establish whether Import/Link was clicked or whether writes
+      occurred.
+- [x] Implement type-prefixed slug lookup during duplicate reconciliation. The
+      user notes that the database prefixes imported slugs with the selected
+      object-type slug; reconciliation now checks both supplied and prefixed slugs
+      across CSV, workbook, and Import All paths, including the final create guard.
+      Already-prefixed slugs are not prefixed twice. Reconciliation, service,
+      orchestration, and production-page tests pass (125 tests); TypeScript,
+      production build, and `git diff --check` pass. Code is committed in
+      `e56a5d7`. Scoped ESLint reports the
+      existing `react-hooks/set-state-in-effect` issue in
+      `pages/import_records_page_impl.tsx`.
 - [x] User-performed authenticated validation review: a schema-invalid workbook
       source showed its invalid count and validation details in **Edit type and
       validate**, including after closing and reopening the editor. The other sheet's

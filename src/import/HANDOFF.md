@@ -1,12 +1,51 @@
 # Import Refactor Handoff
 
-## Pause checkpoint (2026-10-16)
+## Authenticated conflict-review check (2026-10-20)
 
-- The user paused before the authenticated conflict-review check. It has not been
-	performed. When resuming, use a workbook row known to match an existing record,
-	inspect the conflict indication/details and available handling options, and
-	do not click Import or Link. If no known match is available, do not create
-	persistent data just for the check.
+- On Import Records, the user reported one duplicate under **Duplicate reporting**
+  for a record whose label differed from the existing record's label. Duplicate
+  detection is therefore not limited to identical labels. The report does not
+  establish whether Import or Link was clicked, or whether any backend writes
+  occurred.
+- The user noted that the database prefixes imported slugs with the selected
+  object-type slug. Reconciliation now checks both the supplied and prefixed slug
+  in CSV, workbook, and Import All flows, including the final create guard; it
+  avoids double-prefixing an already-prefixed slug. A differing label remains a
+  conflict even when the slug matches.
+- Validation: 125 focused reconciliation/orchestration/page tests pass, as do
+  TypeScript, production build, and `git diff --check`. The build retains existing
+  Vite Quicktype/chunk warnings. Scoped ESLint reports
+  `react-hooks/set-state-in-effect` at `pages/import_records_page_impl.tsx:333`,
+  outside this change.
+- The implementation and tests are committed on `refactor-import-process` as
+  `e56a5d7` (`Check type-prefixed import slugs`).
+- Resume sequence:
+  1. Decide whether the approved-scope follow-up for saved-parent top-level
+     `uuid`, `slug`, and `label` lookup belongs in this branch; obtain approval
+     before that implementation slice.
+  2. Finish production CSV/XLSX controller and handoff gate coverage, then perform
+     authenticated parity checks for parent/child, external-parent, array,
+     ignored-row, multi-file, and multi-sheet workflows. Keep legacy execution
+     until parity is confirmed.
+  3. Verify authenticated Import All cancellation/resume/retry after partial
+     writes, including retained UUIDs, no duplicate successful writes, and
+     actionable validation/ambiguity pauses.
+  4. Complete source-neutral mapping parity for files and remote sources such as
+     ERDDAP in both workflow modes; then complete shared presentation and route
+     compatibility (Tasks 5A/5B in `REFACTOR_PLAN.md`).
+  5. Run full-suite/type/lint/build closeout, clean up only superseded workflow
+     state, and document any remaining live-backend checks.
+- `testing/fixtures/conflicts-with-known-parent.csv` is the two-line manual
+  conflict-review input and is included with the checkpoint commit. The other
+  untracked local samples `public/ambiguous-child.csv` and
+  `public/pam/pam_sample_workbook_complete.xlsx` were not included; preserve them
+  locally or transfer separately if needed. Do not assume they exist on another
+  machine.
+
+## Previous pause checkpoint (2026-10-16)
+
+- At this checkpoint, the user had paused before the authenticated conflict-review
+  check. The check is now recorded above.
 - The remaining authenticated conflict and array-parity checks are UI checks
 	only; they do not establish backend writes.
 

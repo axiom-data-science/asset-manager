@@ -27,7 +27,7 @@ const WaterLevelCreateDocumentSuccess = (): ReactElement => {
                     <div className='flex flex-row gap-10'>
                         <div className="flex flex-col gap-10 w-[40%]">
                             <div className="flex flex-wrap gap-4">
-                                <Check className="text-green-500" size={24} /> <Link to={`/documents/${uuid}`} className='font-bold'>{data.document.label}</Link> {action === 'edit' ? 'updated' : 'created'}
+                                <Check className="text-green-500" size={24} /> <Link to={`/edit-document/${uuid}`} className='font-bold'>{data.document.label}</Link> {action === 'edit' ? 'updated' : 'created'}
                                 <ShareDocument document={data.document} SelectButton={<Button size='xs' variant='outline'>Share <Share /></Button>} />
                             </div>
                             <CreateWaterLevelDocumentButton />

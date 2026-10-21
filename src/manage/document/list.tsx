@@ -92,6 +92,7 @@ const LockButton = ({
   const canModify = document.lock_sub === auth?.user?.profile?.sub || auth.isAdmin
   const [updating, setUpdating] = useState(false)
   const [locked, setLocked] = useState(document.locked_at !== null)
+  const [lockedBy, setLockedBy] = useState(document.lock_sub)
   const [lockedAt, setLockedAt] = useState(document.locked_at)
   const handleClick = (): void => {
     const lockToSet = !locked ? new Date().toISOString() : null
@@ -109,6 +110,7 @@ const LockButton = ({
         onChange?.(lockToSet)
         setLocked(lockToSet !== null)
         setLockedAt(lockToSet)
+        setLockedBy(auth.user?.profile.sub ?? null)
       })
       .finally(() => {
         setUpdating(false)
@@ -151,9 +153,12 @@ const LockButton = ({
 
       <>
         {locked && lockedAt && (
-          <p className="text-[10px] text-slate-400 text-center">
-            {new Date(lockedAt).toLocaleString()}
-          </p>
+          <div className="text-[10px] text-slate-400 text-center">
+            <p>
+              {new Date(lockedAt).toLocaleString()}
+            </p>
+            <p>{lockedBy}</p>
+          </div>
         )}
       </>
     </div>

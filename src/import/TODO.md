@@ -3,9 +3,9 @@
 ## Current progress (2026-10-21)
 
 - Branch: `refactor-import-process`; type-prefixed slug reconciliation is committed
-  as `e56a5d7`. Resume from the remaining file-parity and authenticated
-  verification items below; no live backend write verification was performed for
-  the slug change.
+  as `e56a5d7`, and saved-parent top-level matching as `85cec98`. Resume from the
+  remaining file-parity and authenticated verification items below; no live
+  backend write verification was performed for either change.
 - [x] Extend saved-parent lookup to support top-level `uuid`, `slug`, and `label`.
       The saved-parent field picker includes these alongside schema data paths;
       candidate matching reads existing document top-level values, and PostgREST

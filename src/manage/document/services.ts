@@ -113,6 +113,51 @@ export const fetchDocumentRollup = async ({
   return list
 }
 
+export const fetchDocumentUpload = async ({
+  uuid,
+  token,
+  signal,
+}: {
+  uuid: string
+  token: string
+  signal?: AbortSignal
+}): Promise<File | null> => {
+  const attributes = await fetchSingleFromPostgrest<{
+    name: string,
+    mime_type: string,
+    size_bytes: string,
+  }>({
+    table: 'document_file',
+    uuidColumn: 'document_uuid',
+    uuid,
+    token,
+    signal,
+  })
+
+  const response = await fetch(
+    postgrestUrl({
+      table: `rpc/get_document_file?uuid=${uuid}`
+    }),
+    {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  )
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`)
+  }
+
+  const disposition = response.headers.get('Content-Disposition')
+  const fileName = attributes?.name ?? disposition?.match(/filename="?([^";]+)"?/i)?.[1] ?? 'downloaded-file'
+  const contentType = attributes?.mime_type ?? response.headers.get('Content-Type')?.split(';', 1)[0] ?? ''
+
+  const blob = await response.blob()
+  const file = new File([blob], fileName, { type: contentType })
+  return file
+}
+
 export const postDocument = async <T>({
   document,
   token,

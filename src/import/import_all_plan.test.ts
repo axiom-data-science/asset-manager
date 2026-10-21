@@ -170,7 +170,11 @@ describe('Import source preparation progression', () => {
     expect(configuredSource.sourceAdapter.load).not.toHaveBeenCalled()
     expect(validator).toHaveBeenCalledWith(schema, record)
     expect(fetchExisting).toHaveBeenCalledWith({
-      records: [record], objectTypeUuid: 'type-1', token: '', signal: expect.any(AbortSignal),
+      records: [record],
+      objectTypeUuid: 'type-1',
+      objectTypeSlug: 'source-a',
+      token: '',
+      signal: expect.any(AbortSignal),
     })
     expect(result.plan).toMatchObject({
       preparationStatus: 'ready',
@@ -1528,7 +1532,7 @@ describe('Import All discovery plan', () => {
       expect.any(AbortSignal)
     )
     expect(mergeRpc).not.toHaveBeenCalled()
-    expect(fetchBySlug).toHaveBeenCalledWith('new', 'type-1', expect.any(AbortSignal))
+    expect(fetchBySlug).toHaveBeenCalledWith('new', 'type-1', 'source-a', expect.any(AbortSignal))
     expect(executed.executionResults.map(({ status }) => status)).toEqual([
       'imported',
       'imported',

@@ -12,6 +12,7 @@ import type { ImportAllRuntime } from '../pages/all'
 import { createImportAllTypeCreationAdapter } from '../create_import_object_type'
 import type { CanonicalImportRecord, ImportCandidate, ImportSourceAdapter } from '../types'
 import { makeInitialContextState } from '@/state/contextStateAtom'
+import { getImportSlugCandidates } from '../reconciliation'
 
 const parentTypeUuid = 'fixture-parent-type'
 const childTypeUuid = 'fixture-child-type'
@@ -293,12 +294,15 @@ export const createImportAllFixtureRuntime = ({
     const fetchExistingImportDocuments: ImportAllRuntime['fetchExistingImportDocuments'] = async ({
         records,
         objectTypeUuid,
+        objectTypeSlug,
         signal,
     }) => {
         portCalls.fetchExistingImportDocuments += 1
         signal?.throwIfAborted()
         reconciliationLookups.push(records.map((record) => record.slug))
-        const slugs = new Set(records.map((record) => record.slug))
+        const slugs = new Set(
+            records.flatMap((record) => getImportSlugCandidates(record.slug, objectTypeSlug))
+        )
         return [...seededDocuments, ...documents].filter(
             (document) => document.object_type_uuid === objectTypeUuid && slugs.has(document.slug)
         )

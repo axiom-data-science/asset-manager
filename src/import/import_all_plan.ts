@@ -469,6 +469,7 @@ type ImportAllPersistence = {
   fetchBySlug: (
     slug: string,
     objectTypeUuid: string,
+    objectTypeSlug: string,
     signal: AbortSignal
   ) => Promise<IDocument | undefined>
 }
@@ -620,7 +621,12 @@ export const executeImportAllSource = async ({
           slug: record.slug,
           objectTypeUuid,
         })
-        const existing = await persistence.fetchBySlug(record.slug, objectTypeUuid, signal)
+        const existing = await persistence.fetchBySlug(
+          record.slug,
+          objectTypeUuid,
+          plan.type,
+          signal
+        )
         if (existing)
           throw new Error(`Document "${record.slug}" already exists. Return to duplicate check.`)
         signal.throwIfAborted()
@@ -897,6 +903,7 @@ export const discoverImportAllSource = async ({
 type ExistingDocumentFetcher = (options: {
   records: CanonicalImportRecord[]
   objectTypeUuid: string
+  objectTypeSlug: string
   token: string
   signal?: AbortSignal
 }) => Promise<IDocument[]>
@@ -919,8 +926,10 @@ export const refreshImportAllSourceReconciliation = async ({
   const retryableKeys = getRetryableImportAllRecordKeys(plan, recordKeys, true)
   const records = plan.records.filter((record) => retryableKeys.has(importAllRecordKey(record)))
   const existingDocuments =
-    records.length > 0 ? await fetchExisting({ records, objectTypeUuid, token, signal }) : []
-  const refreshed = reconcileImportRecords(records, existingDocuments)
+    records.length > 0
+      ? await fetchExisting({ records, objectTypeUuid, objectTypeSlug: plan.type, token, signal })
+      : []
+  const refreshed = reconcileImportRecords(records, existingDocuments, plan.type)
   const refreshedByKey = new Map(
     refreshed.map((reconciliation) => [importAllRecordKey(reconciliation.record), reconciliation])
   )
@@ -1072,7 +1081,13 @@ export const prepareImportAllSource = async ({
       .map(({ record }) => record)
     const existingDocuments =
       validRecords.length > 0 && objectTypeUuid
-        ? await fetchExisting({ records: validRecords, objectTypeUuid, token, signal })
+        ? await fetchExisting({
+            records: validRecords,
+            objectTypeUuid,
+            objectTypeSlug: source.type,
+            token,
+            signal,
+          })
         : []
 
     return {
@@ -1086,7 +1101,7 @@ export const prepareImportAllSource = async ({
         ? { schema: cloneDeep(schema), objectTypeUuid, records: cloneDeep(records) }
         : undefined,
       reconciliations: objectTypeUuid
-        ? reconcileImportRecords(validRecords, existingDocuments)
+        ? reconcileImportRecords(validRecords, existingDocuments, source.type)
         : [],
       error: undefined,
     }

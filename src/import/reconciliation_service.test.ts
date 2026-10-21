@@ -36,15 +36,17 @@ describe('fetchExistingImportDocuments', () => {
             .mockResolvedValueOnce([{ uuid: 'existing-three' }] as never)
             .mockResolvedValueOnce([{ uuid: 'existing-one' }] as never)
             .mockResolvedValueOnce([])
+            .mockResolvedValueOnce([])
 
         const result = await fetchExistingImportDocuments({
             records,
             objectTypeUuid: 'type-1',
+            objectTypeSlug: 'type-1',
             token: 'token',
             batchSize: 2,
         })
 
-        expect(fetchDocuments).toHaveBeenCalledTimes(4)
+        expect(fetchDocuments).toHaveBeenCalledTimes(5)
         expect(fetchDocuments).toHaveBeenNthCalledWith(1, expect.objectContaining({
             token: 'token',
             params: {
@@ -59,7 +61,16 @@ describe('fetchExistingImportDocuments', () => {
             params: {
                 filters: [
                     { column: 'object_type_uuid', operator: 'eq', value: 'type-1' },
-                    { column: 'slug', operator: 'in', value: ['one', 'two'] },
+                    { column: 'slug', operator: 'in', value: ['one', 'type-1-one'] },
+                ],
+            },
+        }))
+        expect(fetchDocuments).toHaveBeenNthCalledWith(4, expect.objectContaining({
+            token: 'token',
+            params: {
+                filters: [
+                    { column: 'object_type_uuid', operator: 'eq', value: 'type-1' },
+                    { column: 'slug', operator: 'in', value: ['two', 'type-1-two'] },
                 ],
             },
         }))
@@ -111,6 +122,7 @@ describe('fetchExistingDocumentBySlug', () => {
         const result = await fetchExistingDocumentBySlug({
             slug: 'one',
             objectTypeUuid: 'type-1',
+            objectTypeSlug: 'type-1',
             token: 'token',
         })
 
@@ -121,7 +133,7 @@ describe('fetchExistingDocumentBySlug', () => {
                 limit: 1,
                 filters: [
                     { column: 'object_type_uuid', operator: 'eq', value: 'type-1' },
-                    { column: 'slug', operator: 'eq', value: 'one' },
+                    { column: 'slug', operator: 'in', value: ['one', 'type-1-one'] },
                 ],
             },
         })

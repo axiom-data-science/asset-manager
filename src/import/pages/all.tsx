@@ -34,7 +34,7 @@ import {
   type ImportAllSourcePlan,
 } from '../import_all_plan'
 import { fetchExistingImportDocuments } from '../reconciliation_service'
-import { getDocumentImportProvenance } from '../reconciliation'
+import { getDocumentImportProvenance, getImportSlugCandidates } from '../reconciliation'
 import { useAuth } from '@/auth/useAuth'
 import { omit } from 'lodash-es'
 import type { JSONSchema6 } from 'json-schema'
@@ -1351,9 +1351,11 @@ export const ImportAllView = ({
               token,
               signal,
             }),
-            fetchBySlug: (slug, objectTypeUuid, signal) => runtime.fetchExistingDocumentBySlug({
+            fetchBySlug: (slug, objectTypeUuid, objectTypeSlug, signal) =>
+              runtime.fetchExistingDocumentBySlug({
               slug,
               objectTypeUuid,
+              objectTypeSlug,
               token,
               signal,
             }),
@@ -1426,6 +1428,7 @@ export const ImportAllView = ({
           const documents = await runtime.fetchExistingImportDocuments({
             records: executed.records,
             objectTypeUuid: objectType.uuid,
+            objectTypeSlug: objectType.slug,
             token,
             signal: controller.signal,
           })
@@ -1447,7 +1450,9 @@ export const ImportAllView = ({
             if (documentUuids.has(documentKey)) continue
             const document =
               documentsByExternalId.get(record.provenance.externalId) ??
-              documentsBySlug.get(record.slug)
+              getImportSlugCandidates(record.slug, objectType.slug)
+                .map((slug) => documentsBySlug.get(slug))
+                .find((candidate) => candidate !== undefined)
             if (!document) continue
             documentUuids.set(documentKey, document.uuid)
           }

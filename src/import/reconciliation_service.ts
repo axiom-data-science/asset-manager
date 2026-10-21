@@ -2,6 +2,7 @@ import type { CanonicalImportRecord } from './types'
 import type { IDocument } from '@/types/types'
 import { fetchDocuments } from '@/manage/document/services'
 import { postToPostgrest } from '@/services/postgrest/services'
+import { getImportSlugCandidates } from './reconciliation'
 
 const chunk = <T,>(items: T[], size: number): T[][] => {
     const batches: T[][] = []
@@ -14,12 +15,14 @@ const chunk = <T,>(items: T[], size: number): T[][] => {
 export const fetchExistingImportDocuments = async ({
     records,
     objectTypeUuid,
+    objectTypeSlug,
     token,
     signal,
     batchSize = 100,
 }: {
     records: CanonicalImportRecord[]
     objectTypeUuid: string
+    objectTypeSlug: string
     token: string
     signal?: AbortSignal
     batchSize?: number
@@ -27,7 +30,9 @@ export const fetchExistingImportDocuments = async ({
     const externalIds = Array.from(
         new Set(records.map((record) => record.provenance.externalId))
     )
-    const slugs = Array.from(new Set(records.map((record) => record.slug)))
+    const slugs = Array.from(new Set(
+        records.flatMap((record) => getImportSlugCandidates(record.slug, objectTypeSlug))
+    ))
     const results = await Promise.all([
         ...chunk(externalIds, batchSize).map((ids) =>
             fetchDocuments({
@@ -101,11 +106,13 @@ export const fetchDocumentsByDataFieldValues = async ({
 export const fetchExistingDocumentBySlug = async ({
     slug,
     objectTypeUuid,
+    objectTypeSlug,
     token,
     signal,
 }: {
     slug: string
     objectTypeUuid: string
+    objectTypeSlug: string
     token: string
     signal?: AbortSignal
 }): Promise<IDocument | undefined> => {
@@ -116,7 +123,7 @@ export const fetchExistingDocumentBySlug = async ({
             limit: 1,
             filters: [
                 { column: 'object_type_uuid', operator: 'eq', value: objectTypeUuid },
-                { column: 'slug', operator: 'eq', value: slug },
+                { column: 'slug', operator: 'in', value: getImportSlugCandidates(slug, objectTypeSlug) },
             ],
         },
     })

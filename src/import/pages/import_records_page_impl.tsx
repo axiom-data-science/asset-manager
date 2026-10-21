@@ -493,6 +493,7 @@ const ImportRecordsPage = ({
                         <ReconciliationReview
                           records={eligibleRecords}
                           objectTypeUuid={objectTypeForRecords.uuid}
+                          objectTypeSlug={objectTypeForRecords.slug}
                           token={auth.user?.access_token ?? ''}
                           reconciliations={session.reconciliations}
                           autoDiscover={csvSource && startAtImport}
@@ -592,6 +593,7 @@ const ImportRecordsPage = ({
                                 const existingDocument = await fetchExistingDocumentBySlug({
                                   slug: doc.slug,
                                   objectTypeUuid: objectTypeForRecords.uuid,
+                                  objectTypeSlug: objectTypeForRecords.slug,
                                   token: auth.user?.access_token ?? '',
                                   signal,
                                 })

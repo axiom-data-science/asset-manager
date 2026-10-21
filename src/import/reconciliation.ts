@@ -18,6 +18,14 @@ export type ImportReconciliation = {
     existingDocuments: IDocument[]
 }
 
+export const getObjectTypePrefixedImportSlug = (slug: string, objectTypeSlug: string): string => {
+    const prefix = `${objectTypeSlug}-`
+    return objectTypeSlug && !slug.startsWith(prefix) ? `${prefix}${slug}` : slug
+}
+
+export const getImportSlugCandidates = (slug: string, objectTypeSlug: string): string[] =>
+    Array.from(new Set([slug, getObjectTypePrefixedImportSlug(slug, objectTypeSlug)]))
+
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
     value !== null && typeof value === 'object' && !Array.isArray(value)
 
@@ -67,16 +75,18 @@ export const withImportProvenance = (
 
 const recordMatchesDocument = (
     record: CanonicalImportRecord,
-    document: IDocument
+    document: IDocument,
+    objectTypeSlug: string
 ): boolean =>
-    record.slug === document.slug &&
+    getImportSlugCandidates(record.slug, objectTypeSlug).includes(document.slug) &&
     record.label === document.label &&
     (record.description ?? '') === (document.description ?? '') &&
     isEqual(record.data, document.data)
 
 export const reconcileImportRecords = (
     records: CanonicalImportRecord[],
-    existingDocuments: IDocument[]
+    existingDocuments: IDocument[],
+    objectTypeSlug: string
 ): ImportReconciliation[] => {
     const documentsByExternalId = new Map<string, IDocument[]>()
     const documentsBySlug = new Map<string, IDocument[]>()
@@ -93,18 +103,21 @@ export const reconcileImportRecords = (
     }
 
     const incomingSlugCounts = records.reduce<Map<string, number>>((counts, record) => {
-        counts.set(record.slug, (counts.get(record.slug) ?? 0) + 1)
+        const importSlug = getObjectTypePrefixedImportSlug(record.slug, objectTypeSlug)
+        counts.set(importSlug, (counts.get(importSlug) ?? 0) + 1)
         return counts
     }, new Map())
 
     return records.map((record) => {
+        const slugCandidates = getImportSlugCandidates(record.slug, objectTypeSlug)
         const matches = Array.from(new Map(
             [
                 ...(documentsByExternalId.get(record.provenance.externalId) ?? []),
-                ...(documentsBySlug.get(record.slug) ?? []),
+                ...slugCandidates.flatMap((slug) => documentsBySlug.get(slug) ?? []),
             ].map((document) => [document.uuid, document])
         ).values())
-        if ((incomingSlugCounts.get(record.slug) ?? 0) > 1) {
+        const importSlug = getObjectTypePrefixedImportSlug(record.slug, objectTypeSlug)
+        if ((incomingSlugCounts.get(importSlug) ?? 0) > 1) {
             return { record, status: 'ambiguous', existingDocuments: matches }
         }
         if (matches.length === 0) {
@@ -113,7 +126,7 @@ export const reconcileImportRecords = (
         if (matches.length > 1) {
             return { record, status: 'ambiguous', existingDocuments: matches }
         }
-        if (recordMatchesDocument(record, matches[0])) {
+        if (recordMatchesDocument(record, matches[0], objectTypeSlug)) {
             return { record, status: 'exact', action: 'ignore', existingDocuments: matches }
         }
         return { record, status: 'conflicting', action: 'ignore', existingDocuments: matches }

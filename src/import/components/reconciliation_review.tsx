@@ -15,6 +15,7 @@ const existingActions: ImportConflictAction[] = ['ignore', 'overwrite', 'merge']
 const ReconciliationReview = ({
     records,
     objectTypeUuid,
+    objectTypeSlug,
     token,
     reconciliations,
     autoDiscover = false,
@@ -26,6 +27,7 @@ const ReconciliationReview = ({
 }: {
     records: CanonicalImportRecord[]
     objectTypeUuid: string
+    objectTypeSlug: string
     token: string
     reconciliations: ImportReconciliation[] | null
     autoDiscover?: boolean
@@ -50,15 +52,16 @@ const ReconciliationReview = ({
             const existingDocuments = await fetchExistingImportDocuments({
                 records,
                 objectTypeUuid,
+                objectTypeSlug,
                 token,
             })
-            onReconciled(reconcileImportRecords(records, existingDocuments))
+            onReconciled(reconcileImportRecords(records, existingDocuments, objectTypeSlug))
         } catch (caught) {
             setError(caught instanceof Error ? caught.message : String(caught))
         } finally {
             setIsLoading(false)
         }
-    }, [objectTypeUuid, onReconciled, records, token])
+    }, [objectTypeSlug, objectTypeUuid, onReconciled, records, token])
 
     useEffect(() => {
         if (

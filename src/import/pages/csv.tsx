@@ -37,7 +37,11 @@ import {
   fetchDocumentsByDataFieldValues,
   fetchExistingImportDocuments,
 } from '../reconciliation_service'
-import { getDocumentImportProvenance, reconcileImportRecords } from '../reconciliation'
+import {
+  getDocumentImportProvenance,
+  getImportSlugCandidates,
+  reconcileImportRecords,
+} from '../reconciliation'
 import {
   persistImportRelationships,
   planImportRelationships,
@@ -996,12 +1000,13 @@ const CSVSourceImportPanel = ({
     void fetchExistingImportDocuments({
       records: session.records,
       objectTypeUuid: objectType.uuid,
+      objectTypeSlug: objectType.slug,
       token,
       signal: controller.signal,
     }).then((existingDocuments) => {
       if (controller.signal.aborted) return
       setDuplicateCheckError(undefined)
-      setReconciliations(reconcileImportRecords(session.records, existingDocuments))
+      setReconciliations(reconcileImportRecords(session.records, existingDocuments, objectType.slug))
     }).catch((error: unknown) => {
       if (controller.signal.aborted) return
       setDuplicateCheckError(error instanceof Error ? error.message : String(error))
@@ -2232,6 +2237,7 @@ const CSVImportPage = ({
         const documents = await fetchExistingImportDocuments({
           records,
           objectTypeUuid: objectType.uuid,
+          objectTypeSlug: objectType.slug,
           token: auth.user?.access_token ?? '',
         })
         const documentsBySlug = new Map(documents.map((document) => [document.slug, document]))
@@ -2245,7 +2251,9 @@ const CSVImportPage = ({
         for (const record of records) {
           const document =
             documentsByExternalId.get(record.provenance.externalId) ??
-            documentsBySlug.get(record.slug)
+            getImportSlugCandidates(record.slug, objectType.slug)
+              .map((slug) => documentsBySlug.get(slug))
+              .find((candidate) => candidate !== undefined)
           if (document) {
             documentUuids.set(
               relationshipDocumentKey({

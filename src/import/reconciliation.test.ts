@@ -3,6 +3,7 @@ import type { CanonicalImportRecord } from './types'
 import type { IDocument } from '@/types/types'
 import {
     getDocumentImportProvenance,
+    getImportSlugCandidates,
     mergeIncomingNonEmpty,
     reconcileImportRecords,
     withImportProvenance,
@@ -45,6 +46,17 @@ const document = (
 })
 
 describe('import reconciliation', () => {
+    it('checks the raw and type-prefixed slug without double-prefixing', () => {
+        expect(getImportSlugCandidates('seed-owner-only', 'seed_document_type')).toEqual([
+            'seed-owner-only',
+            'seed_document_type-seed-owner-only',
+        ])
+        expect(getImportSlugCandidates(
+            'seed_document_type-seed-owner-only',
+            'seed_document_type'
+        )).toEqual(['seed_document_type-seed-owner-only'])
+    })
+
     it('persists and reads namespaced provenance', () => {
         const attrs = withImportProvenance({ mime_type: 'application/json' }, {
             sourceId: 'source-a',
@@ -67,7 +79,7 @@ describe('import reconciliation', () => {
             document('ambiguous', { uuid: 'document-ambiguous-2' }),
         ]
 
-        expect(reconcileImportRecords(records, existing).map(({ status, action }) => ({ status, action })))
+        expect(reconcileImportRecords(records, existing, 'type-1').map(({ status, action }) => ({ status, action })))
             .toEqual([
                 { status: 'new', action: 'create' },
                 { status: 'exact', action: 'ignore' },
@@ -83,10 +95,24 @@ describe('import reconciliation', () => {
             data: { value: 'existing' },
         })
 
-        expect(reconcileImportRecords([incoming], [legacy])[0]).toMatchObject({
+        expect(reconcileImportRecords([incoming], [legacy], 'type-1')[0]).toMatchObject({
             status: 'conflicting',
             action: 'ignore',
             existingDocuments: [legacy],
+        })
+    })
+
+    it('matches a type-prefixed slug when another field differs', () => {
+        const incoming = { ...record('prefixed'), slug: 'record-prefixed' }
+        const existing = document('prefixed', {
+            slug: 'type-1-record-prefixed',
+            label: 'Different label',
+        })
+
+        expect(reconcileImportRecords([incoming], [existing], 'type-1')[0]).toMatchObject({
+            status: 'conflicting',
+            action: 'ignore',
+            existingDocuments: [existing],
         })
     })
 
@@ -94,7 +120,7 @@ describe('import reconciliation', () => {
         const first = record('first')
         const second = { ...record('second'), slug: first.slug }
 
-        const reconciliations = reconcileImportRecords([first, second], [])
+        const reconciliations = reconcileImportRecords([first, second], [], 'type-1')
 
         expect(reconciliations.map(({ status, action }) => ({ status, action }))).toEqual([
             { status: 'ambiguous', action: undefined },

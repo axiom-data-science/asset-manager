@@ -1,5 +1,24 @@
 # Import Refactor Handoff
 
+## Saved-parent top-level match fields (2026-10-21)
+
+- The approved follow-up is implemented: saved-parent field choices now include
+  top-level `uuid`, `slug`, and `label`; existing-document candidate matching
+  reads those top-level values, and PostgREST lookups query the corresponding
+  columns. Nested schema paths continue to query `data`.
+- Validation: 50 focused reconciliation, relationship-planning, and production CSV
+  mapping tests pass; TypeScript, scoped ESLint, and production build pass. This
+  was automated verification only; no authenticated live-parent lookup was run.
+- Code changes are committed on `refactor-import-process` as `85cec98`
+  (`Support top-level saved-parent matches`).
+- When resuming, check `git status` before editing or staging.
+- Next focus: finish production file-controller/handoff gate coverage and
+  authenticated CSV/XLSX parity for parent/child, external-parent, array,
+  ignored-row, multi-file, and multi-sheet cases. Preserve legacy execution until
+  that parity is verified. Then perform authenticated Import All cancellation,
+  resume, and retry checks; complete source-neutral file/remote mapping parity;
+  and continue Tasks 5A/5B and closeout in `REFACTOR_PLAN.md`.
+
 ## Authenticated conflict-review check (2026-10-20)
 
 - On Import Records, the user reported one duplicate under **Duplicate reporting**
@@ -20,20 +39,17 @@
 - The implementation and tests are committed on `refactor-import-process` as
   `e56a5d7` (`Check type-prefixed import slugs`).
 - Resume sequence:
-  1. Decide whether the approved-scope follow-up for saved-parent top-level
-     `uuid`, `slug`, and `label` lookup belongs in this branch; obtain approval
-     before that implementation slice.
-  2. Finish production CSV/XLSX controller and handoff gate coverage, then perform
+  1. Finish production CSV/XLSX controller and handoff gate coverage, then perform
      authenticated parity checks for parent/child, external-parent, array,
      ignored-row, multi-file, and multi-sheet workflows. Keep legacy execution
      until parity is confirmed.
-  3. Verify authenticated Import All cancellation/resume/retry after partial
+  2. Verify authenticated Import All cancellation/resume/retry after partial
      writes, including retained UUIDs, no duplicate successful writes, and
      actionable validation/ambiguity pauses.
-  4. Complete source-neutral mapping parity for files and remote sources such as
+  3. Complete source-neutral mapping parity for files and remote sources such as
      ERDDAP in both workflow modes; then complete shared presentation and route
      compatibility (Tasks 5A/5B in `REFACTOR_PLAN.md`).
-  5. Run full-suite/type/lint/build closeout, clean up only superseded workflow
+  4. Run full-suite/type/lint/build closeout, clean up only superseded workflow
      state, and document any remaining live-backend checks.
 - `testing/fixtures/conflicts-with-known-parent.csv` is the two-line manual
   conflict-review input and is included with the checkpoint commit. The other

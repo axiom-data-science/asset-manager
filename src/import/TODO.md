@@ -1,11 +1,18 @@
 # Import Refactor TODO
 
-## Current progress (2026-10-20)
+## Current progress (2026-10-21)
 
 - Branch: `refactor-import-process`; type-prefixed slug reconciliation is committed
   as `e56a5d7`. Resume from the remaining file-parity and authenticated
   verification items below; no live backend write verification was performed for
   the slug change.
+- [x] Extend saved-parent lookup to support top-level `uuid`, `slug`, and `label`.
+      The saved-parent field picker includes these alongside schema data paths;
+      candidate matching reads existing document top-level values, and PostgREST
+      queries use direct columns for these fields. Focused reconciliation,
+      relationship-planning, and production CSV mapping tests pass (50 tests);
+      TypeScript, scoped ESLint, and production build pass. No authenticated
+      live-backend lookup was performed.
 - [x] Authenticated conflict-review check: on Import Records, the user reported
       one duplicate for a row whose label differed from the matched record. This
       confirms that duplicate reporting is not limited to identical labels; the
@@ -126,10 +133,9 @@
       safety gates, and unchanged write counts. All thirteen CSV mapping tests, fresh
       TypeScript, scoped ESLint, and whitespace checks pass. The initial test edit
       targeted the neighboring single-parent case and was corrected before validation.
-- [ ] Extend saved-parent lookup to support top-level `uuid`, `slug`, and `label`
+- [x] Extend saved-parent lookup to support top-level `uuid`, `slug`, and `label`
       fields, including field choices, candidate matching, and PostgREST lookup
-      queries; add focused tests for all three fields. This is a bounded follow-up
-      slice and still requires approval before implementation.
+      queries; focused tests cover all three fields.
 - [x] User-performed authenticated parent-selection review: user reports the
       saved-parent controls appear and work, duplicate matches block Import until a
       parent is selected, and shared flow remains gated. No Import or Link relationships
@@ -155,7 +161,7 @@
       diagnostics pass. No application/timeouts changes or parent repairs. This
       supersedes earlier file-wide failures; full-suite/build and user-performed
       authenticated/visual verification were not rerun.
-- [ ] Obtain approval before another implementation slice. Broader visual checks,
+- [ ] Obtain approval before the next implementation slice. Broader visual checks,
       remaining blocked-input gates, and full CSV/XLSX file-page parity remain pending.
 - [x] Save completed work on `refactor-import-process`: `da11ff6` (shared workflow),
       `438319c` (fixtures/tests/docs), and `a2bdec9` (mode pilot). Redundant branch deleted;

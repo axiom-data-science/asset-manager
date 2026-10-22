@@ -462,6 +462,57 @@ describe('CSV mapping editor fixture', () => {
         }
     })
 
+    it('blocks shared handoff when duplicate reconciliation fails', async () => {
+        const { user } = mountProductionCSVPage()
+        const csvFile = new File(
+            ['id,name,value\nsite-9,Harbor,deep'],
+            'fixture-sites.csv',
+            { type: 'text/csv' }
+        )
+        const previousFetchImplementation = testPorts.fetchExistingImportDocuments.getMockImplementation()
+        const reconciliationCallsBefore = testPorts.fetchExistingImportDocuments.mock.calls.length
+        const postDocumentCallsBefore = testPorts.postDocument.mock.calls.length
+        const patchDocumentCallsBefore = testPorts.patchDocument.mock.calls.length
+        const relationshipCallsBefore = testPorts.postRelationship.mock.calls.length
+
+        try {
+            testPorts.fetchExistingImportDocuments.mockRejectedValue(
+                new Error('Fixture duplicate lookup failed.')
+            )
+            await user.click(screen.getByRole('button', { name: 'CSV files' }))
+            await user.upload(screen.getByLabelText(/Browse Files/), csvFile)
+            const prepareButton = await screen.findByRole('button', { name: 'Prepare import' }) as HTMLButtonElement
+            await waitFor(() => expect(prepareButton.disabled).toBe(false))
+            await user.click(prepareButton)
+            await screen.findByRole('heading', { name: 'Import fixture-sites.csv' })
+
+            await waitFor(() =>
+                expect(testPorts.fetchExistingImportDocuments.mock.calls.length)
+                    .toBeGreaterThan(reconciliationCallsBefore)
+            )
+            expect(await screen.findByText('Duplicate check failed')).toBeTruthy()
+            const sharedFlowButton = screen.getByRole('button', {
+                name: 'Use shared import flow',
+            }) as HTMLButtonElement
+            expect(sharedFlowButton.disabled).toBe(true)
+            expect(screen.getByText(
+                'Complete required mappings, validation, and duplicate review in CSV before using the shared workflow.'
+            )).toBeTruthy()
+
+            await user.click(sharedFlowButton)
+            expect(screen.getByRole('heading', { name: 'Import fixture-sites.csv' })).toBeTruthy()
+            expect(screen.queryByRole('heading', { name: 'Import mapped CSV sources' })).toBeNull()
+            expect(screen.queryByRole('button', { name: 'Discover selected' })).toBeNull()
+            expect(testPorts.postDocument).toHaveBeenCalledTimes(postDocumentCallsBefore)
+            expect(testPorts.patchDocument).toHaveBeenCalledTimes(patchDocumentCallsBefore)
+            expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipCallsBefore)
+        } finally {
+            if (previousFetchImplementation) {
+                testPorts.fetchExistingImportDocuments.mockImplementation(previousFetchImplementation)
+            }
+        }
+    })
+
     it('selects and maps only the chosen worksheet through the production CSV controller', async () => {
         const { user } = mountProductionCSVPage()
         const postDocumentCallsBefore = testPorts.postDocument.mock.calls.length

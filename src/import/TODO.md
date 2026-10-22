@@ -1,11 +1,16 @@
 # Import Refactor TODO
 
-## Current progress (2026-10-21)
+## Current progress (2026-10-22)
 
 - Branch: `refactor-import-process`; type-prefixed slug reconciliation is committed
   as `e56a5d7`, and saved-parent top-level matching as `85cec98`. Resume from the
   remaining file-parity and authenticated verification items below; no live
   backend write verification was performed for either change.
+- [x] Production CSV shared-handoff gate: duplicate reconciliation failure keeps
+      the handoff disabled and produces no document, patch, or relationship writes.
+      The regression test covers repeated lookup failure so a concurrent successful
+      duplicate check cannot mask the failure. All 18 CSV mapping tests, forced
+      TypeScript, and test-file ESLint pass.
 - [x] Extend saved-parent lookup to support top-level `uuid`, `slug`, and `label`.
       The saved-parent field picker includes these alongside schema data paths;
       candidate matching reads existing document top-level values, and PostgREST
@@ -183,8 +188,8 @@
       return-to-mapping and post-execution locking, before broadening feature gates.
       The standalone CSV upload/prepare/handoff/return case now passes with auth/service
       doubles, as do the busy preparation guard and persistent post-execution lock;
-      schema-invalid and ambiguous-duplicate handoff gates also pass. Other blocked-input
-      and feature-gate cases and full parity remain.
+      schema-invalid, ambiguous-duplicate, and duplicate-lookup-error handoff gates
+      also pass. Other blocked-input and feature-gate cases and full parity remain.
 - [ ] Complete CSV/XLSX integration and parity for parent/array/external-parent
       relationships, ignored rows, full sheet/type/schema selection, and multi-file
       orchestration before retiring legacy execution. Config/UI mappings remain required.

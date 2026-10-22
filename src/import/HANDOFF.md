@@ -1,5 +1,18 @@
 # Import Refactor Handoff
 
+## Duplicate lookup failure handoff gate (2026-10-22)
+
+- Added production CSV page regression coverage: when duplicate reconciliation
+  keeps failing, **Use shared import flow** remains disabled, the duplicate-check
+  error is visible, and document/patch/relationship write counts do not change.
+  The test keeps the lookup failure active across calls so another concurrently
+  triggered successful check cannot hide the failure case.
+- Validation: all 18 `csv.mapping.test.tsx` tests pass; forced TypeScript and
+  scoped test-file ESLint pass. No application behavior changed.
+- Next: continue remaining CSV/XLSX production parity and authenticated
+  verification; current known gaps are listed in the checkpoint below and
+  `TODO.md`. No authenticated backend actions were performed.
+
 ## Saved-parent top-level match fields (2026-10-21)
 
 - The approved follow-up is implemented: saved-parent field choices now include

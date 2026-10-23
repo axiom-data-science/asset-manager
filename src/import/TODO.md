@@ -194,9 +194,28 @@
       schema-invalid records, ambiguous/failed duplicate checks, configured
       parent-child and array relationships, and unresolved parent rows. These
       auth-free UI regressions preserve no-write assertions before handoff.
-- [ ] Investigate the production-page Ignore/Restore test stall. The focused
-      test stopped progressing after the missing-parent plan appeared when an
-      Ignore child row click was added; the probe was stopped without a root cause.
+- [x] Investigate and fix the production-page Ignore/Restore stall. Ignoring the
+      only unresolved row left the source with zero effective records; its panel
+      repeatedly validated the empty list because empty sessions are never
+      considered validation-complete. Skip validation for empty loaded sources.
+      Production-page coverage now verifies Ignore, Restore, and unchanged
+      document/patch/relationship write counts. All 23 CSV mapping tests pass,
+      along with TypeScript, scoped ESLint, and whitespace checks.
+- [x] Cover XLSX array-source parent gates on the production page. Selecting
+      only the array worksheet reports the missing document source and makes no
+      writes; selecting matching parent and array worksheets composes the row
+      into the parent so its required non-empty array validates. The positive
+      test stubs parsed worksheet data; workbook parsing is separately covered.
+      Also verify a workbook child sheet resolves its unique existing parent.
+      These tests stub parsed sheets and mocked lookup results; no writes occur.
+      Stabilize the shared-execution test by waiting for the upload-ready action.
+      The focused CSV mapping, Import All fixture, CSV orchestration, and workbook
+      suites pass (62 tests), as do TypeScript, scoped ESLint, and whitespace
+      checks. Authenticated verification remains open.
+- [x] User verified browser format selection on generic and PAM routes
+      (2026-10-23): choosing CSV or XLSX shows only the corresponding upload
+      controls. Workbook array and existing-parent browser checks are still
+      pending; exact workbook and sheet instructions are in `HANDOFF.md`.
 - [ ] Complete remaining CSV/XLSX blocked-input and feature-gate coverage, then
       finish full file parity before retiring legacy execution.
 - [ ] Complete CSV/XLSX integration and parity for parent/array/external-parent
@@ -704,7 +723,8 @@ New requirements to carry into that refactor:
 - [x] Allow a missing-parent child row to be excluded from import, with an action to restore ignored rows.
 - [x] Offer detailed generic relationship review and a guided variant presentation.
 - [x] Keep array-only sources blocked unless their configured in-session parent source is uploaded.
-- [ ] Authenticated UI verification: choose CSV and workbook modes on generic and PAM CSV routes; verify each shows only its selected upload controls.
+- [x] Authenticated UI verification: user confirmed CSV and workbook modes on
+      generic and PAM routes show only their selected upload controls (2026-10-23).
 - [ ] Authenticated UI verification: upload a partial PAM source with a unique existing parent and confirm it auto-resolves and links.
 - [ ] Authenticated UI verification: confirm multiple existing parents require a selection and no-match rows can be ignored/restored before import.
 - [ ] Authenticated UI verification: confirm an array-only workbook is blocked without its configured document source, then embeds rows when that source is present.

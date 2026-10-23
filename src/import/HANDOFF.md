@@ -1,5 +1,84 @@
 # Import Refactor Handoff
 
+## XLSX array-source parent gate (2026-10-23)
+
+- Added a production-page regression using the binary workbook fixture with only
+  its configured array worksheet selected. Continuing without the configured
+  document source reports the blocker, does not enter Import records or shared
+  import, and makes no document, patch, or relationship writes.
+- Added the positive production-page counterpart with matching parent and array
+  sheets. It stubs parsed worksheet data, then verifies the parent's required
+  non-empty array validates after composition, without performing writes. Binary
+  XLSX parsing remains covered by the separate workbook tests.
+- Added workbook child-sheet lookup coverage for one matching existing parent.
+  The test verifies the configured parent type, match field, and lookup value,
+  while keeping the shared relationship workflow gated and performing no writes.
+- Stabilized the shared-execution production test to wait for the upload-ready
+  action after file selection.
+- Validation: 62 tests pass across the CSV mapping, Import All fixture, CSV
+  orchestration, and workbook suites; TypeScript, scoped ESLint, and whitespace
+  checks pass. Parser and lookup services are mocked in the new parent/array
+  parity tests, and no backend writes were made.
+
+## Browser verification handoff
+
+Automated coverage is ready for authenticated/manual verification. Please capture
+the selected route, format, source sheets/files, match field/value, planner status,
+and any Import/Link result:
+
+1. **Verified by the user (2026-10-23):** on generic and PAM routes, CSV and XLSX
+   choices show only their selected upload controls.
+2. Use the tracked workbook `public/pam/pam_sample_workbook.xlsx` at
+   `/import/csv/pam`. Its configured sheets are `pam_project`, `pam_site`,
+   `pam_deployment`, `pam_recordings`, and `pam_analyses`. Do not use
+   `pam_sample_workbook_complete.xlsx` for this route; its sheet names do not
+   match the PAM source config.
+   - **Missing-parent blocker:** select only `pam_recordings`, add that sheet,
+     then click **Prepare import**. If mapping review is requested first, finish
+     it and click **Continue to import**. The expected alert is `Upload the
+     configured document source before importing array rows: pam_recordings.csv`;
+     it should remain before Import Records.
+   - **Composition:** select `pam_deployment` and `pam_recordings` (optionally
+     also `pam_analyses`). Their `deploymentTitle` values both equal
+     `Example PAM Deployment`. Prepare and verify the array row is composed into
+     the deployment; do not click Import unless writes are intended.
+3. Use a copy of the same workbook and select just the child sheet being tested.
+   For project lookup, select only `pam_site` (not `pam_project`) and choose a
+   PAM site location type during sheet selection. The sample `project` value is
+   `Example PAM Project`; unique auto-resolution requires exactly one existing
+   `pam_project` with that value. Change the copied cell to a known existing
+   project value if needed.
+   - For no-match/Ignore/Restore, set `pam_site.project` to a unique nonexistent
+     value, such as `NO_MATCH_IMPORT_TEST_20261023`. Expect an unresolved row with
+     **Ignore child row** and **Restore ignored rows**; stop before Import/Link.
+   - For ambiguity, the database must already contain at least two
+     `pam_project` records with the same `project` value. A workbook cannot create
+     that ambiguity by itself; use a safe test environment and a known duplicate
+     value. Expect an explicit parent choice before the row is ready.
+   - The second configured lookup is `pam_site.siteOrCruiseName` to
+     `pam_deployment.site`; the sample values are both `Example PAM Site`.
+4. In multi-source Import All, cancel after partial progress, resume, and retry
+   only failed/unattempted work. Confirm completed document UUIDs/links persist
+   and successful writes are not repeated.
+
+Do not retire the legacy file workflow until these checks pass and are recorded.
+
+## Ignore/Restore empty-source loop (2026-10-23)
+
+- The Ignore/Restore probe reproduced a React update loop after ignoring the
+  only unresolved child row. The filtered source had zero effective records, but
+  its import panel kept validating the empty record list; empty sessions are not
+  considered validation-complete, so each validation effect wrote another
+  session update.
+- The CSV source panel now skips validation when the loaded record list is empty.
+  A production-page regression verifies that Ignore removes the unresolved plan,
+  Restore brings it back, and neither action writes documents, patches, or
+  relationships.
+- All 23 CSV mapping tests pass, along with TypeScript, scoped ESLint, and
+  whitespace checks. This is automated UI evidence only; authenticated/live-
+  backend parity checks remain open. Keep legacy execution until CSV/XLSX parity
+  is verified.
+
 ## Duplicate lookup failure handoff gate (2026-10-22)
 
 - Added production CSV page regression coverage: when duplicate reconciliation
@@ -22,14 +101,12 @@
 - Validation: focused regression passes, as do forced TypeScript and scoped
   ESLint for `csv.mapping.test.tsx`. No application behavior changed. This is
   automated UI evidence only, not authenticated or live-backend verification.
-- Follow-up probe: adding Ignore/Restore clicks to this production-page test
-  caused the Vitest worker to stop progressing after the missing-parent plan
-  appeared. The probe was stopped and its temporary test edits removed; the cause
-  is not established, so Ignore/Restore behavior remains unverified.
+- Follow-up: the Ignore/Restore stall was isolated and fixed; see the
+  2026-10-23 checkpoint above.
 - Next: continue remaining CSV/XLSX blocked-input and feature-gate coverage, then
-  isolate the Ignore/Restore test stall, then verify parent/child,
-  external-parent, array, ignored-row, multi-file, and multi-sheet parity through
-  authenticated routes. Keep legacy execution until those parity checks pass.
+  verify parent/child, external-parent, array, ignored-row, multi-file, and
+  multi-sheet parity through authenticated routes. The Ignore/Restore test stall
+  is resolved. Keep legacy execution until those parity checks pass.
 
 ## Saved-parent top-level match fields (2026-10-21)
 

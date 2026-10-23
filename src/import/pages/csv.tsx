@@ -978,7 +978,13 @@ const CSVSourceImportPanel = ({
   ])
 
   useEffect(() => {
-    if (!loaded || session.records !== loaded.records || !session.schema || isValidationComplete(session))
+    if (
+      !loaded ||
+      loaded.records.length === 0 ||
+      session.records !== loaded.records ||
+      !session.schema ||
+      isValidationComplete(session)
+    )
       return
     setValidationResults(validateCSVRecords(loaded.records, session.schema))
   }, [loaded, session, setValidationResults])

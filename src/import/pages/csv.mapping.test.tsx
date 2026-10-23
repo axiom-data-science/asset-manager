@@ -5,10 +5,12 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Provider, createStore } from 'jotai'
 import { MemoryRouter } from 'react-router-dom'
+import * as workbookModule from '../workbook'
 import { CSVMappingFixtureView } from '../testing/CSVMappingFixtureView'
 import CSVImportPage from './csv'
 import type { CSVImportViewConfig } from './csv'
 import type { IDocument, IObjectSchema, IObjectType } from '@/types/types'
+import { parseCSV } from '@/lib/csv'
 import type { ImportRelationshipRule } from '../types'
 import {
     createCSVMappingFixture,
@@ -670,6 +672,306 @@ describe('CSV mapping editor fixture', () => {
         expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipCallsBefore)
     })
 
+    it('blocks an array-only workbook when its configured parent source is missing', async () => {
+        const fixture = createCSVMappingFixture()
+        const objectType = fixture.contextState.object_type[0]
+        const { user } = mountProductionCSVPage(
+            {
+                type: 'object',
+                required: ['display_name'],
+                properties: {
+                    display_name: { type: 'string' },
+                    parent_code: { type: 'string' },
+                },
+            },
+            {
+                viewConfig: {
+                    mapping: 'required',
+                    relationships: 'fixed',
+                    sourceConfigs: [
+                        {
+                            key: 'deployment-items',
+                            label: 'Deployment items',
+                            fileName: 'Deployments.csv',
+                            typeSlug: objectType.slug,
+                            typeKnown: true,
+                            mapping: 'assumed',
+                            role: 'array',
+                            relationshipFields: ['parent_code'],
+                            arrayTarget: {
+                                parentSourceKey: 'sites',
+                                arrayFieldPath: 'items',
+                                parentMatchField: 'code',
+                                rowMatchField: 'parent_code',
+                            },
+                        },
+                    ],
+                },
+            }
+        )
+        const postDocumentCallsBefore = testPorts.postDocument.mock.calls.length
+        const patchDocumentCallsBefore = testPorts.patchDocument.mock.calls.length
+        const relationshipCallsBefore = testPorts.postRelationship.mock.calls.length
+
+        await user.click(screen.getByRole('button', { name: 'Excel workbook (.xlsx)' }))
+        await user.upload(
+            screen.getByLabelText('Choose Excel workbook'),
+            await createCSVMappingWorkbookFile()
+        )
+        const sitesSheet = await screen.findByRole('checkbox', { name: 'Sites' })
+        await user.click(sitesSheet)
+        await user.click(screen.getByRole('button', { name: 'Add 1 selected sheets' }))
+
+        const csvSources = screen.getByRole('region', { name: 'CSV sources' })
+        expect(within(csvSources).getByRole('button', { name: 'Deployments.csv' })).toBeTruthy()
+        expect(within(csvSources).queryByRole('button', { name: 'Sites.csv' })).toBeNull()
+
+        await user.click(screen.getByRole('button', { name: 'Review mappings' }))
+        await user.click(screen.getByRole('button', { name: 'Continue to import' }))
+
+        expect((await screen.findByRole('alert')).textContent).toContain(
+            'Upload the configured document source before importing array rows: Deployments.csv'
+        )
+        expect(screen.queryByRole('heading', { name: 'Import CSV records' })).toBeNull()
+        expect(screen.queryByRole('button', { name: 'Use shared import flow' })).toBeNull()
+        expect(testPorts.postDocument).toHaveBeenCalledTimes(postDocumentCallsBefore)
+        expect(testPorts.patchDocument).toHaveBeenCalledTimes(patchDocumentCallsBefore)
+        expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipCallsBefore)
+    })
+
+    it('composes a selected workbook array sheet into its configured parent source', async () => {
+        const fixture = createCSVMappingFixture()
+        const objectType = fixture.contextState.object_type[0]
+        const workbookSheets = [
+            {
+                name: 'Sites',
+                text: 'code,value\nP-1,Parent one',
+                parsed: parseCSV('code,value\nP-1,Parent one'),
+            },
+            {
+                name: 'Items',
+                text: 'parent_code,value\nP-1,Item one',
+                parsed: parseCSV('parent_code,value\nP-1,Item one'),
+            },
+        ]
+        const parseWorkbookSpy = vi.spyOn(workbookModule, 'parseWorkbookFile')
+            .mockResolvedValue(workbookSheets)
+        const { user } = mountProductionCSVPage(
+            {
+                type: 'object',
+                required: ['code', 'value', 'items'],
+                properties: {
+                    code: { type: 'string' },
+                    value: { type: 'string' },
+                    items: {
+                        type: 'array',
+                        minItems: 1,
+                        items: {
+                            type: 'object',
+                            required: ['value'],
+                            properties: { value: { type: 'string' } },
+                        },
+                    },
+                },
+            },
+            {
+                viewConfig: {
+                    mapping: 'assumed',
+                    relationships: 'fixed',
+                    sourceConfigs: [
+                        {
+                            key: 'sites',
+                            label: 'Sites',
+                            fileName: 'Sites.csv',
+                            typeSlug: objectType.slug,
+                            typeKnown: true,
+                            mapping: 'assumed',
+                            role: 'parent',
+                        },
+                        {
+                            key: 'items',
+                            label: 'Items',
+                            fileName: 'Items.csv',
+                            typeSlug: objectType.slug,
+                            typeKnown: true,
+                            mapping: 'assumed',
+                            role: 'array',
+                            relationshipFields: ['parent_code'],
+                            arrayTarget: {
+                                parentSourceKey: 'sites',
+                                arrayFieldPath: 'items',
+                                parentMatchField: 'code',
+                                rowMatchField: 'parent_code',
+                            },
+                        },
+                    ],
+                },
+            }
+        )
+        const postDocumentCallsBefore = testPorts.postDocument.mock.calls.length
+        const patchDocumentCallsBefore = testPorts.patchDocument.mock.calls.length
+        const relationshipCallsBefore = testPorts.postRelationship.mock.calls.length
+
+        try {
+            await user.click(screen.getByRole('button', { name: 'Excel workbook (.xlsx)' }))
+            await user.upload(
+                screen.getByLabelText('Choose Excel workbook'),
+                new File(['fixture'], 'array-composition.xlsx', {
+                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                })
+            )
+            await screen.findByRole('checkbox', { name: 'Sites' })
+            await user.click(screen.getByRole('button', { name: 'Add 2 selected sheets' }))
+            await user.click(screen.getByRole('button', { name: 'Review mappings' }))
+            await user.click(screen.getByRole('button', { name: 'Continue to import' }))
+
+            expect(await screen.findByText('1 valid · 0 invalid')).toBeTruthy()
+            expect(screen.queryByRole('alert')).toBeNull()
+            expect(testPorts.postDocument).toHaveBeenCalledTimes(postDocumentCallsBefore)
+            expect(testPorts.patchDocument).toHaveBeenCalledTimes(patchDocumentCallsBefore)
+            expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipCallsBefore)
+        } finally {
+            parseWorkbookSpy.mockRestore()
+        }
+    })
+
+    it('resolves a workbook child sheet against an existing parent', async () => {
+        const fixture = createCSVMappingFixture()
+        const childObjectType = fixture.contextState.object_type[0]
+        const parentObjectType: IObjectType = {
+            ...childObjectType,
+            uuid: 'fixture-workbook-parent-type',
+            label: 'Workbook fixture parents',
+            slug: 'workbook_fixture_parent',
+        }
+        const parentSchema: IObjectSchema = {
+            ...fixture.contextState.object_schema[0],
+            uuid: 'fixture-workbook-parent-schema',
+            object_type_uuid: parentObjectType.uuid,
+            slug: 'workbook_fixture_parent_default',
+            label: 'Workbook fixture parent default',
+            json_schema: {
+                type: 'object',
+                required: ['code'],
+                properties: {
+                    code: { type: 'string' },
+                    name: { type: 'string' },
+                },
+            },
+        }
+        const relationshipRule: ImportRelationshipRule = {
+            parentObjectTypeSlug: parentObjectType.slug,
+            childObjectTypeSlug: childObjectType.slug,
+            parentMatchField: 'code',
+            childMatchField: 'parent_code',
+            predicate: 'has_parent',
+            existingParentPolicy: 'lookup',
+        }
+        const viewConfig: CSVImportViewConfig = {
+            mapping: 'assumed',
+            relationships: 'fixed',
+            relationshipRules: [relationshipRule],
+            sourceConfigs: [
+                {
+                    key: 'children',
+                    label: 'Child rows',
+                    fileName: 'Children.csv',
+                    typeSlug: childObjectType.slug,
+                    typeKnown: true,
+                    mapping: 'assumed',
+                    role: 'child',
+                    relationshipFields: ['parent_code'],
+                },
+            ],
+        }
+        const parentDocument: IDocument = {
+            uuid: 'workbook-existing-parent',
+            slug: 'existing-workbook-parent',
+            published: false,
+            published_at: null,
+            owner_sub: 'fixture-owner',
+            lock_sub: null,
+            locked_at: null,
+            subs_for_select: [],
+            roles_for_select: [],
+            subs_for_update: [],
+            roles_for_update: [],
+            data: { code: 'P-1', name: 'Existing workbook parent' },
+            attrs: { import: { source_id: 'existing-workbook-source', external_id: 'parent-1' } },
+            created_at: '2026-01-01T00:00:00.000Z',
+            updated_at: null,
+            object_type_uuid: parentObjectType.uuid,
+            label: 'Existing workbook parent',
+            description: '',
+        }
+        const workbookText = 'id,value,parent_code\nchild-1,deep,P-1'
+        const parseWorkbookSpy = vi.spyOn(workbookModule, 'parseWorkbookFile')
+            .mockResolvedValue([{
+                name: 'Children',
+                text: workbookText,
+                parsed: parseCSV(workbookText),
+            }])
+        const previousFetchImplementation = testPorts.fetchDocumentsByDataFieldValues.getMockImplementation()
+        const lookupCallsBefore = testPorts.fetchDocumentsByDataFieldValues.mock.calls.length
+        const postDocumentCallsBefore = testPorts.postDocument.mock.calls.length
+        const patchDocumentCallsBefore = testPorts.patchDocument.mock.calls.length
+        const relationshipCallsBefore = testPorts.postRelationship.mock.calls.length
+        const { user } = mountProductionCSVPage(
+            {
+                type: 'object',
+                required: ['value', 'parent_code'],
+                properties: {
+                    value: { type: 'string' },
+                    parent_code: { type: 'string' },
+                },
+            },
+            {
+                viewConfig,
+                additionalObjectTypes: [parentObjectType],
+                additionalSchemas: [parentSchema],
+            }
+        )
+
+        try {
+            testPorts.fetchDocumentsByDataFieldValues.mockResolvedValue([parentDocument])
+            await user.click(screen.getByRole('button', { name: 'Excel workbook (.xlsx)' }))
+            await user.upload(
+                screen.getByLabelText('Choose Excel workbook'),
+                new File(['fixture'], 'external-parent.xlsx', {
+                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                })
+            )
+            await screen.findByRole('checkbox', { name: 'Children' })
+            await user.click(screen.getByRole('button', { name: 'Add 1 selected sheets' }))
+            await user.click(screen.getByRole('button', { name: 'Review mappings' }))
+            await user.click(screen.getByRole('button', { name: 'Continue to import' }))
+
+            const relationshipReview = await screen.findByRole('region', { name: 'CSV relationship review' })
+            await waitFor(() => {
+                expect(within(relationshipReview).getByText('1 ready')).toBeTruthy()
+                expect(within(relationshipReview).getByText('0 need resolution')).toBeTruthy()
+                expect(within(relationshipReview).getByText('1 existing parent matches')).toBeTruthy()
+                expect(testPorts.fetchDocumentsByDataFieldValues.mock.calls.length).toBeGreaterThan(lookupCallsBefore)
+            })
+            expect(testPorts.fetchDocumentsByDataFieldValues).toHaveBeenCalledWith(expect.objectContaining({
+                objectTypeUuid: parentObjectType.uuid,
+                fieldPath: 'code',
+                values: ['P-1'],
+                token: 'test-token',
+                signal: expect.any(AbortSignal),
+            }))
+            expect((screen.getByRole('button', { name: 'Use shared import flow' }) as HTMLButtonElement).disabled).toBe(true)
+            expect(testPorts.postDocument).toHaveBeenCalledTimes(postDocumentCallsBefore)
+            expect(testPorts.patchDocument).toHaveBeenCalledTimes(patchDocumentCallsBefore)
+            expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipCallsBefore)
+        } finally {
+            parseWorkbookSpy.mockRestore()
+            if (previousFetchImplementation) {
+                testPorts.fetchDocumentsByDataFieldValues.mockImplementation(previousFetchImplementation)
+            }
+        }
+    })
+
     it('keeps object type selection isolated when editing one workbook source', async () => {
         const fixture = createCSVMappingFixture()
         const originalObjectType = fixture.contextState.object_type[0]
@@ -1126,6 +1428,107 @@ describe('CSV mapping editor fixture', () => {
         expect(testPorts.postDocument).toHaveBeenCalledTimes(postDocumentCallsBefore)
         expect(testPorts.patchDocument).toHaveBeenCalledTimes(patchDocumentCallsBefore)
         expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipCallsBefore)
+    })
+
+    it('ignores and restores an unresolved parent row', async () => {
+        const fixture = createCSVMappingFixture()
+        const childObjectType = fixture.contextState.object_type[0]
+        const parentObjectType: IObjectType = {
+            ...childObjectType,
+            uuid: 'fixture-parent-type',
+            label: 'Fixture parents',
+            slug: 'fixture_parent',
+        }
+        const parentSchema: IObjectSchema = {
+            ...fixture.contextState.object_schema[0],
+            uuid: 'fixture-parent-schema',
+            object_type_uuid: parentObjectType.uuid,
+            slug: 'fixture_parent_default',
+            label: 'Fixture parent default',
+            json_schema: {
+                type: 'object',
+                required: ['code'],
+                properties: {
+                    code: { type: 'string' },
+                    name: { type: 'string' },
+                },
+            },
+        }
+        const relationshipRule: ImportRelationshipRule = {
+            parentObjectTypeSlug: parentObjectType.slug,
+            childObjectTypeSlug: childObjectType.slug,
+            parentMatchField: 'code',
+            childMatchField: 'parent_code',
+            predicate: 'has_parent',
+        }
+        const viewConfig: CSVImportViewConfig = {
+            mapping: 'assumed',
+            relationships: 'fixed',
+            relationshipRules: [relationshipRule],
+            sourceConfigs: [
+                {
+                    key: 'children',
+                    label: 'Child CSV',
+                    fileName: 'children.csv',
+                    typeSlug: childObjectType.slug,
+                    typeKnown: true,
+                    mapping: 'assumed',
+                    role: 'child',
+                    relationshipFields: ['parent_code'],
+                },
+            ],
+        }
+        const { user } = mountProductionCSVPage(
+            {
+                type: 'object',
+                required: ['value', 'parent_code'],
+                properties: {
+                    value: { type: 'string' },
+                    parent_code: { type: 'string' },
+                },
+            },
+            {
+                viewConfig,
+                additionalObjectTypes: [parentObjectType],
+                additionalSchemas: [parentSchema],
+            }
+        )
+        const childFile = new File(
+            ['id,value,parent_code\nchild-1,deep,P-missing'],
+            'children.csv',
+            { type: 'text/csv' }
+        )
+
+        await user.click(screen.getByRole('button', { name: 'CSV files' }))
+        await user.upload(
+            within(screen.getByRole('region', { name: 'Child CSV' })).getByLabelText(/Browse Files/),
+            childFile
+        )
+        expect(await screen.findByText('Using children.csv for this source.')).toBeTruthy()
+
+        const prepareButton = await screen.findByRole('button', { name: 'Prepare import' }) as HTMLButtonElement
+        await waitFor(() => expect(prepareButton.disabled).toBe(false))
+        await user.click(prepareButton)
+
+        const relationshipReview = await screen.findByRole('region', { name: 'CSV relationship review' })
+        const ignoreButton = await within(relationshipReview).findByRole('button', { name: 'Ignore child row' })
+        const documentWritesBefore = testPorts.postDocument.mock.calls.length
+        const patchWritesBefore = testPorts.patchDocument.mock.calls.length
+        const relationshipWritesBefore = testPorts.postRelationship.mock.calls.length
+        await user.click(ignoreButton)
+
+        expect(within(relationshipReview).getByText('1 rows ignored')).toBeTruthy()
+        expect(within(relationshipReview).queryByRole('button', { name: 'Ignore child row' })).toBeNull()
+        expect(within(relationshipReview).getByRole('button', { name: 'Restore ignored rows' })).toBeTruthy()
+
+        await user.click(within(relationshipReview).getByRole('button', { name: 'Restore ignored rows' }))
+
+        expect(within(relationshipReview).getByText('1 need resolution')).toBeTruthy()
+        expect(within(relationshipReview).getByRole('button', { name: 'Ignore child row' })).toBeTruthy()
+        expect(within(relationshipReview).queryByRole('button', { name: 'Restore ignored rows' })).toBeNull()
+        expect(testPorts.postDocument).toHaveBeenCalledTimes(documentWritesBefore)
+        expect(testPorts.patchDocument).toHaveBeenCalledTimes(patchWritesBefore)
+        expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipWritesBefore)
     })
 
     it('blocks CSV import when existing parent matches are ambiguous', async () => {
@@ -1673,7 +2076,9 @@ describe('CSV mapping editor fixture', () => {
         try {
             await user.click(screen.getByRole('button', { name: 'CSV files' }))
             await user.upload(screen.getByLabelText(/Browse Files/), csvFile)
-            await user.click(screen.getByRole('button', { name: 'Prepare import' }))
+            const prepareButton = await screen.findByRole('button', { name: 'Prepare import' }) as HTMLButtonElement
+            await waitFor(() => expect(prepareButton.disabled).toBe(false))
+            await user.click(prepareButton)
             await screen.findByRole('heading', { name: 'Import fixture-sites.csv' })
             await waitFor(() =>
                 expect((screen.getByRole('button', { name: 'Use shared import flow' }) as HTMLButtonElement).disabled).toBe(false)

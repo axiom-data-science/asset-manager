@@ -144,9 +144,9 @@ const LockButton = ({
           {updating ? (
             <Loader className="w-8 h-8" />
           ) : locked ? (
-            <Lock color="green" className="mx-auto w-8 h-8" />
+            <Lock color="red" className="mx-auto w-8 h-8" />
           ) : (
-            <Unlock color="red" className="mx-auto w-8 h-8" />
+            <Unlock color="green" className="mx-auto w-8 h-8" />
           )}
         </Button>
       </Tooltip>
@@ -294,6 +294,7 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
                 size="xs"
                 value={filters?.[r] ?? undefined}
                 className="w-40"
+                useNative={true}
                 options={
                   rollup?.map((item) => ({
                     label: `${r === 'object_type_uuid'

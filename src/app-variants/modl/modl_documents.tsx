@@ -199,7 +199,7 @@ const MODLRecord = ({
               {document.label}
             </Link>
           ) : (
-            <Link to={`/documents/${document.uuid}`} className="font-bold">
+            <Link to={`/edit-document/${document.uuid}`} className="font-bold">
               {document.label}
             </Link>
           )}

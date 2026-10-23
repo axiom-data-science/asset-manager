@@ -96,7 +96,7 @@ const MODLChildTypeActions = ({
               {child.label}
             </Link>
           ) : (
-            <Link to={`/documents/${child.uuid}`} className="text-sm">
+            <Link to={`/edit-document/${child.uuid}`} className="text-sm">
               {child.label}
             </Link>
           )}
@@ -171,6 +171,7 @@ const MODLChildTypeActions = ({
         {(dataCollectionActions.length > 0 || collectionRecords.length > 0) && (
           <section className="flex flex-col gap-2">
             <h3 className="text-sm font-semibold">Asset collector metadata</h3>
+            {renderChildRecords(collectionRecords)}
             {[...new Set(
               dataCollectionActions
                 .map(({ expectedChildType }) => expectedChildType.description)
@@ -180,7 +181,6 @@ const MODLChildTypeActions = ({
                 {description}
               </p>
             ))}
-            {renderChildRecords(collectionRecords)}
             {dataCollectionActions.length > 0 && (
               <div className="flex flex-row flex-wrap gap-2">
                 {renderButtons(dataCollectionActions)}
@@ -194,10 +194,10 @@ const MODLChildTypeActions = ({
             {variableRecords.length > 0
               ? renderChildRecords(variableRecords)
               : (
-                  <div className="flex flex-row flex-wrap gap-2">
-                    {renderButtons(variableMetadataActions)}
-                  </div>
-                )}
+                <div className="flex flex-row flex-wrap gap-2">
+                  {renderButtons(variableMetadataActions)}
+                </div>
+              )}
           </section>
         )}
         {(otherActions.length > 0 || otherRecords.length > 0) && (

@@ -35,7 +35,7 @@ const MODLCreateDocumentSuccess = ({
             <div className="flex w-[40%] flex-col gap-8">
               <div className="flex flex-wrap items-center gap-3">
                 <Check className="text-green-500" size={24} />
-                <Link to={`/documents/${uuid}`} className="font-bold">
+                <Link to={`/edit-document/${uuid}`} className="font-bold">
                   {data.document.label}
                 </Link>
                 {updated ? 'updated' : 'created'}

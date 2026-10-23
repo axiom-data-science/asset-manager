@@ -13,6 +13,24 @@
   verification; current known gaps are listed in the checkpoint below and
   `TODO.md`. No authenticated backend actions were performed.
 
+## Unresolved-parent production gate (2026-10-22)
+
+- Added production CSV page coverage for a configured child relationship whose
+  parent is not present in the uploaded sources. Relationship review reports the
+  unresolved row, offers **Add parent source**, and keeps **Use shared import
+  flow** disabled; the test confirms no document, patch, or relationship writes.
+- Validation: focused regression passes, as do forced TypeScript and scoped
+  ESLint for `csv.mapping.test.tsx`. No application behavior changed. This is
+  automated UI evidence only, not authenticated or live-backend verification.
+- Follow-up probe: adding Ignore/Restore clicks to this production-page test
+  caused the Vitest worker to stop progressing after the missing-parent plan
+  appeared. The probe was stopped and its temporary test edits removed; the cause
+  is not established, so Ignore/Restore behavior remains unverified.
+- Next: continue remaining CSV/XLSX blocked-input and feature-gate coverage, then
+  isolate the Ignore/Restore test stall, then verify parent/child,
+  external-parent, array, ignored-row, multi-file, and multi-sheet parity through
+  authenticated routes. Keep legacy execution until those parity checks pass.
+
 ## Saved-parent top-level match fields (2026-10-21)
 
 - The approved follow-up is implemented: saved-parent field choices now include

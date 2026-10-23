@@ -1029,6 +1029,105 @@ describe('CSV mapping editor fixture', () => {
         }
     })
 
+    it('blocks shared handoff for an unresolved parent row', async () => {
+        const fixture = createCSVMappingFixture()
+        const childObjectType = fixture.contextState.object_type[0]
+        const parentObjectType: IObjectType = {
+            ...childObjectType,
+            uuid: 'fixture-parent-type',
+            label: 'Fixture parents',
+            slug: 'fixture_parent',
+        }
+        const parentSchema: IObjectSchema = {
+            ...fixture.contextState.object_schema[0],
+            uuid: 'fixture-parent-schema',
+            object_type_uuid: parentObjectType.uuid,
+            slug: 'fixture_parent_default',
+            label: 'Fixture parent default',
+            json_schema: {
+                type: 'object',
+                required: ['code'],
+                properties: {
+                    code: { type: 'string' },
+                    name: { type: 'string' },
+                },
+            },
+        }
+        const relationshipRule: ImportRelationshipRule = {
+            parentObjectTypeSlug: parentObjectType.slug,
+            childObjectTypeSlug: childObjectType.slug,
+            parentMatchField: 'code',
+            childMatchField: 'parent_code',
+            predicate: 'has_parent',
+        }
+        const viewConfig: CSVImportViewConfig = {
+            mapping: 'assumed',
+            relationships: 'fixed',
+            relationshipRules: [relationshipRule],
+            sourceConfigs: [
+                {
+                    key: 'children',
+                    label: 'Child CSV',
+                    fileName: 'children.csv',
+                    typeSlug: childObjectType.slug,
+                    typeKnown: true,
+                    mapping: 'assumed',
+                    role: 'child',
+                    relationshipFields: ['parent_code'],
+                },
+            ],
+        }
+        const { user } = mountProductionCSVPage(
+            {
+                type: 'object',
+                required: ['value', 'parent_code'],
+                properties: {
+                    value: { type: 'string' },
+                    parent_code: { type: 'string' },
+                },
+            },
+            {
+                viewConfig,
+                additionalObjectTypes: [parentObjectType],
+                additionalSchemas: [parentSchema],
+            }
+        )
+        const childFile = new File(
+            ['id,value,parent_code\nchild-1,deep,P-missing'],
+            'children.csv',
+            { type: 'text/csv' }
+        )
+        const postDocumentCallsBefore = testPorts.postDocument.mock.calls.length
+        const patchDocumentCallsBefore = testPorts.patchDocument.mock.calls.length
+        const relationshipCallsBefore = testPorts.postRelationship.mock.calls.length
+
+        await user.click(screen.getByRole('button', { name: 'CSV files' }))
+        await user.upload(
+            within(screen.getByRole('region', { name: 'Child CSV' })).getByLabelText(/Browse Files/),
+            childFile
+        )
+        expect(await screen.findByText('Using children.csv for this source.')).toBeTruthy()
+
+        const prepareButton = await screen.findByRole('button', { name: 'Prepare import' }) as HTMLButtonElement
+        await waitFor(() => expect(prepareButton.disabled).toBe(false))
+        await user.click(prepareButton)
+
+        const relationshipReview = screen.getByRole('region', { name: 'CSV relationship review' })
+        expect(within(relationshipReview).getByText('0 ready')).toBeTruthy()
+        expect(within(relationshipReview).getByText('1 need resolution')).toBeTruthy()
+        const sharedFlowButton = screen.getByRole('button', { name: 'Use shared import flow' }) as HTMLButtonElement
+        expect(sharedFlowButton.disabled).toBe(true)
+        expect(screen.getByText(
+            'CSV parent/child relationships and ignored relationship rows still use the CSV relationship workflow.'
+        )).toBeTruthy()
+        expect(within(relationshipReview).getByRole('button', { name: 'Add parent source' })).toBeTruthy()
+
+        expect(screen.queryByRole('heading', { name: 'Import mapped CSV sources' })).toBeNull()
+        expect(testPorts.postDocument).toHaveBeenCalledTimes(postDocumentCallsBefore)
+        expect(testPorts.patchDocument).toHaveBeenCalledTimes(patchDocumentCallsBefore)
+        expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipCallsBefore)
+    })
+
     it('blocks CSV import when existing parent matches are ambiguous', async () => {
         const fixture = createCSVMappingFixture()
         const childObjectType = fixture.contextState.object_type[0]

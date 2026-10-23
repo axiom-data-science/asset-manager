@@ -18,6 +18,11 @@
       relationship-planning, and production CSV mapping tests pass (50 tests);
       TypeScript, scoped ESLint, and production build pass. No authenticated
       live-backend lookup was performed.
+- [x] Production CSV unresolved-parent gate: a child row with no uploaded parent
+      remains in relationship review, shows the Add parent source action, and
+      cannot enter the shared workflow. The regression verifies no document,
+      patch, or relationship writes. This is an automated UI test, not authenticated
+      or live-backend verification.
 - [x] Authenticated conflict-review check: on Import Records, the user reported
       one duplicate for a row whose label differed from the matched record. This
       confirms that duplicate reporting is not limited to identical labels; the
@@ -184,12 +189,16 @@
       blocked post-write edits, and late uploads/activity cancellation are covered.
       186 selected tests (including 28 focused UI tests), TypeScript, behavior-file
       lint, and production build pass. No new browser/live-backend validation here.
-- [ ] Test the actual production file-controller/handoff controls, including
-      return-to-mapping and post-execution locking, before broadening feature gates.
-      The standalone CSV upload/prepare/handoff/return case now passes with auth/service
-      doubles, as do the busy preparation guard and persistent post-execution lock;
-      schema-invalid, ambiguous-duplicate, and duplicate-lookup-error handoff gates
-      also pass. Other blocked-input and feature-gate cases and full parity remain.
+- [x] Test the actual production file-controller/handoff controls for standalone
+      upload/prepare/handoff/return, busy preparation, post-execution locking,
+      schema-invalid records, ambiguous/failed duplicate checks, configured
+      parent-child and array relationships, and unresolved parent rows. These
+      auth-free UI regressions preserve no-write assertions before handoff.
+- [ ] Investigate the production-page Ignore/Restore test stall. The focused
+      test stopped progressing after the missing-parent plan appeared when an
+      Ignore child row click was added; the probe was stopped without a root cause.
+- [ ] Complete remaining CSV/XLSX blocked-input and feature-gate coverage, then
+      finish full file parity before retiring legacy execution.
 - [ ] Complete CSV/XLSX integration and parity for parent/array/external-parent
       relationships, ignored rows, full sheet/type/schema selection, and multi-file
       orchestration before retiring legacy execution. Config/UI mappings remain required.

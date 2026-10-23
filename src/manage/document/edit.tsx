@@ -208,7 +208,7 @@ const AutoSaveStatus = ({
             {selectorExpanded ? (
               <>
                 <ChevronUp className="w-4 h-4 text-slate-800" />
-                <div className="absolute top-10 right-0 bg-white shadow-md w-40 min-h-10 text-left px-4 py-2">
+                <div className="absolute top-10 right-0 bg-white shadow-md w-40 min-h-10 text-left px-4 py-2" onClick={(event) => event.stopPropagation()}>
                   <Checkbox
                     value={autoSave}
                     id="autosave-checkbox"

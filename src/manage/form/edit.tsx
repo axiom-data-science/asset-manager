@@ -127,13 +127,19 @@ const EditForm = ({
           value: true,
           result: 'disable',
         },
-      },
+      }/* ,
       {
         id: 'field_override_configs',
         label: 'Schema field override configurations (JSON)',
         type: 'object',
         multiple: true,
         fields: [
+          {
+            id: 'uuid',
+            label: 'UUID',
+            type: 'constant',
+            defaultValue: ''
+          },
           {
             id: 'label',
             label: 'Label',
@@ -154,7 +160,7 @@ const EditForm = ({
             type: 'json',
           },
         ],
-      },
+      } */
     ],
   }
 
@@ -216,7 +222,7 @@ const EditForm = ({
             <Cog size={14} /> Associated Field Overrides
             {fieldConfigs.length > 0 && (
               <Link
-                to={`/field_configs/create?form_uuid=${assetForm.uuid}`}
+                to={`/field_configs/create/${assetForm.uuid}`}
                 className={utils.createButtonClass({
                   size: 'xs',
                   type: 'create',
@@ -237,7 +243,7 @@ const EditForm = ({
                 <p>No field override configs found for this form.</p>
                 <div>
                   <Link
-                    to={`/field_configs/create?form_uuid=${assetForm.uuid}`}
+                    to={`/field_configs/create/${assetForm.uuid}`}
                     className={utils.createButtonClass({
                       size: 'md',
                       variant: 'default',
@@ -271,7 +277,7 @@ const EditForm = ({
         </div>
       </div>
 
-      <div className="flex flex-row sticky bottom-0 bg-white/80 py-4">
+      <div className="flex flex-row sticky bottom-0 bg-white/80 py-4 justify-end">
         <Button onClick={onUpdate} type="default" disabled={saving}>
           {saving ? <Loader className="animate-spin" /> : 'Update'}
         </Button>

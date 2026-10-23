@@ -1089,9 +1089,9 @@ const CSVSourceImportPanel = ({
           ) : duplicateCount > 0 ? (
             <span>{duplicateCount} ambiguous; review details</span>
           ) : session.reconciliations ? (
-            <span className="text-gray-500">None found</span>
+            <span className="text-gray-500 m-1 bg-slate-100 p-1 text-[10px] border-2 rounded-md border-green-400 border-dashed">None found</span>
           ) : (
-            <span className="text-gray-500">Not checked</span>
+            <span className="text-gray-500 m-1 bg-slate-100 p-1 text-[10px] border-2 rounded-md border-red-400 border-dashed">Not checked</span>
           )}
         </div>
         <div role="cell" className="flex justify-start xl:justify-end">

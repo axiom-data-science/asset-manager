@@ -256,14 +256,14 @@ const EditForm = ({
             )}
             {fieldConfigs.map((fieldConfig) => {
               return (
-                <div key={fieldConfig.uuid} className="p-4 bg-white rounded-md flex flex-col gap-2">
+                <div key={fieldConfig.fields_override_config_uuid} className="p-4 bg-white rounded-md flex flex-col gap-2">
                   <div className="flex flex-col gap-2">
-                    <h2 className="font-semibold">{fieldConfig.fields_override_config.label}</h2>
+                    <h2 className="font-semibold"><Link to={`/field_configs/edit/${fieldConfig.fields_override_config_uuid}`}>{fieldConfig.fields_override_config.label}</Link></h2>
                     <CopyFields
                       fields={[
-                        { id: `uuid-${fieldConfig.uuid}`, label: 'UUID', value: fieldConfig.uuid },
+                        { id: `uuid-${fieldConfig.fields_override_config_uuid}`, label: 'UUID', value: fieldConfig.fields_override_config_uuid },
                         {
-                          id: `object_schema_uuid-${fieldConfig.uuid}`,
+                          id: `object_schema_uuid-${fieldConfig.fields_override_config_uuid}`,
                           label: 'Object schema UUID',
                           value: fieldConfig.fields_override_config.object_schema_uuid,
                         },

@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Button, Loader, ViewWithLoader } from '@axdspub/axiom-ui-utilities'
 import { FormCreator, type IForm, type IFormValues } from '@axdspub/axiom-ui-forms'
 import type { IFieldOverrideConfig, IValidationError } from '@/types/types'
-import { useEffect, useState, type ReactElement } from 'react'
+import { useState, type ReactElement } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { validate } from '@/lib/utils'
 import Errors from '@/manage/components/errors'
@@ -20,10 +20,6 @@ const EditFieldConfigForm = ({ fieldConfig, uuid }: { fieldConfig: IFieldOverrid
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<IValidationError[]>([])
   const [formValues, setFormValues] = useState<IFormValues>(fieldConfig as unknown as IFormValues)
-
-  useEffect(() => {
-    setFormValues(fieldConfig as unknown as IFormValues)
-  }, [fieldConfig])
 
   const form: IForm = {
     id: 'edit-field-config',
@@ -91,7 +87,9 @@ const EditFieldConfigForm = ({ fieldConfig, uuid }: { fieldConfig: IFieldOverrid
       <section className="flex flex-col gap-2 rounded-md bg-slate-100 p-4">
         <h2 className="font-semibold">Associated forms</h2>
         {formLinks?.length ? formLinks.map((link) => (
-          <Link key={link.uuid} to={`/forms/edit/${link.form.uuid}`}>{link.form.label}</Link>
+          link.form
+            ? <Link key={link.uuid} to={`/forms/edit/${link.form.uuid}`}>{link.form.label}</Link>
+            : <p key={link.uuid}>An associated form is no longer available.</p>
         )) : <p>This field config is not associated with a form.</p>}
       </section>
       <div className="flex flex-row sticky bottom-0 py-4 bg-white/80 justify-end">

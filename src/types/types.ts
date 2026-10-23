@@ -310,7 +310,7 @@ export interface IFormToFieldConfigWithDetails extends IFormToFieldConfig {
 }
 
 export interface IFormToFieldConfigWithForm extends IFormToFieldConfig {
-  form: IAssetForm
+  form: IAssetForm | null
 }
 
 export type IRollup = { label: string; count: number }

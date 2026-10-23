@@ -493,7 +493,7 @@ const EditDocumentForm = ({
         SubmitButton={includeSaveButton && saveButton}
       />
       {!includeSaveButton && (
-        <div className="sticky bottom-0 bg-white/80 z-10 -mx-1 justify-end">{saveButton}</div>
+        <div className="sticky bottom-0 bg-white/80 z-10 -mx-1 justify-end flex flex-row gap-4 p-4">{saveButton}</div>
       )}
     </div>
   )

@@ -322,8 +322,7 @@ const CreateDocumentForm = ({
           ...form,
           label: undefined,
           settings: {
-            ...form.settings,
-            url_navigable: false,
+            ...form.settings
           },
         }}
         formValueState={[formValues, setFormValues]}

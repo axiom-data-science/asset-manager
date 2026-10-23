@@ -208,11 +208,12 @@ const AutoSaveStatus = ({
             {selectorExpanded ? (
               <>
                 <ChevronUp className="w-4 h-4 text-slate-800" />
-                <div className="absolute top-10 right-0 bg-white shadow-md w-100 min-h-10">
+                <div className="absolute top-10 right-0 bg-white shadow-md w-40 min-h-10 text-left px-4 py-2">
                   <Checkbox
                     value={autoSave}
                     id="autosave-checkbox"
                     testId="autosave-checkbox"
+                    label="Auto Save"
                     onChange={(c) => {
                       setAutoSave(c)
                     }}
@@ -475,8 +476,7 @@ const EditDocumentForm = ({
           ...form,
           label: undefined,
           settings: {
-            ...form.settings,
-            url_navigable: false,
+            ...form.settings
           },
         }}
         formValueState={[formValues, setFormValues]}

@@ -1,9 +1,8 @@
 import { useAuth } from "@/auth/useAuth"
-import { fetchObjectSchemaRollup, fetchObjectSchemas } from "@/manage/object_schema/services"
 import {  postgrestArgs, postgrestRollupArgs } from "@/services/postgrest/endpoints"
 import type {  IPostgrestParams } from "@/types/types"
 import { queryOptions, useQuery } from "@tanstack/react-query"
-import { fetchFieldConfigs, fetchFieldConfigsAtForm, fetchFieldConfigsAtObjectType } from "./services"
+import { fetchFieldConfigRollup, fetchFieldConfigs, fetchFieldConfigsAtForm, fetchFieldConfigsAtObjectType } from "./services"
 
 export const fieldConfigListQueryKey = ({params, rollups}: {params?: IPostgrestParams, rollups?: string[]}) => ['field_config-list'].concat((rollups ?? []).map(r => postgrestRollupArgs({rollupColumn: r, params}).toString()))
 export const fieldConfigAtFormListQueryKey = ({params, form_uuid}: {params?: IPostgrestParams, form_uuid: string, rollups?: string[]}) => ['field_config-list', 'form', form_uuid, postgrestArgs(params ?? {})]
@@ -34,7 +33,7 @@ export const getFieldConfigListWithRollupsQuery = ({params, rollups, token}: {pa
         queryKey: fieldConfigListQueryKey({params, rollups}),
         queryFn: async ({ signal }) => {
 
-            const rollupResults = await Promise.all((rollups ?? []).map(rollup => fetchObjectSchemaRollup({
+            const rollupResults = await Promise.all((rollups ?? []).map(rollup => fetchFieldConfigRollup({
                 rollup,
                 params,
                 token: token ?? '',
@@ -42,7 +41,7 @@ export const getFieldConfigListWithRollupsQuery = ({params, rollups, token}: {pa
             })))
 
 
-            const items = await fetchObjectSchemas({
+            const items = await fetchFieldConfigs({
                 params: {
                     ...params,
                     limit: 100

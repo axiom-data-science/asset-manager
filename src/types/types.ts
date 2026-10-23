@@ -309,6 +309,10 @@ export interface IFormToFieldConfigWithDetails extends IFormToFieldConfig {
   fields_override_config: IFieldOverrideConfig
 }
 
+export interface IFormToFieldConfigWithForm extends IFormToFieldConfig {
+  form: IAssetForm
+}
+
 export type IRollup = { label: string; count: number }
 
 export type IValidationError = { field: string; fieldLabel?: string; path?: string; message: string }

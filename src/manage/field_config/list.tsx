@@ -1,23 +1,23 @@
 import { useObjectSchemaList } from "@/manage/object_schema/useObjectSchemaList"
 import type { IObjectSchema } from "@/types/types"
-import { Button, SelectInput, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
+import { Button, SelectInput, ViewWithLoader, utils } from "@axdspub/axiom-ui-utilities"
 import type { ReactElement } from "react"
 import { useAuth } from '@/auth/useAuth'
 import Table from '@/manage/components/table'
 import { useFieldConfigListWithRollups } from "@/manage/field_config/useFieldConfigList"
 import Link from "@/manage/components/link"
 
-
-
 const ListFieldConfigTable = ({ object_schemas }: { object_schemas: IObjectSchema[] }): ReactElement => {
 
     const { data: field_configs, isLoading, error } = useFieldConfigListWithRollups()
     const object_schemas_map = Object.fromEntries(object_schemas.map(ot => [ot.uuid, ot.label]))
-
     return (
         <ViewWithLoader isLoading={isLoading} error={error} data={field_configs}>
 
             <h1 className="text-2xl font-bold py-2 sticky top-0 bg-white">Field Configurations</h1>
+            <div className="py-2">
+                <Link to="/field_configs/create" className={utils.createButtonClass({ type: 'create' })}>Create field config</Link>
+            </div>
             <div className='flex flex-row gap-4 p-2 sticky top-10 bg-white z-10'>
                 {
                     Object.keys(field_configs?.rollups ?? []).map(r => {
@@ -63,6 +63,11 @@ const ListFieldConfigTable = ({ object_schemas }: { object_schemas: IObjectSchem
                             {
                                 label: 'Owner',
                                 id: 'owner_sub'
+                            },
+                            {
+                                label: 'Description',
+                                id: 'description',
+                                accessor: r => r.description ?? ''
                             },
                             {
                                 label: 'Created at',

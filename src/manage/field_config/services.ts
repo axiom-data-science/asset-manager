@@ -1,5 +1,5 @@
 import { fetchListFromPostgrest, fetchRollupFromPostgrest, fetchSingleFromPostgrest, patchToPostgrest, postToPostgrest } from "@/services/postgrest/services";
-import type { IFieldOverrideConfig, IFormToFieldConfig, IFormToFieldConfigWithDetails, IObjectSchema, IPostgrestParams } from "@/types/types";
+import type { IFieldOverrideConfig, IFormToFieldConfig, IFormToFieldConfigWithDetails, IFormToFieldConfigWithForm, IPostgrestParams } from "@/types/types";
 
 export const FIELDS_CONFIG_TO_FORM_TABLE = 'fields_override_config_to_form';
 export const FIELD_CONFIG_TABLE = 'fields_override_config';
@@ -54,7 +54,7 @@ export const fetchFieldConfigs = async({
     signal?: AbortSignal
 }) => {
 
-    const documents = await fetchListFromPostgrest<IFormToFieldConfigWithDetails>({
+    const documents = await fetchListFromPostgrest<IFieldOverrideConfig>({
         table: FIELD_CONFIG_TABLE,
         params,
         token,
@@ -62,6 +62,30 @@ export const fetchFieldConfigs = async({
     });
     return documents;
 
+}
+
+export const fetchFieldConfigFormLinks = async ({
+    fields_override_config_uuid,
+    token,
+    signal
+}: {
+    fields_override_config_uuid: string,
+    token: string,
+    signal?: AbortSignal
+}): Promise<IFormToFieldConfigWithForm[]> => {
+    return fetchListFromPostgrest<IFormToFieldConfigWithForm>({
+        table: FIELDS_CONFIG_TO_FORM_TABLE,
+        params: {
+            filters: [{
+                column: 'fields_override_config_uuid',
+                operator: 'eq',
+                value: fields_override_config_uuid
+            }],
+            select: ['*', 'form(*)']
+        },
+        token,
+        signal
+    })
 }
 
 export const fetchFieldConfigsAtForm = async({
@@ -152,8 +176,8 @@ export const fetchFieldOverrideConfig = async ({
     params?: IPostgrestParams,
     token: string,
     signal?: AbortSignal
-}): Promise<IObjectSchema> => {
-    const document = await fetchSingleFromPostgrest<IObjectSchema>({
+}): Promise<IFieldOverrideConfig> => {
+    const document = await fetchSingleFromPostgrest<IFieldOverrideConfig>({
         table: FIELD_CONFIG_TABLE,
         uuid,
         params,

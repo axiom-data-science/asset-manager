@@ -25,6 +25,8 @@ import EditFormLoader from './manage/form/edit'
 import EditDocument from './manage/document/edit'
 import EditObjectSchema from '@/manage/object_schema/edit'
 import ListFieldConfigs from '@/manage/field_config/list'
+import CreateFieldConfig from '@/manage/field_config/create'
+import EditFieldConfig from '@/manage/field_config/edit'
 import UploadFile from '@/manage/document_file/upload_file'
 import SimpleLayout from './layouts/simple'
 import PipelineList from '@/manage/custom/pipeline/list'
@@ -510,9 +512,33 @@ function App(): ReactElement {
               }
             />
 
-            {/* <Route path="/field_configs/edit/:uuid" element={
-                  <SidebarLayout><EditFieldConfig /></SidebarLayout>
-                } /> */}
+            <Route
+              path="/field_configs/create"
+              element={
+                <SidebarLayout>
+                  <title>{makeSiteTitle('create field config')}</title>
+                  <CreateFieldConfig />
+                </SidebarLayout>
+              }
+            />
+            <Route
+              path="/field_configs/create/:form_uuid"
+              element={
+                <SidebarLayout>
+                  <title>{makeSiteTitle('create field config')}</title>
+                  <CreateFieldConfig />
+                </SidebarLayout>
+              }
+            />
+            <Route
+              path="/field_configs/edit/:uuid"
+              element={
+                <SidebarLayout>
+                  <title>{makeSiteTitle('edit field config')}</title>
+                  <EditFieldConfig />
+                </SidebarLayout>
+              }
+            />
 
             <Route
               path="/file/upload"

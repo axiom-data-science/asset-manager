@@ -44,16 +44,28 @@ Document-source Import All preparation and execution/retry now call the shared
 helpers. Import All now pilots Simplified/Interactive mode selection: Interactive
 preserves explicit stage actions, while Simplified advances using returned plan
 snapshots and stops for configured reviews, required inputs, errors, or missing-type
-setup. Missing-type creation remains explicit. File integration has started with
-an opt-in, current-upload-only handoff for clean standalone CSV/XLSX sources into
-the same controller. Legacy execution remains available; arrays, parent/child
-relationships, ignored rows, and already-started CSV imports are gated out. Tests
-cover shared-controller mapped records and a selected real XLSX sheet, not the
-full production file-controller/handoff UI. That UI coverage, broader file parity,
-extra opt-in review/input panels, and complete composite/array UI parity remain pending.
+setup. Missing-type creation remains explicit. File integration uses an opt-in,
+current-upload-only handoff into the same controller. Matched array composition
+and unambiguous in-file parent/child relationships are supported; saved-parent or
+manual choices of existing parents are carried into shared relationship execution;
+unresolved parents and unmatched array rows remain gated. Explicitly ignored child
+rows are filtered from shared discovery. Already-started CSV imports also remain on
+the CSV workflow. Tests
+cover the production handoff, mapped sources, shared array composition, in-file
+relationship execution, a selected real XLSX sheet, and a composite file session
+with linked document sources and multiple array sources, ignored-row exclusion,
+and saved/manual existing-parent links. An optional source-neutral field mapping
+panel is now available for prepared canonical records; extra opt-in review/input
+panels, additional individual-source integration, and authenticated/browser parity
+are still pending. Production mapped-CSV shared execution, the configured ERDDAP
+composite through shared execution, and automatic type setup-dialog continuation
+now have unauthenticated component coverage.
 The evaluator's `complete` result
 means source documents are complete, not that session relationships have completed.
-Consult the TODO/handoff for current verification totals.
+The production file handoff now supports matched array composition and unambiguous
+in-file parent/child relationships, ignored-row exclusion, and selected existing
+parents. Unresolved inputs remain on the CSV workflow. Consult the TODO/handoff for
+current verification totals.
 
 Document execution helpers retain partial results on cancellation and exclude
 successful/ignored records from repeat writes. `pages/all.tsx` adopts returned
@@ -86,10 +98,11 @@ fetches, rejects production mode, and is excluded from the normal production bui
 Production authentication remains unchanged.
 
 Use `npm run dev:import-test` and `http://127.0.0.1:4423/import-test.html` for the
-fixture screen; `npm test -- src/import/pages/all.import-test.test.tsx` runs 17
+fixture screen; `npm test -- src/import/pages/all.import-test.test.tsx` runs 27
 automated component tests. They cover preparation/type creation, document import,
 error display/link retry, discovery/link cancellation, validation/ambiguity blockers,
-failed-only document retry in both modes, Simplified progression/pauses/cancellation,
+failed-only document retry in both modes, mid-document-write cancellation/resume
+without repeating successful writes, Simplified progression/pauses/cancellation,
 and the ERDDAP preparation preview. Retry checks prove
 fresh reconciliation precedes the retry write, successful documents remain intact,
 and a subsequent Execute action completes links without rewriting documents.
@@ -107,18 +120,16 @@ mapping editors, sharing the production selection filter. Full production select
 controller and multi-file parity remain pending. Browser DOM upload checks passed;
 visual/normal-click checks remain pending after the blank screenshot/timeouts.
 
-The `?view=erddap` read-only fixture now exercises configured MODL composite adapters
-and shared schema preparation against in-memory catalog/info responses. Tests cover
-normalization/coercion, schema-name projection, source/variable preservation, and
-lazy fetch-once behavior; the matched ID fallback now respects schema property case.
-It does not implement arbitrary config/UI remapping or the full Import All workflow.
-
-Extend this harness before retiring workflows: complete CSV/XLSX mapping/upload parity,
-shared ERDDAP field remapping/controller integration, automatic setup-dialog coverage,
-and export preparation
-after identifying its owning path. Manual auth-backed type selection/form is not
-available in the current fixture. Keep a smaller real-backend authorization and
-integration verification gate; fixture results do not establish live permissions.
+The `?view=erddap` read-only fixture still exercises normalization/coercion,
+schema-name projection, source/variable preservation, and lazy fetch-once behavior.
+Separate `ImportAllView` coverage now executes the configured MODL composite using
+the fake catalog/info responses and in-memory document/relationship ports. Source-
+neutral override behavior is tested through the shared UI; authenticated mapping
+parity and live authorization remain unverified. Automatic type setup-dialog
+coverage uses the existing in-memory creation adapter. No export-preparation page
+or action is present under `src/import`; defer that fixture request until its owning
+feature is identified. Keep a real-backend authorization and integration gate;
+fixture results do not establish live permissions.
 
 ## Guardrails
 
@@ -331,8 +342,12 @@ for each mode. Keep required input panels visible when needed. Preserve existing
 visual conventions and responsive behavior. Integrate remaining individual and
 composite remote flows; retain pinned schemas and configured overrides.
 Reuse the mapping stage for canonical records regardless of acquisition source,
-including ERDDAP. Expose its UI only when required or opted into; configured mapping
-must still run when the UI panel is skipped, before schema validation/reconciliation.
+including ERDDAP. The shared controller now exposes an optional nested source-data
+to schema-path editor after preparation, retains adapter-loaded canonical records,
+and invalidates validation/reconciliation until the mapped records are prepared
+again. Existing adapter mappings remain the default when users do not apply an
+override. Automated Import All coverage verifies this contract; authenticated
+parity and complete ERDDAP execution verification remain pending.
 
 Acceptance: one usable workflow for each input type, with no lost source-specific
 capabilities. Verify equivalent mapping behavior for files and configured remote

@@ -46,6 +46,8 @@ export type ImportAllValidationResult = {
   errors: string[]
 }
 
+export type ImportFieldMappings = Record<string, string>
+
 export type ImportAllSourcePlan = {
   sourceId: string
   type: string
@@ -63,6 +65,9 @@ export type ImportAllSourcePlan = {
   conflictActions: Record<string, Exclude<ImportConflictAction, 'create'>>
   candidates: ImportCandidate[]
   records: CanonicalImportRecord[]
+  sourceRecords?: CanonicalImportRecord[]
+  fieldMappings?: ImportFieldMappings
+  appliedFieldMappings?: ImportFieldMappings
   validationResults: ImportAllValidationResult[]
   validationContext?: {
     schema: JSONSchema6
@@ -222,6 +227,59 @@ export const createImportAllSourcePlan = (source: ImportAllPlanSource): ImportAl
 
 export const importAllRecordKey = (record: CanonicalImportRecord): string =>
   `${record.provenance.sourceId}:${record.provenance.externalId}`
+
+export const getImportSourceDataPaths = (value: unknown, parentPath = ''): string[] => {
+  if (Array.isArray(value)) return parentPath ? [parentPath] : []
+  if (value === null || typeof value !== 'object') return parentPath ? [parentPath] : []
+  const entries = Object.entries(value)
+  if (entries.length === 0) return parentPath ? [parentPath] : []
+  return entries.flatMap(([key, child]) =>
+    getImportSourceDataPaths(child, parentPath ? `${parentPath}.${key}` : key)
+  )
+}
+
+export const getImportSchemaTargetPaths = (schema: JSONSchema6, parentPath = ''): string[] =>
+  Object.entries(schema.properties ?? {}).flatMap(([key, property]) => {
+    if (!property || typeof property === 'boolean') return []
+    const path = parentPath ? `${parentPath}.${key}` : key
+    const nestedPaths = getImportSchemaTargetPaths(property, path)
+    return nestedPaths.length > 0 ? nestedPaths : [path]
+  })
+
+const readImportPath = (value: unknown, path: string): unknown =>
+  path.split('.').reduce<unknown>((current, segment) => {
+    if (current === null || typeof current !== 'object') return undefined
+    return (current as Record<string, unknown>)[segment]
+  }, value)
+
+const writeImportPath = (value: Record<string, unknown>, path: string, fieldValue: unknown): void => {
+  const segments = path.split('.')
+  let current = value
+  for (const segment of segments.slice(0, -1)) {
+    const nested = current[segment]
+    if (nested === null || typeof nested !== 'object' || Array.isArray(nested)) {
+      current[segment] = {}
+    }
+    current = current[segment] as Record<string, unknown>
+  }
+  current[segments[segments.length - 1]] = fieldValue
+}
+
+export const applyImportFieldMappings = <T extends CanonicalImportRecord>(
+  record: T,
+  mappings: ImportFieldMappings
+): T => {
+  const data = cloneDeep(
+    record.data !== null && typeof record.data === 'object'
+      ? record.data as Record<string, unknown>
+      : {}
+  )
+  for (const [targetPath, sourcePath] of Object.entries(mappings)) {
+    const sourceValue = readImportPath(record.sourceData, sourcePath)
+    if (sourceValue !== undefined) writeImportPath(data, targetPath, cloneDeep(sourceValue))
+  }
+  return { ...record, data } as T
+}
 
 export const evaluateImportSourceReadiness = ({
   plan,
@@ -1072,6 +1130,7 @@ export const prepareImportAllSource = async ({
         (result) => (result as PromiseFulfilledResult<CanonicalImportRecord>).value
       )
     }
+    const sourceRecords = plan.sourceRecords ?? records
     const validationResults = records.map((record) => ({
       record,
       ...(schema && validator ? validator(schema, record) : { isValid: true, errors: [] }),
@@ -1096,6 +1155,7 @@ export const prepareImportAllSource = async ({
       preparationCompleted: records.length,
       preparationTotal: records.length,
       records,
+      sourceRecords,
       validationResults,
       validationContext: schema && validator
         ? { schema: cloneDeep(schema), objectTypeUuid, records: cloneDeep(records) }

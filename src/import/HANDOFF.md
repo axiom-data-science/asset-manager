@@ -1,5 +1,115 @@
 # Import Refactor Handoff
 
+## PAM workbook templates (2026-11-02)
+
+- `public/pam/pam_import_workbook.xlsx` is the generated PAM workbook template;
+	`public/pam/pam_import_workbook_examples.xlsx` contains the same import sheets
+	populated with synthetic hierarchical examples and retains the flattened
+	`example_hierarchy` reference sheet.
+- Import sheets contain distinct records rather than duplicated flattened rows:
+	2 projects, 4 sites, 8 deployments, 16 recordings, 32 channels, duty cycles,
+	and sample rates, 16 analyses, and 32 quality entries/channel-number rows.
+- `_tabs.sourceMapping` maps worksheets to PAM source slots. `_lookups` stores
+	one parent/child field match per row, including nested array relationships.
+	The stationary location sheet is restricted to the stationary-marine branch;
+	`channelNumber` is a data value, not a lookup.
+- Validation confirmed unique example identifiers, all 36 declared lookup
+	relationships resolve, dropdown rules are present, and the workbook reader
+	parses every sheet. `_tabs` and `_lookups` are preparation for future importer
+	support; the current import process does not consume them. No authenticated or
+	live-backend import was performed.
+- The pre-existing modified `public/pam/pam_sample_workbook_complete.xlsx` was
+	not part of this update and must remain unstaged.
+
+## Local-only continuation (2026-10-27)
+
+- 2026-10-28 mapping parity follow-up: production-page coverage now verifies a
+	configured assumed CSV source carries its selected schema-choice discriminator
+	into the document payload before validation/import, and a required UI mapping
+	can override a nonmatching CSV header to the required schema field. The cases
+	use mocked services and assert document/patch/relationship call counts. All 29
+	CSV mapping-page tests pass serially; TypeScript, scoped ESLint, and production
+	build pass. Build emits the existing Quicktype, mixed dynamic-import, and
+	large-chunk warnings. The same production-page suite also verifies mapping-role
+	isolation between two selected CSV sources and between two selected XLSX
+	worksheets; changing one sheet's `unused` column to Label leaves the other
+	sheet's corresponding column as Data. The two-source CSV shared-handoff check
+	discovers both sources and confirms no writes. All 29 tests pass, as do scoped
+	ESLint, TypeScript/build, and `git diff --check`; build warnings remain as
+	noted. User-authenticated/visual parity remains pending.
+
+- 2026-10-28 Import All recovery follow-up: the fixture runtime can hold one
+	document write while other records complete. Production-controller tests cancel
+	during that write and resume in both Simplified and Interactive modes; completed
+	documents are not rewritten, the interrupted record is retried once, and links
+	complete only after document recovery. All 27 `all.import-test.test.tsx` tests
+	pass, along with scoped ESLint, TypeScript/build, and `git diff --check`. No
+	authenticated browser or backend was used. Remaining local parity work includes
+	optional source-neutral mapping for remote inputs; see Tasks 4 and 5A in
+	`REFACTOR_PLAN.md`.
+
+- 2026-10-28 shared file parity follow-up: matched CSV and selected-XLSX array
+	sources now hand off to Import All, where array rows are composed into the
+	parent payload before validation and execution. Unambiguous in-file CSV
+	parent/child sources also execute through the shared controller and persist
+	their link. Saved and manually selected existing parents now transfer as resolved
+	relationship plans into shared linking; unresolved parents and unmatched array
+	rows remain gated. Ignored relationship rows are omitted during shared discovery.
+	All 32 CSV mapping-page tests pass. ERDDAP's
+	configured adapter mapping runs before shared validation, but a general optional
+	mapping editor for remote records is not implemented. Authenticated/visual
+	parity remains pending.
+
+- 2026-10-29 composite file follow-up: production-page coverage now exercises
+	two linked document sources together with two array sheets targeting the child
+	document. Shared Simplified import composes both arrays, writes the two
+	documents, and persists the parent relationship. This verifies the current
+	shared array and relationship paths compose for a multi-source file session.
+	Mocked-service evidence only; authenticated, visual, and live-backend checks
+	remain pending.
+
+- 2026-10-29 ignored-row follow-up: explicitly ignored unresolved child rows are
+	filtered from uploaded-adapter discovery before entering Import All. A production
+	shared-flow regression imports the remaining matched parent/child records and
+	creates their link, while verifying the ignored child is not written. Other
+	relationship blockers remain gated. Mocked-service evidence only.
+
+- 2026-10-29 existing-parent follow-up: resolved saved-parent plans, including
+	manual choices from ambiguous saved-parent matches, now transfer into Import All.
+	Shared relationship linking uses the selected existing UUID without importing the
+	parent; production-page tests verify both a unique match and a manual selection.
+	Unresolved ambiguous choices remain blocked. Mocked-service evidence only.
+
+- On the generic CSV upload path, a single uploaded file now advances directly
+	to Map fields. When **Upload multiple files in this session** is enabled, the
+	page stays on Upload so more sources can be added before mapping.
+- Production-page coverage verifies the single-file and multiple-file paths,
+	independent uploaded source summaries, preparation of both sources, and
+	unchanged document, patch, and relationship write counts. The existing CSV
+	shared-handoff and busy-return regressions were updated for the single-file
+	progression.
+- Validation: all 26 `csv.mapping.test.tsx` tests pass serially with one worker;
+	all 255 import tests across 20 files and all 267 project tests across 25 files
+	pass with one worker and a 15-second timeout. `npm run build` and scoped ESLint
+	pass. Build retains the existing Quicktype externalization, mixed dynamic-import,
+	and large-chunk warnings. This is mocked-service evidence only; no authenticated
+	browser session or live backend writes were used.
+- Added adapter coverage proving that an object-type `fieldMappings.label` value
+  takes precedence over a different CSV column assigned the Label role. This
+  protects the existing contract; broader production CSV/XLSX mapping parity is
+  still incomplete.
+- Extended production-page coverage to change the first source's `value` column
+	to the Label role and verify the second source remains mapped as Data. A
+	separate clean-mapping regression uploads two standalone CSVs, hands both to
+	the shared controller, discovers both sources, and confirms no document,
+	patch, or relationship writes. All 27 mapping-page tests pass serially with
+	one worker; the mapping-isolation case has a local 30-second timeout for
+	serial-suite load sensitivity.
+- The user approved continuing work that does not require live browser testing.
+	Resume with automated CSV/XLSX parity and other local refactor tasks. Keep
+	authenticated/live-backend and visual verification pending, and do not retire
+	the legacy file workflow until parity is established.
+
 ## XLSX array-source parent gate (2026-10-23)
 
 - Added a production-page regression using the binary workbook fixture with only
@@ -120,12 +230,32 @@ Do not retire the legacy file workflow until these checks pass and are recorded.
 - Code changes are committed on `refactor-import-process` as `85cec98`
   (`Support top-level saved-parent matches`).
 - When resuming, check `git status` before editing or staging.
-- Next focus: finish production file-controller/handoff gate coverage and
-  authenticated CSV/XLSX parity for parent/child, external-parent, array,
-  ignored-row, multi-file, and multi-sheet cases. Preserve legacy execution until
-  that parity is verified. Then perform authenticated Import All cancellation,
-  resume, and retry checks; complete source-neutral file/remote mapping parity;
-  and continue Tasks 5A/5B and closeout in `REFACTOR_PLAN.md`.
+- The local automated parity and ERDDAP shared-controller slices are recorded in
+	the 2026-10-29 follow-up below. Remaining gates are user-performed authenticated
+	CSV/XLSX/remote parity, cancellation/resume/retry, visual checks, and any route
+	consolidation approved after those checks. Preserve legacy execution until
+	parity is verified; continue Tasks 5A/5B and closeout in `REFACTOR_PLAN.md`.
+
+## Automated import follow-up (2026-10-29)
+
+- Production CSV field overrides now have a write-path test through the shared
+	controller. Existing production tests cover multi-source/multi-array CSV,
+	selected workbook sheets, configured/fixed mappings, array composition, and
+	existing-parent links.
+- The configured ERDDAP MODL composite now runs through `ImportAllView` in an
+	unauthenticated fixture: two typed documents and their parent relationship are
+	written through in-memory ports using only fake catalog/info responses.
+- The per-source automatic setup dialog is covered without a context schema.
+	Its action infers/creates the type and schema from prepared records, performs no
+	implicit document writes, and completes only after an explicit Import action.
+- Validation: all 278 tests pass; touched import files pass ESLint; TypeScript and
+	production build pass; `git diff --check` passes. The full repository lint still
+	reports 9 errors in existing unrelated files (including the existing
+	`import_records_page_impl.tsx` effect rule). The build emits existing Quicktype,
+	chunk-mixing, and large-chunk warnings.
+- No browser, visual, authenticated, or live-backend checks were run. Keep those
+	items pending. No export-preparation page/action was found under `src/import`,
+	so that fixture request remains deferred until its owner is identified.
 
 ## Authenticated conflict-review check (2026-10-20)
 

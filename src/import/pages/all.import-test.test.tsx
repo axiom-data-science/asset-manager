@@ -4,9 +4,10 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Provider, createStore } from 'jotai'
 import { MemoryRouter } from 'react-router-dom'
-import contextStateAtom from '@/state/contextStateAtom'
+import contextStateAtom, { makeInitialContextState } from '@/state/contextStateAtom'
 import { uploadedImportSourcesAtom } from '@/import/state/uploadedImportSources'
 import { ImportAllView } from './all'
+import importConfigs from '../config'
 import { createCSVImportAdapter } from '../csv_adapter'
 import { parseWorkbookFile } from '../workbook'
 import { selectWorkbookSheets } from '../workbook_selection'
@@ -42,9 +43,11 @@ describe('Import All fixture UI', () => {
     const mountFixture = (
         options: Parameters<typeof createImportAllFixtureRuntime>[0] = {},
         canWrite = true,
-        onActivityChange?: (active: boolean) => void
+        onActivityChange?: (active: boolean) => void,
+        configureFixture?: (fixture: ReturnType<typeof createImportAllFixtureRuntime>) => void
     ) => {
         const fixture = createImportAllFixtureRuntime(options)
+        configureFixture?.(fixture)
         const store = createStore()
         store.set(contextStateAtom, fixture.makeContextState())
         store.set(uploadedImportSourcesAtom, [])
@@ -265,6 +268,41 @@ describe('Import All fixture UI', () => {
         }
     )
 
+    it('applies optional nested remote field mappings before revalidation and import', async () => {
+        const { fixture, user } = mountFixture({}, true, undefined, ({ sources }) => {
+            sources.splice(1)
+            const parentAdapter = sources[0].sourceAdapter
+            const loadRecord = parentAdapter.load
+            parentAdapter.load = async (input) => {
+                const record = await loadRecord!(input)
+                return {
+                    ...record,
+                    data: { code: 'configured-code' },
+                    sourceData: { remote: { parent_code: 'P-1' } },
+                }
+            }
+        })
+
+        await user.click(screen.getByRole('button', { name: 'Discover selected' }))
+        await user.click(await screen.findByRole('button', { name: 'Prepare review' }))
+        const mapping = await screen.findByRole('combobox', { name: 'Map code for Fixture parents' })
+        await user.selectOptions(mapping, 'remote.parent_code')
+        const applyMappingButton = screen.getAllByRole('button', { name: 'Apply mappings' })
+            .find((button) => !(button as HTMLButtonElement).disabled)
+        expect(applyMappingButton).toBeDefined()
+        await user.click(applyMappingButton!)
+
+        expect(screen.queryByRole('button', { name: 'Execute import' })).toBeNull()
+        await user.click(screen.getByRole('button', { name: 'Prepare review' }))
+        await waitFor(() => expect(screen.getByText('1 sources prepared')).toBeTruthy())
+        await user.click(await screen.findByRole('button', { name: 'Execute import' }))
+
+        await waitFor(() => {
+            expect(fixture.documents.find(({ slug }) => slug === 'fixture-parent-1')?.data)
+                .toMatchObject({ code: 'P-1' })
+        })
+    })
+
     it('imports only a selected sheet from a genuine XLSX workbook through the shared controller', async () => {
         const workbook = await createCSVMappingWorkbookFile()
         const sheets = await parseWorkbookFile(workbook)
@@ -395,6 +433,39 @@ describe('Import All fixture UI', () => {
             expect(fixture.relationships).toHaveLength(2)
         })
         expect(fixture.portCalls.createObjectType).toBe(1)
+    })
+
+    it('creates a missing type from its setup dialog and waits for explicit shared import', async () => {
+        const { fixture, user } = mountFixture({ omitChildType: true })
+
+        await user.click(screen.getByRole('button', { name: 'Discover selected' }))
+        await user.click(await screen.findByRole('button', { name: 'Prepare review' }))
+        await user.click(await screen.findByRole('button', { name: 'Set up type' }))
+
+        expect(await screen.findByRole('heading', { name: 'Set up Fixture children' })).toBeTruthy()
+        const createAutomatically = screen.getByRole('button', { name: 'Create automatically' })
+        expect((createAutomatically as HTMLButtonElement).disabled).toBe(false)
+        expect(fixture.documents).toHaveLength(0)
+        expect(fixture.portCalls.postDocument).toBe(0)
+        expect(fixture.portCalls.postRelationship).toBe(0)
+
+        await user.click(createAutomatically)
+        await waitFor(() => {
+            expect(fixture.portCalls.createObjectType).toBe(1)
+            expect(fixture.portCalls.createObjectSchema).toBe(1)
+            expect(fixture.portCalls.contextReload).toBe(1)
+        })
+        await waitFor(() => expect(screen.queryByRole('heading', { name: 'Set up Fixture children' })).toBeNull())
+        expect(fixture.documents).toHaveLength(0)
+        expect(fixture.portCalls.postDocument).toBe(0)
+        expect(fixture.portCalls.postRelationship).toBe(0)
+
+        await user.click(screen.getByRole('radio', { name: 'Simplified' }))
+        await user.click(screen.getByRole('button', { name: 'Import' }))
+        await waitFor(() => {
+            expect(fixture.documents).toHaveLength(3)
+            expect(fixture.relationships).toHaveLength(2)
+        })
     })
 
     it('blocks Simplified writes for invalid and ambiguous plans', async () => {
@@ -625,6 +696,47 @@ describe('Import All fixture UI', () => {
         expect(fixture.relationshipAttempts).toHaveLength(3)
     })
 
+    it.each(['interactive', 'simplified'] as const)(
+        'retains completed documents after cancellation and resumes without rewriting them (%s)',
+        async (mode) => {
+            const { fixture, user } = mountFixture()
+            fixture.holdDocumentWrite('fixture-child-1')
+
+            if (mode === 'simplified') {
+                await user.click(screen.getByRole('radio', { name: 'Simplified' }))
+                await user.click(screen.getByRole('button', { name: 'Import' }))
+            } else {
+                await user.click(screen.getByRole('button', { name: 'Discover selected' }))
+                await user.click(await screen.findByRole('button', { name: 'Prepare review' }))
+                await user.click(await screen.findByRole('button', { name: 'Execute import' }))
+            }
+
+            await waitFor(() => {
+                expect(fixture.documents).toHaveLength(2)
+                expect(fixture.portCalls.postDocument).toBe(3)
+            })
+            const completedSlugs = fixture.documents.map(({ slug }) => slug).sort()
+            await user.click(screen.getByRole('button', { name: 'Discover sources' }))
+            await user.click(await screen.findByRole('button', { name: 'Cancel' }))
+            await waitFor(() => expect(fixture.relationships).toHaveLength(0))
+            fixture.releaseDocumentWrite()
+
+            const resumeButton = mode === 'simplified' ? 'Import' : 'Execute import'
+            await user.click(await screen.findByRole('button', { name: resumeButton }))
+            await waitFor(() => {
+                expect(fixture.documents).toHaveLength(3)
+                expect(fixture.relationships).toHaveLength(2)
+            })
+
+            expect(fixture.documents.filter(({ slug }) => completedSlugs.includes(slug))).toHaveLength(2)
+            expect(fixture.documentWriteAttempts.filter((slug) => slug === 'fixture-parent-1')).toHaveLength(1)
+            expect(fixture.documentWriteAttempts.filter((slug) => slug === 'fixture-child-2')).toHaveLength(1)
+            expect(fixture.documentWriteAttempts.filter((slug) => slug === 'fixture-child-1')).toHaveLength(2)
+            expect(fixture.portCalls.postDocument).toBe(4)
+            expect(fixture.relationshipAttempts).toHaveLength(2)
+        }
+    )
+
     it('cancels a held discovery through the screen and allows discovery to resume', async () => {
         const { fixture, user } = mountFixture()
         fixture.holdDiscovery()
@@ -707,5 +819,127 @@ describe('Import All fixture UI', () => {
         expect(fixture.requests.every(({ method, headers }) =>
             method === 'GET' && !Object.keys(headers).some((name) => /auth|token/i.test(name))
         )).toBe(true)
+    })
+
+    it('imports the configured ERDDAP composite through the shared controller without auth', async () => {
+        const fixture = createImportAllFixtureRuntime()
+        const erddapFixture = createERDDAPFixtureRuntime()
+        vi.stubGlobal('fetch', erddapFixture.fetch)
+        const erddapSources = importConfigs.filter(
+            ({ type }) => type === 'modl' || type === 'modl_variable_metadata'
+        ).map((source) => ({
+            ...source,
+            sourceAdapter: source.type === 'modl'
+                ? { ...source.sourceAdapter!, defaultImportUrl: erddapFixtureCatalogUrl }
+                : source.sourceAdapter!,
+        }))
+        const datasetSource = erddapSources.find(({ type }) => type === 'modl')!
+        const variableSource = erddapSources.find(({ type }) => type === 'modl_variable_metadata')!
+        const datasetType = {
+            uuid: 'fixture-modl-type',
+            owner_sub: 'fixture-owner',
+            label: 'MODL datasets',
+            slug: 'modl',
+            category: 'document',
+            created_at: '2026-01-01T00:00:00.000Z',
+            updated_at: '2026-01-01T00:00:00.000Z',
+        }
+        const variableType = {
+            ...datasetType,
+            uuid: 'fixture-modl-variable-type',
+            label: 'MODL variable metadata',
+            slug: 'modl_variable_metadata',
+        }
+        const datasetSchema = {
+            uuid: 'fixture-modl-schema',
+            owner_sub: 'fixture-owner',
+            object_type_uuid: datasetType.uuid,
+            slug: 'modl_default',
+            label: 'MODL default',
+            version: 1,
+            is_type_default: true,
+            created_at: '2026-01-01T00:00:00.000Z',
+            updated_at: '2026-01-01T00:00:00.000Z',
+            json_schema: datasetSource.sourceAdapter.schema as Record<string, unknown>,
+        }
+        const variableSchema = {
+            ...datasetSchema,
+            uuid: 'fixture-modl-variable-schema',
+            object_type_uuid: variableType.uuid,
+            slug: 'modl_variable_metadata_default',
+            label: 'MODL variable metadata default',
+            json_schema: variableSource.sourceAdapter.schema as Record<string, unknown>,
+        }
+        const predicate = {
+            uuid: 'fixture-has-parent',
+            predicate: 'has_parent',
+            label: 'has parent',
+            is_directional: true,
+        }
+        const context = makeInitialContextState()
+        context.object_type = [datasetType, variableType]
+        context.object_type_by_uuid = Object.fromEntries(context.object_type.map((type) => [type.uuid, type]))
+        context.object_type_by_slug = Object.fromEntries(context.object_type.map((type) => [type.slug, type]))
+        context.object_schema = [datasetSchema, variableSchema]
+        context.object_schema_by_uuid = Object.fromEntries(context.object_schema.map((schema) => [schema.uuid, schema]))
+        context.object_schema_by_slug = Object.fromEntries(context.object_schema.map((schema) => [schema.slug, schema]))
+        context.object_schema_defaults_by_object_type_uuid = Object.fromEntries(
+            context.object_schema.map((schema) => [schema.object_type_uuid, schema])
+        )
+        context.predicate = [predicate]
+        context.predicate_by_uuid = { [predicate.uuid]: predicate }
+        context.predicate_by_predicate = { [predicate.predicate]: predicate }
+        fixture.runtime.fetchObjectTypes = async () => context.object_type
+        fixture.runtime.fetchObjectSchemas = async () => context.object_schema
+        fixture.runtime.requestContextReload = () => undefined
+        const store = createStore()
+        store.set(contextStateAtom, context)
+        store.set(uploadedImportSourcesAtom, [])
+        const user = userEvent.setup()
+
+        render(
+            <Provider store={store}>
+                <MemoryRouter initialEntries={['/import-test']}>
+                    <ImportAllView
+                        pageTitle="ERDDAP shared execution fixture"
+                        configuredSourceOverrides={erddapSources}
+                        token=""
+                        canWrite
+                        runtime={fixture.runtime}
+                        includeUploadedSources={false}
+                        allowManualTypeSetup={false}
+                    />
+                </MemoryRouter>
+            </Provider>
+        )
+
+        await user.click(screen.getByRole('radio', { name: 'Simplified' }))
+        await user.click(screen.getByRole('button', { name: 'Import' }))
+        await waitFor(() => {
+            expect(fixture.documents).toHaveLength(2)
+            expect(fixture.relationships).toHaveLength(1)
+        })
+
+        expect(fixture.documents.find(({ object_type_uuid }) => object_type_uuid === datasetType.uuid))
+            .toMatchObject({
+                slug: 'north_buoy',
+                data: { title: 'North Buoy', id: 'NB-01', geospatial_lat_min: 41.25 },
+            })
+        expect(fixture.documents.find(({ object_type_uuid }) => object_type_uuid === variableType.uuid))
+            .toMatchObject({
+                slug: 'north_buoy',
+                data: { dataset_id: 'north_buoy', variables: { sea_water_temperature: { variable_name: 'sea_water_temperature' } } },
+            })
+        expect(fixture.relationships[0]).toMatchObject({
+            from_document_uuid: expect.any(String),
+            to_document_uuid: expect.any(String),
+            predicate_uuid: predicate.uuid,
+        })
+        expect(fixture.portCalls.postDocument).toBe(2)
+        expect(fixture.portCalls.postRelationship).toBe(1)
+        expect(erddapFixture.requests.map(({ url }) => url)).toEqual([
+            erddapFixtureCatalogUrl,
+            erddapFixtureMetadataUrl,
+        ])
     })
 })

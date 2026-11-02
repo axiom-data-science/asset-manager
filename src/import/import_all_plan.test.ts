@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   createImportAllSourcePlan,
+  applyImportFieldMappings,
+  getImportSchemaTargetPaths,
+  getImportSourceDataPaths,
   evaluateImportSourceReadiness,
   collectImportDocumentUuids,
   collectImportAllErrors,
@@ -883,6 +886,49 @@ describe('Prepared import source execution', () => {
     expect(decision).toEqual({ status: 'executed', readiness: { status: 'complete' } })
     expect(services.patch).toHaveBeenCalledWith('existing-1', expect.objectContaining({ data: { value: 1 } }), expect.any(AbortSignal))
     expect(plan.executionResults).toMatchObject([{ action: 'overwrite', status: 'imported' }])
+  })
+})
+
+describe('Import field mappings', () => {
+  it('enumerates nested source and schema paths and applies explicit mappings immutably', () => {
+    const record = {
+      uuid: 'record-1',
+      slug: 'record-1',
+      label: 'Record 1',
+      description: '',
+      attrs: {},
+      data: { title: 'Configured title', location: { latitude: 41 } },
+      sourceData: { global_attributes: { title: 'Raw title' }, coordinates: { lat: 42, lon: -71 } },
+      provenance: { sourceId: 'remote-source', externalId: 'record-1' },
+    }
+    const schema = {
+      type: 'object' as const,
+      properties: {
+        title: { type: 'string' as const },
+        location: {
+          type: 'object' as const,
+          properties: { latitude: { type: 'number' as const } },
+        },
+      },
+    }
+
+    expect(getImportSourceDataPaths(record.sourceData)).toEqual([
+      'global_attributes.title',
+      'coordinates.lat',
+      'coordinates.lon',
+    ])
+    expect(getImportSchemaTargetPaths(schema)).toEqual(['title', 'location.latitude'])
+    expect(record.data.title).toBe('Configured title')
+
+    const mapped = applyImportFieldMappings(record, {
+      title: 'global_attributes.title',
+      'location.latitude': 'coordinates.lat',
+    })
+
+    expect(mapped.data).toEqual({ title: 'Raw title', location: { latitude: 42 } })
+    expect(mapped.sourceData).toBe(record.sourceData)
+    expect(mapped.provenance).toBe(record.provenance)
+    expect(record.data).toEqual({ title: 'Configured title', location: { latitude: 41 } })
   })
 })
 

@@ -1,5 +1,6 @@
 import type { JSONSchema6 } from 'json-schema'
 import type { IObjectSchema, IObjectType } from '@/types/types'
+import type { IPredicate } from '@/types/types'
 import { makeInitialContextState } from '@/state/contextStateAtom'
 import { parseCSV } from '@/lib/csv'
 import { createCSVImportAdapter } from '../csv_adapter'
@@ -106,6 +107,13 @@ const relationshipRule = {
     predicate: 'belongs_to',
 }
 
+const fixturePredicate: IPredicate = {
+    uuid: 'fixture-belongs-to-predicate',
+    predicate: 'belongs_to',
+    label: 'belongs to',
+    is_directional: true,
+}
+
 const fixtureObjectType: IObjectType = {
     uuid: 'fixture-site-type',
     owner_sub: 'fixture-owner',
@@ -155,6 +163,10 @@ export const createCSVMappingFixture = (
     contextState.object_schema_by_uuid[fixtureSchema.uuid] = fixtureSchema
     contextState.object_schema_by_slug[fixtureSchema.slug] = fixtureSchema
     contextState.object_schema_defaults_by_object_type_uuid[fixtureObjectType.uuid] = fixtureSchema
+
+    contextState.predicate = [fixturePredicate]
+    contextState.predicate_by_uuid[fixturePredicate.uuid] = fixturePredicate
+    contextState.predicate_by_predicate[fixturePredicate.predicate] = fixturePredicate
 
     const parsed = parseCSV(text)
     const source: CSVImportSource = {

@@ -27,6 +27,9 @@ import {
   loadCompositeImportRecords,
   mergeImportAllExecutionPlan,
   mergeArraySourceRecordsIntoParentRecords,
+  applyImportFieldMappings,
+  getImportSchemaTargetPaths,
+  getImportSourceDataPaths,
   prepareImportAllSource,
   progressImportAllSourcePreparation,
   summarizeImportAllPlan,
@@ -36,7 +39,7 @@ import {
 import { fetchExistingImportDocuments } from '../reconciliation_service'
 import { getDocumentImportProvenance, getImportSlugCandidates } from '../reconciliation'
 import { useAuth } from '@/auth/useAuth'
-import { omit } from 'lodash-es'
+import { isEqual, omit } from 'lodash-es'
 import type { JSONSchema6 } from 'json-schema'
 import { postDocument, patchDocument } from '@/manage/document/services'
 import { fetchObjectTypes } from '@/manage/object_type/services'
@@ -290,7 +293,7 @@ const TypeSetupDialog = ({
               <h2 className="font-medium">Create a new type</h2>
               <Button
                 size="xs"
-                disabled={!session.schema || automaticCreateState === 'creating'}
+                disabled={!plan.records.length || !canWrite || automaticCreateState === 'creating'}
                 onClick={() => void createAutomaticTypeForSource()}
               >
                 {automaticCreateState === 'creating' ? 'Creating...' : 'Create automatically'}
@@ -329,6 +332,7 @@ type ImportAllPageOptions = {
   includeUploadedSources?: boolean
   pageTitle?: string
   configuredSourceOverrides?: (IImportPageProps & { sourceAdapter: ImportSourceAdapter })[]
+  relationshipPlanOverrides?: ImportRelationshipPlan[]
   onExecutionStarted?: () => void
   onActivityChange?: (active: boolean) => void
 }
@@ -338,6 +342,7 @@ export const ImportAllView = ({
   uploadedSourceIds,
   pageTitle = 'Import All Sources',
   configuredSourceOverrides,
+  relationshipPlanOverrides = [],
   onExecutionStarted,
   onActivityChange,
   token,
@@ -504,7 +509,7 @@ export const ImportAllView = ({
     const rules = sourcePlans
       .filter(({ enabled }) => enabled)
       .flatMap(({ sourceId }) => sourcesById[sourceId]?.sourceAdapter.relationshipRules ?? [])
-    return planImportRelationships({
+    const plannedRelationships = planImportRelationships({
       parentObjectTypes: new Map(
         Object.values(context.object_type_by_slug).map((objectType) => [
           objectType.uuid,
@@ -557,7 +562,11 @@ export const ImportAllView = ({
           : []
       }),
     })
-  }, [context.object_type_by_slug, sourcesById])
+    const overridesByKey = new Map(
+      relationshipPlanOverrides.map((plan) => [importRelationshipKey(plan), plan])
+    )
+    return plannedRelationships.map((plan) => overridesByKey.get(importRelationshipKey(plan)) ?? plan)
+  }, [context.object_type_by_slug, relationshipPlanOverrides, sourcesById])
   const relationshipPlans = useMemo(
     () => buildRelationshipPlans(planList),
     [buildRelationshipPlans, planList]
@@ -1122,6 +1131,8 @@ export const ImportAllView = ({
               fetchExisting: runtime.fetchExistingImportDocuments,
               preloadedRecords: compositeMemberIds.has(plan.sourceId)
                 ? compositeRecordsBySource[plan.sourceId]
+                : plan.fieldMappings && plan.records.length > 0
+                  ? plan.records
                 : undefined,
               batchSize: 10,
               onProgress: (completed: number, total: number) =>
@@ -1419,6 +1430,12 @@ export const ImportAllView = ({
         executedPlans,
         objectTypesBySlug: context.object_type_by_slug,
       })
+      for (const relationshipPlan of relationshipPlansForExecution) {
+        const parent = relationshipPlan.parent
+        if (parent?.existingDocumentUuid) {
+          documentUuids.set(relationshipDocumentKey(parent), parent.existingDocumentUuid)
+        }
+      }
       let uuidLookupError: string | undefined
       for (const executed of executedPlans) {
         if (controller.signal.aborted || operationGenerationRef.current !== operationGeneration) break
@@ -1944,6 +1961,15 @@ export const ImportAllView = ({
             const compositeGroup = compositeSourceByMemberId.get(plan.sourceId)
             const isCompositeAnchor = source.compositeSourceAdapter !== undefined
             const objectType = context.object_type_by_slug[source.type]
+            const mappingSchema = source.sourceAdapter.schema ?? (objectType
+              ? context.object_schema_defaults_by_object_type_uuid[objectType.uuid]?.json_schema
+              : undefined)
+            const mappingSourcePaths = getImportSourceDataPaths(
+              (plan.sourceRecords ?? plan.records)[0]?.sourceData
+            )
+            const mappingTargetPaths = mappingSchema
+              ? getImportSchemaTargetPaths(mappingSchema)
+              : []
             const Icon = source.icon
             const invalidCount = plan.validationResults.filter(({ isValid }) => !isValid).length
             const conflictCount = plan.reconciliations.filter(
@@ -2096,6 +2122,70 @@ export const ImportAllView = ({
                       Applies to changed records unless overridden below.
                     </span>
                   </div>
+                )}
+
+                {plan.sourceRecords && mappingSchema && mappingSourcePaths.length > 0 && mappingTargetPaths.length > 0 && (
+                  <details className="mt-3 border-t pt-3 text-sm" aria-label={`Field mapping for ${plan.label}`}>
+                    <summary className="cursor-pointer text-gray-700">Map source fields</summary>
+                    <div className="mt-3 grid max-w-3xl gap-2">
+                      {mappingTargetPaths.map((targetPath) => (
+                        <label key={targetPath} className="grid grid-cols-[minmax(8rem,1fr)_minmax(12rem,2fr)] items-center gap-3">
+                          <span className="truncate" title={targetPath}>{targetPath}</span>
+                          <select
+                            aria-label={`Map ${targetPath} for ${plan.label}`}
+                            className="h-8 min-w-0 border bg-white px-2"
+                            disabled={isImportActive || hasExecutionAttempts}
+                            value={plan.fieldMappings?.[targetPath] ?? ''}
+                            onChange={(event) => {
+                              const fieldMappings = { ...(plan.fieldMappings ?? {}) }
+                              if (event.target.value) fieldMappings[targetPath] = event.target.value
+                              else delete fieldMappings[targetPath]
+                              updatePlan(plan.sourceId, { fieldMappings })
+                            }}
+                          >
+                            <option value="">Keep current value</option>
+                            {mappingSourcePaths.map((sourcePath) => (
+                              <option key={sourcePath} value={sourcePath}>{sourcePath}</option>
+                            ))}
+                          </select>
+                        </label>
+                      ))}
+                      <div>
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          disabled={
+                            isImportActive ||
+                            hasExecutionAttempts ||
+                            isEqual(plan.fieldMappings ?? {}, plan.appliedFieldMappings ?? {})
+                          }
+                          onClick={() => {
+                            const sourceRecords = plan.sourceRecords ?? plan.records
+                            const fieldMappings = plan.fieldMappings ?? {}
+                            const records = sourceRecords.map((record) =>
+                              applyImportFieldMappings(record, fieldMappings)
+                            )
+                            updatePlan(plan.sourceId, {
+                              records,
+                              appliedFieldMappings: { ...fieldMappings },
+                              preparationStatus: 'idle',
+                              validationResults: [],
+                              validationContext: undefined,
+                              reconciliations: [],
+                              executionStatus: 'idle',
+                              executionResults: [],
+                              error: undefined,
+                            })
+                          }}
+                        >
+                          Apply mappings
+                        </Button>
+                        <span className="ml-2 text-gray-600">
+                          Prepare again to validate and reconcile the mapped records.
+                        </span>
+                      </div>
+                    </div>
+                  </details>
                 )}
 
                 {plan.error && (

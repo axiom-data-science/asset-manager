@@ -197,6 +197,9 @@ export const createImportAllFixtureRuntime = ({
     let nextRelationshipUuid = 1
     let failureUsed = false
     let failedDocumentSlug: string | undefined
+    let documentWriteGateSlug: string | undefined
+    let releaseDocumentWriteGate: (() => void) | undefined
+    let documentWriteGate: Promise<void> | undefined
     let releaseRelationshipGate: (() => void) | undefined
     let relationshipGate: Promise<void> | undefined
     let relationshipGateAfter = 0
@@ -335,6 +338,9 @@ export const createImportAllFixtureRuntime = ({
             portCalls.postDocument += 1
             signal?.throwIfAborted()
             documentWriteAttempts.push(document.slug)
+            if (documentWriteGate && document.slug === documentWriteGateSlug) {
+                await waitForFixtureGate(documentWriteGate, signal)
+            }
             if (document.slug === failDocumentSlugOnce && failedDocumentSlug !== document.slug) {
                 failedDocumentSlug = document.slug
                 throw new Error(`Fixture document write failed once for ${document.slug}.`)
@@ -457,6 +463,18 @@ export const createImportAllFixtureRuntime = ({
         relationships,
         relationshipAttempts,
         portCalls,
+        holdDocumentWrite: (slug: string) => {
+            documentWriteGateSlug = slug
+            documentWriteGate = new Promise<void>((resolve) => {
+                releaseDocumentWriteGate = resolve
+            })
+        },
+        releaseDocumentWrite: () => {
+            releaseDocumentWriteGate?.()
+            releaseDocumentWriteGate = undefined
+            documentWriteGate = undefined
+            documentWriteGateSlug = undefined
+        },
         holdRelationshipWrites: (afterCompleted = 0) => {
             relationshipGateAfter = afterCompleted
             relationshipGate = new Promise<void>((resolve) => {

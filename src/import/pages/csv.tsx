@@ -1712,25 +1712,23 @@ const CSVImportPage = ({
       ({ status, action }) => status !== 'ambiguous' && action !== undefined && action !== 'ignore'
     ).length
   }, 0)
-  const sharedSourceRevision = JSON.stringify(sources.map((source) => ({
-    sourceId: source.sourceId,
-    typeSlug: source.typeSlug,
-    selectedObjectTypeUuid: source.selectedObjectTypeUuid,
-    schemaChoiceValue: source.schemaChoiceValue,
-    role: source.role,
-    arrayTarget: source.arrayTarget,
-    config: source.config,
-    mapping: source.mapping,
-    relationshipFields: source.relationshipFields,
-    relationshipRule: source.relationshipRule,
-    schema: source.adapter.schema,
-  })))
-  const sharedHandoffFeatureGate = sources.some(({ role }) => role === 'array')
-    ? 'Array item sources still use CSV array composition; continue with the CSV import workflow.'
-    : resolvedRelationshipRules.length > 0 || ignoredRelationshipRows.size > 0
-      ? 'CSV parent/child relationships and ignored relationship rows still use the CSV relationship workflow.'
-      : undefined
-  const sharedHandoffMessage = sharedHandoffFeatureGate ?? (
+  const sharedSourceRevision = JSON.stringify({
+    sources: sources.map((source) => ({
+      sourceId: source.sourceId,
+      typeSlug: source.typeSlug,
+      selectedObjectTypeUuid: source.selectedObjectTypeUuid,
+      schemaChoiceValue: source.schemaChoiceValue,
+      role: source.role,
+      arrayTarget: source.arrayTarget,
+      config: source.config,
+      mapping: source.mapping,
+      relationshipFields: source.relationshipFields,
+      relationshipRule: source.relationshipRule,
+      schema: source.adapter.schema,
+    })),
+    ignoredRows: [...ignoredRelationshipRows].sort(),
+  })
+  const sharedHandoffMessage = (
     sessionImportStarted || completedSourceIds.size > 0 || relationshipResults.length > 0
       ? 'Start the shared workflow before writing from CSV; completed CSV results stay in this workflow.'
       : !canImportCleanSession || readySessionRecordCount === 0
@@ -1769,14 +1767,31 @@ const CSVImportPage = ({
       const sourceIds = new Set(sources.map((source) => source.adapter.id))
       return [
         ...current.filter((source) => !sourceIds.has(source.sourceAdapter.id)),
-        ...sources.map((source) => ({
-          type: source.typeSlug,
-          label: source.config.label,
-          sourceAdapter: source.adapter,
-        })),
+        ...sources.map((source) => {
+          const objectType = source.selectedObjectTypeUuid
+            ? contextState.object_type_by_uuid[source.selectedObjectTypeUuid]
+            : contextState.object_type_by_slug[source.typeSlug]
+          const typeKey = objectType?.uuid ?? source.typeSlug
+          const adapter = {
+            ...source.adapter,
+            discover: async (options: Parameters<ImportSourceAdapter['discover']>[0]) => {
+              const candidates = await source.adapter.discover(options)
+              return candidates.filter((candidate) =>
+                !ignoredRelationshipRows.has(
+                  `${typeKey}:${candidate.provenance.sourceId}:${candidate.provenance.externalId}`
+                )
+              )
+            },
+          }
+          return {
+            type: source.typeSlug,
+            label: source.config.label,
+            sourceAdapter: adapter,
+          }
+        }),
       ]
     })
-  }, [setUploadedImportSources, sources])
+  }, [contextState.object_type_by_slug, contextState.object_type_by_uuid, ignoredRelationshipRows, setUploadedImportSources, sources])
 
   const addSource = (
     fileData: string,
@@ -1857,6 +1872,7 @@ const CSVImportPage = ({
     ])
     setActiveSourceId(sourceId)
     setUploadKey((key) => key + 1)
+    if (!configuredSource && !uploadMultipleFiles) setActiveWizardStep('mapping')
   }
 
   const handleWorkbookSelected = async (file?: File) => {
@@ -2386,6 +2402,9 @@ const CSVImportPage = ({
             sourceIds={[]}
             uploadedSourceIds={sources.map(({ sourceId }) => sourceId)}
             includeUploadedSources
+            relationshipPlanOverrides={resolvedCSVRelationshipPlans.filter(
+              (plan) => plan.status === 'ready' && plan.parent !== undefined
+            )}
             onExecutionStarted={() => setSharedExecutionStarted(true)}
             onActivityChange={setSharedImportActive}
           />

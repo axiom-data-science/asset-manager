@@ -327,9 +327,8 @@ describe('CSV mapping editor fixture', () => {
         await user.click(screen.getByRole('button', { name: 'CSV files' }))
         await user.upload(screen.getByLabelText(/Browse Files/), csvFile)
         expect(testPorts.uploadFile).toHaveBeenCalledOnce()
-        const prepareButton = await screen.findByRole('button', { name: 'Prepare import' }) as HTMLButtonElement
-        await waitFor(() => expect(prepareButton.disabled).toBe(false))
-        await user.click(prepareButton)
+        expect(await screen.findByRole('heading', { name: 'Map CSV fields' })).toBeTruthy()
+        await user.click(screen.getByRole('button', { name: 'Continue to import' }))
         await screen.findByRole('heading', { name: 'Import fixture-sites.csv' })
         expect(screen.getByText('1 records loaded')).toBeTruthy()
         await waitFor(() =>
@@ -359,6 +358,97 @@ describe('CSV mapping editor fixture', () => {
         expect(testPorts.postDocument).not.toHaveBeenCalled()
     })
 
+    it('advances a single CSV to mapping and keeps multi-file uploads on the upload step', async () => {
+        const { user } = mountProductionCSVPage()
+        const firstFile = new File(
+            ['id,name,value\nsite-1,North,deep'],
+            'first-sites.csv',
+            { type: 'text/csv' }
+        )
+        const secondFile = new File(
+            ['id,name,value\nsite-2,South,shallow'],
+            'second-sites.csv',
+            { type: 'text/csv' }
+        )
+
+        await user.click(screen.getByRole('button', { name: 'CSV files' }))
+        await user.upload(screen.getByLabelText(/Browse Files/), firstFile)
+        expect(await screen.findByRole('heading', { name: 'Map CSV fields' })).toBeTruthy()
+
+        await user.click(screen.getByRole('button', { name: 'Back to upload' }))
+        await user.click(screen.getByRole('checkbox', { name: 'Upload multiple files in this session' }))
+        await user.upload(screen.getByLabelText(/Browse Files/), secondFile)
+        expect(await screen.findByRole('button', { name: 'Review mappings' })).toBeTruthy()
+        expect(screen.queryByRole('heading', { name: 'Map CSV fields' })).toBeNull()
+
+        await user.click(screen.getByRole('button', { name: 'Review mappings' }))
+        expect(await screen.findByText(/1 records, 2 sources/)).toBeTruthy()
+        const uploadedFiles = within(screen.getByRole('region', { name: 'Uploaded CSV files' }))
+        expect(uploadedFiles.getByText(/first-sites\.csv/)).toBeTruthy()
+        expect(uploadedFiles.getByText(/second-sites\.csv/)).toBeTruthy()
+        const firstFilePanel = uploadedFiles.getByText(/first-sites\.csv/).closest('details') as HTMLElement
+        const secondFilePanel = uploadedFiles.getByText(/second-sites\.csv/).closest('details') as HTMLElement
+        const firstValueRow = within(firstFilePanel).getByRole('row', { name: /Include value as data/ })
+        const secondValueRow = within(secondFilePanel).getByRole('row', { name: /Include value as data/ })
+        const firstValueRole = within(firstValueRow).getAllByRole('combobox')[0] as HTMLSelectElement
+        const secondValueRole = within(secondValueRow).getAllByRole('combobox')[0] as HTMLSelectElement
+        await user.selectOptions(firstValueRole, 'label')
+        expect(firstValueRole.value).toBe('label')
+        expect(secondValueRole.value).toBe('data')
+        expect(testPorts.postDocument).not.toHaveBeenCalled()
+        expect(testPorts.patchDocument).not.toHaveBeenCalled()
+        expect(testPorts.postRelationship).not.toHaveBeenCalled()
+    })
+
+    it('hands multiple standalone CSV uploads to the shared controller for discovery without writing', async () => {
+        const { user } = mountProductionCSVPage()
+        const firstFile = new File(
+            ['id,name,value\nsite-1,North,deep'],
+            'first-sites.csv',
+            { type: 'text/csv' }
+        )
+        const secondFile = new File(
+            ['id,name,value\nsite-2,South,shallow'],
+            'second-sites.csv',
+            { type: 'text/csv' }
+        )
+
+        await user.click(screen.getByRole('button', { name: 'CSV files' }))
+        await user.upload(screen.getByLabelText(/Browse Files/), firstFile)
+        expect(await screen.findByRole('heading', { name: 'Map CSV fields' })).toBeTruthy()
+        await user.click(screen.getByRole('button', { name: 'Back to upload' }))
+        await user.click(screen.getByRole('checkbox', { name: 'Upload multiple files in this session' }))
+        await user.upload(screen.getByLabelText(/Browse Files/), secondFile)
+        await user.click(screen.getByRole('button', { name: 'Review mappings' }))
+        expect(await screen.findByText(/1 records, 2 sources/)).toBeTruthy()
+
+        await user.click(screen.getByRole('button', { name: 'Continue to import' }))
+        expect(await screen.findByText('2 sources loaded')).toBeTruthy()
+        expect(testPorts.postDocument).not.toHaveBeenCalled()
+        expect(testPorts.patchDocument).not.toHaveBeenCalled()
+        expect(testPorts.postRelationship).not.toHaveBeenCalled()
+
+        await waitFor(() =>
+            expect(screen.getAllByText(/valid ·/).map((element) => element.textContent)).toEqual([
+                '1 valid · 0 invalid',
+                '1 valid · 0 invalid',
+            ])
+        )
+        await waitFor(() => expect(screen.getAllByText('None found')).toHaveLength(2))
+        await waitFor(() =>
+            expect((screen.getByRole('button', { name: 'Use shared import flow' }) as HTMLButtonElement).disabled).toBe(false)
+        )
+        await user.click(screen.getByRole('button', { name: 'Use shared import flow' }))
+        expect(await screen.findByRole('button', { name: 'Discover selected' })).toBeTruthy()
+        expect(screen.getByText('First Sites')).toBeTruthy()
+        expect(screen.getByText('Second Sites')).toBeTruthy()
+        await user.click(screen.getByRole('button', { name: 'Discover selected' }))
+        expect(await screen.findByText('2 of 2 sources discovered')).toBeTruthy()
+        expect(testPorts.postDocument).not.toHaveBeenCalled()
+        expect(testPorts.patchDocument).not.toHaveBeenCalled()
+        expect(testPorts.postRelationship).not.toHaveBeenCalled()
+    }, 30000)
+
     it('blocks shared handoff for a mapped CSV record that fails schema validation', async () => {
         const { user } = mountProductionCSVPage({
             type: 'object',
@@ -376,7 +466,8 @@ describe('CSV mapping editor fixture', () => {
 
         await user.click(screen.getByRole('button', { name: 'CSV files' }))
         await user.upload(screen.getByLabelText(/Browse Files/), csvFile)
-        await user.click(await screen.findByRole('button', { name: 'Prepare import' }))
+        expect(await screen.findByRole('heading', { name: 'Map CSV fields' })).toBeTruthy()
+        await user.click(screen.getByRole('button', { name: 'Continue to import' }))
         await screen.findByRole('heading', { name: 'Import fixture-sites.csv' })
         expect(screen.getByText('1 records loaded')).toBeTruthy()
         await waitFor(() => expect(screen.getByText('0 valid · 1 invalid')).toBeTruthy())
@@ -434,7 +525,8 @@ describe('CSV mapping editor fixture', () => {
             testPorts.fetchExistingImportDocuments.mockImplementation(async () => existingDocuments)
             await user.click(screen.getByRole('button', { name: 'CSV files' }))
             await user.upload(screen.getByLabelText(/Browse Files/), csvFile)
-            await user.click(await screen.findByRole('button', { name: 'Prepare import' }))
+            expect(await screen.findByRole('heading', { name: 'Map CSV fields' })).toBeTruthy()
+            await user.click(screen.getByRole('button', { name: 'Continue to import' }))
             await screen.findByRole('heading', { name: 'Import fixture-sites.csv' })
             expect(screen.getByText('1 records loaded')).toBeTruthy()
             await waitFor(() => expect(screen.getByText('1 valid · 0 invalid')).toBeTruthy())
@@ -483,9 +575,8 @@ describe('CSV mapping editor fixture', () => {
             )
             await user.click(screen.getByRole('button', { name: 'CSV files' }))
             await user.upload(screen.getByLabelText(/Browse Files/), csvFile)
-            const prepareButton = await screen.findByRole('button', { name: 'Prepare import' }) as HTMLButtonElement
-            await waitFor(() => expect(prepareButton.disabled).toBe(false))
-            await user.click(prepareButton)
+            expect(await screen.findByRole('heading', { name: 'Map CSV fields' })).toBeTruthy()
+            await user.click(screen.getByRole('button', { name: 'Continue to import' }))
             await screen.findByRole('heading', { name: 'Import fixture-sites.csv' })
 
             await waitFor(() =>
@@ -606,6 +697,200 @@ describe('CSV mapping editor fixture', () => {
         expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipCallsBefore)
     })
 
+    it('applies configured assumed mappings and fixed schema-choice fields before validation', async () => {
+        const objectTypeSlug = createCSVMappingFixture().contextState.object_type[0].slug
+        const { user } = mountProductionCSVPage({
+            type: 'object',
+            required: ['value', 'locationDetail'],
+            properties: {
+                value: { type: 'string' },
+                locationDetail: {
+                    oneOf: [
+                        {
+                            type: 'object',
+                            required: ['type'],
+                            properties: { type: { const: 'stationary_marine' } },
+                        },
+                        {
+                            type: 'object',
+                            required: ['type'],
+                            properties: { type: { const: 'mobile' } },
+                        },
+                    ],
+                },
+            },
+        }, {
+            viewConfig: {
+                mapping: 'assumed',
+                relationships: 'fixed',
+                sourceConfigs: [{
+                    key: 'sites',
+                    label: 'Sites',
+                    fileName: 'configured-sites.csv',
+                    typeSlug: objectTypeSlug,
+                    typeKnown: true,
+                    mapping: 'assumed',
+                    schemaChoice: {
+                        key: 'deployment',
+                        branchPath: 'locationDetail',
+                        valuePath: 'locationDetail.type',
+                    },
+                }],
+                schemaChoices: [{
+                    key: 'deployment',
+                    label: 'Deployment type',
+                    placeholder: 'Choose a deployment type',
+                    options: [
+                        { value: 'stationary_marine', label: 'Stationary marine' },
+                        { value: 'mobile', label: 'Mobile' },
+                    ],
+                }],
+            },
+        })
+        const postDocumentCallsBefore = testPorts.postDocument.mock.calls.length
+        const patchDocumentCallsBefore = testPorts.patchDocument.mock.calls.length
+        const relationshipCallsBefore = testPorts.postRelationship.mock.calls.length
+        const csvFile = new File(
+            ['id,name,value\nsite-12,Harbor,deep'],
+            'configured-sites.csv',
+            { type: 'text/csv' }
+        )
+
+        await user.click(screen.getByRole('button', { name: 'CSV files' }))
+        await user.selectOptions(screen.getByLabelText('Deployment type'), 'stationary_marine')
+        await user.upload(screen.getByLabelText(/Browse Files/), csvFile)
+        await user.click(await screen.findByRole('button', { name: 'Prepare import' }))
+        const importButton = await screen.findByRole('button', { name: 'Import 1 records' }) as HTMLButtonElement
+        await waitFor(() => expect(importButton.disabled).toBe(false))
+        await user.click(importButton)
+        await waitFor(() =>
+            expect(testPorts.postDocument).toHaveBeenCalledTimes(postDocumentCallsBefore + 1)
+        )
+
+        expect(testPorts.postDocument).toHaveBeenLastCalledWith(expect.objectContaining({
+            document: expect.objectContaining({
+                slug: 'site-12',
+                data: expect.objectContaining({
+                    value: 'deep',
+                    locationDetail: { type: 'stationary_marine' },
+                }),
+            }),
+        }))
+        expect(testPorts.patchDocument).toHaveBeenCalledTimes(patchDocumentCallsBefore)
+        expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipCallsBefore)
+    })
+
+    it('applies a production UI schema-field override before importing a CSV', async () => {
+        const objectTypeSlug = createCSVMappingFixture().contextState.object_type[0].slug
+        const { user } = mountProductionCSVPage({
+            type: 'object',
+            required: ['canonical_value'],
+            properties: { canonical_value: { type: 'string' } },
+        }, {
+            viewConfig: {
+                mapping: 'required',
+                relationships: 'fixed',
+                sourceConfigs: [{
+                    key: 'sites',
+                    label: 'Sites',
+                    fileName: 'override-sites.csv',
+                    typeSlug: objectTypeSlug,
+                    typeKnown: true,
+                    mapping: 'required',
+                }],
+            },
+        })
+        const postDocumentCallsBefore = testPorts.postDocument.mock.calls.length
+        const patchDocumentCallsBefore = testPorts.patchDocument.mock.calls.length
+        const relationshipCallsBefore = testPorts.postRelationship.mock.calls.length
+        const csvFile = new File(
+            ['id,name,raw_payload\nsite-13,Inlet,measured'],
+            'override-sites.csv',
+            { type: 'text/csv' }
+        )
+
+        await user.click(screen.getByRole('button', { name: 'CSV files' }))
+        await user.upload(screen.getByLabelText(/Browse Files/), csvFile)
+        await user.click(await screen.findByRole('button', { name: 'Review mappings' }))
+        const rawPayloadField = await screen.findByTestId('schema-field-sites-1-raw_payload')
+        await user.click(rawPayloadField)
+        await user.clear(rawPayloadField)
+        await user.type(rawPayloadField, 'canonical_value')
+        await user.click(await screen.findByRole('option', { name: /canonical_value/ }))
+        await user.click(screen.getByRole('button', { name: 'Continue to import' }))
+        const importButton = await screen.findByRole('button', { name: 'Import 1 records' }) as HTMLButtonElement
+        await waitFor(() => expect(importButton.disabled).toBe(false))
+        await user.click(importButton)
+        await waitFor(() =>
+            expect(testPorts.postDocument).toHaveBeenCalledTimes(postDocumentCallsBefore + 1)
+        )
+
+        expect(testPorts.postDocument).toHaveBeenLastCalledWith(expect.objectContaining({
+            document: expect.objectContaining({
+                slug: 'site-13',
+                data: expect.objectContaining({ canonical_value: 'measured' }),
+            }),
+        }))
+        expect(testPorts.patchDocument).toHaveBeenCalledTimes(patchDocumentCallsBefore)
+        expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipCallsBefore)
+    })
+
+    it('preserves a production CSV field override through shared-flow execution', async () => {
+        const objectTypeSlug = createCSVMappingFixture().contextState.object_type[0].slug
+        const { user } = mountProductionCSVPage({
+            type: 'object',
+            required: ['canonical_value'],
+            properties: { canonical_value: { type: 'string' } },
+        }, {
+            viewConfig: {
+                mapping: 'required',
+                relationships: 'fixed',
+                sourceConfigs: [{
+                    key: 'sites',
+                    label: 'Sites',
+                    fileName: 'shared-override-sites.csv',
+                    typeSlug: objectTypeSlug,
+                    typeKnown: true,
+                    mapping: 'required',
+                }],
+            },
+        })
+        const postDocumentCallsBefore = testPorts.postDocument.mock.calls.length
+        const csvFile = new File(
+            ['id,name,raw_payload\nsite-14,Inlet,measured'],
+            'shared-override-sites.csv',
+            { type: 'text/csv' }
+        )
+
+        await user.click(screen.getByRole('button', { name: 'CSV files' }))
+        await user.upload(screen.getByLabelText(/Browse Files/), csvFile)
+        await user.click(await screen.findByRole('button', { name: 'Review mappings' }))
+        const rawPayloadField = await screen.findByTestId('schema-field-sites-1-raw_payload')
+        await user.click(rawPayloadField)
+        await user.clear(rawPayloadField)
+        await user.type(rawPayloadField, 'canonical_value')
+        await user.click(await screen.findByRole('option', { name: /canonical_value/ }))
+        await user.click(screen.getByRole('button', { name: 'Continue to import' }))
+        await screen.findByRole('heading', { name: 'Import shared-override-sites.csv' })
+
+        await waitFor(() =>
+            expect((screen.getByRole('button', { name: 'Use shared import flow' }) as HTMLButtonElement).disabled).toBe(false)
+        )
+        await user.click(screen.getByRole('button', { name: 'Use shared import flow' }))
+        await user.click(screen.getByRole('radio', { name: 'Simplified' }))
+        await user.click(await screen.findByRole('button', { name: 'Import' }))
+        await waitFor(() =>
+            expect(testPorts.postDocument).toHaveBeenCalledTimes(postDocumentCallsBefore + 1)
+        )
+
+        expect(testPorts.postDocument).toHaveBeenLastCalledWith(expect.objectContaining({
+            document: expect.objectContaining({
+                slug: 'site-14',
+                data: expect.objectContaining({ canonical_value: 'measured' }),
+            }),
+        }))
+    })
+
     it('keeps production mapping previews isolated for multiple selected worksheets', async () => {
         const objectTypeSlug = createCSVMappingFixture().contextState.object_type[0].slug
         const { user } = mountProductionCSVPage(undefined, {
@@ -658,6 +943,16 @@ describe('CSV mapping editor fixture', () => {
         expect(sitesPanel?.open).toBe(true)
         expect(deploymentsPanel?.open).toBe(false)
         expect(within(sitesPanel!).getByText('North, Bay')).toBeTruthy()
+
+        const sitesUnusedRow = within(sitesPanel!).getByRole('row', { name: /Include unused as data/ })
+        const sitesUnusedRole = within(sitesUnusedRow).getAllByRole('combobox')[0] as HTMLSelectElement
+        await user.selectOptions(sitesUnusedRole, 'label')
+        expect(sitesUnusedRole.value).toBe('label')
+
+        await user.click(deploymentsSummary)
+        const deploymentsUnusedRow = within(deploymentsPanel!).getByRole('row', { name: /Include unused as data/ })
+        const deploymentsUnusedRole = within(deploymentsUnusedRow).getAllByRole('combobox')[0] as HTMLSelectElement
+        expect(deploymentsUnusedRole.value).toBe('data')
 
         await user.click(screen.getByRole('button', { name: 'Continue to import' }))
         const loadedSourcesSummary = await screen.findByText('2 sources loaded')
@@ -830,6 +1125,27 @@ describe('CSV mapping editor fixture', () => {
             expect(testPorts.postDocument).toHaveBeenCalledTimes(postDocumentCallsBefore)
             expect(testPorts.patchDocument).toHaveBeenCalledTimes(patchDocumentCallsBefore)
             expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipCallsBefore)
+
+            await waitFor(() =>
+                expect((screen.getByRole('button', { name: 'Use shared import flow' }) as HTMLButtonElement).disabled).toBe(false)
+            )
+            await user.click(screen.getByRole('button', { name: 'Use shared import flow' }))
+            await user.click(screen.getByRole('radio', { name: 'Simplified' }))
+            await user.click(await screen.findByRole('button', { name: 'Import' }))
+
+            await waitFor(() =>
+                expect(testPorts.postDocument).toHaveBeenCalledTimes(postDocumentCallsBefore + 1)
+            )
+            expect(testPorts.postDocument).toHaveBeenLastCalledWith(expect.objectContaining({
+                document: expect.objectContaining({
+                    data: expect.objectContaining({
+                        code: 'P-1',
+                        items: [expect.objectContaining({ value: 'Item one' })],
+                    }),
+                }),
+            }))
+            expect(testPorts.patchDocument).toHaveBeenCalledTimes(patchDocumentCallsBefore)
+            expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipCallsBefore)
         } finally {
             parseWorkbookSpy.mockRestore()
         }
@@ -864,7 +1180,7 @@ describe('CSV mapping editor fixture', () => {
             childObjectTypeSlug: childObjectType.slug,
             parentMatchField: 'code',
             childMatchField: 'parent_code',
-            predicate: 'has_parent',
+            predicate: 'belongs_to',
             existingParentPolicy: 'lookup',
         }
         const viewConfig: CSVImportViewConfig = {
@@ -960,10 +1276,339 @@ describe('CSV mapping editor fixture', () => {
                 token: 'test-token',
                 signal: expect.any(AbortSignal),
             }))
+            const sharedFlowButton = screen.getByRole('button', { name: 'Use shared import flow' }) as HTMLButtonElement
+            await waitFor(() => expect(sharedFlowButton.disabled).toBe(false))
+            expect(testPorts.postDocument).toHaveBeenCalledTimes(postDocumentCallsBefore)
+            expect(testPorts.patchDocument).toHaveBeenCalledTimes(patchDocumentCallsBefore)
+            expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipCallsBefore)
+
+            await user.click(sharedFlowButton)
+            await user.click(screen.getByRole('button', { name: 'Discover selected' }))
+            await user.click(await screen.findByRole('button', { name: 'Prepare review' }))
+            await user.click(await screen.findByRole('button', { name: 'Execute import' }))
+            await waitFor(() => {
+                expect(testPorts.postDocument).toHaveBeenCalledTimes(postDocumentCallsBefore + 1)
+                expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipCallsBefore + 1)
+            })
+            expect(testPorts.postRelationship).toHaveBeenLastCalledWith(expect.objectContaining({
+                relationship: expect.objectContaining({
+                    from_document_uuid: 'fixture-imported-document',
+                    to_document_uuid: parentDocument.uuid,
+                }),
+            }))
+            expect(testPorts.patchDocument).toHaveBeenCalledTimes(patchDocumentCallsBefore)
+        } finally {
+            parseWorkbookSpy.mockRestore()
+            if (previousFetchImplementation) {
+                testPorts.fetchDocumentsByDataFieldValues.mockImplementation(previousFetchImplementation)
+            }
+        }
+    })
+
+    it('keeps a workbook child sheet unresolved when no existing parent matches', async () => {
+        const fixture = createCSVMappingFixture()
+        const childObjectType = fixture.contextState.object_type[0]
+        const parentObjectType: IObjectType = {
+            ...childObjectType,
+            uuid: 'fixture-workbook-missing-parent-type',
+            label: 'Workbook fixture parents',
+            slug: 'workbook_fixture_parent',
+        }
+        const parentSchema: IObjectSchema = {
+            ...fixture.contextState.object_schema[0],
+            uuid: 'fixture-workbook-missing-parent-schema',
+            object_type_uuid: parentObjectType.uuid,
+            slug: 'workbook_fixture_parent_default',
+            label: 'Workbook fixture parent default',
+            json_schema: {
+                type: 'object',
+                required: ['code'],
+                properties: {
+                    code: { type: 'string' },
+                    name: { type: 'string' },
+                },
+            },
+        }
+        const relationshipRule: ImportRelationshipRule = {
+            parentObjectTypeSlug: parentObjectType.slug,
+            childObjectTypeSlug: childObjectType.slug,
+            parentMatchField: 'code',
+            childMatchField: 'parent_code',
+            predicate: 'has_parent',
+            existingParentPolicy: 'lookup',
+        }
+        const viewConfig: CSVImportViewConfig = {
+            mapping: 'assumed',
+            relationships: 'fixed',
+            relationshipRules: [relationshipRule],
+            sourceConfigs: [
+                {
+                    key: 'children',
+                    label: 'Child rows',
+                    fileName: 'Children.csv',
+                    typeSlug: childObjectType.slug,
+                    typeKnown: true,
+                    mapping: 'assumed',
+                    role: 'child',
+                    relationshipFields: ['parent_code'],
+                },
+            ],
+        }
+        const workbookText = 'id,value,parent_code\nchild-1,deep,P-missing'
+        const parseWorkbookSpy = vi.spyOn(workbookModule, 'parseWorkbookFile')
+            .mockResolvedValue([{
+                name: 'Children',
+                text: workbookText,
+                parsed: parseCSV(workbookText),
+            }])
+        const previousFetchImplementation = testPorts.fetchDocumentsByDataFieldValues.getMockImplementation()
+        const lookupCallsBefore = testPorts.fetchDocumentsByDataFieldValues.mock.calls.length
+        const postDocumentCallsBefore = testPorts.postDocument.mock.calls.length
+        const patchDocumentCallsBefore = testPorts.patchDocument.mock.calls.length
+        const relationshipCallsBefore = testPorts.postRelationship.mock.calls.length
+        const { user } = mountProductionCSVPage(
+            {
+                type: 'object',
+                required: ['value', 'parent_code'],
+                properties: {
+                    value: { type: 'string' },
+                    parent_code: { type: 'string' },
+                },
+            },
+            {
+                viewConfig,
+                additionalObjectTypes: [parentObjectType],
+                additionalSchemas: [parentSchema],
+            }
+        )
+
+        try {
+            testPorts.fetchDocumentsByDataFieldValues.mockResolvedValue([])
+            await user.click(screen.getByRole('button', { name: 'Excel workbook (.xlsx)' }))
+            await user.upload(
+                screen.getByLabelText('Choose Excel workbook'),
+                new File(['fixture'], 'external-parent-missing.xlsx', {
+                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                })
+            )
+            await screen.findByRole('checkbox', { name: 'Children' })
+            await user.click(screen.getByRole('button', { name: 'Add 1 selected sheets' }))
+            await user.click(screen.getByRole('button', { name: 'Review mappings' }))
+            await user.click(screen.getByRole('button', { name: 'Continue to import' }))
+
+            const relationshipReview = await screen.findByRole('region', { name: 'CSV relationship review' })
+            await waitFor(() => {
+                expect(within(relationshipReview).getByText('0 ready')).toBeTruthy()
+                expect(within(relationshipReview).getByText('1 need resolution')).toBeTruthy()
+                expect(testPorts.fetchDocumentsByDataFieldValues.mock.calls.length).toBeGreaterThan(lookupCallsBefore)
+            })
+            expect(testPorts.fetchDocumentsByDataFieldValues).toHaveBeenCalledWith(expect.objectContaining({
+                objectTypeUuid: parentObjectType.uuid,
+                fieldPath: 'code',
+                values: ['P-missing'],
+                token: 'test-token',
+                signal: expect.any(AbortSignal),
+            }))
             expect((screen.getByRole('button', { name: 'Use shared import flow' }) as HTMLButtonElement).disabled).toBe(true)
             expect(testPorts.postDocument).toHaveBeenCalledTimes(postDocumentCallsBefore)
             expect(testPorts.patchDocument).toHaveBeenCalledTimes(patchDocumentCallsBefore)
             expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipCallsBefore)
+        } finally {
+            parseWorkbookSpy.mockRestore()
+            if (previousFetchImplementation) {
+                testPorts.fetchDocumentsByDataFieldValues.mockImplementation(previousFetchImplementation)
+            }
+        }
+    })
+
+    it('requires a parent choice for an ambiguous workbook child sheet match', async () => {
+        const fixture = createCSVMappingFixture()
+        const childObjectType = fixture.contextState.object_type[0]
+        const parentObjectType: IObjectType = {
+            ...childObjectType,
+            uuid: 'fixture-workbook-ambiguous-parent-type',
+            label: 'Workbook fixture parents',
+            slug: 'workbook_fixture_parent',
+        }
+        const parentSchema: IObjectSchema = {
+            ...fixture.contextState.object_schema[0],
+            uuid: 'fixture-workbook-ambiguous-parent-schema',
+            object_type_uuid: parentObjectType.uuid,
+            slug: 'workbook_fixture_parent_default',
+            label: 'Workbook fixture parent default',
+            json_schema: {
+                type: 'object',
+                required: ['code'],
+                properties: {
+                    code: { type: 'string' },
+                    name: { type: 'string' },
+                },
+            },
+        }
+        const relationshipRule: ImportRelationshipRule = {
+            parentObjectTypeSlug: parentObjectType.slug,
+            childObjectTypeSlug: childObjectType.slug,
+            parentMatchField: 'code',
+            childMatchField: 'parent_code',
+            predicate: 'belongs_to',
+            existingParentPolicy: 'lookup',
+        }
+        const viewConfig: CSVImportViewConfig = {
+            mapping: 'assumed',
+            relationships: 'fixed',
+            relationshipRules: [relationshipRule],
+            sourceConfigs: [
+                {
+                    key: 'children',
+                    label: 'Child rows',
+                    fileName: 'Children.csv',
+                    typeSlug: childObjectType.slug,
+                    typeKnown: true,
+                    mapping: 'assumed',
+                    role: 'child',
+                    relationshipFields: ['parent_code'],
+                },
+            ],
+        }
+        const parentDocuments: IDocument[] = [
+            {
+                uuid: 'workbook-existing-parent-1',
+                slug: 'workbook-parent-1',
+                published: false,
+                published_at: null,
+                owner_sub: 'fixture-owner',
+                lock_sub: null,
+                locked_at: null,
+                subs_for_select: [],
+                roles_for_select: [],
+                subs_for_update: [],
+                roles_for_update: [],
+                data: { code: 'P-1', name: 'Existing workbook parent one' },
+                attrs: { import: { source_id: 'existing-workbook-source-1', external_id: 'parent-1' } },
+                created_at: '2026-01-01T00:00:00.000Z',
+                updated_at: null,
+                object_type_uuid: parentObjectType.uuid,
+                label: 'Existing workbook parent one',
+                description: '',
+            },
+            {
+                uuid: 'workbook-existing-parent-2',
+                slug: 'workbook-parent-2',
+                published: false,
+                published_at: null,
+                owner_sub: 'fixture-owner',
+                lock_sub: null,
+                locked_at: null,
+                subs_for_select: [],
+                roles_for_select: [],
+                subs_for_update: [],
+                roles_for_update: [],
+                data: { code: 'P-1', name: 'Existing workbook parent two' },
+                attrs: { import: { source_id: 'existing-workbook-source-2', external_id: 'parent-2' } },
+                created_at: '2026-01-02T00:00:00.000Z',
+                updated_at: null,
+                object_type_uuid: parentObjectType.uuid,
+                label: 'Existing workbook parent two',
+                description: '',
+            },
+        ]
+        const workbookText = 'id,value,parent_code\nchild-1,deep,P-1'
+        const parseWorkbookSpy = vi.spyOn(workbookModule, 'parseWorkbookFile')
+            .mockResolvedValue([{
+                name: 'Children',
+                text: workbookText,
+                parsed: parseCSV(workbookText),
+            }])
+        const previousFetchImplementation = testPorts.fetchDocumentsByDataFieldValues.getMockImplementation()
+        const lookupCallsBefore = testPorts.fetchDocumentsByDataFieldValues.mock.calls.length
+        const postDocumentCallsBefore = testPorts.postDocument.mock.calls.length
+        const patchDocumentCallsBefore = testPorts.patchDocument.mock.calls.length
+        const relationshipCallsBefore = testPorts.postRelationship.mock.calls.length
+        const { user } = mountProductionCSVPage(
+            {
+                type: 'object',
+                required: ['value', 'parent_code'],
+                properties: {
+                    value: { type: 'string' },
+                    parent_code: { type: 'string' },
+                },
+            },
+            {
+                viewConfig,
+                additionalObjectTypes: [parentObjectType],
+                additionalSchemas: [parentSchema],
+            }
+        )
+
+        try {
+            testPorts.fetchDocumentsByDataFieldValues.mockResolvedValue(parentDocuments)
+            await user.click(screen.getByRole('button', { name: 'Excel workbook (.xlsx)' }))
+            await user.upload(
+                screen.getByLabelText('Choose Excel workbook'),
+                new File(['fixture'], 'external-parent-ambiguous.xlsx', {
+                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                })
+            )
+            await screen.findByRole('checkbox', { name: 'Children' })
+            await user.click(screen.getByRole('button', { name: 'Add 1 selected sheets' }))
+            await user.click(screen.getByRole('button', { name: 'Review mappings' }))
+            await user.click(screen.getByRole('button', { name: 'Continue to import' }))
+
+            const relationshipReview = await screen.findByRole('region', { name: 'CSV relationship review' })
+            await waitFor(() => {
+                expect(within(relationshipReview).getByText('0 ready')).toBeTruthy()
+                expect(within(relationshipReview).getByText('1 need resolution')).toBeTruthy()
+                expect(within(relationshipReview).getByText('2 existing parent matches')).toBeTruthy()
+                expect(testPorts.fetchDocumentsByDataFieldValues.mock.calls.length).toBeGreaterThan(lookupCallsBefore)
+            })
+            expect(testPorts.fetchDocumentsByDataFieldValues).toHaveBeenCalledWith(expect.objectContaining({
+                objectTypeUuid: parentObjectType.uuid,
+                fieldPath: 'code',
+                values: ['P-1'],
+                token: 'test-token',
+                signal: expect.any(AbortSignal),
+            }))
+
+            const parentChoice = screen.getByLabelText(/Choose parent for /) as HTMLSelectElement
+            expect(parentChoice.value).toBe('')
+            expect(Array.from(parentChoice.options).map((option) => option.textContent)).toEqual([
+                'Choose matching parent',
+                'Existing workbook parent one (workbook-parent-1)',
+                'Existing workbook parent two (workbook-parent-2)',
+            ])
+            expect((screen.getByRole('button', { name: 'Use shared import flow' }) as HTMLButtonElement).disabled).toBe(true)
+            expect(testPorts.postDocument).toHaveBeenCalledTimes(postDocumentCallsBefore)
+            expect(testPorts.patchDocument).toHaveBeenCalledTimes(patchDocumentCallsBefore)
+            expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipCallsBefore)
+
+            await user.selectOptions(parentChoice, 'workbook-existing-parent-1')
+            await waitFor(() => {
+                expect(within(relationshipReview).getByText('1 ready')).toBeTruthy()
+                expect(within(relationshipReview).getByText('0 need resolution')).toBeTruthy()
+            })
+            expect(screen.queryByLabelText(/Choose parent for /)).toBeNull()
+            expect((within(relationshipReview).getByRole('button', { name: 'Link relationships' }) as HTMLButtonElement).disabled).toBe(true)
+            const sharedFlowButton = screen.getByRole('button', { name: 'Use shared import flow' }) as HTMLButtonElement
+            await waitFor(() => expect(sharedFlowButton.disabled).toBe(false))
+            expect(testPorts.postDocument).toHaveBeenCalledTimes(postDocumentCallsBefore)
+            expect(testPorts.patchDocument).toHaveBeenCalledTimes(patchDocumentCallsBefore)
+            expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipCallsBefore)
+
+            await user.click(sharedFlowButton)
+            await user.click(screen.getByRole('button', { name: 'Discover selected' }))
+            await user.click(await screen.findByRole('button', { name: 'Prepare review' }))
+            await user.click(await screen.findByRole('button', { name: 'Execute import' }))
+            await waitFor(() => {
+                expect(testPorts.postDocument).toHaveBeenCalledTimes(postDocumentCallsBefore + 1)
+                expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipCallsBefore + 1)
+            })
+            expect(testPorts.postRelationship).toHaveBeenLastCalledWith(expect.objectContaining({
+                relationship: expect.objectContaining({
+                    from_document_uuid: 'fixture-imported-document',
+                    to_document_uuid: 'workbook-existing-parent-1',
+                }),
+            }))
+            expect(testPorts.patchDocument).toHaveBeenCalledTimes(patchDocumentCallsBefore)
         } finally {
             parseWorkbookSpy.mockRestore()
             if (previousFetchImplementation) {
@@ -1065,7 +1710,7 @@ describe('CSV mapping editor fixture', () => {
         expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipCallsBefore)
     })
 
-    it('blocks shared handoff for configured parent and child CSV relationships', async () => {
+    it('imports configured parent and child CSV sources through the shared controller', async () => {
         const fixture = createCSVMappingFixture()
         const childObjectType = fixture.contextState.object_type[0]
         const parentObjectType: IObjectType = {
@@ -1094,7 +1739,7 @@ describe('CSV mapping editor fixture', () => {
             childObjectTypeSlug: childObjectType.slug,
             parentMatchField: 'code',
             childMatchField: 'parent_code',
-            predicate: 'has_parent',
+            predicate: 'belongs_to',
         }
         const viewConfig: CSVImportViewConfig = {
             mapping: 'assumed',
@@ -1144,7 +1789,7 @@ describe('CSV mapping editor fixture', () => {
             { type: 'text/csv' }
         )
         const childFile = new File(
-            ['id,value,parent_code\nchild-1,deep,P-1'],
+            ['id,value,parent_code\nchild-1,deep,P-1\nchild-2,ignored,P-missing'],
             'children.csv',
             { type: 'text/csv' }
         )
@@ -1165,24 +1810,190 @@ describe('CSV mapping editor fixture', () => {
 
         const relationshipReview = await screen.findByRole('region', { name: 'CSV relationship review' })
         expect(within(relationshipReview).getByText('1 ready')).toBeTruthy()
+        expect(within(relationshipReview).getByText('1 need resolution')).toBeTruthy()
+        await user.click(within(relationshipReview).getByRole('button', { name: 'Ignore child row' }))
+        expect(within(relationshipReview).getByText('1 rows ignored')).toBeTruthy()
         expect(within(relationshipReview).getByText('0 need resolution')).toBeTruthy()
         const sharedFlowButton = screen.getByRole('button', { name: 'Use shared import flow' }) as HTMLButtonElement
-        expect(sharedFlowButton.disabled).toBe(true)
-        expect(screen.getByText(
-            'CSV parent/child relationships and ignored relationship rows still use the CSV relationship workflow.'
-        )).toBeTruthy()
+        await waitFor(() => expect(sharedFlowButton.disabled).toBe(false))
         await waitFor(() => {
             expect((screen.getByRole('button', { name: 'Import 2 records' }) as HTMLButtonElement).disabled).toBe(false)
         })
         expect(screen.getByRole('button', { name: 'Link relationships' })).toBeTruthy()
 
         await user.click(sharedFlowButton)
-        expect(screen.getByRole('region', { name: 'CSV relationship review' })).toBeTruthy()
-        expect(screen.queryByRole('heading', { name: 'Import mapped CSV sources' })).toBeNull()
-        expect(screen.queryByRole('button', { name: 'Discover selected' })).toBeNull()
-        expect(testPorts.postDocument).toHaveBeenCalledTimes(postDocumentCallsBefore)
+        await user.click(screen.getByRole('button', { name: 'Discover selected' }))
+        await user.click(await screen.findByRole('button', { name: 'Prepare review' }))
+        await user.click(await screen.findByRole('button', { name: 'Execute import' }))
+
+        await waitFor(() => {
+            expect(testPorts.postDocument).toHaveBeenCalledTimes(postDocumentCallsBefore + 2)
+            expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipCallsBefore + 1)
+        })
+        const importedValues = testPorts.postDocument.mock.calls
+            .slice(postDocumentCallsBefore)
+            .map(([call]) => JSON.stringify(call.document.data))
+        expect(importedValues.some((value) => value.includes('deep'))).toBe(true)
+        expect(importedValues.some((value) => value.includes('ignored'))).toBe(false)
         expect(testPorts.patchDocument).toHaveBeenCalledTimes(patchDocumentCallsBefore)
-        expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipCallsBefore)
+    })
+
+    it('imports a composite file session with linked documents and multiple array sources through the shared controller', async () => {
+        const fixture = createCSVMappingFixture()
+        const childObjectType = fixture.contextState.object_type[0]
+        const parentObjectType: IObjectType = {
+            ...childObjectType,
+            uuid: 'fixture-project-type',
+            label: 'Fixture projects',
+            slug: 'fixture_project',
+        }
+        const parentSchema: IObjectSchema = {
+            ...fixture.contextState.object_schema[0],
+            uuid: 'fixture-project-schema',
+            object_type_uuid: parentObjectType.uuid,
+            slug: 'fixture_project_default',
+            label: 'Fixture project default',
+            json_schema: {
+                type: 'object',
+                required: ['code'],
+                properties: { code: { type: 'string' }, name: { type: 'string' } },
+            },
+        }
+        const relationshipRule: ImportRelationshipRule = {
+            parentObjectTypeSlug: parentObjectType.slug,
+            childObjectTypeSlug: childObjectType.slug,
+            parentMatchField: 'code',
+            childMatchField: 'parent_code',
+            predicate: 'belongs_to',
+        }
+        const viewConfig: CSVImportViewConfig = {
+            mapping: 'assumed',
+            relationships: 'fixed',
+            relationshipRules: [relationshipRule],
+            sourceConfigs: [
+                {
+                    key: 'projects',
+                    label: 'Projects',
+                    fileName: 'projects.csv',
+                    typeSlug: parentObjectType.slug,
+                    typeKnown: true,
+                    mapping: 'assumed',
+                    role: 'parent',
+                },
+                {
+                    key: 'deployments',
+                    label: 'Deployments',
+                    fileName: 'deployments.csv',
+                    typeSlug: childObjectType.slug,
+                    typeKnown: true,
+                    mapping: 'assumed',
+                    role: 'child',
+                    relationshipFields: ['parent_code'],
+                },
+                {
+                    key: 'recordings',
+                    label: 'Recording items',
+                    fileName: 'recordings.csv',
+                    typeSlug: childObjectType.slug,
+                    typeKnown: true,
+                    mapping: 'assumed',
+                    role: 'array',
+                    relationshipFields: ['deployment'],
+                    arrayTarget: {
+                        parentSourceKey: 'deployments',
+                        arrayFieldPath: 'recordings',
+                        parentMatchField: 'deployment',
+                        rowMatchField: 'deployment',
+                    },
+                },
+                {
+                    key: 'analyses',
+                    label: 'Analysis items',
+                    fileName: 'analyses.csv',
+                    typeSlug: childObjectType.slug,
+                    typeKnown: true,
+                    mapping: 'assumed',
+                    role: 'array',
+                    relationshipFields: ['deployment'],
+                    arrayTarget: {
+                        parentSourceKey: 'deployments',
+                        arrayFieldPath: 'analyses',
+                        parentMatchField: 'deployment',
+                        rowMatchField: 'deployment',
+                    },
+                },
+            ],
+        }
+        const { user } = mountProductionCSVPage(
+            {
+                type: 'object',
+                required: ['value', 'parent_code'],
+                properties: {
+                    value: { type: 'string' },
+                    parent_code: { type: 'string' },
+                    deployment: { type: 'string' },
+                    recordings: {
+                        type: 'array',
+                        items: { type: 'object', required: ['value'], properties: { value: { type: 'string' } } },
+                    },
+                    analyses: {
+                        type: 'array',
+                        items: { type: 'object', required: ['value'], properties: { value: { type: 'string' } } },
+                    },
+                },
+            },
+            {
+                viewConfig,
+                additionalObjectTypes: [parentObjectType],
+                additionalSchemas: [parentSchema],
+            }
+        )
+        const files = [
+            ['Projects', 'projects.csv', 'code,name\nP-1,Project one'],
+            ['Deployments', 'deployments.csv', 'id,value,parent_code,deployment\nd-1,Deployment one,P-1,D-1'],
+            ['Recording items', 'recordings.csv', 'deployment,value\nD-1,Recording one'],
+            ['Analysis items', 'analyses.csv', 'deployment,value\nD-1,Analysis one'],
+        ] as const
+        const postDocumentCallsBefore = testPorts.postDocument.mock.calls.length
+        const patchDocumentCallsBefore = testPorts.patchDocument.mock.calls.length
+        const relationshipCallsBefore = testPorts.postRelationship.mock.calls.length
+
+        await user.click(screen.getByRole('button', { name: 'CSV files' }))
+        for (const [sourceLabel, fileName, contents] of files) {
+            const sourceRegion = screen.getByRole('region', { name: sourceLabel })
+            await user.upload(
+                within(sourceRegion).getByLabelText(/Browse Files/),
+                new File([contents], fileName, { type: 'text/csv' })
+            )
+            expect(await screen.findByText(`Using ${fileName} for this source.`)).toBeTruthy()
+        }
+
+        const prepareButton = await screen.findByRole('button', { name: 'Prepare import' }) as HTMLButtonElement
+        await waitFor(() => expect(prepareButton.disabled).toBe(false))
+        await user.click(prepareButton)
+        await screen.findByText('4 sources loaded')
+        const sharedFlowButton = screen.getByRole('button', { name: 'Use shared import flow' }) as HTMLButtonElement
+        await waitFor(() => expect(sharedFlowButton.disabled).toBe(false))
+        await user.click(sharedFlowButton)
+        await user.click(screen.getByRole('radio', { name: 'Simplified' }))
+        await user.click(await screen.findByRole('button', { name: 'Import' }))
+
+        await waitFor(() => {
+            expect(testPorts.postDocument).toHaveBeenCalledTimes(postDocumentCallsBefore + 2)
+            expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipCallsBefore + 1)
+        })
+        const importedPayloads = testPorts.postDocument.mock.calls
+            .slice(postDocumentCallsBefore)
+            .map(([call]) => call.document.data as Record<string, unknown>)
+        expect(importedPayloads).toEqual(expect.arrayContaining([
+            expect.objectContaining({ code: 'P-1', name: 'Project one' }),
+            expect.objectContaining({
+                value: 'Deployment one',
+                recordings: [expect.objectContaining({ value: 'Recording one' })],
+                analyses: [expect.objectContaining({ value: 'Analysis one' })],
+            }),
+        ]))
+        expect(testPorts.patchDocument).toHaveBeenCalledTimes(patchDocumentCallsBefore)
     })
 
     it('resolves a configured CSV relationship using an existing parent', async () => {
@@ -1309,18 +2120,14 @@ describe('CSV mapping editor fixture', () => {
             }))
 
             const sharedFlowButton = screen.getByRole('button', { name: 'Use shared import flow' }) as HTMLButtonElement
-            expect(sharedFlowButton.disabled).toBe(true)
-            expect(screen.getByText(
-                'CSV parent/child relationships and ignored relationship rows still use the CSV relationship workflow.'
-            )).toBeTruthy()
+            await waitFor(() => expect(sharedFlowButton.disabled).toBe(false))
             await waitFor(() => {
                 expect((screen.getByRole('button', { name: 'Import 1 records' }) as HTMLButtonElement).disabled).toBe(false)
             })
 
             await user.click(sharedFlowButton)
-            expect(screen.getByRole('region', { name: 'CSV relationship review' })).toBeTruthy()
-            expect(screen.queryByRole('heading', { name: 'Import mapped CSV sources' })).toBeNull()
-            expect(screen.queryByRole('button', { name: 'Discover selected' })).toBeNull()
+            expect(await screen.findByRole('heading', { name: 'Import mapped CSV sources' })).toBeTruthy()
+            expect(screen.getByRole('button', { name: 'Discover selected' })).toBeTruthy()
             expect(testPorts.postDocument).toHaveBeenCalledTimes(postDocumentCallsBefore)
             expect(testPorts.patchDocument).toHaveBeenCalledTimes(patchDocumentCallsBefore)
             expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipCallsBefore)
@@ -1420,7 +2227,7 @@ describe('CSV mapping editor fixture', () => {
         const sharedFlowButton = screen.getByRole('button', { name: 'Use shared import flow' }) as HTMLButtonElement
         expect(sharedFlowButton.disabled).toBe(true)
         expect(screen.getByText(
-            'CSV parent/child relationships and ignored relationship rows still use the CSV relationship workflow.'
+            'Complete required mappings, validation, and duplicate review in CSV before using the shared workflow.'
         )).toBeTruthy()
         expect(within(relationshipReview).getByRole('button', { name: 'Add parent source' })).toBeTruthy()
 
@@ -1694,7 +2501,7 @@ describe('CSV mapping editor fixture', () => {
             const sharedFlowButton = screen.getByRole('button', { name: 'Use shared import flow' }) as HTMLButtonElement
             expect(sharedFlowButton.disabled).toBe(true)
             expect(screen.getByText(
-                'CSV parent/child relationships and ignored relationship rows still use the CSV relationship workflow.'
+                'Complete required mappings, validation, and duplicate review in CSV before using the shared workflow.'
             )).toBeTruthy()
             await user.click(sharedFlowButton)
 
@@ -1718,14 +2525,10 @@ describe('CSV mapping editor fixture', () => {
             expect(within(relationshipReview).queryByText(/Multiple parents match child identity P-1/)).toBeNull()
 
             expect((within(relationshipReview).getByRole('button', { name: 'Link relationships' }) as HTMLButtonElement).disabled).toBe(true)
-            expect(sharedFlowButton.disabled).toBe(true)
-            expect(screen.getByText(
-                'CSV parent/child relationships and ignored relationship rows still use the CSV relationship workflow.'
-            )).toBeTruthy()
+            await waitFor(() => expect(sharedFlowButton.disabled).toBe(false))
             await user.click(sharedFlowButton)
-            expect(screen.getByRole('region', { name: 'CSV relationship review' })).toBeTruthy()
-            expect(screen.queryByRole('heading', { name: 'Import mapped CSV sources' })).toBeNull()
-            expect(screen.queryByRole('button', { name: 'Discover selected' })).toBeNull()
+            expect(await screen.findByRole('heading', { name: 'Import mapped CSV sources' })).toBeTruthy()
+            expect(screen.getByRole('button', { name: 'Discover selected' })).toBeTruthy()
             expect(testPorts.postDocument).toHaveBeenCalledTimes(postDocumentCallsBefore)
             expect(testPorts.patchDocument).toHaveBeenCalledTimes(patchDocumentCallsBefore)
             expect(testPorts.postRelationship).toHaveBeenCalledTimes(relationshipCallsBefore)
@@ -1736,7 +2539,7 @@ describe('CSV mapping editor fixture', () => {
         }
     })
 
-    it('blocks shared handoff for configured CSV array sources', async () => {
+    it('imports configured CSV array sources through the shared controller', async () => {
         const fixture = createCSVMappingFixture()
         const objectType = fixture.contextState.object_type[0]
         const viewConfig: CSVImportViewConfig = {
@@ -1824,21 +2627,26 @@ describe('CSV mapping editor fixture', () => {
         await waitFor(() => expect(screen.getByText('1 valid · 0 invalid')).toBeTruthy())
 
         const sharedFlowButton = screen.getByRole('button', { name: 'Use shared import flow' }) as HTMLButtonElement
-        expect(sharedFlowButton.disabled).toBe(true)
-        expect(screen.getByText(
-            'Array item sources still use CSV array composition; continue with the CSV import workflow.'
-        )).toBeTruthy()
+    await waitFor(() => expect(sharedFlowButton.disabled).toBe(false))
         await waitFor(() => {
             const legacyImportButton = screen.getByRole('button', { name: 'Import 1 records' }) as HTMLButtonElement
             expect(legacyImportButton.disabled).toBe(false)
         })
 
         await user.click(sharedFlowButton)
-        expect(within(loadedSourcesSummary.parentElement!).getByRole('heading', { name: 'Import CSV records' })).toBeTruthy()
-        expect(screen.queryByRole('heading', { name: 'Import mapped CSV sources' })).toBeNull()
-        expect(screen.queryByRole('button', { name: 'Discover selected' })).toBeNull()
-        expect(screen.queryByRole('button', { name: 'Execute import' })).toBeNull()
-        expect(testPorts.postDocument.mock.calls.length).toBe(postDocumentCallsBefore)
+        await user.click(screen.getByRole('radio', { name: 'Simplified' }))
+        await user.click(await screen.findByRole('button', { name: 'Import' }))
+        await waitFor(() =>
+            expect(testPorts.postDocument).toHaveBeenCalledTimes(postDocumentCallsBefore + 1)
+        )
+        expect(testPorts.postDocument).toHaveBeenLastCalledWith(expect.objectContaining({
+            document: expect.objectContaining({
+                data: expect.objectContaining({
+                    code: 'P-1',
+                    items: [expect.objectContaining({ value: 'Item one' })],
+                }),
+            }),
+        }))
         expect(testPorts.patchDocument.mock.calls.length).toBe(patchDocumentCallsBefore)
         expect(testPorts.postRelationship.mock.calls.length).toBe(relationshipCallsBefore)
     })
@@ -1973,16 +2781,28 @@ describe('CSV mapping editor fixture', () => {
         await waitFor(() => expect(recoveredLegacyImportButton.disabled).toBe(false))
 
         const recoveredSharedFlowButton = screen.getByRole('button', { name: 'Use shared import flow' }) as HTMLButtonElement
-        expect(recoveredSharedFlowButton.disabled).toBe(true)
-        expect(screen.getByText(
-            'Array item sources still use CSV array composition; continue with the CSV import workflow.'
-        )).toBeTruthy()
+        expect(recoveredSharedFlowButton.disabled).toBe(false)
         expect(screen.queryByRole('heading', { name: 'Import mapped CSV sources' })).toBeNull()
         expect(screen.queryByRole('button', { name: 'Discover selected' })).toBeNull()
         expect(screen.queryByRole('button', { name: 'Execute import' })).toBeNull()
         expect(testPorts.postDocument.mock.calls.length).toBe(postDocumentCallsBefore)
         expect(testPorts.patchDocument.mock.calls.length).toBe(patchDocumentCallsBefore)
         expect(testPorts.postRelationship.mock.calls.length).toBe(relationshipCallsBefore)
+
+        await user.click(recoveredSharedFlowButton)
+        await user.click(screen.getByRole('radio', { name: 'Simplified' }))
+        await user.click(await screen.findByRole('button', { name: 'Import' }))
+        await waitFor(() =>
+            expect(testPorts.postDocument).toHaveBeenCalledTimes(postDocumentCallsBefore + 1)
+        )
+        expect(testPorts.postDocument).toHaveBeenLastCalledWith(expect.objectContaining({
+            document: expect.objectContaining({
+                data: expect.objectContaining({
+                    code: 'P-1',
+                    items: [expect.objectContaining({ value: 'Item corrected' })],
+                }),
+            }),
+        }))
     })
 
     it('disables return to CSV mapping during shared preparation and re-enables it when settled', async () => {
@@ -2007,9 +2827,8 @@ describe('CSV mapping editor fixture', () => {
         try {
             await user.click(screen.getByRole('button', { name: 'CSV files' }))
             await user.upload(screen.getByLabelText(/Browse Files/), csvFile)
-            const prepareButton = await screen.findByRole('button', { name: 'Prepare import' }) as HTMLButtonElement
-            await waitFor(() => expect(prepareButton.disabled).toBe(false))
-            await user.click(prepareButton)
+            expect(await screen.findByRole('heading', { name: 'Map CSV fields' })).toBeTruthy()
+            await user.click(screen.getByRole('button', { name: 'Continue to import' }))
             await screen.findByRole('heading', { name: 'Import fixture-sites.csv' })
             await waitFor(() =>
                 expect((screen.getByRole('button', { name: 'Use shared import flow' }) as HTMLButtonElement).disabled).toBe(false)
@@ -2076,9 +2895,8 @@ describe('CSV mapping editor fixture', () => {
         try {
             await user.click(screen.getByRole('button', { name: 'CSV files' }))
             await user.upload(screen.getByLabelText(/Browse Files/), csvFile)
-            const prepareButton = await screen.findByRole('button', { name: 'Prepare import' }) as HTMLButtonElement
-            await waitFor(() => expect(prepareButton.disabled).toBe(false))
-            await user.click(prepareButton)
+            expect(await screen.findByRole('heading', { name: 'Map CSV fields' })).toBeTruthy()
+            await user.click(screen.getByRole('button', { name: 'Continue to import' }))
             await screen.findByRole('heading', { name: 'Import fixture-sites.csv' })
             await waitFor(() =>
                 expect((screen.getByRole('button', { name: 'Use shared import flow' }) as HTMLButtonElement).disabled).toBe(false)

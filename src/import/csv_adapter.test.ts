@@ -375,6 +375,29 @@ describe('createCSVImportAdapter', () => {
     })
   })
 
+  it('prefers the object-type label mapping over the CSV label-role column', async () => {
+    const adapter = createCSVImportAdapter({
+      id: 'csv-assets',
+      text: 'record_name,canonical_name\nLegacy display,Canonical display',
+      mapping: {
+        label: 'record_name',
+        dataColumns: ['canonical_name'],
+        fieldMappings: { canonical_name: 'name' },
+      },
+      fieldMappings: { label: 'name' },
+    })
+
+    const [candidate] = await adapter.discover({
+      url: adapter.defaultImportUrl,
+      signal: new AbortController().signal,
+    })
+    const record = await adapter.load({ candidate })
+
+    expect(candidate.label).toBe('Canonical display')
+    expect(record.label).toBe('Canonical display')
+    expect(record.data).toEqual({ name: 'Canonical display' })
+  })
+
   it('writes nested and array-item schema mappings as structured data', async () => {
     const adapter = createCSVImportAdapter({
       id: 'csv-assets',

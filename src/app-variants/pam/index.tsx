@@ -2,6 +2,7 @@ import type { AppVariantDefinition } from '@/variants/types'
 import Header from '@/app-variants/pam/header'
 import WaterLevelEntry from '@/app-variants/pam/entry'
 import { AudioLines } from 'lucide-react'
+import PAMCreateDocumentSuccess from './create_document_success'
 
 export const appVariant = {
     id: 'pam',
@@ -11,6 +12,7 @@ export const appVariant = {
     components: {
         Header,
         HomePage: WaterLevelEntry,
+        DocumentSuccessPage: PAMCreateDocumentSuccess,
     },
     csvImportViews: [
         {

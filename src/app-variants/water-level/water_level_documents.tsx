@@ -2,6 +2,7 @@ import ShareDocument from "@/components/custom/share-document"
 
 import Link from "@/manage/components/link"
 import Table from "@/manage/components/table"
+import LockButton from "@/manage/document/lock_button"
 import PublishedButton from "@/manage/document/publish_button"
 import { useDocumentList } from "@/manage/document/useDocumentList"
 import contextStateAtom from "@/state/contextStateAtom"
@@ -63,6 +64,11 @@ const WaterLevelDocuments = ({ Heading, filter }: { Heading?: ReactNode, filter?
                                     accessor: (r) => (
                                         <PublishedButton document={r as IDocument & { can_modify: boolean }} />
                                     ),
+                                },
+                                {
+                                    label: 'Locked',
+                                    id:"locked",
+                                    accessor: (r) => <LockButton document={r as IDocument & { can_modify: boolean }} />
                                 },
                                 {
                                     label: 'Owner',

@@ -14,12 +14,14 @@ export const resolveAppVariantId = ({
     hostname,
     queryVariant,
 }: AppVariantResolutionInput): string | undefined => {
+    const variantOverrideFromUrl = normalizeVariantId(queryVariant)
+    if(variantOverrideFromUrl !== undefined && variantOverrideFromUrl.length){
+        return variantOverrideFromUrl
+    }
     const configured = normalizeVariantId(configuredVariant)
     if (configured) return configured
 
     if (hostname?.toLowerCase().includes('modl-asset')) return 'modl'
     if (hostname?.toLowerCase().includes('water-level-asset')) return 'water-level'
     if (hostname?.toLowerCase().includes('pam-asset')) return 'pam'
-
-    return normalizeVariantId(queryVariant)
 }

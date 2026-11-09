@@ -1,7 +1,14 @@
+// @vitest-environment happy-dom
+
 import { describe, expect, it } from 'vitest'
 import { appVariant } from './index'
 
 describe('PAM CSV import view', () => {
+    it('uses the PAM entry and document success pages', () => {
+        expect(appVariant.components?.HomePage).toBeDefined()
+        expect(appVariant.components?.DocumentSuccessPage).toBeDefined()
+    })
+
     it('configures the known document sources and parent-child relationships', () => {
         const view = appVariant.csvImportViews?.find(({ id }) => id === 'pam-csv')
 

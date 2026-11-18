@@ -7,6 +7,8 @@ import Link from '@/manage/components/link'
 import ShareDocument from '@/components/custom/share-document'
 import WaterLevelDocuments from './water_level_documents'
 import CreateWaterLevelDocumentButton from './create_water_level_document_button'
+import LockButton from '@/manage/document/lock_button'
+import type { IDocument } from '@/types/types'
 
 const WaterLevelCreateDocumentSuccess = (): ReactElement => {
 
@@ -26,9 +28,12 @@ const WaterLevelCreateDocumentSuccess = (): ReactElement => {
                     <h1 className="text-2xl font-medium">Water level document {action === 'edit' ? 'updated' : 'created'}</h1>
                     <div className='flex flex-row gap-10'>
                         <div className="flex flex-col gap-10 w-[40%]">
-                            <div className="flex flex-wrap gap-4">
+                            <div className="flex flex-wrap gap-4 items-center">
                                 <Check className="text-green-500" size={24} /> <Link to={`/edit-document/${uuid}`} className='font-bold'>{data.document.label}</Link> {action === 'edit' ? 'updated' : 'created'}
-                                <ShareDocument document={data.document} SelectButton={<Button size='xs' variant='outline'>Share <Share /></Button>} />
+                                <span className='flex flex-row gap-2 items-center'>
+                                    <LockButton document={data.document as IDocument & { can_modify: boolean }} />
+                                    <ShareDocument document={data.document} SelectButton={<Button size='xs' variant='outline'>Share <Share /></Button>} />
+                                </span>
                             </div>
                             <CreateWaterLevelDocumentButton />
 

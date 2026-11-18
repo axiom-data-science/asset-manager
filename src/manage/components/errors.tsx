@@ -14,7 +14,8 @@ const GoTo = ({
     return (
         <Tooltip content='Go to field' dark={true} useSpan={true}>
             <Button
-                className='ml-3'
+                className='ml-3 shadow-md'
+                size='xs'
                 onClick={() => formRef?.current?.jumpToField(error.field)}
             >
                 <Play />
@@ -29,14 +30,24 @@ const Errors = ({
     return (
         <>
             {
-                errors.length > 0 && <div className='p-4 bg-red-100 border border-red-400 text-red-700 rounded'>
-                    {
-                        <ul className={`${errors.length > 1 ? 'list-disc list-inside' : ''}`}>
-                            {errors.map((err, i) => <li key={i}>{err.fieldLabel && (<strong>{err.fieldLabel}</strong>)} {err.message}
-                                {formRef && <GoTo error={err} formRef={formRef} />}
-                            </li>)}
-                        </ul>
-                    }
+                errors.length > 0 && <div>
+                    <p className='py-2 text-xs'>Click on the arrow
+                        <Button
+                            className='mx-2 shadow-md text-red-700'
+                            size='xs'
+                        >
+                            <Play />
+                        </Button>
+                        to go to and highlight the field with the error</p>
+                    <div className='p-4 bg-red-100 border border-red-400 text-red-700 rounded'>
+                        {
+                            <ul className={`${errors.length > 1 ? 'list-disc list-inside' : ''}`}>
+                                {errors.map((err, i) => <li key={i}>{err.fieldLabel && (<strong>{err.fieldLabel}</strong>)} {err.message}
+                                    {formRef && <GoTo error={err} formRef={formRef} />}
+                                </li>)}
+                            </ul>
+                        }
+                    </div>
                 </div>
             }
         </>

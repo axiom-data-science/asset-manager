@@ -282,7 +282,7 @@ const CreateDocumentForm = ({
   const saveButton = (
     <>
       <Button onClick={onSave} type="default" disabled={saving}>
-        {saving ? <Loader className="animate-spin" /> : 'Save'}
+        {saving ? <Loader className="animate-spin" /> : 'Save full form'}
       </Button>
       <Button onClick={onValidate} type="outline" disabled={saving}>
         {saving ? <Loader className="animate-spin" /> : <>{validated ? <Check className="inline-block" color='green' /> : ''} Validate</>}

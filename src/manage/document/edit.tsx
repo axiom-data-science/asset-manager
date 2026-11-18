@@ -429,7 +429,7 @@ const EditDocumentForm = ({
   const saveButton = (
     <>
       <Button onClick={onSave} type="default" disabled={saving}>
-        {saving ? <Loader className="animate-spin" /> : 'Save'}
+        {saving ? <Loader className="animate-spin" /> : 'Save full form'}
       </Button>
       <Button onClick={onValidate} type="outline" disabled={saving}>
         {saving ? (

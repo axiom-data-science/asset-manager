@@ -385,7 +385,18 @@ export const updateDocumentLock = async ({
           operator: 'eq',
           value: document_uuid,
         },
+        ...(!lock
+          ? [{ column: 'lock_sub', operator: 'eq' as const, value: user_sub }]
+          : []),
       ],
+      ...(lock
+        ? {
+          orFilters: [
+            { column: 'lock_sub', operator: 'is' as const, value: 'null' },
+            { column: 'lock_sub', operator: 'eq' as const, value: user_sub },
+          ],
+        }
+        : {}),
     },
   })
 
@@ -401,6 +412,7 @@ export const updateDocumentLock = async ({
       signal,
       body: JSON.stringify({
         lock_sub: lock ? user_sub : null,
+        locked_at: lock ? new Date().toISOString() : null,
       }),
     })
   ).json()

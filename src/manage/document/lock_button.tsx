@@ -4,6 +4,7 @@ import { Unlock, Lock, Loader } from "lucide-react"
 import { useState, type ReactElement } from "react"
 import { patchDocument } from "./services"
 import { useAuth } from "@/auth/useAuth"
+import { useQueryClient } from "@tanstack/react-query"
 
 const LockButton = ({
   document,
@@ -13,11 +14,11 @@ const LockButton = ({
   onChange?: (locked_at: string | null) => void
 }): ReactElement => {
   const auth = useAuth()
+  const queryClient = useQueryClient()
   const canModify = document.lock_sub === auth?.user?.profile?.sub || auth.isAdmin
   const [updating, setUpdating] = useState(false)
-  const [locked, setLocked] = useState(document.locked_at !== null)
-  const [lockedBy, setLockedBy] = useState(document.lock_sub)
-  const [lockedAt, setLockedAt] = useState(document.locked_at)
+  const locked = document.lock_sub !== null
+
   const handleClick = (): void => {
     const lockToSet = !locked ? new Date().toISOString() : null
     const lockSubToSet = !locked ? (auth?.user?.profile?.sub ?? null) : null
@@ -30,11 +31,9 @@ const LockButton = ({
         lock_sub: lockSubToSet,
       },
     })
-      .then(() => {
+      .then(async () => {
         onChange?.(lockToSet)
-        setLocked(lockToSet !== null)
-        setLockedAt(lockToSet)
-        setLockedBy(auth.user?.profile.sub ?? null)
+        await queryClient.invalidateQueries({ queryKey: ['document'] })
       })
       .finally(() => {
         setUpdating(false)
@@ -76,12 +75,12 @@ const LockButton = ({
       </Tooltip>
 
       <>
-        {locked && lockedAt && (
+        {locked && document.locked_at && (
           <div className="text-[10px] text-slate-400 text-center">
             <p>
-              {new Date(lockedAt).toLocaleString()}
+              {new Date(document.locked_at).toLocaleString()}
             </p>
-            <p>{lockedBy}</p>
+            <p>{document.lock_sub}</p>
           </div>
         )}
       </>

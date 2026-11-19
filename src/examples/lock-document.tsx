@@ -6,10 +6,12 @@ import type { IDocument } from "@/types/types"
 import { Button, Loader, ViewWithLoader } from "@axdspub/axiom-ui-utilities"
 import { Check, Copy, Lock, Unlock } from "lucide-react"
 import { useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 
 
 const ToggleDocumentLock = ({ document, className }: { document: IDocument, className?: string }) => {
     const auth = useAuth()
+    const queryClient = useQueryClient()
     const [isUpdating, setIsUpdating] = useState(false)
     const [locked, setLocked] = useState(document.lock_sub ? true : false)
     const [copied, setCopied] = useState(false)
@@ -37,8 +39,10 @@ const ToggleDocumentLock = ({ document, className }: { document: IDocument, clas
             }
         } catch (error) {
             console.error("Error updating lock status:", error)
+        } finally {
+            await queryClient.invalidateQueries({ queryKey: ['document'] })
+            setIsUpdating(false)
         }
-        setIsUpdating(false)
     }
 
     if (auth === undefined) {

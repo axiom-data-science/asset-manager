@@ -8,7 +8,7 @@ import {
   postToPostgrest,
   upsertToPostgrest,
 } from '@/services/postgrest/services'
-import type { IDocument, IPostgrestParams, IPredicate } from '@/types/types'
+import type { IDocument, IPostgrestFilter, IPostgrestParams, IPredicate } from '@/types/types'
 
 export const DOCUMENTS_TABLE = 'document'
 export const PREDICATES_TABLE = 'predicate'
@@ -198,6 +198,39 @@ export const patchDocument = async ({
     signal,
   })
   return newFieldOverrideConfig
+}
+
+export const patchDocumentIfLockAvailable = async ({
+  uuid,
+  document,
+  token,
+  user_sub,
+}: {
+  uuid: string
+  document: Partial<IDocument>
+  token: string
+  user_sub?: string
+}): Promise<IDocument | null> => {
+  const documentWithoutLockFields = { ...document }
+  delete documentWithoutLockFields.lock_sub
+  delete documentWithoutLockFields.locked_at
+  const lockFilters: IPostgrestFilter[] = []
+  lockFilters.push({ column: 'lock_sub', operator: 'is', value: 'null' })
+  if (user_sub) {
+    lockFilters.push({ column: 'lock_sub', operator: 'eq', value: user_sub })
+  }
+
+  const updatedDocument = await patchToPostgrest<IDocument, IDocument | IDocument[]>({
+    uuid,
+    table: DOCUMENTS_TABLE,
+    body: documentWithoutLockFields,
+    token,
+    params: {
+      orFilters: lockFilters,
+    },
+  })
+
+  return Array.isArray(updatedDocument) ? updatedDocument[0] ?? null : updatedDocument ?? null
 }
 
 export const patchShare = async ({

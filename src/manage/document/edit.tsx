@@ -43,8 +43,9 @@ import ShareDocument from '@/components/custom/share-document'
 import DocumentTabs from './document_tabs'
 import StateSelector from '@/manage/custom_inputs/state_selector'
 import { getDocumentMetadata } from './documentMetadata'
-import { patchDocument } from './services'
+import { fetchDocument, patchDocument, patchDocumentIfLockAvailable } from './services'
 import { useQueryClient } from '@tanstack/react-query'
+import { unlockDocument } from '@/services/postgrest/services'
 
 const isComplexSchema = (schema: unknown): boolean => {
   const pending: Array<{ value: unknown; depth: number }> = [{ value: schema, depth: 0 }]
@@ -66,25 +67,35 @@ const isComplexSchema = (schema: unknown): boolean => {
 
 const DocumentLockStatus = ({
   document,
+  autoLock,
   className,
 }: {
   document: IDocument
+  autoLock: boolean
   className?: string
 }): ReactElement => {
   const auth = useAuth()
-  const [locked, setLocked] = useState(false)
+  const [locked, setLocked] = useState(document.lock_sub !== null)
   const isInitialMountRef = useRef(true)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const acquiredLockRef = useRef(false)
 
   const { mutate, isPending } = useLockDocumentMutation({
     onSuccess: (lockStatus) => setLocked(lockStatus),
   })
 
   const lockDocument = useEffectEvent(() => {
+    if (!autoLock || document.lock_sub !== null) return
     abortControllerRef.current = new AbortController()
     const signal = abortControllerRef.current.signal
-    // Always lock on effect run (first mount or remount after Strict Mode)
-    mutate({ document, lock: true, signal })
+    mutate(
+      { document, lock: true, signal },
+      {
+        onSuccess: (lockStatus) => {
+          acquiredLockRef.current = lockStatus
+        },
+      }
+    )
   })
 
   const unlockDocument = useEffectEvent(() => {
@@ -92,6 +103,8 @@ const DocumentLockStatus = ({
       isInitialMountRef.current = false
       return // Skip unlock on first cleanup
     }
+    if (!acquiredLockRef.current) return
+    acquiredLockRef.current = false
     mutate({ document, lock: false })
   })
 
@@ -238,6 +251,9 @@ const EditDocumentForm = ({
   fieldConfigs,
   type,
   returnToOnSuccess,
+  isLocked,
+  autoLock,
+  onUnlocked,
 }: {
   document: IDocument
   schema: IObjectSchema
@@ -245,6 +261,9 @@ const EditDocumentForm = ({
   fieldConfigs?: IFormToFieldConfigWithDetails[]
   type: IObjectType
   returnToOnSuccess?: string
+  isLocked: boolean
+  autoLock: boolean
+  onUnlocked: () => void
 }): ReactElement => {
   const navigate = useNavigate()
   const [errors, setErrors] = useState<IValidationError[]>([])
@@ -365,17 +384,46 @@ const EditDocumentForm = ({
     setErrors([])
 
     try {
-      const updatedDoc = await patchDocument({
+      const updatedDoc = await patchDocumentIfLockAvailable({
         uuid: document.uuid,
         document: mergedDocument,
         token: auth.user?.access_token ?? '',
+        user_sub: auth.user?.profile.sub ?? undefined,
       })
 
-      queryClient.invalidateQueries({
+      if (!updatedDoc) {
+        await queryClient.invalidateQueries({ queryKey: ['document'] })
+        setErrors([
+          {
+            field: 'form',
+            message:
+              'This document is no longer available for editing because its lock state or permissions changed. Your changes were not saved.',
+          },
+        ])
+        setSaving(false)
+        return
+      }
+
+      const userSub = auth.user?.profile.sub
+      if (userSub) {
+        const unlocked = await unlockDocument({
+          document_uuid: document.uuid,
+          user_sub: userSub,
+          token: auth.user?.access_token ?? '',
+        })
+        if (!unlocked) {
+          const currentDocument = await fetchDocument({
+            uuid: document.uuid,
+            token: auth.user?.access_token ?? '',
+          })
+          if (currentDocument.lock_sub === userSub) {
+            throw new Error('Document saved, but its lock could not be released.')
+          }
+        }
+      }
+
+      await queryClient.invalidateQueries({
         queryKey: ['document'],
-      })
-      queryClient.invalidateQueries({
-        queryKey: ['document', document.uuid],
       })
 
       const navPath =
@@ -394,6 +442,7 @@ const EditDocumentForm = ({
           message: (error as Error)?.message ?? 'Save failed',
         },
       ])
+      setSaving(false)
     }
   }
 
@@ -444,56 +493,67 @@ const EditDocumentForm = ({
   const formRef = useRef<IFormCreatorHandle>(null)
 
   return (
-    <div className="flex flex-col gap-4 relative">
-      <h1 className="text-2xl font-bold flex flex-row justify-between items-center">
-        <span>
-          Edit {type.label} document{saving ? <Loader size="sm" /> : null}
-        </span>
-        <div className="flex flex-row gap-2 items-center">
-          <ShareDocument document={document} />
-          <DocumentLockStatus document={document} />
-          <AutoSaveStatus
-            lastUpdate={lastUpdate}
-            lastSave={lastSave}
-            isUpdating={saving}
-            onTriggerUpdate={() => {
-              const d = new Date()
-              setLastSave(d)
-              setLastUpdate(d)
+    <div className="relative">
+      <fieldset disabled={isLocked} className="min-w-0 border-0 p-0">
+        <div className="flex flex-col gap-4 relative">
+          <h1 className="text-2xl font-bold flex flex-row justify-between items-center">
+            <span>
+              Edit {type.label} document{saving ? <Loader size="sm" /> : null}
+            </span>
+            <div className="flex flex-row gap-2 items-center">
+              <ShareDocument document={document} />
+              <DocumentLockStatus document={document} autoLock={autoLock} />
+              <AutoSaveStatus
+                lastUpdate={lastUpdate}
+                lastSave={lastSave}
+                isUpdating={saving}
+                onTriggerUpdate={() => {
+                  const d = new Date()
+                  setLastSave(d)
+                  setLastUpdate(d)
+                }}
+              />
+            </div>
+          </h1>
+          <Errors errors={errors} formRef={formRef} />
+          {complexSchema && !hasConfiguredForm && (
+            <div className="border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+              This schema is too complex for generated fields, so the document data is shown as JSON.
+            </div>
+          )}
+          <FormCreator
+            ref={formRef}
+            form={{
+              ...form,
+              label: undefined,
+              settings: {
+                ...form.settings
+              },
             }}
+            formValueState={[formValues, setFormValues]}
+            inputOverrides={{
+              'custom:file_upload': FileUpload,
+              'custom:sample_file_object': SampleFileObject,
+              'custom:csv_upload_for_sample_file': CSVUploadForSampleFile,
+              'custom:station_search': StationSearch,
+              'custom:state_selector': StateSelector,
+            }}
+            onChange={() => {
+              setLastUpdate(new Date())
+            }}
+            SubmitButton={includeSaveButton && saveButton}
           />
+          {!includeSaveButton && (
+            <div className="sticky bottom-0 bg-white/80 z-10 -mx-1 justify-end flex flex-row gap-4 p-4">{saveButton}</div>
+          )}
         </div>
-      </h1>
-      <Errors errors={errors} formRef={formRef} />
-      {complexSchema && !hasConfiguredForm && (
-        <div className="border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-          This schema is too complex for generated fields, so the document data is shown as JSON.
-        </div>
-      )}
-      <FormCreator
-        ref={formRef}
-        form={{
-          ...form,
-          label: undefined,
-          settings: {
-            ...form.settings
-          },
-        }}
-        formValueState={[formValues, setFormValues]}
-        inputOverrides={{
-          'custom:file_upload': FileUpload,
-          'custom:sample_file_object': SampleFileObject,
-          'custom:csv_upload_for_sample_file': CSVUploadForSampleFile,
-          'custom:station_search': StationSearch,
-          'custom:state_selector': StateSelector,
-        }}
-        onChange={() => {
-          setLastUpdate(new Date())
-        }}
-        SubmitButton={includeSaveButton && saveButton}
-      />
-      {!includeSaveButton && (
-        <div className="sticky bottom-0 bg-white/80 z-10 -mx-1 justify-end flex flex-row gap-4 p-4">{saveButton}</div>
+      </fieldset>
+      {isLocked && (
+        <LockedDocumentStatus
+          document={document}
+          type={type}
+          onUnlocked={onUnlocked}
+        />
       )}
     </div>
   )
@@ -503,10 +563,16 @@ const LoadSchemaAndCreateDocumentForm = ({
   document,
   skip_tabs,
   returnToOnSuccess,
+  isLocked,
+  autoLock,
+  onUnlocked,
 }: {
   document: IDocument
   skip_tabs?: boolean
   returnToOnSuccess?: string
+  isLocked: boolean
+  autoLock: boolean
+  onUnlocked: () => void
 }): ReactElement => {
   const { data, isLoading, error } = useFormAndSchemaAtObjectType({
     object_type_uuid: document.object_type_uuid,
@@ -523,6 +589,9 @@ const LoadSchemaAndCreateDocumentForm = ({
         type={objectType}
         fieldConfigs={data.field_configs}
         returnToOnSuccess={returnToOnSuccess}
+        isLocked={isLocked}
+        autoLock={autoLock}
+        onUnlocked={onUnlocked}
       />
     ) : null
   return (
@@ -543,6 +612,136 @@ const LoadSchemaAndCreateDocumentForm = ({
   )
 }
 
+const LockedDocumentStatus = ({
+  document,
+  type,
+  onUnlocked,
+}: {
+  document: IDocument
+  type: IObjectType
+  onUnlocked: () => void
+}): ReactElement => {
+  const auth = useAuth()
+  const queryClient = useQueryClient()
+  const [isUnlocking, setIsUnlocking] = useState(false)
+  const [unlockError, setUnlockError] = useState<string | null>(null)
+  const canUnlock =
+    document.lock_sub === auth.user?.profile?.sub || auth.isAdmin
+
+  const handleUnlock = async () => {
+    setIsUnlocking(true)
+    setUnlockError(null)
+    try {
+      await patchDocument({
+        uuid: document.uuid,
+        document: {
+          lock_sub: null,
+          locked_at: null,
+        },
+        token: auth.user?.access_token ?? '',
+      })
+      await queryClient.invalidateQueries({
+        queryKey: ['document'],
+      })
+      const currentDocument = await fetchDocument({
+        uuid: document.uuid,
+        token: auth.user?.access_token ?? '',
+      })
+      if (currentDocument.lock_sub !== null) {
+        throw new Error('The document lock could not be cleared. Please try again.')
+      }
+      onUnlocked()
+    } catch (error) {
+      setUnlockError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setIsUnlocking(false)
+    }
+  }
+
+  return (
+    <div
+      className="absolute inset-0 z-30 flex justify-center overflow-auto bg-white/70 p-6 backdrop-blur-[1px]"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="locked-document-title"
+    >
+      <section className="mt-8 h-fit w-full max-w-2xl rounded-md border border-amber-300 bg-amber-50 p-6 shadow-lg">
+        <h1 id="locked-document-title" className="text-2xl font-bold">
+          Document locked
+        </h1>
+        <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+          <dt className="font-semibold">Document type</dt>
+          <dd>{type.label}</dd>
+          <dt className="font-semibold">Document</dt>
+          <dd>{document.label}</dd>
+          <dt className="font-semibold">Locked by</dt>
+          <dd>{document.lock_sub}</dd>
+          <dt className="font-semibold">Locked at</dt>
+          <dd>
+            {document.locked_at
+              ? new Date(document.locked_at).toLocaleString()
+              : 'Unknown'}
+          </dd>
+        </dl>
+        {canUnlock ? (
+          <Button
+            className="mt-6"
+            onClick={handleUnlock}
+            disabled={isUnlocking}
+          >
+            {isUnlocking ? (
+              <Loader className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Unlock className="mr-2 h-4 w-4" />
+            )}
+            Unlock and edit
+          </Button>
+        ) : (
+          <p className="mt-6 text-sm text-slate-700">
+            Only the user who locked this document or an administrator can unlock it.
+          </p>
+        )}
+        {unlockError && (
+          <p className="mt-4 text-sm text-red-700" role="alert">
+            Unable to unlock document: {unlockError}
+          </p>
+        )}
+      </section>
+    </div>
+  )
+}
+
+const EditDocumentContent = ({
+  document,
+  skip_tabs,
+  returnToOnSuccess,
+}: {
+  document: IDocument
+  skip_tabs?: boolean
+  returnToOnSuccess?: string
+}): ReactElement => {
+  const auth = useAuth()
+  const [autoLock] = useState(document.lock_sub === null)
+  const [unlockedDocumentUUID, setUnlockedDocumentUUID] = useState<string | null>(
+    document.lock_sub === null ? document.uuid : null
+  )
+  const isLocked =
+    document.lock_sub !== null &&
+    (document.lock_sub !== auth.user?.profile?.sub ||
+      unlockedDocumentUUID !== document.uuid)
+
+  return (
+    <LoadSchemaAndCreateDocumentForm
+      skip_tabs={skip_tabs}
+      document={document}
+      returnToOnSuccess={returnToOnSuccess}
+      isLocked={isLocked}
+      autoLock={autoLock}
+      onUnlocked={() => setUnlockedDocumentUUID(document.uuid)}
+    />
+  )
+}
+
 const EditDocument = ({
   document_uuid,
   skip_tabs,
@@ -556,6 +755,7 @@ const EditDocument = ({
   const uuid = document_uuid ?? params.uuid ?? null
 
   const { data: document, isLoading, error } = useDocument(uuid)
+
   if (uuid === null || uuid === undefined) {
     return (
       <div className="p-20">
@@ -566,11 +766,12 @@ const EditDocument = ({
   return (
     <ViewWithLoader isLoading={isLoading} error={error} data={document}>
       {document && (
-        <LoadSchemaAndCreateDocumentForm
+        <EditDocumentContent
+          key={document.uuid}
+          document={document}
           skip_tabs={skip_tabs}
-          document={document as IDocument}
           returnToOnSuccess={returnToOnSuccess}
-        />
+          />
       )}
     </ViewWithLoader>
   )

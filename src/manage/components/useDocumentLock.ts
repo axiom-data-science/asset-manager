@@ -1,7 +1,7 @@
 import { useAuth } from "@/auth/useAuth"
 import { lockDocument, unlockDocument } from "@/services/postgrest/services"
 import type { IDocument } from "@/types/types"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 
 
 export const useDocumentLock = ({
@@ -12,6 +12,7 @@ export const useDocumentLock = ({
     lock: boolean
 }) => {
         const auth = useAuth()
+        const queryClient = useQueryClient()
 
     return useQuery({
         queryKey: ['lock-document', document.uuid],
@@ -32,6 +33,7 @@ export const useDocumentLock = ({
                 token: auth.user.access_token,
             })
 
+            await queryClient.invalidateQueries({ queryKey: ['document'] })
             return locked
 
 

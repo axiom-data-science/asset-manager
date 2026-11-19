@@ -42,7 +42,7 @@ const WaterLevelDocuments = ({ Heading, filter }: { Heading?: ReactNode, filter?
                                     cellClassName: 'flex flex-row gap-2 items-center',
                                     accessor: (r) => (
                                         <>
-                                            {r.can_modify === true && r.lock_sub === null ? (
+                                            {r.can_modify === true ? (
                                                 <Link to={{
                                                     pathname: `/edit-document/${r.uuid}`,
                                                     search: new URLSearchParams({
@@ -67,7 +67,7 @@ const WaterLevelDocuments = ({ Heading, filter }: { Heading?: ReactNode, filter?
                                 },
                                 {
                                     label: 'Locked',
-                                    id:"locked",
+                                    id: "locked",
                                     accessor: (r) => <LockButton document={r as IDocument & { can_modify: boolean }} />
                                 },
                                 {

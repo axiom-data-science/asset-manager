@@ -186,7 +186,7 @@ const MODLRecord = ({
     <Collapsible defaultOpen={false}>
       <section className="rounded-md bg-slate-100 p-4">
         <div className="flex flex-wrap items-center gap-2">
-          {document.can_modify && document.lock_sub === null ? (
+          {document.can_modify ? (
             <Link
               to={{
                 pathname: `/edit-document/${document.uuid}`,

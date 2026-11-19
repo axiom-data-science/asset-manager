@@ -263,7 +263,7 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
               id: 'label',
               accessor: (r) => (
                 <>
-                  {r.can_modify === true && r.lock_sub === null ? (
+                  {r.can_modify === true ? (
                     <Link to={`/document/edit/${r.uuid}`}>{r.label}</Link>
                   ) : (
                     r.label

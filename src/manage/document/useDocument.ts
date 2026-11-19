@@ -162,9 +162,9 @@ export const useLockDocumentMutation = ({
           signal,
         })
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (lockResult, variables) => {
       // Call the callback to update local UI state
-      if (onSuccess) onSuccess(variables.lock)
+      if (onSuccess) onSuccess(variables.lock ? lockResult : !lockResult)
 
       // Invalidate and refetch the document query to sync lock state
       queryClient.invalidateQueries({

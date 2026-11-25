@@ -1,5 +1,5 @@
-import { buildStringFromTemplate } from '@/lib/utils'
 import ButtonLink from '@/manage/components/button_link'
+import { buildCreateDocumentUrl } from '@/manage/document/create_url'
 import Link from '@/manage/components/link'
 import type { IDocument, IHydratedExpectedChildType, IObjectType } from '@/types/types'
 import type { ReactElement } from 'react'
@@ -47,15 +47,12 @@ const MODLChildTypeActions = ({
     (slug) => !isDataCollectionType(slug) && !isVariableMetadataType(slug)
   )
   const childActionLink = ({ expectedChildType, childType }: ChildAction) =>
-    createViewPath
-      ? buildStringFromTemplate(createViewPath, {
-        object_type_uuid: childType.uuid,
-        parentDocumentUUID: parentDocument?.uuid,
-        toParentPredicate: expectedChildType.to_parent_predicate,
-        parentObjectTypeUUID: parentDocument?.object_type_uuid,
-        returnToOnSuccess: '/create-document-success',
-      })
-      : `/create-document/${childType.uuid}/object_type?parentDocumentUUID=${parentDocument?.uuid}&toParentPredicate=${expectedChildType.to_parent_predicate}&parentObjectTypeUUID=${parentDocument?.object_type_uuid}&returnToOnSuccess=/create-document-success`
+    buildCreateDocumentUrl({
+      objectTypeUUID: childType.uuid,
+      parentDocument,
+      toParentPredicate: expectedChildType.to_parent_predicate,
+      createViewPath,
+    })
   const renderButtons = (items: ChildAction[], className?: string) =>
     items.map(({ expectedChildType, childType }) => (
       <ButtonLink

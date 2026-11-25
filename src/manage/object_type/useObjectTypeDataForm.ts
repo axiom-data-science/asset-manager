@@ -76,7 +76,7 @@ export const useObjectTypeDataForm = ({
                         "layout": "grid2",
                         "fields": [
                             { "prop": "expected_child_types.predicate", "label": "To child predicate", "type": "select", "options": contextState.predicate.map(p => ({ label: p.label, value: p.predicate })) },
-                            { "prop": "expected_child_types.to_parent_predicate", "type": "select", "options": contextState.predicate.map(p => ({ label: p.inverse_label ?? p.label, value: p.predicate })) }
+                            { "prop": "expected_child_types.to_parent_predicate", "label": "To parent predicate", "type": "select", "options": contextState.predicate.map(p => ({ label: p.label, value: p.predicate })) }
                         ],
                         "settings": {
                             "boldLabel": true,

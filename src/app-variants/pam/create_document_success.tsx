@@ -14,6 +14,7 @@ import contextStateAtom from '@/state/contextStateAtom'
 import { useQuery } from '@tanstack/react-query'
 import { useAtom } from 'jotai'
 import { utils } from '@axdspub/axiom-ui-utilities'
+import { buildCreateDocumentUrl } from '@/manage/document/create_url'
 
 type PAMParentChainProps = {
     document: IDocument<unknown>
@@ -185,12 +186,11 @@ const PAMCreateChildPrompt = ({
                     {availableChildTypes.map((childType) => (
                         <Link
                             key={childType.uuid}
-                            to={`/create-document/${childType.uuid}/object_type?${new URLSearchParams({
-                                    parentDocumentUUID: parentDocument.uuid,
-                                    toParentPredicate: 'has_parent',
-                                    parentObjectTypeUUID: parentDocument.object_type_uuid,
-                                    returnToOnSuccess: '/create-document-success',
-                                }).toString()}`}
+                            to={buildCreateDocumentUrl({
+                                objectTypeUUID: childType.uuid,
+                                parentDocument,
+                                toParentPredicate: 'has_parent',
+                            })}
                             className="inline-flex items-center rounded-md border border-input bg-background px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
                         >
                             Create {childType.label}
@@ -283,18 +283,13 @@ const PAMCreateAnotherDocument = ({
     const forms = data?.forms.filter((form) => form.object_type_uuid === objectTypeUUID) ?? []
     const returnToOnSuccess = '/create-document-success'
     const buttonClassName = utils.createButtonClass({ size: 'md', variant: 'default' })
-    const createAnotherPath = (formUUID?: string) => {
-        const searchParams = new URLSearchParams({ returnToOnSuccess })
-        if (parentDocument) {
-            searchParams.set('parentDocumentUUID', parentDocument.uuid)
-            searchParams.set('toParentPredicate', 'has_parent')
-            searchParams.set('parentObjectTypeUUID', parentDocument.object_type_uuid)
-        }
-        const path = parentDocument || !formUUID
-            ? `/create-document/${objectTypeUUID}/object_type`
-            : `/create-document/${objectTypeUUID}/object_type/${formUUID}/form`
-        return `${path}?${searchParams.toString()}`
-    }
+    const createAnotherPath = (formUUID?: string) => buildCreateDocumentUrl({
+        objectTypeUUID,
+        parentDocument: parentDocument ?? undefined,
+        toParentPredicate: parentDocument ? 'has_parent' : undefined,
+        returnToOnSuccess,
+        formUUID: parentDocument ? undefined : formUUID,
+    })
 
     return (
         <section className="flex flex-col items-start gap-2">

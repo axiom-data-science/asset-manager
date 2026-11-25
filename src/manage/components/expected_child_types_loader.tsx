@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useState, type ReactElement } from 'react'
 import { useAuth } from 'react-oidc-context'
 import ButtonLink from './button_link'
+import { buildCreateDocumentUrl } from '@/manage/document/create_url'
 import { buildStringFromTemplate } from '@/lib/utils'
 
 
@@ -31,13 +32,12 @@ const DefaultChildTypeSelector = ({
               {ect?.object_types?.map((ot) => {
                 return (
                   <ButtonLink
-                    to={createViewPath ? buildStringFromTemplate(createViewPath, {
-                      object_type_uuid: ot.uuid,
-                      parentDocumentUUID: parentDocument?.uuid,
+                    to={buildCreateDocumentUrl({
+                      objectTypeUUID: ot.uuid,
+                      parentDocument,
                       toParentPredicate: ect.to_parent_predicate,
-                      parentObjectTypeUUID: parentDocument?.object_type_uuid,
-                      returnToOnSuccess: '/create-document-success',
-                    }) : `/create-document/${ot.uuid}/object_type?parentDocumentUUID=${parentDocument?.uuid}&toParentPredicate=${ect.to_parent_predicate}&parentObjectTypeUUID=${parentDocument?.object_type_uuid}&returnToOnSuccess=/create-document-success`}
+                      createViewPath,
+                    })}
                     key={ot.uuid}
                   >
                     Create {ot.label}

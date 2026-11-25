@@ -11,6 +11,7 @@ import { ChevronDown } from 'lucide-react'
 import type { ReactElement } from 'react'
 import { useAtom } from 'jotai'
 import type { CreateDocumentEntryProps } from '@/variants/types'
+import { buildCreateDocumentUrl } from '@/manage/document/create_url'
 
 type PAMDocument = IDocument<unknown> & { can_modify: boolean }
 
@@ -90,12 +91,13 @@ const PAMCreateChildLink = ({
     returnToOnSuccess: string
 }): ReactElement => (
     <Link
-        to={`${documentCreatePath.replace(/\/$/, '')}/${childType.uuid}/object_type?${new URLSearchParams({
-            parentDocumentUUID: parentDocument.uuid,
+        to={buildCreateDocumentUrl({
+            objectTypeUUID: childType.uuid,
+            documentCreatePath,
+            parentDocument,
             toParentPredicate: 'has_parent',
-            parentObjectTypeUUID: parentDocument.object_type_uuid,
             returnToOnSuccess,
-        }).toString()}`}
+        })}
         className="inline-flex items-center rounded-md border border-input bg-background px-2 py-1 text-xs font-medium hover:bg-accent hover:text-accent-foreground"
     >
         Create {label}

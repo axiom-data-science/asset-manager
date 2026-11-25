@@ -15,9 +15,12 @@ export const documentListQueryKey = ({
   params?: IPostgrestParams
   rollups?: string[]
 }) =>
-  ['document', 'documents-list'].concat(
-    (rollups ?? []).map((r) => postgrestRollupArgs({ rollupColumn: r, params }).toString())
-  )
+  [
+    'document',
+    'documents-list',
+    ...(params ? [JSON.stringify(params)] : []),
+    ...(rollups ?? []).map((r) => postgrestRollupArgs({ rollupColumn: r, params }).toString()),
+  ]
 
 export const getDocumentListQuery = ({
   params,

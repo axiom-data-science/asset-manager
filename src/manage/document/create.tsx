@@ -340,7 +340,7 @@ const CreateDocumentForm = ({
         }
       />
       {!includeSaveButton && (
-        <div className="sticky bottom-0 bg-white/80 z-10 -mx-1 justify-end">
+        <div className="sticky bottom-0 bg-white/80 z-10 -mx-1 flex flex-row gap-4 p-4 justify-end">
           {saveButton}
         </div>
       )}

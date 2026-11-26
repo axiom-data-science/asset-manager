@@ -7,7 +7,7 @@ import {
   ViewWithLoader,
 } from '@axdspub/axiom-ui-utilities'
 import { useState, type ReactElement } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import { useObjectTypeList } from '../object_type/useObjectTypeList'
 import type {
   IDocument,
@@ -85,6 +85,10 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
   const [contextState] = useAtom(contextStateAtom)
   const { person_by_owner_sub } = contextState
   const [searchParams, setSearchParams] = useSearchParams()
+  const location = useLocation()
+  const returnToQuery = new URLSearchParams({
+    returnToOnSuccess: `${location.pathname}${location.search}`,
+  }).toString()
 
   const filters: Record<string, string | undefined> = Object.fromEntries(
     Array.from(searchParams.entries())
@@ -264,7 +268,7 @@ const ListDocuments = ({ object_types }: { object_types: IObjectType[] }): React
               accessor: (r) => (
                 <>
                   {r.can_modify === true ? (
-                    <Link to={`/document/edit/${r.uuid}`}>{r.label}</Link>
+                    <Link to={`/document/edit/${r.uuid}?${returnToQuery}`}>{r.label}</Link>
                   ) : (
                     r.label
                   )}

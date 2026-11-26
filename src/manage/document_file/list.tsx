@@ -34,7 +34,7 @@ const ListFiles = ({ object_types }: { object_types: IObjectType[] }): ReactElem
             {
               label: 'Label',
               id: 'label',
-              accessor: (r) => <Link to={`/document/edit/${r.uuid}`}>{r.label}</Link>,
+              accessor: (r) => <Link to={`/document/edit/${r.uuid}?returnToOnSuccess=/file/list`}>{r.label}</Link>,
             },
             {
               label: 'MIME type',

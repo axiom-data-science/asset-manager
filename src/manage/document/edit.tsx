@@ -22,7 +22,7 @@ import { Button as ShadCNButton } from '@/components/ui/button'
 
 import { useEffect, useEffectEvent, useRef, useState, type ReactElement } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { omit } from 'lodash-es'
+import { merge, omit } from 'lodash-es'
 import {
   buildStringFromTemplate,
   cn,
@@ -46,6 +46,7 @@ import { getDocumentMetadata } from './documentMetadata'
 import { fetchDocument, patchDocument, patchDocumentIfLockAvailable } from './services'
 import { useQueryClient } from '@tanstack/react-query'
 import { unlockDocument } from '@/services/postgrest/services'
+import { resolveDocumentEditView, type IDocumentEditViewConfig } from './edit_views'
 
 const isComplexSchema = (schema: unknown): boolean => {
   const pending: Array<{ value: unknown; depth: number }> = [{ value: schema, depth: 0 }]
@@ -63,6 +64,28 @@ const isComplexSchema = (schema: unknown): boolean => {
   }
 
   return false
+}
+
+const excludeFormFields = (form: IForm, excludedFieldIds: string[]): IForm => {
+  const excludedIds = new Set(excludedFieldIds.map((id) => id.toLowerCase()))
+  const excludeFields = (value: unknown): unknown => {
+    if (Array.isArray(value)) {
+      return value
+        .filter((item) => {
+          if (typeof item !== 'object' || item === null || !('id' in item)) return true
+          return typeof item.id !== 'string' || !excludedIds.has(item.id.toLowerCase())
+        })
+        .map(excludeFields)
+    }
+
+    if (typeof value !== 'object' || value === null) return value
+
+    return Object.fromEntries(
+      Object.entries(value).map(([key, child]) => [key, excludeFields(child)])
+    )
+  }
+
+  return excludeFields(form) as IForm
 }
 
 const DocumentLockStatus = ({
@@ -254,6 +277,7 @@ const EditDocumentForm = ({
   isLocked,
   autoLock,
   onUnlocked,
+  viewConfig,
 }: {
   document: IDocument
   schema: IObjectSchema
@@ -264,11 +288,14 @@ const EditDocumentForm = ({
   isLocked: boolean
   autoLock: boolean
   onUnlocked: () => void
+  viewConfig?: IDocumentEditViewConfig
 }): ReactElement => {
   const navigate = useNavigate()
   const [errors, setErrors] = useState<IValidationError[]>([])
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   const [lastSave, setLastSave] = useState<Date | null>(null)
+  const [documentLabel, setDocumentLabel] = useState(document.label)
+  const [documentDescription, setDocumentDescription] = useState(document.description)
   const defaultForm: IForm = {
     id: 'create-document',
     settings: {
@@ -329,10 +356,20 @@ const EditDocumentForm = ({
     dataForm?.tabs?.length
   )
 
-  const form = isUsingDataForm && dataForm ? dataForm : defaultForm
+  const baseForm = isUsingDataForm && dataForm ? dataForm : defaultForm
+  const form = viewConfig?.editableMetadata
+    ? isUsingDataForm && dataForm
+      ? excludeFormFields(baseForm, viewConfig.excludedFormFieldIds ?? [])
+      : { ...baseForm, fields: [] }
+    : viewConfig?.excludedFormFieldIds?.length
+      ? excludeFormFields(baseForm, viewConfig.excludedFormFieldIds)
+      : baseForm
 
   const [formValues, setFormValues] = useState<IFormValues>({
     ...(isUsingDataForm ? (document.data as JSON) : document),
+    ...(viewConfig?.editableMetadata
+      ? { label: document.label, description: document.description }
+      : {}),
   } as unknown as IFormValues)
 
   const [saving, setSaving] = useState(false)
@@ -346,17 +383,22 @@ const EditDocumentForm = ({
       // get only form values intended for saving according to the form
       getters.getFormPayload(formValues, form)
     )
-    const mergedData = {
-      ...(document.data as JSON),
-      ...(isUsingDataForm ? cleanValues : (cleanValues.data as JSON)),
-    }
+    const valuesForData = isUsingDataForm ? cleanValues : cleanValues.data as JSON
+    const mergedData = viewConfig?.editableMetadata
+      ? merge({}, (document.data ?? {}) as object, (valuesForData ?? {}) as object)
+      : {
+        ...(document.data as JSON),
+        ...(valuesForData as JSON),
+      }
     const fieldMappings = type.data?.field_mappings
-    const { label, description } = getDocumentMetadata({
-      formValues,
-      valuesToSave: cleanValues as IFormValues,
-      labelPath: fieldMappings?.label,
-      descriptionPath: fieldMappings?.description,
-    })
+    const { label, description } = viewConfig?.editableMetadata
+      ? { label: documentLabel, description: documentDescription }
+      : getDocumentMetadata({
+        formValues,
+        valuesToSave: cleanValues as IFormValues,
+        labelPath: fieldMappings?.label,
+        descriptionPath: fieldMappings?.description,
+      })
 
     const mergedDocument = {
       ...document,
@@ -366,7 +408,11 @@ const EditDocumentForm = ({
     } as IDocument
 
     const requiredFieldsOnSave = type.data?.required_fields_on_save
-    const valuesToEval = requiredFieldsOnSave ? cleanValues : mergedDocument
+    const valuesToEval = requiredFieldsOnSave
+      ? viewConfig?.editableMetadata
+        ? formValues
+        : cleanValues
+      : mergedDocument
     const valid = validateSelected({
       form,
       formValues: valuesToEval as IFormValues,
@@ -454,9 +500,13 @@ const EditDocumentForm = ({
       // get only form values intended for saving according to the form
       getters.getFormPayload(formValues, form)
     )
+    const validationData = isUsingDataForm ? valuesToSave : valuesToSave.data as JSON
+    const valuesToValidate = viewConfig?.editableMetadata
+      ? merge({}, (document.data ?? {}) as object, (validationData ?? {}) as object)
+      : valuesToSave
     const valid = await validate({
       form,
-      formValues: valuesToSave as IFormValues,
+      formValues: valuesToValidate as IFormValues,
       schema: resolveRefs(schema.json_schema) as Record<string, unknown>,
     })
     if (!valid.valid && valid.errors.length > 0) {
@@ -516,6 +566,39 @@ const EditDocumentForm = ({
             </div>
           </h1>
           <Errors errors={errors} formRef={formRef} />
+          {viewConfig?.editableMetadata && (
+            <div className="grid gap-4">
+              <label className="block text-sm font-medium">
+                Label
+                <input
+                  type="text"
+                  required
+                  value={documentLabel}
+                  onChange={(event) => {
+                    const value = event.currentTarget.value
+                    setDocumentLabel(value)
+                    setFormValues((previous) => ({ ...previous, label: value }))
+                    setLastUpdate(new Date())
+                  }}
+                  className="mt-1 w-full rounded border border-slate-300 px-3 py-2 font-normal"
+                />
+              </label>
+              <label className="block text-sm font-medium">
+                Description
+                <textarea
+                  value={documentDescription}
+                  onChange={(event) => {
+                    const value = event.currentTarget.value
+                    setDocumentDescription(value)
+                    setFormValues((previous) => ({ ...previous, description: value }))
+                    setLastUpdate(new Date())
+                  }}
+                  rows={3}
+                  className="mt-1 w-full rounded border border-slate-300 px-3 py-2 font-normal"
+                />
+              </label>
+            </div>
+          )}
           {complexSchema && !hasConfiguredForm && (
             <div className="border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
               This schema is too complex for generated fields, so the document data is shown as JSON.
@@ -578,6 +661,8 @@ const LoadSchemaAndCreateDocumentForm = ({
     object_type_uuid: document.object_type_uuid,
   })
   const objectType = data?.object_schema?.object_type
+  const viewConfig = objectType ? resolveDocumentEditView(objectType) : undefined
+  const View = viewConfig?.View
   const urlSkipTabs = new URLSearchParams(window.location.search).get('skip_tabs')
   const skipTabsToUse = skip_tabs ?? urlSkipTabs === 'true'
   const editView =
@@ -592,22 +677,27 @@ const LoadSchemaAndCreateDocumentForm = ({
         isLocked={isLocked}
         autoLock={autoLock}
         onUnlocked={onUnlocked}
+        viewConfig={viewConfig}
       />
     ) : null
-  return (
-    <ViewWithLoader isLoading={isLoading} error={error} data={data}>
-      {editView &&
-        objectType &&
-        (skipTabsToUse ? (
-          editView
-        ) : (
+  const editorContent =
+    editView && objectType
+      ? skipTabsToUse
+        ? editView
+        : (
           <DocumentTabs
             objectType={objectType}
             viewLabel={`${objectType.label}`}
             document={document}
             View={editView}
           />
-        ))}
+        )
+      : null
+
+  return (
+    <ViewWithLoader isLoading={isLoading} error={error} data={data}>
+      {editorContent &&
+        (View ? <View document={document}>{editorContent}</View> : editorContent)}
     </ViewWithLoader>
   )
 }
